@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Upload, Search, Filter, FileText, Eye, Download, 
@@ -6,7 +5,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { getUserResumes, deleteResume } from '@/services/resumeService';
@@ -36,8 +35,8 @@ const Resumes = () => {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
-  // Charger les CV de l'utilisateur
   useEffect(() => {
     const loadResumes = async () => {
       if (!user) return;
@@ -61,7 +60,6 @@ const Resumes = () => {
     loadResumes();
   }, [user, toast]);
   
-  // Analyser un CV
   const handleAnalyzeResume = async (resumeId: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('analyze-resume', {
@@ -76,7 +74,6 @@ const Resumes = () => {
           description: "Le CV a été analysé avec succès",
         });
         
-        // Actualiser la liste des CV
         if (user) {
           const updatedResumes = await getUserResumes(user.id);
           setResumes(updatedResumes || []);
@@ -94,7 +91,6 @@ const Resumes = () => {
     }
   };
   
-  // Supprimer un CV
   const handleDeleteResume = async (resumeId: string, filePath: string) => {
     try {
       const success = await deleteResume(resumeId, filePath);
@@ -105,7 +101,6 @@ const Resumes = () => {
           description: "Le CV a été supprimé avec succès",
         });
         
-        // Mettre à jour la liste des CV
         setResumes(prev => prev.filter(resume => resume.id !== resumeId));
       } else {
         throw new Error("Échec de la suppression du CV");
@@ -120,7 +115,6 @@ const Resumes = () => {
     }
   };
   
-  // Télécharger un CV
   const handleDownloadResume = async (filePath: string, fileName: string) => {
     try {
       const { data, error } = await supabase.storage
@@ -129,7 +123,6 @@ const Resumes = () => {
         
       if (error) throw error;
       
-      // Créer un lien de téléchargement
       const url = URL.createObjectURL(data);
       const link = document.createElement('a');
       link.href = url;
@@ -148,15 +141,12 @@ const Resumes = () => {
     }
   };
   
-  // Filtrer les CV
   const filteredResumes = resumes.filter(resume => {
-    // Filtre par recherche
     const matchesSearch = !searchQuery 
       || (resume.candidates?.[0]?.first_name && resume.candidates[0].first_name.toLowerCase().includes(searchQuery.toLowerCase()))
       || (resume.candidates?.[0]?.last_name && resume.candidates[0].last_name.toLowerCase().includes(searchQuery.toLowerCase()))
       || resume.file_name.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Filtre par statut
     const matchesStatus = !selectedStatus || 
       (selectedStatus === 'analyzed' && resume.parsed) || 
       (selectedStatus === 'pending' && !resume.parsed);
@@ -164,7 +154,6 @@ const Resumes = () => {
     return matchesSearch && matchesStatus;
   });
   
-  // Formater la date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
@@ -173,7 +162,6 @@ const Resumes = () => {
   return (
     <Layout className="py-8 bg-sand/30">
       <div className="container mx-auto px-4">
-        {/* Header & Controls */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
           <div className="mb-4 md:mb-0">
             <h1 className="text-2xl font-bold text-navy-dark mb-1">CV</h1>
@@ -203,7 +191,6 @@ const Resumes = () => {
           </div>
         </div>
         
-        {/* Filter Bar */}
         <div className="glass rounded-lg p-3 mb-6 flex flex-wrap items-center gap-3">
           <div className="flex items-center">
             <span className="text-sm font-medium text-navy-dark mr-2">Filtres:</span>
@@ -264,7 +251,6 @@ const Resumes = () => {
           </div>
         </div>
         
-        {/* Loading State */}
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 size={40} className="text-navy animate-spin mb-4" />
@@ -272,7 +258,6 @@ const Resumes = () => {
           </div>
         )}
         
-        {/* Empty State */}
         {!isLoading && resumes.length === 0 && (
           <div className="glass rounded-xl p-8 text-center">
             <div className="w-20 h-20 mx-auto rounded-full bg-navy/10 flex items-center justify-center mb-4">
@@ -291,12 +276,10 @@ const Resumes = () => {
           </div>
         )}
         
-        {/* Resumes Grid */}
         {!isLoading && resumes.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {/* Upload Card */}
             <Link to="/resumes/upload" className="glass rounded-xl border-2 border-dashed border-navy/20 flex flex-col items-center justify-center p-6 h-64 hover:border-navy/40 transition-colors">
-              <div className="w-12 h-12 rounded-full bg-navy/10 flex items-center justify-center mb-3">
+              <div className="w-12 h-12 rounded-full bg-navy/10 flex items-center justify-center text-sand">
                 <Plus size={24} className="text-navy" />
               </div>
               <p className="text-navy-dark font-medium mb-1">Importer un CV</p>
@@ -305,7 +288,6 @@ const Resumes = () => {
               </p>
             </Link>
             
-            {/* Resume Cards */}
             {filteredResumes.map((resume) => (
               <div 
                 key={resume.id} 
