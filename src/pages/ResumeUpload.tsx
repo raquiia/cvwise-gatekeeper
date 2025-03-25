@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
 import { useToast } from '@/hooks/use-toast';
 import { Link, useNavigate } from 'react-router-dom';
+import { uploadResume } from '@/services/resumeService';
+import { useAuth } from '@/context/AuthContext';
+import { v4 as uuidv4 } from 'uuid';
 
 const ResumeUpload = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -15,6 +18,7 @@ const ResumeUpload = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   // Gérer le glisser-déposer
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
@@ -87,8 +91,8 @@ const ResumeUpload = () => {
     setUploadProgress(prev => prev.filter((_, i) => i !== index));
   };
   
-  // Simuler le téléchargement et l'analyse
-  const handleUpload = () => {
+  // Upload des fichiers à Supabase
+  const handleUpload = async () => {
     if (files.length === 0) {
       toast({
         title: "Aucun fichier",
@@ -98,40 +102,83 @@ const ResumeUpload = () => {
       return;
     }
     
+    if (!user) {
+      toast({
+        title: "Non connecté",
+        description: "Vous devez être connecté pour télécharger des fichiers",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setUploading(true);
     
-    // Simuler la progression du téléchargement
-    const intervals = files.map((_, index) => {
-      return setInterval(() => {
-        setUploadProgress(prev => {
-          const newProgress = [...prev];
-          
-          if (newProgress[index] < 100) {
-            newProgress[index] += Math.random() * 15;
-            
-            if (newProgress[index] > 100) {
-              newProgress[index] = 100;
+    try {
+      // Process each file
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Simulate progress updates
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            const newProgress = [...prev];
+            if (newProgress[i] < 90) {
+              newProgress[i] += Math.random() * 15;
+              if (newProgress[i] > 90) newProgress[i] = 90;
             }
-          }
+            return newProgress;
+          });
+        }, 300);
+        
+        // Upload to Supabase
+        const result = await uploadResume(file, user.id);
+        
+        clearInterval(progressInterval);
+        
+        if (result) {
+          setUploadProgress(prev => {
+            const newProgress = [...prev];
+            newProgress[i] = 100;
+            return newProgress;
+          });
+        } else {
+          toast({
+            title: "Erreur d'upload",
+            description: `Le fichier ${file.name} n'a pas pu être téléchargé`,
+            variant: "destructive",
+          });
           
-          return newProgress;
-        });
-      }, 300);
-    });
-    
-    // Simuler la fin du téléchargement
-    setTimeout(() => {
-      intervals.forEach(clearInterval);
-      setUploadProgress(prev => prev.map(() => 100));
+          setUploadProgress(prev => {
+            const newProgress = [...prev];
+            newProgress[i] = -1; // Mark as error
+            return newProgress;
+          });
+        }
+      }
       
-      setTimeout(() => {
-        setCompleted(true);
+      // Check if all uploads were successful
+      const allUploaded = uploadProgress.every(progress => progress === 100);
+      
+      if (allUploaded) {
         toast({
           title: "Téléchargement réussi",
-          description: `${files.length} CV ont été téléchargés et analysés avec succès`,
+          description: `${files.length} CV ont été téléchargés avec succès`,
         });
-      }, 1000);
-    }, 3000);
+        
+        setTimeout(() => {
+          setCompleted(true);
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+      toast({
+        title: "Échec du téléchargement",
+        description: "Une erreur s'est produite lors du téléchargement des fichiers",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
   };
   
   // Rediriger vers la page de CV après le téléchargement
@@ -252,8 +299,10 @@ const ResumeUpload = () => {
                           {uploadProgress[index] > 0 && (
                             <div className="w-full bg-muted rounded-full h-1.5 mt-1">
                               <div 
-                                className="h-1.5 rounded-full bg-navy transition-all duration-300"
-                                style={{ width: `${uploadProgress[index]}%` }}
+                                className={`h-1.5 rounded-full transition-all duration-300 ${
+                                  uploadProgress[index] === -1 ? 'bg-red-500' : 'bg-navy'
+                                }`}
+                                style={{ width: `${uploadProgress[index] === -1 ? 100 : uploadProgress[index]}%` }}
                               ></div>
                             </div>
                           )}
@@ -262,6 +311,12 @@ const ResumeUpload = () => {
                         {uploadProgress[index] === 100 && (
                           <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center ml-2">
                             <Check size={14} className="text-emerald-600" />
+                          </div>
+                        )}
+                        
+                        {uploadProgress[index] === -1 && (
+                          <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center ml-2">
+                            <X size={14} className="text-red-600" />
                           </div>
                         )}
                       </div>
@@ -315,7 +370,7 @@ const ResumeUpload = () => {
             </h2>
             
             <p className="text-lg text-muted-foreground mb-6">
-              {files.length} CV ont été téléchargés et analysés avec succès
+              {files.length} CV ont été téléchargés avec succès
             </p>
             
             <div className="flex justify-center gap-4">

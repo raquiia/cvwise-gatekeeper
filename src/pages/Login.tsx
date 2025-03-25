@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -13,6 +14,14 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signIn, user } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,31 +38,13 @@ const Login = () => {
     
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      // Example login logic - replace with actual auth
-      if (email === 'admin@example.com' && password === 'password') {
-        toast({
-          title: "Connexion réussie",
-          description: "Bienvenue sur votre tableau de bord",
-        });
-        navigate('/dashboard');
-      } else if (email === 'user@example.com' && password === 'password') {
-        toast({
-          title: "Connexion réussie",
-          description: "Bienvenue sur votre tableau de bord",
-        });
-        navigate('/dashboard');
-      } else {
-        toast({
-          title: "Échec de la connexion",
-          description: "Email ou mot de passe incorrect",
-          variant: "destructive",
-        });
-      }
-      
+    try {
+      await signIn(email, password);
+    } catch (error) {
+      console.error('Login error:', error);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (

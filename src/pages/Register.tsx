@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, UserPlus, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -18,6 +19,14 @@ const Register = () => {
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signUp, user } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const validateStep1 = () => {
     if (!email || !password || !confirmPassword) {
@@ -70,16 +79,17 @@ const Register = () => {
     
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      toast({
-        title: "Inscription réussie !",
-        description: "Votre demande d'inscription a été envoyée à l'administrateur pour validation.",
+    try {
+      await signUp(email, password, {
+        firstName,
+        lastName,
+        company
       });
-      
+    } catch (error) {
+      console.error('Registration error:', error);
+    } finally {
       setIsLoading(false);
-      navigate('/registration-pending');
-    }, 1500);
+    }
   };
 
   return (

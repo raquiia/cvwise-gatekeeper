@@ -1,12 +1,16 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Upload, Search, Filter, FileText, Eye, Download, 
-  Trash2, Plus, Calendar, ChevronDown, MoreHorizontal
+  Trash2, Plus, Calendar, ChevronDown, MoreHorizontal, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
 import { Link } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
+import { getUserResumes, deleteResume } from '@/services/resumeService';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -14,89 +18,157 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 
-// Données fictives des CV
-const resumesData = [
-  {
-    id: 1,
-    fileName: 'Marie_Laurent_CV.pdf',
-    candidateName: 'Marie Laurent',
-    uploadDate: '23/07/2023',
-    fileSize: '1.2 MB',
-    status: 'analyzed',
-    candidateId: 1
-  },
-  {
-    id: 2,
-    fileName: 'Thomas_Dubois_CV.pdf',
-    candidateName: 'Thomas Dubois',
-    uploadDate: '21/07/2023',
-    fileSize: '890 KB',
-    status: 'analyzed',
-    candidateId: 2
-  },
-  {
-    id: 3,
-    fileName: 'Julie_Bernard_CV.pdf',
-    candidateName: 'Julie Bernard',
-    uploadDate: '20/07/2023',
-    fileSize: '1.4 MB',
-    status: 'analyzed',
-    candidateId: 3
-  },
-  {
-    id: 4,
-    fileName: 'Nicolas_Martin_CV.pdf',
-    candidateName: 'Nicolas Martin',
-    uploadDate: '18/07/2023',
-    fileSize: '920 KB',
-    status: 'analyzed',
-    candidateId: 4
-  },
-  {
-    id: 5,
-    fileName: 'Caroline_Petit_CV.pdf',
-    candidateName: 'Caroline Petit',
-    uploadDate: '15/07/2023',
-    fileSize: '1.1 MB',
-    status: 'analyzed',
-    candidateId: 5
-  },
-  {
-    id: 6,
-    fileName: 'Antoine_Durand_CV.pdf',
-    candidateName: 'Antoine Durand',
-    uploadDate: '14/07/2023',
-    fileSize: '980 KB',
-    status: 'analyzed',
-    candidateId: 6
-  },
-  {
-    id: 7,
-    fileName: 'Pierre_Lefevre_CV.pdf',
-    candidateName: null,
-    uploadDate: '10/07/2023',
-    fileSize: '1.3 MB',
-    status: 'pending',
-    candidateId: null
-  }
-];
+interface Resume {
+  id: string;
+  file_name: string;
+  file_path: string;
+  file_type: string;
+  file_size: number;
+  created_at: string;
+  parsed: boolean;
+  candidates?: any[];
+}
 
 const Resumes = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [resumes, setResumes] = useState<Resume[]>([]);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  // Charger les CV de l'utilisateur
+  useEffect(() => {
+    const loadResumes = async () => {
+      if (!user) return;
+      
+      setIsLoading(true);
+      try {
+        const data = await getUserResumes(user.id);
+        setResumes(data || []);
+      } catch (error) {
+        console.error('Error loading resumes:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les CV",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadResumes();
+  }, [user, toast]);
+  
+  // Analyser un CV
+  const handleAnalyzeResume = async (resumeId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-resume', {
+        body: { resumeId }
+      });
+      
+      if (error) throw error;
+      
+      if (data.success) {
+        toast({
+          title: "Analyse terminée",
+          description: "Le CV a été analysé avec succès",
+        });
+        
+        // Actualiser la liste des CV
+        if (user) {
+          const updatedResumes = await getUserResumes(user.id);
+          setResumes(updatedResumes || []);
+        }
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error: any) {
+      console.error('Error analyzing resume:', error);
+      toast({
+        title: "Échec de l'analyse",
+        description: error.message || "Une erreur s'est produite lors de l'analyse du CV",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Supprimer un CV
+  const handleDeleteResume = async (resumeId: string, filePath: string) => {
+    try {
+      const success = await deleteResume(resumeId, filePath);
+      
+      if (success) {
+        toast({
+          title: "CV supprimé",
+          description: "Le CV a été supprimé avec succès",
+        });
+        
+        // Mettre à jour la liste des CV
+        setResumes(prev => prev.filter(resume => resume.id !== resumeId));
+      } else {
+        throw new Error("Échec de la suppression du CV");
+      }
+    } catch (error: any) {
+      console.error('Error deleting resume:', error);
+      toast({
+        title: "Échec de la suppression",
+        description: error.message || "Une erreur s'est produite lors de la suppression du CV",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Télécharger un CV
+  const handleDownloadResume = async (filePath: string, fileName: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('resumes')
+        .download(filePath);
+        
+      if (error) throw error;
+      
+      // Créer un lien de téléchargement
+      const url = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error downloading resume:', error);
+      toast({
+        title: "Échec du téléchargement",
+        description: error.message || "Une erreur s'est produite lors du téléchargement du CV",
+        variant: "destructive",
+      });
+    }
+  };
   
   // Filtrer les CV
-  const filteredResumes = resumesData.filter(resume => {
+  const filteredResumes = resumes.filter(resume => {
     // Filtre par recherche
     const matchesSearch = !searchQuery 
-      || (resume.candidateName && resume.candidateName.toLowerCase().includes(searchQuery.toLowerCase()))
-      || resume.fileName.toLowerCase().includes(searchQuery.toLowerCase());
+      || (resume.candidates?.[0]?.first_name && resume.candidates[0].first_name.toLowerCase().includes(searchQuery.toLowerCase()))
+      || (resume.candidates?.[0]?.last_name && resume.candidates[0].last_name.toLowerCase().includes(searchQuery.toLowerCase()))
+      || resume.file_name.toLowerCase().includes(searchQuery.toLowerCase());
     
     // Filtre par statut
-    const matchesStatus = !selectedStatus || resume.status === selectedStatus;
+    const matchesStatus = !selectedStatus || 
+      (selectedStatus === 'analyzed' && resume.parsed) || 
+      (selectedStatus === 'pending' && !resume.parsed);
     
     return matchesSearch && matchesStatus;
   });
+  
+  // Formater la date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+  };
   
   return (
     <Layout className="py-8 bg-sand/30">
@@ -178,113 +250,156 @@ const Resumes = () => {
           </div>
           
           <div className="ml-auto">
-            <Button variant="ghost" size="sm" className="h-9 text-muted-foreground">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-9 text-muted-foreground"
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedStatus(null);
+              }}
+            >
               Réinitialiser
             </Button>
           </div>
         </div>
         
-        {/* Resumes Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {/* Upload Card */}
-          <Link to="/resumes/upload" className="glass rounded-xl border-2 border-dashed border-navy/20 flex flex-col items-center justify-center p-6 h-64 hover:border-navy/40 transition-colors">
-            <div className="w-12 h-12 rounded-full bg-navy/10 flex items-center justify-center mb-3">
-              <Plus size={24} className="text-navy" />
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 size={40} className="text-navy animate-spin mb-4" />
+            <p className="text-navy-dark font-medium">Chargement des CV...</p>
+          </div>
+        )}
+        
+        {/* Empty State */}
+        {!isLoading && resumes.length === 0 && (
+          <div className="glass rounded-xl p-8 text-center">
+            <div className="w-20 h-20 mx-auto rounded-full bg-navy/10 flex items-center justify-center mb-4">
+              <FileText size={32} className="text-navy" />
             </div>
-            <p className="text-navy-dark font-medium mb-1">Importer un CV</p>
-            <p className="text-sm text-muted-foreground text-center">
-              Glissez-déposez ou cliquez pour sélectionner
+            <h2 className="text-xl font-semibold text-navy-dark mb-2">Aucun CV trouvé</h2>
+            <p className="text-muted-foreground mb-6">
+              Vous n'avez pas encore importé de CV dans le système.
             </p>
-          </Link>
-          
-          {/* Resume Cards */}
-          {filteredResumes.map((resume) => (
-            <div 
-              key={resume.id} 
-              className="glass rounded-xl overflow-hidden card-hover flex flex-col"
-            >
-              <div className="p-4 flex-grow">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-10 h-10 rounded-full bg-navy flex items-center justify-center text-sand">
-                    <FileText size={18} />
+            <Link to="/resumes/upload">
+              <Button className="button-primary">
+                <Upload size={18} className="mr-2" />
+                Importer un CV
+              </Button>
+            </Link>
+          </div>
+        )}
+        
+        {/* Resumes Grid */}
+        {!isLoading && resumes.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {/* Upload Card */}
+            <Link to="/resumes/upload" className="glass rounded-xl border-2 border-dashed border-navy/20 flex flex-col items-center justify-center p-6 h-64 hover:border-navy/40 transition-colors">
+              <div className="w-12 h-12 rounded-full bg-navy/10 flex items-center justify-center mb-3">
+                <Plus size={24} className="text-navy" />
+              </div>
+              <p className="text-navy-dark font-medium mb-1">Importer un CV</p>
+              <p className="text-sm text-muted-foreground text-center">
+                Glissez-déposez ou cliquez pour sélectionner
+              </p>
+            </Link>
+            
+            {/* Resume Cards */}
+            {filteredResumes.map((resume) => (
+              <div 
+                key={resume.id} 
+                className="glass rounded-xl overflow-hidden card-hover flex flex-col"
+              >
+                <div className="p-4 flex-grow">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 rounded-full bg-navy flex items-center justify-center text-sand">
+                      <FileText size={18} />
+                    </div>
+                    
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal size={16} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleDownloadResume(resume.file_path, resume.file_name)}>
+                          <Download size={14} className="mr-2" />
+                          Télécharger
+                        </DropdownMenuItem>
+                        {!resume.parsed && (
+                          <DropdownMenuItem onClick={() => handleAnalyzeResume(resume.id)}>
+                            <Eye size={14} className="mr-2" />
+                            Analyser
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem 
+                          className="text-red-600"
+                          onClick={() => handleDeleteResume(resume.id, resume.file_path)}
+                        >
+                          <Trash2 size={14} className="mr-2" />
+                          Supprimer
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal size={16} />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Eye size={14} className="mr-2" />
-                        Voir le CV
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Download size={14} className="mr-2" />
-                        Télécharger
-                      </DropdownMenuItem>
-                      {resume.status === 'pending' && (
-                        <DropdownMenuItem>
-                          Analyser
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem className="text-red-600">
-                        <Trash2 size={14} className="mr-2" />
-                        Supprimer
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <h3 className="font-medium text-navy-dark break-all line-clamp-1 mb-1" title={resume.file_name}>
+                    {resume.file_name}
+                  </h3>
+                  
+                  {resume.candidates && resume.candidates.length > 0 ? (
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Candidat: {resume.candidates[0].first_name} {resume.candidates[0].last_name}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-amber-600 mb-3 flex items-center">
+                      <svg className="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 9v4m0 4h.01M5.07 19H19a2 2 0 0 0 1.75-2.98L13.75 4.99a2 2 0 0 0-3.5 0L3.25 16.02A2 2 0 0 0 5.07 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      En attente d'analyse
+                    </p>
+                  )}
+                  
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <Calendar size={12} className="mr-1" />
+                    Importé le {formatDate(resume.created_at)}
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Taille: {(resume.file_size / 1024 / 1024).toFixed(2)} MB
+                  </div>
                 </div>
                 
-                <h3 className="font-medium text-navy-dark break-all line-clamp-1 mb-1" title={resume.fileName}>
-                  {resume.fileName}
-                </h3>
-                
-                {resume.candidateName ? (
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Candidat: {resume.candidateName}
-                  </p>
-                ) : (
-                  <p className="text-sm text-amber-600 mb-3 flex items-center">
-                    <svg className="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 9v4m0 4h.01M5.07 19H19a2 2 0 0 0 1.75-2.98L13.75 4.99a2 2 0 0 0-3.5 0L3.25 16.02A2 2 0 0 0 5.07 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    En attente d'analyse
-                  </p>
-                )}
-                
-                <div className="flex items-center text-xs text-muted-foreground">
-                  <Calendar size={12} className="mr-1" />
-                  Importé le {resume.uploadDate}
-                </div>
-                
-                <div className="text-xs text-muted-foreground mt-1">
-                  Taille: {resume.fileSize}
-                </div>
-              </div>
-              
-              <div className="border-t border-border/10 p-3 flex justify-between">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-xs"
-                  asChild
-                >
-                  <Link to={`/resumes/${resume.id}`}>
+                <div className="border-t border-border/10 p-3 flex justify-between">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-xs"
+                    onClick={() => resume.parsed ? 
+                      navigate(`/candidates/${resume.candidates?.[0]?.id}`) :
+                      handleAnalyzeResume(resume.id)
+                    }
+                  >
                     <Eye size={14} className="mr-1" />
-                    Voir
-                  </Link>
-                </Button>
-                
-                <Button variant="ghost" size="sm" className="text-xs">
-                  <Download size={14} className="mr-1" />
-                  Télécharger
-                </Button>
+                    {resume.parsed ? "Voir candidat" : "Analyser"}
+                  </Button>
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-xs"
+                    onClick={() => handleDownloadResume(resume.file_path, resume.file_name)}
+                  >
+                    <Download size={14} className="mr-1" />
+                    Télécharger
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </Layout>
   );
