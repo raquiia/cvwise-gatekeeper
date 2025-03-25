@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { 
   Search, Filter, Download, Upload, UserPlus, MoreHorizontal,
   ChevronDown, CheckCircle, XCircle, Star, Eye, Trash2,
-  ArrowUpDown, SlidersHorizontal, MapPin, Briefcase, Calendar
+  ArrowUpDown, SlidersHorizontal, MapPin, Briefcase, Calendar,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';

@@ -4,7 +4,7 @@ import {
   Users, UserCheck, UserX, Clock, Settings, Shield, 
   Briefcase, RefreshCw, Building, ArrowUpRight, 
   LogOut, Mail, CheckCircle, XCircle, MessageSquare,
-  AlertTriangle
+  AlertTriangle, MoreHorizontal
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
