@@ -100,24 +100,26 @@ export const candidateDataService = {
    */
   getCandidateById: async (candidateId: string): Promise<CandidateData | null> => {
     try {
-      // Avoid policies that might cause recursion by using direct SQL query
-      const { data, error } = await supabase
-        .from('candidates')
-        .select('*')
-        .eq('id', candidateId)
-        .maybeSingle();
+      // Utiliser la fonction RPC sécurisée pour éviter la récursion infinie dans les policies
+      const { data, error } = await supabase.rpc('get_candidate_by_id', {
+        candidate_id_param: candidateId
+      });
         
       if (error) {
-        console.error('Error fetching candidate by ID:', error);
+        console.error('RPC error fetching candidate by ID:', error);
         throw error;
       }
       
-      // Transform the data to match our expected format
-      if (data) {
-        return processSkills(data) as CandidateData;
+      console.log('Candidate data from RPC:', data);
+      
+      // Check if we got any data back
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        console.log('No candidate found with ID:', candidateId);
+        return null;
       }
       
-      return null;
+      // Return the first result (should only be one)
+      return processSkills(data[0]) as CandidateData;
     } catch (error) {
       console.error('Error fetching candidate:', error);
       return null;

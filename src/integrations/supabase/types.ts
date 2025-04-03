@@ -198,6 +198,12 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_candidate_by_id: {
+        Args: {
+          candidate_id_param: string
+        }
+        Returns: Json[]
+      }
       get_profile_by_id: {
         Args: {
           _id: string
