@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Users, UserCheck, UserX, ArrowLeft, 
   MoreHorizontal, MessageSquare, Settings,
   LogOut, Search, Filter, Download, SortAsc,
-  SortDesc, FileText, ChevronLeft, Mail, Briefcase
+  SortDesc, FileText, ChevronLeft, Mail, Briefcase, AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
@@ -22,10 +21,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { InfoIcon, AlertTriangle } from "lucide-react";
+import { InfoIcon } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
-// Données fictives pour démonstration
 const demoUsersData = [
   {
     id: 101,
@@ -113,56 +112,90 @@ const AllUsers = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [filteredUsers, setFilteredUsers] = useState(demoUsersData);
+  const [realUsers, setRealUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usingDemoData, setUsingDemoData] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  // Tentative de récupération des utilisateurs réels (échouera sans privilèges admin)
   useEffect(() => {
     const fetchRealUsers = async () => {
+      if (!user) return;
+      
       try {
         setLoading(true);
         setError(null);
-        // Cette fonction nécessite des privilèges administratifs
-        const { data, error } = await supabase.auth.admin.listUsers();
+        
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        
+        if (!token) {
+          throw new Error("Session non trouvée. Veuillez vous reconnecter.");
+        }
+        
+        const { data, error } = await supabase.functions.invoke('list-users', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
         
         if (error) throw error;
         
-        // Si nous arrivons ici, c'est que nous avons réussi (peu probable sans privilèges admin)
-        console.log("Utilisateurs réels récupérés:", data);
-        toast({
-          title: "Succès",
-          description: "Utilisateurs récupérés avec succès. Vous avez des privilèges administratifs.",
-        });
+        if (data && data.users) {
+          setRealUsers(data.users);
+          setFilteredUsers(data.users);
+          setUsingDemoData(false);
+          toast({
+            title: "Succès",
+            description: `${data.users.length} utilisateurs récupérés avec succès.`,
+          });
+        }
       } catch (err: any) {
         console.error("Erreur lors de la récupération des utilisateurs:", err);
-        setError(err.message || "Impossible de récupérer les utilisateurs. Accès administrateur requis.");
+        setError(err.message || "Impossible de récupérer les utilisateurs. Vérifiez les privilèges d'accès.");
+        
+        setFilteredUsers(demoUsersData);
+        setUsingDemoData(true);
       } finally {
         setLoading(false);
       }
     };
 
-    // Tentative de récupération (échouera sans privilèges admin)
     fetchRealUsers();
-  }, [toast]);
+  }, [user, toast]);
 
-  // Filtrer les utilisateurs en fonction de la recherche et du rôle sélectionné
   useEffect(() => {
-    const filtered = demoUsersData.filter(user => {
-      const matchesSearch = !searchQuery || 
-        user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.company.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesRole = !selectedRole || user.role === selectedRole;
-      
-      return matchesSearch && matchesRole;
+    const sourceData = usingDemoData ? demoUsersData : realUsers;
+    
+    const filtered = sourceData.filter(user => {
+      if (usingDemoData) {
+        const matchesSearch = !searchQuery || 
+          user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+          user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          user.company.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        const matchesRole = !selectedRole || user.role === selectedRole;
+        
+        return matchesSearch && matchesRole;
+      } 
+      else {
+        const userName = `${user.profile?.first_name || ''} ${user.profile?.last_name || ''}`.trim();
+        const matchesSearch = !searchQuery || 
+          userName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+          user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          user.profile?.company?.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        const userRole = user.profile?.is_admin ? 'Administrateur' : 'Utilisateur';
+        const matchesRole = !selectedRole || userRole === selectedRole;
+        
+        return matchesSearch && matchesRole;
+      }
     });
     
     setFilteredUsers(filtered);
-  }, [searchQuery, selectedRole]);
+  }, [searchQuery, selectedRole, usingDemoData, realUsers]);
 
-  // Simuler l'envoi d'un e-mail à l'utilisateur
   const handleContactUser = (userName: string) => {
     toast({
       title: "Contact utilisateur",
@@ -170,10 +203,35 @@ const AllUsers = () => {
     });
   };
 
+  const formatUserForDisplay = (user: any, isRealUser = false) => {
+    if (isRealUser) {
+      const firstName = user.profile?.first_name || '';
+      const lastName = user.profile?.last_name || '';
+      const fullName = `${firstName} ${lastName}`.trim() || user.email;
+      const role = user.profile?.is_admin ? 'Administrateur' : 'Utilisateur';
+      const lastLoginDate = user.last_sign_in_at ? new Date(user.last_sign_in_at) : null;
+      const formattedLastLogin = lastLoginDate ? 
+        `${lastLoginDate.toLocaleDateString('fr-FR')} ${lastLoginDate.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}` : 
+        'Jamais';
+        
+      return {
+        id: user.id,
+        name: fullName,
+        email: user.email,
+        company: user.profile?.company || 'Non spécifié',
+        role: role,
+        lastLogin: formattedLastLogin,
+        status: user.last_sign_in_at ? ((Date.now() - new Date(user.last_sign_in_at).getTime()) < 86400000 ? 'online' : 'offline') : 'offline',
+        avatar: null
+      };
+    } else {
+      return user;
+    }
+  };
+
   return (
     <Layout className="py-8 bg-sand/30">
       <div className="container mx-auto px-4">
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
           <div className="mb-4 md:mb-0">
             <div className="flex items-center gap-2 mb-2">
@@ -235,27 +293,32 @@ const AllUsers = () => {
           </div>
         </div>
         
-        {/* Error Alert - Displayed if there was an error getting real users */}
+        {loading && (
+          <div className="flex justify-center mb-6">
+            <div className="animate-pulse text-navy-dark">Chargement des utilisateurs...</div>
+          </div>
+        )}
+        
         {error && (
           <Alert className="mb-6 bg-amber-50 border-amber-200">
             <AlertTriangle className="h-4 w-4 text-amber-500" />
             <AlertTitle className="text-amber-700">Accès limité</AlertTitle>
             <AlertDescription className="text-amber-600">
-              {error} Nous affichons des données de démonstration à la place.
+              {error} {usingDemoData && "Nous affichons des données de démonstration à la place."}
             </AlertDescription>
           </Alert>
         )}
         
-        {/* Info Alert */}
-        <Alert className="mb-6 bg-blue-50 border-blue-200">
-          <InfoIcon className="h-4 w-4 text-blue-500" />
-          <AlertTitle className="text-blue-700">Données de démonstration</AlertTitle>
-          <AlertDescription className="text-blue-600">
-            Cette page affiche des données fictives à des fins de démonstration. Pour accéder aux données utilisateurs réelles, une API avec des privilèges administratifs est nécessaire.
-          </AlertDescription>
-        </Alert>
+        {usingDemoData && (
+          <Alert className="mb-6 bg-blue-50 border-blue-200">
+            <InfoIcon className="h-4 w-4 text-blue-500" />
+            <AlertTitle className="text-blue-700">Données de démonstration</AlertTitle>
+            <AlertDescription className="text-blue-600">
+              Cette page affiche des données fictives à des fins de démonstration. Pour accéder aux données utilisateurs réelles, une API avec des privilèges administratifs est nécessaire.
+            </AlertDescription>
+          </Alert>
+        )}
         
-        {/* Stats bar */}
         <div className="bg-white rounded-xl p-4 shadow-sm mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-center gap-3">
@@ -264,7 +327,7 @@ const AllUsers = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total utilisateurs</p>
-                <p className="text-xl font-semibold">{demoUsersData.length}</p>
+                <p className="text-xl font-semibold">{filteredUsers.length}</p>
               </div>
             </div>
             
@@ -274,7 +337,7 @@ const AllUsers = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Actifs aujourd'hui</p>
-                <p className="text-xl font-semibold">1</p>
+                <p className="text-xl font-semibold">{filteredUsers.filter(u => u.status === 'online').length}</p>
               </div>
             </div>
             
@@ -284,15 +347,15 @@ const AllUsers = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Entreprises</p>
-                <p className="text-xl font-semibold">4</p>
+                <p className="text-xl font-semibold">
+                  {new Set(filteredUsers.map(u => u.company)).size}
+                </p>
               </div>
             </div>
           </div>
         </div>
         
-        {/* Users table */}
         <div className="bg-white rounded-xl overflow-hidden shadow-sm">
-          {/* Table Header with Sort Controls */}
           <div className="p-4 border-b border-border/30 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-navy-dark">
@@ -325,7 +388,6 @@ const AllUsers = () => {
             </div>
           </div>
           
-          {/* Table Body */}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -338,78 +400,81 @@ const AllUsers = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
-                    <td className="p-4">
-                      <div className="flex items-center">
-                        <Avatar className="h-9 w-9 mr-3">
-                          <AvatarFallback className="bg-navy/10 text-navy-dark text-xs">
-                            {user.name.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium text-navy-dark flex items-center">
-                            {user.name}
-                            {user.status === 'online' && (
-                              <div className="w-2 h-2 rounded-full bg-emerald-500 ml-2"></div>
-                            )}
-                          </div>
-                          <div className="flex items-center text-xs text-muted-foreground">
-                            <Mail size={10} className="mr-1" />
-                            {user.email}
+                {filteredUsers.map((rawUser) => {
+                  const user = usingDemoData ? rawUser : formatUserForDisplay(rawUser, true);
+                  return (
+                    <tr key={user.id} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
+                      <td className="p-4">
+                        <div className="flex items-center">
+                          <Avatar className="h-9 w-9 mr-3">
+                            <AvatarFallback className="bg-navy/10 text-navy-dark text-xs">
+                              {user.name.split(' ').map(n => n[0]).join('')}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium text-navy-dark flex items-center">
+                              {user.name}
+                              {user.status === 'online' && (
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 ml-2"></div>
+                              )}
+                            </div>
+                            <div className="flex items-center text-xs text-muted-foreground">
+                              <Mail size={10} className="mr-1" />
+                              {user.email}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-4 text-sm">{user.company}</td>
-                    <td className="p-4">
-                      <Badge variant={user.role === 'Administrateur' ? 'default' : 'outline'} className={
-                        user.role === 'Administrateur' 
-                          ? 'bg-navy text-sand' 
-                          : user.role === 'Responsable RH'
-                            ? 'bg-purple-50 text-purple-700'
-                            : 'bg-blue-50 text-blue-700'
-                      }>
-                        {user.role}
-                      </Badge>
-                    </td>
-                    <td className="p-4 text-sm text-muted-foreground">{user.lastLogin}</td>
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          onClick={() => handleContactUser(user.name)}
-                        >
-                          <MessageSquare size={16} />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal size={16} />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Settings size={14} className="mr-2" />
-                              Modifier les droits
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <UserCheck size={14} className="mr-2" />
-                              Activer
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
-                              <LogOut size={14} className="mr-2" />
-                              Déconnecter
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="p-4 text-sm">{user.company}</td>
+                      <td className="p-4">
+                        <Badge variant={user.role === 'Administrateur' ? 'default' : 'outline'} className={
+                          user.role === 'Administrateur' 
+                            ? 'bg-navy text-sand' 
+                            : user.role === 'Responsable RH'
+                              ? 'bg-purple-50 text-purple-700'
+                              : 'bg-blue-50 text-blue-700'
+                        }>
+                          {user.role}
+                        </Badge>
+                      </td>
+                      <td className="p-4 text-sm text-muted-foreground">{user.lastLogin}</td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => handleContactUser(user.name)}
+                          >
+                            <MessageSquare size={16} />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal size={16} />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Settings size={14} className="mr-2" />
+                                Modifier les droits
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <UserCheck size={14} className="mr-2" />
+                                Activer
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-red-600">
+                                <LogOut size={14} className="mr-2" />
+                                Déconnecter
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
