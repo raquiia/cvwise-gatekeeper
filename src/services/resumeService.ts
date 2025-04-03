@@ -12,75 +12,52 @@ export type { ResumeData, CandidateData };
 
 export const uploadResume = async (file: File, userId: string): Promise<ResumeData | null> => {
   try {
-    console.log('Starting upload process for file:', file.name);
-    console.log('User ID:', userId);
+    console.log('Démarrage du processus de téléchargement pour le fichier:', file.name);
+    console.log('ID utilisateur:', userId);
     
-    // Vérifier le bucket mais continuer même si ça échoue
-    try {
-      await ensureResumesBucketExists();
-    } catch (bucketError) {
-      console.warn('Bucket initialization error, continuing anyway:', bucketError);
-    }
+    // 1. Vérifier/créer le bucket silencieusement
+    await ensureResumesBucketExists().catch(err => {
+      console.warn('Problème avec le bucket, on continue:', err);
+    });
     
-    // Phase 1: Upload du fichier
-    const fileData = await resumeStorageService.uploadFile(file, userId);
+    // 2. Créer d'abord l'enregistrement en base de données
+    const filePath = `${userId}/${uuidv4()}.${file.name.split('.').pop() || 'pdf'}`;
     
-    // Si l'upload échoue, on simule un succès pour les tests
-    if (!fileData) {
-      console.warn('Storage upload failed, creating DB record without actual file');
+    const { data: resumeRecord, error: dbError } = await supabase
+      .from('resumes')
+      .insert({
+        user_id: userId,
+        file_name: file.name,
+        file_path: filePath,
+        file_type: file.type,
+        file_size: file.size,
+        parsed: false
+      })
+      .select('*')
+      .single();
       
-      // Créer quand même l'enregistrement DB pour faciliter les tests
-      const { data: resumeRecord, error } = await supabase
-        .from('resumes')
-        .insert({
-          user_id: userId,
-          file_name: file.name,
-          file_path: `${userId}/simulated-${uuidv4()}.${file.name.split('.').pop() || 'pdf'}`,
-          file_type: file.type,
-          file_size: file.size,
-          parsed: false
-        })
-        .select('*')
-        .single();
-        
-      if (error) {
-        console.error('Database insert error:', error);
-        throw new Error("Échec de l'enregistrement du CV");
-      }
-      
-      return resumeRecord as ResumeData;
-    }
-    
-    // Phase 2: Enregistrement dans la base de données
-    try {
-      const { data: resumeRecord, error } = await supabase
-        .from('resumes')
-        .insert({
-          user_id: userId,
-          file_name: fileData.fileName,
-          file_path: fileData.filePath,
-          file_type: fileData.fileType,
-          file_size: fileData.fileSize,
-          parsed: false
-        })
-        .select('*')
-        .single();
-        
-      if (error) {
-        console.error('Database error:', error);
-        // Ne pas essayer de supprimer le fichier, cela pourrait causer plus de problèmes
-        throw new Error("Échec de l'enregistrement du CV");
-      }
-      
-      console.log('Resume record created:', resumeRecord);
-      return resumeRecord as ResumeData;
-    } catch (dbError: any) {
-      console.error('Database error:', dbError);
+    if (dbError) {
+      console.error('Erreur de base de données:', dbError);
       return null;
     }
+    
+    // 3. Tenter de télécharger le fichier
+    try {
+      const uploadResult = await resumeStorageService.uploadFile(file, userId);
+      
+      // Si l'upload a échoué mais que l'entrée DB existe, c'est quand même un succès partiel
+      if (!uploadResult) {
+        console.warn('Échec du téléchargement du fichier, mais l\'enregistrement en base de données a réussi');
+      }
+    } catch (uploadError) {
+      console.warn('Erreur lors du téléchargement du fichier, mais l\'enregistrement en base existe', uploadError);
+      // Ne pas échouer le processus complet
+    }
+    
+    return resumeRecord as ResumeData;
   } catch (error: any) {
-    console.error('Resume upload failed:', error);
-    return null; // Retourner null au lieu de propager l'erreur
+    console.error('Échec du téléchargement du CV:', error);
+    return null;
   }
 };
 

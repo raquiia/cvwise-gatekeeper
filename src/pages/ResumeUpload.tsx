@@ -1,38 +1,16 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
 import UploadForm from '@/components/resume/UploadForm';
 import UploadSuccess from '@/components/resume/UploadSuccess';
-import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
-import { useToast } from '@/hooks/use-toast';
 
 const ResumeUpload = () => {
   const [completed, setCompleted] = useState(false);
   const [uploadedFileCount, setUploadedFileCount] = useState(0);
-  const [initializingBucket, setInitializingBucket] = useState(false); // Démarrer à false pour éviter le chargement inutile
-  const [bucketError, setBucketError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { toast } = useToast();
-  
-  useEffect(() => {
-    // Initialisation silencieuse du bucket (ne bloque pas l'interface)
-    const initializeBucket = async () => {
-      if (!user) return;
-      
-      try {
-        // Tenter d'initialiser le bucket sans bloquer l'interface
-        await ensureResumesBucketExists();
-      } catch (error: any) {
-        // Ne pas afficher d'erreur à l'utilisateur, simplement loguer
-        console.warn('Bucket initialization issue:', error);
-      }
-    };
-    
-    initializeBucket();
-  }, [user]);
   
   const handleUploadComplete = (count: number) => {
     setUploadedFileCount(count);
@@ -44,22 +22,6 @@ const ResumeUpload = () => {
   };
   
   const renderContent = () => {
-    if (initializingBucket) {
-      return (
-        <div className="glass rounded-xl p-8 text-center">
-          <div className="w-12 h-12 mx-auto rounded-full bg-navy/10 flex items-center justify-center mb-4 animate-pulse">
-            <div className="w-6 h-6 border-2 border-navy border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <h2 className="text-lg font-medium text-navy-dark mb-2">
-            Préparation du stockage...
-          </h2>
-          <p className="text-muted-foreground">
-            Veuillez patienter pendant que nous préparons l'espace de stockage pour vos CV
-          </p>
-        </div>
-      );
-    }
-    
     if (!completed) {
       return (
         <UploadForm 
