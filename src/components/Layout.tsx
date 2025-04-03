@@ -8,7 +8,7 @@ type LayoutProps = {
   isAdminPage?: boolean;
 };
 
-const Layout: React.FC<LayoutProps> = ({ 
+export const Layout: React.FC<LayoutProps> = ({ 
   children, 
   className = '',
   isAdminPage = false
