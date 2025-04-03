@@ -181,7 +181,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      insert_resume: {
+        Args: {
+          p_user_id: string
+          p_file_name: string
+          p_file_path: string
+          p_file_type: string
+          p_file_size: number
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

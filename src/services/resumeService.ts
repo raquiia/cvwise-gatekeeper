@@ -59,7 +59,7 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
       parsed: false
     };
     
-    // Utiliser une insertion directe avec SQL plutôt que l'API pour contourner l'erreur de récursion
+    // Use RPC function to insert resume directly to avoid recursion issues
     const { data, error } = await supabase
       .rpc('insert_resume', { 
         p_user_id: userId,
@@ -72,7 +72,7 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
     if (error) {
       console.error('Error creating resume record:', error);
       
-      // Si l'insertion échoue, supprimer le fichier téléchargé pour nettoyer
+      // If insertion fails, delete the uploaded file to clean up
       await supabase.storage
         .from('resumes')
         .remove([filePath]);
@@ -83,7 +83,7 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
     console.log('Resume record created successfully:', data);
     return {
       ...resumeData,
-      id: data
+      id: data as string
     };
   } catch (error: any) {
     console.error('Resume upload failed:', error);
