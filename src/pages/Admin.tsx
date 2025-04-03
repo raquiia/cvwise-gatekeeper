@@ -30,8 +30,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 
-// Données fictives pour les utilisateurs en attente de validation
 const pendingUsersData = [
   {
     id: 1,
@@ -62,7 +62,6 @@ const pendingUsersData = [
   }
 ];
 
-// Données fictives pour les utilisateurs actifs
 const activeUsersData = [
   {
     id: 101,
@@ -106,7 +105,6 @@ const activeUsersData = [
   }
 ];
 
-// Données fictives pour les activités système
 const systemActivitiesData = [
   {
     id: 1,
@@ -145,7 +143,6 @@ const systemActivitiesData = [
   }
 ];
 
-// Interface pour les utilisateurs réels
 interface RealUser {
   id: string;
   email: string;
@@ -155,27 +152,32 @@ interface RealUser {
   created_at: string;
   last_sign_in_at?: string;
   avatar_url?: string;
+  profile?: {
+    first_name?: string;
+    last_name?: string;
+    company?: string;
+    is_admin?: boolean;
+    avatar_url?: string;
+  }
 }
 
 const Admin = () => {
-  // État pour suivre les utilisateurs validés/rejetés
   const [pendingUsers, setPendingUsers] = useState(pendingUsersData);
   const [activeUsers, setActiveUsers] = useState(activeUsersData);
   const [realUsers, setRealUsers] = useState<RealUser[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
   
-  // Charger les utilisateurs réels depuis Supabase
   useEffect(() => {
     const fetchRealUsers = async () => {
       try {
         setLoading(true);
         
-        // Récupérer les utilisateurs depuis auth.users
-        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+        const { data, error } = await supabase.functions.invoke('list-users');
         
-        if (authError) {
-          console.error('Erreur lors de la récupération des utilisateurs:', authError);
+        if (error) {
+          console.error('Erreur lors de la récupération des utilisateurs:', error);
           toast({
             title: "Erreur",
             description: "Impossible de récupérer les utilisateurs",
@@ -185,33 +187,11 @@ const Admin = () => {
           return;
         }
         
-        // Récupérer les profils pour obtenir les noms et autres informations
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('*');
-          
-        if (profilesError) {
-          console.error('Erreur lors de la récupération des profils:', profilesError);
-        }
-        
-        // Combiner les données des utilisateurs et des profils
-        if (authUsers) {
-          const usersWithProfiles = authUsers.users.map(user => {
-            const profile = profiles?.find(p => p.id === user.id);
-            return {
-              id: user.id,
-              email: user.email || '',
-              first_name: profile?.first_name || user.user_metadata?.first_name || '',
-              last_name: profile?.last_name || user.user_metadata?.last_name || '',
-              company: profile?.company || user.user_metadata?.company || '',
-              created_at: user.created_at,
-              last_sign_in_at: user.last_sign_in_at,
-              avatar_url: profile?.avatar_url || null
-            };
-          });
-          
-          setRealUsers(usersWithProfiles);
-          console.log("Utilisateurs réels chargés:", usersWithProfiles);
+        if (data && data.users) {
+          console.log("Utilisateurs réels chargés:", data.users);
+          setRealUsers(data.users);
+        } else {
+          console.error('Aucune donnée d\'utilisateur reçue de l\'Edge Function');
         }
         
         setLoading(false);
@@ -224,32 +204,27 @@ const Admin = () => {
     fetchRealUsers();
   }, [toast]);
   
-  // Gérer la validation d'un utilisateur
   const handleApproveUser = (userId: number) => {
     const userToApprove = pendingUsers.find(user => user.id === userId);
     if (userToApprove) {
-      // Ajouter l'utilisateur à la liste des actifs
       setActiveUsers(prev => [
         ...prev, 
         { 
           ...userToApprove, 
-          id: 1000 + userToApprove.id, // Éviter les conflits d'ID
+          id: 1000 + userToApprove.id, 
           lastLogin: 'Jamais',
           status: 'offline'
         }
       ]);
       
-      // Retirer l'utilisateur de la liste des en attente
       setPendingUsers(prev => prev.filter(user => user.id !== userId));
     }
   };
   
-  // Gérer le rejet d'un utilisateur
   const handleRejectUser = (userId: number) => {
     setPendingUsers(prev => prev.filter(user => user.id !== userId));
   };
   
-  // Formater la date en français
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Jamais';
     const date = new Date(dateString);
@@ -266,7 +241,6 @@ const Admin = () => {
   return (
     <Layout className="py-8 bg-sand/30">
       <div className="container mx-auto px-4">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-navy-dark mb-2">Administration</h1>
           <p className="text-muted-foreground">
@@ -274,7 +248,6 @@ const Admin = () => {
           </p>
         </div>
         
-        {/* Admin Dashboard Tabs */}
         <Tabs defaultValue="users" className="mb-8">
           <TabsList className="mb-6">
             <TabsTrigger value="users" className="flex items-center gap-2">
@@ -295,7 +268,6 @@ const Admin = () => {
             </TabsTrigger>
           </TabsList>
           
-          {/* Users Tab */}
           <TabsContent value="users">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="md:col-span-1">
@@ -411,11 +383,11 @@ const Admin = () => {
                                   {user.email}
                                 </div>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <Badge variant="outline" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
+                                  <Badge variant="outline" className="bg-blue-50 text-blue-700">
                                     <Briefcase size={10} className="mr-1" />
                                     {user.company}
                                   </Badge>
-                                  <Badge variant="outline" className="bg-purple-50 text-purple-700 hover:bg-purple-100">
+                                  <Badge variant="outline" className="bg-purple-50 text-purple-700">
                                     {user.role}
                                   </Badge>
                                 </div>
@@ -447,7 +419,6 @@ const Admin = () => {
                   </CardContent>
                 </Card>
                 
-                {/* Utilisateurs réels */}
                 <Card>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
@@ -496,27 +467,38 @@ const Admin = () => {
                                 <td className="p-3">
                                   <div className="flex items-center">
                                     <Avatar className="h-8 w-8 mr-3">
-                                      <AvatarImage src={user.avatar_url || undefined} />
+                                      <AvatarImage src={user.profile?.avatar_url || user.avatar_url || undefined} />
                                       <AvatarFallback className="bg-navy/10 text-navy-dark text-xs">
-                                        {user.first_name && user.last_name 
-                                          ? `${user.first_name[0]}${user.last_name[0]}`
-                                          : user.email.substring(0, 2).toUpperCase()}
+                                        {user.profile?.first_name && user.profile?.last_name 
+                                          ? `${user.profile.first_name[0]}${user.profile.last_name[0]}`
+                                          : user.first_name && user.last_name
+                                            ? `${user.first_name[0]}${user.last_name[0]}`
+                                            : user.email.substring(0, 2).toUpperCase()}
                                       </AvatarFallback>
                                     </Avatar>
                                     <div>
                                       <div className="font-medium text-navy-dark flex items-center">
-                                        {user.first_name && user.last_name 
-                                          ? `${user.first_name} ${user.last_name}`
-                                          : 'Utilisateur'}
+                                        {user.profile?.first_name && user.profile?.last_name 
+                                          ? `${user.profile.first_name} ${user.profile.last_name}`
+                                          : user.first_name && user.last_name
+                                            ? `${user.first_name} ${user.last_name}`
+                                            : 'Utilisateur'}
+                                          {user.id === user?.id && (
+                                            <Badge variant="outline" className="ml-2 text-xs">Vous</Badge>
+                                          )}
                                       </div>
                                       <div className="text-xs text-muted-foreground">{user.email}</div>
                                     </div>
                                   </div>
                                 </td>
-                                <td className="p-3 text-sm">{user.company || '-'}</td>
+                                <td className="p-3 text-sm">{user.profile?.company || user.company || '-'}</td>
                                 <td className="p-3">
-                                  <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                                    Admin
+                                  <Badge variant={user.profile?.is_admin ? "default" : "outline"} className={
+                                    user.profile?.is_admin 
+                                      ? "bg-navy text-sand" 
+                                      : "bg-blue-50 text-blue-700"
+                                  }>
+                                    {user.profile?.is_admin ? 'Admin' : 'Utilisateur'}
                                   </Badge>
                                 </td>
                                 <td className="p-3 text-sm text-muted-foreground">
@@ -558,7 +540,6 @@ const Admin = () => {
                   </CardContent>
                 </Card>
                 
-                {/* Utilisateurs fictifs */}
                 <Card>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
@@ -669,7 +650,6 @@ const Admin = () => {
             </div>
           </TabsContent>
           
-          {/* Settings Tab */}
           <TabsContent value="settings">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2">
@@ -826,7 +806,6 @@ const Admin = () => {
             </div>
           </TabsContent>
           
-          {/* System Tab (Placeholder) */}
           <TabsContent value="system">
             <Card>
               <CardHeader>
@@ -847,7 +826,6 @@ const Admin = () => {
             </Card>
           </TabsContent>
           
-          {/* Companies Tab (Placeholder) */}
           <TabsContent value="companies">
             <Card>
               <CardHeader>
