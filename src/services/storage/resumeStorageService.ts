@@ -1,9 +1,9 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Service responsable de la gestion du stockage des CV
- * Cette couche d'abstraction facilitera une migration future vers AWS S3
  */
 export const resumeStorageService = {
   /**
@@ -11,12 +11,6 @@ export const resumeStorageService = {
    */
   uploadFile: async (file: File, userId: string): Promise<{ filePath: string; fileName: string; fileType: string; fileSize: number } | null> => {
     try {
-      const fileExt = file.name.split('.').pop() || 'pdf';
-      const uniqueFileName = `${uuidv4()}.${fileExt}`;
-      const filePath = `${userId}/${uniqueFileName}`;
-      
-      console.log('Uploading file to storage:', filePath);
-      
       // Vérifier que le type de fichier est supporté
       const validTypes = [
         'application/pdf', 
@@ -31,39 +25,41 @@ export const resumeStorageService = {
         throw new Error(`Type de fichier non supporté: ${file.type}`);
       }
       
+      if (file.size > 10 * 1024 * 1024) { // 10MB
+        throw new Error(`Fichier trop volumineux: ${(file.size / 1024 / 1024).toFixed(2)}MB (max 10MB)`);
+      }
+      
+      const fileExt = file.name.split('.').pop() || 'pdf';
+      const uniqueFileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `${userId}/${uniqueFileName}`;
+      
+      console.log('Téléchargement du fichier vers le stockage:', filePath);
+      
       // Convertir le fichier en ArrayBuffer
       const fileBuffer = await file.arrayBuffer();
       
-      // Utiliser une approche avec gestion d'erreur améliorée
-      try {
-        const { data, error } = await supabase.storage
-          .from('resumes')
-          .upload(filePath, fileBuffer, {
-            contentType: file.type,
-            upsert: true
-          });
-          
-        if (error) {
-          // Erreur de récursion ou autre erreur - logguer et retourner null
-          console.error('Storage upload error:', error);
-          return null;
-        }
+      // Télécharger le fichier
+      const { data, error } = await supabase.storage
+        .from('resumes')
+        .upload(filePath, fileBuffer, {
+          contentType: file.type,
+          upsert: true
+        });
         
-        console.log('File uploaded successfully:', data);
-        
-        return {
-          filePath,
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size
-        };
-      } catch (uploadError) {
-        console.error('Upload error caught:', uploadError);
+      if (error) {
+        console.error('Erreur de téléchargement:', error);
         return null;
       }
+      
+      return {
+        filePath,
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size
+      };
     } catch (error: any) {
-      console.error('File upload failed:', error);
-      return null; // Retourner null au lieu de propager l'erreur
+      console.error('Échec du téléchargement du fichier:', error);
+      return null;
     }
   },
   
@@ -79,7 +75,7 @@ export const resumeStorageService = {
       if (error) throw error;
       return true;
     } catch (error) {
-      console.error('Error deleting file from storage:', error);
+      console.error('Erreur lors de la suppression du fichier:', error);
       return false;
     }
   },
@@ -89,23 +85,14 @@ export const resumeStorageService = {
    */
   downloadFile: async (filePath: string): Promise<Blob | null> => {
     try {
-      console.log('Downloading file:', filePath);
       const { data, error } = await supabase.storage
         .from('resumes')
         .download(filePath);
         
-      if (error) {
-        console.error('Download error:', error);
-        throw error;
-      }
-      
-      if (!data) {
-        throw new Error('No data received during download');
-      }
-      
+      if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Error downloading file:', error);
+      console.error('Erreur lors du téléchargement du fichier:', error);
       return null;
     }
   },
@@ -119,14 +106,10 @@ export const resumeStorageService = {
         .from('resumes')
         .createSignedUrl(filePath, 3600); // URL valide 1 heure
         
-      if (error) {
-        console.error('Error getting file URL:', error);
-        throw error;
-      }
-      
+      if (error) throw error;
       return data.signedUrl;
     } catch (error) {
-      console.error('Error getting file URL:', error);
+      console.error('Erreur lors de la récupération de l\'URL du fichier:', error);
       return null;
     }
   }

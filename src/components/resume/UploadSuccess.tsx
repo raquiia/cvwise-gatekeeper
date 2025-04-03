@@ -27,7 +27,7 @@ const UploadSuccess: React.FC<UploadSuccessProps> = ({ fileCount, onUploadMore }
       </h2>
       
       <p className="text-lg text-muted-foreground mb-6">
-        {fileCount} CV ont été téléchargés avec succès
+        {fileCount} CV {fileCount > 1 ? 'ont été téléchargés' : 'a été téléchargé'} avec succès
       </p>
       
       <div className="flex justify-center gap-4">

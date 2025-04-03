@@ -20,7 +20,6 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
-  // Handle drag and drop with improved error handling
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -43,29 +42,24 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
       'application/pdf', 
       'application/msword', 
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain' // Ajout pour les tests
+      'text/plain'
     ];
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 10 * 1024 * 1024; // 10MB
     
     const validFiles = files.filter(file => {
-      // Debug info
-      console.log('Validating file:', file.name, 'Type:', file.type, 'Size:', file.size);
-      
-      // Vérifier le type
       if (!validTypes.includes(file.type)) {
         toast({
           title: "Format non supporté",
-          description: `Le fichier "${file.name}" n'est pas au format supporté. Types acceptés: PDF, Word, TXT`,
+          description: `Le fichier "${file.name}" n'est pas dans un format supporté.`,
           variant: "destructive",
         });
         return false;
       }
       
-      // Vérifier la taille
       if (file.size > maxSize) {
         toast({
           title: "Fichier trop volumineux",
-          description: `Le fichier "${file.name}" dépasse la limite de 5MB`,
+          description: `Le fichier "${file.name}" dépasse la limite de 10MB.`,
           variant: "destructive",
         });
         return false;
@@ -85,29 +79,15 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
     if (uploading) return;
     
     const droppedFiles = Array.from(e.dataTransfer.files);
-    console.log('Files dropped:', droppedFiles.map(f => f.name));
-    
     const validFiles = validateFiles(droppedFiles);
     
-    if (validFiles.length === 0) {
-      if (droppedFiles.length > 0) {
-        toast({
-          title: "Aucun fichier valide",
-          description: "Veuillez télécharger des fichiers PDF, Word ou TXT de moins de 5MB",
-          variant: "destructive",
-        });
-      }
-      return;
+    if (validFiles.length > 0) {
+      onFileSelect(validFiles);
     }
-    
-    onFileSelect(validFiles);
   };
   
-  // Handle file selection via button with improved validation
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && !uploading) {
-      console.log('Files selected:', Array.from(e.target.files).map(f => f.name));
-      
       const selectedFiles = Array.from(e.target.files);
       const validFiles = validateFiles(selectedFiles);
       
@@ -115,7 +95,6 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
         onFileSelect(validFiles);
       }
       
-      // Reset input to allow selecting the same file again
       e.target.value = '';
     }
   };
@@ -151,11 +130,7 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
         onChange={handleFileSelect}
         accept=".pdf,.doc,.docx,.txt"
         multiple
-        onClick={(e) => {
-          if (uploading) {
-            e.preventDefault();
-          }
-        }}
+        disabled={uploading}
       />
       
       <Button
@@ -172,7 +147,7 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
       </Button>
       
       <p className="text-xs text-muted-foreground mt-4">
-        Formats acceptés: PDF, DOC, DOCX, TXT. Taille maximale: 5MB par fichier.
+        Formats acceptés: PDF, DOC, DOCX, TXT. Taille maximale: 10MB par fichier.
       </p>
     </div>
   );

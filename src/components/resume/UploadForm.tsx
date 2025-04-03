@@ -26,14 +26,12 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
     setErrors(prev => [...prev, ...newFiles.map(() => '')]);
   };
   
-  // Remove a file
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
     setUploadProgress(prev => prev.filter((_, i) => i !== index));
     setErrors(prev => prev.filter((_, i) => i !== index));
   };
   
-  // Upload files to Supabase
   const handleUpload = async () => {
     if (files.length === 0) {
       toast({
@@ -57,7 +55,6 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
     let successCount = 0;
     
     try {
-      // Process each file
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         setErrors(prev => {
@@ -66,7 +63,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
           return newErrors;
         });
         
-        // Simulate progress updates
+        // Simuler la progression
         const progressInterval = setInterval(() => {
           setUploadProgress(prev => {
             const newProgress = [...prev];
@@ -79,7 +76,6 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
         }, 300);
         
         try {
-          // Upload to Supabase
           const result = await uploadResume(file, userId);
           
           clearInterval(progressInterval);
@@ -94,7 +90,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
           } else {
             setUploadProgress(prev => {
               const newProgress = [...prev];
-              newProgress[i] = -1; // Mark as error
+              newProgress[i] = -1; // Erreur
               return newProgress;
             });
             setErrors(prev => {
@@ -105,11 +101,10 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
           }
         } catch (error: any) {
           clearInterval(progressInterval);
-          console.error(`Error uploading file ${file.name}:`, error);
           
           setUploadProgress(prev => {
             const newProgress = [...prev];
-            newProgress[i] = -1; // Mark as error
+            newProgress[i] = -1; // Erreur
             return newProgress;
           });
           
@@ -121,7 +116,6 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
         }
       }
       
-      // Check if any uploads were successful
       if (successCount > 0) {
         toast({
           title: "Téléchargement réussi",
@@ -144,7 +138,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
       console.error('Upload failed:', error);
       toast({
         title: "Échec du téléchargement",
-        description: error.message || "Une erreur s'est produite lors du téléchargement des fichiers",
+        description: error.message || "Une erreur s'est produite",
         variant: "destructive",
       });
     } finally {
@@ -207,7 +201,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
             ) : (
               <>
                 <Upload size={18} className="mr-2" />
-                Télécharger et analyser ({files.length})
+                Télécharger ({files.length})
               </>
             )}
           </Button>

@@ -5,8 +5,8 @@ export const ensureResumesBucketExists = async (): Promise<boolean> => {
   try {
     console.log('Vérification/création du bucket "resumes"...');
     
-    // Simplification: utiliser uniquement createBucket sans vérification préalable
-    // L'erreur "déjà existe" est attendue et sera ignorée
+    // Simplification: créer le bucket sans vérification préalable
+    // Si le bucket existe déjà, Supabase renvoie une erreur non critique
     const { error } = await supabase.storage.createBucket('resumes', {
       public: false,
       fileSizeLimit: 10485760, // 10 MB

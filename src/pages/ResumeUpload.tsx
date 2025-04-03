@@ -21,24 +21,6 @@ const ResumeUpload = () => {
     setCompleted(false);
   };
   
-  const renderContent = () => {
-    if (!completed) {
-      return (
-        <UploadForm 
-          userId={user?.id} 
-          onUploadComplete={handleUploadComplete} 
-        />
-      );
-    }
-    
-    return (
-      <UploadSuccess 
-        fileCount={uploadedFileCount} 
-        onUploadMore={handleUploadMore} 
-      />
-    );
-  };
-  
   return (
     <Layout className="py-8 bg-sand/30">
       <div className="container mx-auto px-4 max-w-4xl">
@@ -56,7 +38,17 @@ const ResumeUpload = () => {
         </div>
         
         {/* Upload Section */}
-        {renderContent()}
+        {completed ? (
+          <UploadSuccess 
+            fileCount={uploadedFileCount} 
+            onUploadMore={handleUploadMore} 
+          />
+        ) : (
+          <UploadForm 
+            userId={user?.id} 
+            onUploadComplete={handleUploadComplete} 
+          />
+        )}
       </div>
     </Layout>
   );
