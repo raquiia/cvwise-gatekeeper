@@ -43,8 +43,11 @@ export const resumeAnalysisService = {
       
       // Afficher le texte brut extrait dans une popup temporaire
       if (data.rawText) {
+        // Nettoyer et formater le texte brut avant affichage
+        const cleanedText = cleanRawResumeText(data.rawText);
+        
         // Affichage dans la console pour le débogage
-        console.log("Texte brut extrait:", data.rawText);
+        console.log("Texte brut nettoyé:", cleanedText);
         
         // Créer une modal ou dialogue temporaire avec une meilleure mise en forme
         const dialogContainer = document.createElement('div');
@@ -78,19 +81,7 @@ export const resumeAnalysisService = {
         textDisplay.className = 'max-h-[60vh] overflow-y-auto mt-2 p-4 border rounded bg-gray-50 dark:bg-gray-700 dark:text-gray-200';
         
         // Formater le texte pour une meilleure lisibilité
-        // Convertir les sauts de ligne en éléments HTML
-        const paragraphs = data.rawText.split(/\n\s*\n/);
-        const formattedHtml = paragraphs.map(para => {
-          if (para.trim() === '') return '';
-          // Déterminer si c'est un titre de section
-          if (para.includes('trouvés:') || para.includes('trouvée:') || para.includes('détectées:')) {
-            return `<h4 class="font-bold text-blue-600 dark:text-blue-400 mt-3 mb-1">${para}</h4>`;
-          }
-          // Sinon, c'est un paragraphe normal
-          return `<p class="mb-2">${para.replace(/\n/g, '<br>')}</p>`;
-        }).join('');
-        
-        textDisplay.innerHTML = `<div class="whitespace-pre-wrap text-sm font-mono">${formattedHtml}</div>`;
+        textDisplay.innerHTML = `<div class="whitespace-pre-wrap text-sm font-mono">${formatResumeText(cleanedText)}</div>`;
         
         dialogBody.appendChild(textDisplay);
         
@@ -99,7 +90,7 @@ export const resumeAnalysisService = {
         copyButton.className = 'mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700';
         copyButton.textContent = 'Copier le texte';
         copyButton.onclick = () => {
-          navigator.clipboard.writeText(data.rawText)
+          navigator.clipboard.writeText(cleanedText)
             .then(() => {
               const originalText = copyButton.textContent;
               copyButton.textContent = 'Copié!';
@@ -129,7 +120,7 @@ export const resumeAnalysisService = {
         // Notification toast pour informer l'utilisateur
         toast({
           title: "Texte extrait du CV",
-          description: "Une fenêtre avec le texte extrait du CV est maintenant disponible",
+          description: "Une fenêtre avec le texte extrait et nettoyé du CV est maintenant disponible",
           duration: 5000,
         });
         
@@ -150,7 +141,7 @@ export const resumeAnalysisService = {
         return { 
           success: true, 
           candidateId: data.candidate?.id,
-          rawText: data.rawText
+          rawText: data.rawText ? cleanRawResumeText(data.rawText) : undefined
         };
       } else {
         toast({
@@ -161,7 +152,7 @@ export const resumeAnalysisService = {
         return { 
           success: false, 
           message: data.message || "Une erreur inconnue s'est produite",
-          rawText: data.rawText
+          rawText: data.rawText ? cleanRawResumeText(data.rawText) : undefined
         };
       }
     } catch (error: any) {
@@ -177,6 +168,11 @@ export const resumeAnalysisService = {
       };
     }
   },
+  
+  /**
+   * Nettoie le texte brut extrait d'un CV
+   */
+  cleanRawResumeText,
   
   /**
    * Compare un candidat à une offre d'emploi
@@ -286,3 +282,160 @@ export const resumeAnalysisService = {
     }
   }
 };
+
+/**
+ * Nettoie le texte brut extrait d'un CV pour le rendre plus lisible
+ */
+function cleanRawResumeText(rawText: string): string {
+  if (!rawText || typeof rawText !== 'string') {
+    return "Aucun texte disponible";
+  }
+  
+  // Supprimer les balises PDF et autres métadonnées inutiles
+  let cleanedText = rawText
+    // Supprimer les marqueurs de début/fin de fichier PDF
+    .replace(/%PDF-[0-9.]+[\s\S]*?obj/gi, '')
+    .replace(/endobj/gi, '')
+    .replace(/startxref[\s\S]*?%%EOF/gi, '')
+    
+    // Supprimer codes hexadécimaux et nombres non pertinents
+    .replace(/[0-9a-f]{6,}/gi, '')
+    .replace(/\b[0-9]{4,}\b/g, '')
+    
+    // Supprimer métadonnées et références
+    .replace(/\/Type\s*\/[A-Za-z]+/g, '')
+    .replace(/\/MediaBox\s*\[[^\]]+\]/g, '')
+    .replace(/\/Contents\s*[0-9]+\s*[0-9]+\s*R/g, '')
+    .replace(/\/Parent\s*[0-9]+\s*[0-9]+\s*R/g, '')
+    .replace(/\/Resources[\s\S]*?>>/g, '')
+    
+    // Supprimer caractères spéciaux et non-imprimables
+    .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F\uFEFF\uFFFE\uFFFF]/g, '')
+    
+    // Supprimer lignes courtes (souvent du bruit)
+    .split('\n')
+    .filter(line => line.trim().length > 3)
+    .join('\n');
+  
+  // Extraire les sections importantes et pertinentes avec une expression régulière plus flexible
+  const importantContent = [];
+  
+  // Extraire les coordonnées (email, téléphone)
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+  const emails = cleanedText.match(emailRegex) || [];
+  if (emails.length > 0) {
+    importantContent.push("Emails trouvés:", ...new Set(emails));
+  }
+  
+  const phoneRegex = /(\+\d{1,3}[\s.-]?)?\(?\d{2,4}\)?[\s.-]?\d{2,4}[\s.-]?\d{2,4}[\s.-]?\d{0,4}/g;
+  const phones = cleanedText.match(phoneRegex) || [];
+  if (phones.length > 0) {
+    importantContent.push("Téléphones trouvés:", ...new Set(phones));
+  }
+  
+  // Extraire les noms potentiels (séquences de mots capitalisés)
+  const nameRegex = /([A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+\s+[A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+)/g;
+  const names = cleanedText.match(nameRegex) || [];
+  if (names.length > 0) {
+    importantContent.push("Noms potentiels:", ...new Set(names));
+  }
+  
+  // Extraire les compétences communes
+  const skills = [
+    "JavaScript", "React", "Vue", "Angular", "TypeScript", "Node.js", 
+    "Python", "Java", "C#", "C++", "PHP", "Ruby", "Go", "Rust",
+    "HTML", "CSS", "SASS", "LESS", "Bootstrap", "Tailwind",
+    "SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch",
+    "Git", "Docker", "Kubernetes", "AWS", "Azure", "GCP",
+    "DevOps", "CI/CD", "Jenkins", "GitHub Actions", "CircleCI",
+    "Agile", "Scrum", "Kanban", "Project Management", "Jira", "Confluence",
+    "Machine Learning", "AI", "Data Science", "Data Analysis", "BigData"
+  ];
+  
+  const foundSkills = skills.filter(skill => 
+    cleanedText.toLowerCase().includes(skill.toLowerCase())
+  );
+  
+  if (foundSkills.length > 0) {
+    importantContent.push("Compétences détectées:", foundSkills.join(", "));
+  }
+  
+  // Extraire les sections courantes d'un CV
+  const sections = [
+    "expérience", "experience", "éducation", "education", "formation",
+    "compétences", "competences", "skills", "langues", "languages",
+    "projets", "projects", "certifications", "intérêts", "interests"
+  ];
+  
+  sections.forEach(section => {
+    // Rechercher la section et le contenu qui suit
+    const sectionRegex = new RegExp(`(${section}s?)[:\\s]+([^\\n]*(?:\\n(?!${sections.join('|')})[^\\n]+){0,10})`, 'gi');
+    const matches = [...cleanedText.matchAll(sectionRegex)];
+    
+    if (matches.length > 0) {
+      for (const match of matches) {
+        if (match[2] && match[2].trim().length > 10) {
+          importantContent.push(`Section "${match[1].trim()}" trouvée:`, match[2].trim());
+        }
+      }
+    }
+  });
+  
+  // Si des sections importantes ont été trouvées, utiliser celles-ci
+  // Sinon, garder le texte nettoyé mais filtré
+  if (importantContent.length > 0) {
+    return importantContent.join('\n\n');
+  }
+  
+  // Si aucune section spécifique n'a été trouvée, filtrer davantage le texte brut
+  // pour ne garder que les lignes significatives
+  return cleanedText
+    .split('\n')
+    .filter(line => {
+      const trimmed = line.trim();
+      // Garder uniquement les lignes qui contiennent du texte significatif
+      return trimmed.length > 10 && 
+             /[a-zA-Z]{3,}/.test(trimmed) && // Au moins 3 lettres consécutives
+             !/^[\d\s.,;:()[\]{}]+$/.test(trimmed); // Pas seulement des caractères spéciaux
+    })
+    .join('\n');
+}
+
+/**
+ * Formate le texte du CV pour l'affichage HTML
+ */
+function formatResumeText(text: string): string {
+  // Diviser en paragraphes
+  const paragraphs = text.split(/\n\s*\n/);
+  
+  // Formater chaque paragraphe
+  return paragraphs.map(para => {
+    if (para.trim() === '') return '';
+    
+    // Déterminer si c'est un titre de section
+    if (para.includes('trouvés:') || 
+        para.includes('trouvée:') || 
+        para.includes('détectées:') ||
+        para.includes('Section "') && para.includes('" trouvée:')) {
+      return `<h4 class="font-bold text-blue-600 dark:text-blue-400 mt-4 mb-2">${para}</h4>`;
+    }
+    
+    // Formater les listes (éléments commençant par - ou •)
+    if (para.split('\n').some(line => /^[-•*]\s/.test(line.trim()))) {
+      const listItems = para.split('\n')
+        .map(line => {
+          const trimmed = line.trim();
+          if (/^[-•*]\s/.test(trimmed)) {
+            return `<li>${trimmed.substring(2)}</li>`;
+          }
+          return trimmed ? `<p class="mb-1">${trimmed}</p>` : '';
+        })
+        .join('');
+      
+      return `<ul class="list-disc pl-5 mb-3">${listItems}</ul>`;
+    }
+    
+    // Paragraphe normal
+    return `<p class="mb-3">${para.replace(/\n/g, '<br>')}</p>`;
+  }).join('');
+}

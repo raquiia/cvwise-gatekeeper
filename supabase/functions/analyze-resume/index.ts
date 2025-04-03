@@ -23,104 +23,164 @@ async function extractTextFromPDF(pdfBytes: Uint8Array): Promise<string> {
   try {
     console.log("Démarrage de l'extraction de texte améliorée");
     
-    // Decoder le PDF brut
+    // Décoder le PDF brut pour extraction basique
     const decoder = new TextDecoder("utf-8");
     let rawText = decoder.decode(pdfBytes);
     
-    // Filtrer uniquement le contenu textuel significatif
+    // Initialiser le tableau pour stocker le texte significatif
     const textChunks: string[] = [];
     
-    // Rechercher des blocs de texte significatifs avec des expressions régulières
-    // Capturer des mots et phrases probables
-    const textMatches = rawText.match(/[a-zA-Z0-9àáâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ\s.,;:'\-\(\)@\/]{5,}/g);
+    // Rechercher des blocs de texte significatifs avec une approche plus stricte
+    const validTextPattern = /[a-zA-Z0-9àáâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ\s.,;:'\-\(\)@\/]{5,}/g;
+    const textMatches = rawText.match(validTextPattern);
     
+    // Filtrer le texte pour ne garder que les portions significatives
     if (textMatches) {
-      // Filtrer et nettoyer les correspondances
       const cleanedMatches = textMatches
         .filter(match => {
-          // Éliminer les chaînes avec trop de caractères spéciaux ou non pertinents
+          // Éliminer les chaînes avec trop de caractères spéciaux
           const specialCharRatio = (match.match(/[^a-zA-Z0-9àáâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ\s.,;:'\-\(\)@\/]/g) || []).length / match.length;
-          const worthKeeping = specialCharRatio < 0.15 && match.length > 5;
           
-          // Vérifier si le texte contient du contenu significatif (au moins quelques lettres)
+          // Vérifier que le texte contient au moins quelques lettres (pas seulement des chiffres ou caractères spéciaux)
           const containsLetters = /[a-zA-Z]{3,}/.test(match);
           
-          return worthKeeping && containsLetters;
+          // Exclure les séquences trop courtes ou trop longues qui sont probablement du bruit
+          const appropriateLength = match.length > 5 && match.length < 500;
+          
+          // Exclure les séquences avec trop de caractères répétés
+          const noExcessiveRepetition = !/(.)\1{5,}/.test(match);
+          
+          return specialCharRatio < 0.1 && containsLetters && appropriateLength && noExcessiveRepetition;
         })
         .map(match => match.trim())
         .filter(match => match.length > 0);
       
-      textChunks.push(...cleanedMatches);
+      // Supprimer les doublons proches (textes très similaires)
+      const uniqueMatches = [];
+      for (const match of cleanedMatches) {
+        let isDuplicate = false;
+        for (const existing of uniqueMatches) {
+          // Si plus de 70% de similarité, considérer comme doublon
+          if (calculateSimilarity(match, existing) > 0.7) {
+            isDuplicate = true;
+            break;
+          }
+        }
+        if (!isDuplicate) {
+          uniqueMatches.push(match);
+        }
+      }
+      
+      textChunks.push(...uniqueMatches);
     }
     
-    // Recherche spécifique pour les informations cruciales comme emails, numéros de téléphone, etc.
+    // EXTRACTION SPÉCIFIQUE D'INFORMATIONS IMPORTANTES
+    
+    // 1. Informations de contact
     const emailPattern = /([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/g;
-    const phonePattern = /(\+?\d{1,4}[\s\-.]?)?(\(?\d{2,4}\)?[\s\-.]?){2,}(\d{2,4})/g;
-    const namePattern = /([A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+\s+[A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+)/g;
+    const phonePattern = /(\+?\d{1,4}[\s\-.]?)?(\(?\d{2,4}\)?[\s\-.]?){1,3}(\d{2,4})/g;
+    const urlPattern = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9\-]+\.[a-zA-Z]{2,}\.[a-zA-Z]{2,})/g;
+    const linkedinPattern = /(linkedin\.com\/in\/[a-zA-Z0-9\-]+)/g;
     
     // Extraire les emails
-    const emailMatches = rawText.match(emailPattern);
-    if (emailMatches) {
+    const emailMatches = [...new Set(rawText.match(emailPattern) || [])];
+    if (emailMatches.length > 0) {
       textChunks.push("Emails trouvés:");
       textChunks.push(...emailMatches);
     }
     
-    // Extraire les numéros de téléphone
-    const phoneMatches = rawText.match(phonePattern);
-    if (phoneMatches) {
+    // Extraire les numéros de téléphone en filtrant mieux
+    const phoneMatches = [...new Set((rawText.match(phonePattern) || [])
+      .filter(phone => phone.replace(/[^0-9]/g, '').length >= 6))];
+    if (phoneMatches.length > 0) {
       textChunks.push("Numéros de téléphone trouvés:");
-      textChunks.push(...phoneMatches.filter(phone => phone.length > 6));
+      textChunks.push(...phoneMatches);
     }
     
-    // Extraire les noms possibles
-    const nameMatches = rawText.match(namePattern);
-    if (nameMatches) {
+    // Extraire les liens et profils
+    const urlMatches = [...new Set(rawText.match(urlPattern) || [])];
+    const linkedinMatches = [...new Set(rawText.match(linkedinPattern) || [])];
+    if (urlMatches.length > 0 || linkedinMatches.length > 0) {
+      textChunks.push("Liens et profils trouvés:");
+      textChunks.push(...linkedinMatches);
+      textChunks.push(...urlMatches.filter(url => !linkedinMatches.some(li => url.includes(li))));
+    }
+    
+    // 2. Extraire les noms possibles
+    const namePattern = /([A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+\s+[A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+)/g;
+    const nameMatches = [...new Set(rawText.match(namePattern) || [])];
+    if (nameMatches.length > 0) {
       textChunks.push("Noms possibles trouvés:");
-      textChunks.push(...nameMatches);
+      textChunks.push(...nameMatches.slice(0, 3)); // Limiter à 3 noms maximum
     }
     
-    // Essayer d'extraire des mots-clés spécifiques aux CV
+    // 3. Compétences techniques
     const keySkills = [
-      "JavaScript", "React", "Vue", "Angular", "TypeScript", "Node.js", 
-      "Python", "Java", "C#", "C++", "PHP", "Ruby", "Go", "Rust",
-      "HTML", "CSS", "SASS", "LESS", "Bootstrap", "Tailwind",
-      "SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch",
-      "Git", "Docker", "Kubernetes", "AWS", "Azure", "GCP",
-      "DevOps", "CI/CD", "Jenkins", "GitHub Actions", "CircleCI",
-      "Agile", "Scrum", "Kanban", "Project Management", "Jira", "Confluence",
-      "Machine Learning", "AI", "Data Science", "Data Analysis", "BigData"
+      // Langages de programmation
+      "JavaScript", "TypeScript", "Python", "Java", "C#", "C++", "PHP", "Ruby", "Go", "Swift", "Kotlin", 
+      // Frameworks frontend
+      "React", "Vue", "Angular", "Svelte", "Next.js", "Nuxt.js", 
+      // Frameworks backend
+      "Node.js", "Express", "Django", "Flask", "Spring", "Laravel", "Ruby on Rails", "ASP.NET",
+      // Base de données
+      "SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "Firebase", "DynamoDB",
+      // DevOps & Cloud
+      "Git", "Docker", "Kubernetes", "AWS", "Azure", "GCP", "Terraform", "CI/CD",
+      "Jenkins", "GitHub Actions", "CircleCI", "Travis CI",
+      // Méthodologies
+      "Agile", "Scrum", "Kanban", "TDD", "BDD", "DevOps", "Lean",
+      // Outils
+      "Jira", "Confluence", "Notion", "Figma", "Adobe XD", "Sketch",
+      // Data & AI
+      "Machine Learning", "Deep Learning", "AI", "Data Science", "Data Analysis", "BigData",
+      "TensorFlow", "PyTorch", "NLP", "Computer Vision"
     ];
     
-    const foundSkills: string[] = [];
-    keySkills.forEach(skill => {
-      if (rawText.toLowerCase().includes(skill.toLowerCase())) {
-        foundSkills.push(skill);
-      }
-    });
+    const foundSkills = keySkills.filter(skill => 
+      new RegExp(`\\b${skill}\\b`, 'i').test(rawText)
+    );
     
     if (foundSkills.length > 0) {
-      textChunks.push("Compétences détectées:");
+      textChunks.push("Compétences techniques détectées:");
       textChunks.push(foundSkills.join(", "));
     }
     
-    // Extraire les sections principales d'un CV
+    // 4. Sections principales d'un CV (avec extraction de contenu)
     const cvSections = [
-      "expérience", "experience", "education", "formation", "compétences", 
-      "skills", "projets", "projects", "langues", "languages", 
-      "certifications", "références", "references", "profile", "profil"
+      { name: "expérience", aliases: ["experience", "expériences", "experiences", "parcours professionnel"] },
+      { name: "formation", aliases: ["education", "études", "etudes", "formation académique", "parcours académique"] },
+      { name: "compétences", aliases: ["skills", "competences", "savoir-faire", "expertises"] },
+      { name: "langues", aliases: ["languages", "langages", "compétences linguistiques"] },
+      { name: "projets", aliases: ["projects", "réalisations", "portfolio"] },
+      { name: "certifications", aliases: ["certificats", "diplômes", "accréditations"] },
+      { name: "intérêts", aliases: ["interests", "loisirs", "passions", "centres d'intérêt"] }
     ];
     
     cvSections.forEach(section => {
-      const sectionRegex = new RegExp(`(${section}[s]?\\s*:?[\\s\\n]*)([^\\n\\r]*(?:[\\n\\r][^\\n\\r]+){0,5})`, "gi");
-      const sectionMatches = rawText.matchAll(sectionRegex);
+      const sectionPattern = section.aliases.map(alias => alias.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|');
+      const sectionRegex = new RegExp(`(${sectionPattern})[:\\s]+(.*?)(?=\\b(${cvSections.map(s => s.aliases.join('|')).join('|')})\\b|$)`, 'is');
       
-      for (const match of sectionMatches) {
-        if (match[2] && match[2].length > 10) {
-          textChunks.push(`Section "${section}" trouvée:`);
-          textChunks.push(match[2].trim());
+      const match = rawText.match(sectionRegex);
+      if (match && match[2] && match[2].trim().length > 10) {
+        const sectionContent = match[2].trim()
+          .split('\n')
+          .filter(line => line.trim().length > 0)
+          .join('\n');
+        
+        if (sectionContent.length > 0) {
+          textChunks.push(`Section "${section.name}" trouvée:`);
+          textChunks.push(sectionContent);
         }
       }
     });
+    
+    // 5. Extraire les dates (pour l'expérience et l'éducation)
+    const datePattern = /\b(19|20)\d{2}\s*[-–—]\s*(?:(19|20)\d{2}|présent|present|actuel|aujourd'hui|now)\b/gi;
+    const dateMatches = [...new Set(rawText.match(datePattern) || [])];
+    if (dateMatches.length > 0) {
+      textChunks.push("Périodes détectées:");
+      textChunks.push(dateMatches.join(", "));
+    }
     
     // Fusion des résultats et formatage
     let extractedText = textChunks.join("\n\n");
@@ -133,7 +193,7 @@ async function extractTextFromPDF(pdfBytes: Uint8Array): Promise<string> {
     
     console.log(`Extraction améliorée terminée: ${extractedText.length} caractères extraits`);
     
-    // Si toujours pas assez de contenu extrait, indiquer l'échec
+    // Si pas assez de contenu extrait, message d'échec
     if (extractedText.length < 50) {
       return "L'extraction du texte a échoué. Le PDF semble être protégé, scanné ou d'un format complexe. Pour de meilleurs résultats, essayez avec un PDF contenant du texte sélectionnable.";
     }
@@ -143,6 +203,30 @@ async function extractTextFromPDF(pdfBytes: Uint8Array): Promise<string> {
     console.error("Erreur lors de l'extraction du texte:", error);
     return `Erreur lors de l'extraction: ${error.message || "Erreur inconnue"}`;
   }
+}
+
+// Fonction pour calculer la similarité entre deux chaînes (pour détecter les doublons)
+function calculateSimilarity(str1: string, str2: string): number {
+  if (!str1 || !str2) return 0;
+  if (str1 === str2) return 1;
+  
+  // Simplifier pour de meilleures performances
+  const s1 = str1.toLowerCase();
+  const s2 = str2.toLowerCase();
+  
+  // Si l'une est contenue dans l'autre
+  if (s1.includes(s2) || s2.includes(s1)) {
+    return 0.8;
+  }
+  
+  // Calcul de base: proportion de mots communs
+  const words1 = s1.split(/\s+/).filter(w => w.length > 3);
+  const words2 = s2.split(/\s+/).filter(w => w.length > 3);
+  
+  if (words1.length === 0 || words2.length === 0) return 0;
+  
+  const commonWords = words1.filter(w => words2.includes(w)).length;
+  return commonWords / Math.max(words1.length, words2.length);
 }
 
 // Fonction pour extraire les compétences à partir du texte du CV
