@@ -4,7 +4,7 @@ import { resumeStorageService } from '../storage/resumeStorageService';
 import { Json } from '@/integrations/supabase/types';
 
 export interface ResumeData {
-  id: string; // Required field
+  id: string;
   user_id: string;
   file_name: string;
   file_path: string;
@@ -27,14 +27,13 @@ export interface CandidateData {
   position?: string;
   years_experience?: number;
   location?: string;
-  skills?: any[]; // This needs to stay as any[] for compatibility
+  skills?: any[];
   score?: number;
   status?: string;
 }
 
 /**
  * Service responsable de la gestion des données des CV
- * Cette couche d'abstraction facilitera une migration future vers une API REST
  */
 export const resumeDataService = {
   /**
@@ -48,25 +47,41 @@ export const resumeDataService = {
     fileSize: number
   ): Promise<string | null> => {
     try {
+      console.log('Creating resume record with data:', {
+        userId,
+        fileName,
+        filePath,
+        fileType,
+        fileSize
+      });
+      
       const { data, error } = await supabase
-        .rpc('insert_resume', { 
-          p_user_id: userId,
-          p_file_name: fileName,
-          p_file_path: filePath,
-          p_file_type: fileType,
-          p_file_size: fileSize
-        });
+        .from('resumes')
+        .insert({
+          user_id: userId,
+          file_name: fileName,
+          file_path: filePath,
+          file_type: fileType,
+          file_size: fileSize,
+          parsed: false
+        })
+        .select('id')
+        .single();
         
       if (error) {
         console.error('Error creating resume record:', error);
         throw new Error(error.message);
       }
       
-      console.log('Resume record created successfully with ID:', data);
-      return data as string;
-    } catch (error) {
+      if (!data || !data.id) {
+        throw new Error('No ID returned after insert');
+      }
+      
+      console.log('Resume record created successfully with ID:', data.id);
+      return data.id;
+    } catch (error: any) {
       console.error('Error creating resume record:', error);
-      return null;
+      throw error;
     }
   },
   
@@ -77,7 +92,7 @@ export const resumeDataService = {
     try {
       console.log('Fetching resumes for user:', userId);
       
-      // Simplified query to avoid infinite recursion
+      // Simple query to get all resumes for the user
       const { data: resumes, error } = await supabase
         .from('resumes')
         .select('*')
@@ -85,22 +100,21 @@ export const resumeDataService = {
         .order('created_at', { ascending: false });
         
       if (error) {
-        console.error('Error in getUserResumes:', error);
+        console.error('Error fetching resumes:', error);
         throw error;
       }
+      
+      console.log('Fetched resumes:', resumes);
       
       if (!resumes || resumes.length === 0) {
         console.log('No resumes found for user:', userId);
         return [];
       }
       
-      console.log(`Successfully fetched ${resumes.length} resumes`);
-      
-      // Transform data to match our ResumeData type
+      // For each resume, get the associated candidate if it has been parsed
       const resumesWithCandidates: ResumeData[] = [];
       
       for (const resume of resumes) {
-        // Create base resume object
         const resumeData: ResumeData = {
           id: resume.id,
           user_id: resume.user_id,
@@ -114,36 +128,20 @@ export const resumeDataService = {
           candidates: []
         };
         
-        // Only fetch candidates if the resume has been parsed
         if (resume.parsed) {
           try {
-            // Direct query to candidates table without using RLS policies that might cause recursion
             const { data: candidates, error: candidateError } = await supabase
               .from('candidates')
-              .select('id, first_name, last_name, email, phone, position, years_experience, location, skills, score, status')
+              .select('*')
               .eq('resume_id', resume.id);
               
             if (candidateError) {
               console.error(`Error fetching candidates for resume ${resume.id}:`, candidateError);
             } else if (candidates && candidates.length > 0) {
-              resumeData.candidates = candidates.map(candidate => ({
-                id: candidate.id,
-                resume_id: resume.id,
-                user_id: resume.user_id,
-                first_name: candidate.first_name,
-                last_name: candidate.last_name,
-                email: candidate.email,
-                phone: candidate.phone,
-                position: candidate.position,
-                years_experience: candidate.years_experience,
-                location: candidate.location,
-                skills: Array.isArray(candidate.skills) ? candidate.skills : [],
-                score: candidate.score,
-                status: candidate.status
-              }));
+              resumeData.candidates = candidates as CandidateData[];
             }
-          } catch (error) {
-            console.error(`Error processing candidates for resume ${resume.id}:`, error);
+          } catch (candidateError) {
+            console.error(`Error processing candidates for resume ${resume.id}:`, candidateError);
           }
         }
         
@@ -151,9 +149,9 @@ export const resumeDataService = {
       }
       
       return resumesWithCandidates;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in getUserResumes:', error);
-      return [];
+      throw error;
     }
   },
   

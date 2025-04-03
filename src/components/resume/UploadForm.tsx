@@ -9,7 +9,7 @@ import { uploadResume } from '@/services/resumeService';
 
 interface UploadFormProps {
   userId: string | undefined;
-  onUploadComplete: () => void;
+  onUploadComplete: (fileCount: number) => void;
 }
 
 const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => {
@@ -130,7 +130,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
         
         if (successCount === files.length) {
           setTimeout(() => {
-            onUploadComplete();
+            onUploadComplete(successCount);
           }, 1000);
         }
       } else {

@@ -4,6 +4,7 @@ import { resumeStorageService } from './storage/resumeStorageService';
 import { resumeDataService } from './data/resumeDataService';
 import { candidateDataService } from './data/candidateDataService';
 import { resumeAnalysisService } from './analysis/resumeAnalysisService';
+import { supabase } from '@/integrations/supabase/client';
 
 // Re-exporter les interfaces pour compatibilité
 import type { ResumeData, CandidateData } from './data/resumeDataService';
@@ -14,6 +15,25 @@ export type { ResumeData, CandidateData };
  */
 export const uploadResume = async (file: File, userId: string): Promise<ResumeData | null> => {
   try {
+    console.log('Starting upload process for file:', file.name);
+    console.log('User ID:', userId);
+    
+    // Ensure the storage bucket exists
+    try {
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const resumesBucket = buckets.find(bucket => bucket.name === 'resumes');
+      
+      if (!resumesBucket) {
+        console.log('Creating resumes bucket...');
+        await supabase.storage.createBucket('resumes', {
+          public: false,
+          fileSizeLimit: 10485760, // 10 MB
+        });
+      }
+    } catch (bucketError) {
+      console.error('Error checking/creating bucket:', bucketError);
+    }
+    
     // Téléchargement du fichier
     const fileData = await resumeStorageService.uploadFile(file, userId);
     
@@ -21,40 +41,61 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
       throw new Error("Échec du téléchargement du fichier");
     }
     
-    // Création de l'enregistrement
-    const resumeId = await resumeDataService.createResumeRecord(
-      userId,
-      fileData.fileName,
-      fileData.filePath,
-      fileData.fileType,
-      fileData.fileSize
-    );
+    console.log('File uploaded successfully:', fileData);
     
-    if (!resumeId) {
+    // Création de l'enregistrement dans la base de données
+    try {
+      const resumeId = await resumeDataService.createResumeRecord(
+        userId,
+        fileData.fileName,
+        fileData.filePath,
+        fileData.fileType,
+        fileData.fileSize
+      );
+      
+      if (!resumeId) {
+        // Si l'insertion échoue, supprimer le fichier téléchargé
+        await resumeStorageService.deleteFile(fileData.filePath);
+        throw new Error("Échec de la création de l'enregistrement du CV");
+      }
+      
+      console.log('Resume record created with ID:', resumeId);
+      
+      return {
+        id: resumeId,
+        user_id: userId,
+        file_name: fileData.fileName,
+        file_path: fileData.filePath,
+        file_type: fileData.fileType,
+        file_size: fileData.fileSize,
+        parsed: false
+      };
+    } catch (dbError) {
+      console.error('Database error:', dbError);
       // Si l'insertion échoue, supprimer le fichier téléchargé
       await resumeStorageService.deleteFile(fileData.filePath);
-      throw new Error("Échec de la création de l'enregistrement du CV");
+      throw dbError;
     }
-    
-    return {
-      id: resumeId,
-      user_id: userId,
-      file_name: fileData.fileName,
-      file_path: fileData.filePath,
-      file_type: fileData.fileType,
-      file_size: fileData.fileSize,
-      parsed: false
-    };
   } catch (error: any) {
     console.error('Resume upload failed:', error);
-    return null;
+    throw error;
   }
 };
 
 /**
  * Récupère tous les CV d'un utilisateur
  */
-export const getUserResumes = resumeDataService.getUserResumes;
+export const getUserResumes = async (userId: string): Promise<ResumeData[]> => {
+  try {
+    console.log('Getting resumes for user:', userId);
+    const resumes = await resumeDataService.getUserResumes(userId);
+    console.log('Retrieved resumes:', resumes);
+    return resumes;
+  } catch (error) {
+    console.error('Error in getUserResumes:', error);
+    throw error;
+  }
+};
 
 /**
  * Supprime un CV (enregistrement et fichier)

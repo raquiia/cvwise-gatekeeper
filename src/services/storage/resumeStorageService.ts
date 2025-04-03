@@ -12,22 +12,35 @@ export const resumeStorageService = {
    */
   uploadFile: async (file: File, userId: string): Promise<{ filePath: string; fileName: string; fileType: string; fileSize: number } | null> => {
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${uuidv4()}.${fileExt}`;
-      const filePath = `${userId}/${fileName}`;
+      const fileExt = file.name.split('.').pop() || 'pdf';
+      const uniqueFileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `${userId}/${uniqueFileName}`;
       
       console.log('Uploading file to storage:', filePath);
+      console.log('File details:', {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        lastModified: file.lastModified
+      });
       
-      const { error: uploadError } = await supabase.storage
+      // Essayer d'utiliser upload avec transformation en ArrayBuffer
+      const fileBuffer = await file.arrayBuffer();
+      
+      const { data, error } = await supabase.storage
         .from('resumes')
-        .upload(filePath, file);
+        .upload(filePath, fileBuffer, {
+          contentType: file.type,
+          upsert: true,
+          cacheControl: '3600'
+        });
         
-      if (uploadError) {
-        console.error('Error uploading file to storage:', uploadError);
-        throw new Error(uploadError.message);
+      if (error) {
+        console.error('Error uploading file to storage:', error);
+        throw new Error(`Erreur lors du téléchargement: ${error.message}`);
       }
       
-      console.log('File uploaded successfully');
+      console.log('File uploaded successfully:', data);
       
       return {
         filePath,
@@ -63,6 +76,7 @@ export const resumeStorageService = {
    */
   downloadFile: async (filePath: string): Promise<Blob | null> => {
     try {
+      console.log('Downloading file:', filePath);
       const { data, error } = await supabase.storage
         .from('resumes')
         .download(filePath);
@@ -79,6 +93,27 @@ export const resumeStorageService = {
       return data;
     } catch (error) {
       console.error('Error downloading file:', error);
+      return null;
+    }
+  },
+  
+  /**
+   * Récupère l'URL publique d'un fichier CV
+   */
+  getFileUrl: async (filePath: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('resumes')
+        .createSignedUrl(filePath, 3600); // URL valide 1 heure
+        
+      if (error) {
+        console.error('Error getting file URL:', error);
+        throw error;
+      }
+      
+      return data.signedUrl;
+    } catch (error) {
+      console.error('Error getting file URL:', error);
       return null;
     }
   }

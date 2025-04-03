@@ -1,15 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Upload, Search, Filter, FileText, Eye, Download, 
-  Trash2, Plus, Calendar, ChevronDown, MoreHorizontal, Loader2
+  Trash2, Plus, Calendar, ChevronDown, MoreHorizontal, Loader2, 
+  AlertCircle, RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { getUserResumes, deleteResume, ResumeData } from '@/services/resumeService';
+import { getUserResumes, deleteResume, ResumeData, uploadResume } from '@/services/resumeService';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
 import { 
@@ -22,15 +22,83 @@ import { formatDate } from '@/utils/dateFormatter';
 
 type Resume = ResumeData;
 
+const DebugUploadButton = ({ userId }: { userId: string }) => {
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  
+  const handleTestUpload = async () => {
+    setUploading(true);
+    try {
+      const testContent = "This is a test CV file";
+      const testBlob = new Blob([testContent], { type: 'text/plain' });
+      const testFile = new File([testBlob], 'test-cv.txt', { type: 'text/plain' });
+      
+      toast({
+        title: "Test en cours",
+        description: "Tentative de téléchargement d'un fichier test...",
+      });
+      
+      const result = await uploadResume(testFile, userId);
+      
+      if (result) {
+        toast({
+          title: "Test réussi",
+          description: "Le test de téléchargement a réussi. ID: " + result.id,
+        });
+      } else {
+        throw new Error("Le test de téléchargement a échoué");
+      }
+    } catch (error: any) {
+      console.error('Test upload failed:', error);
+      toast({
+        title: "Test échoué",
+        description: error.message || "Erreur inconnue",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+  
+  return (
+    <Button 
+      variant="outline" 
+      size="sm" 
+      className="ml-2" 
+      onClick={handleTestUpload}
+      disabled={uploading}
+    >
+      {uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+      Tester Upload
+    </Button>
+  );
+};
+
 const Resumes = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [bucketInitialized, setBucketInitialized] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  useEffect(() => {
+    const initBucket = async () => {
+      if (!bucketInitialized && user) {
+        try {
+          await ensureResumesBucketExists();
+          setBucketInitialized(true);
+          console.log('Bucket initialized successfully');
+        } catch (error) {
+          console.error('Failed to initialize bucket:', error);
+        }
+      }
+    };
+    initBucket();
+  }, [bucketInitialized, user]);
   
   const loadResumes = async () => {
     if (!user) {
@@ -43,14 +111,36 @@ const Resumes = () => {
     setErrorMessage(null);
     
     try {
-      // Ensure the resumes bucket exists
-      await ensureResumesBucketExists();
-      
       console.log('Loading resumes for user:', user.id);
+      
+      try {
+        console.log('Debug: Testing Supabase connection...');
+        const { data: testData, error: testError } = await supabase
+          .from('test_connection')
+          .select('*')
+          .limit(1);
+          
+        if (testError) {
+          console.log('Debug: Supabase connection test error (expected):', testError);
+        } else {
+          console.log('Debug: Supabase connection test result:', testData);
+        }
+      } catch (testError) {
+        console.log('Debug: Supabase connection test exception (expected):', testError);
+      }
+      
+      try {
+        console.log('Debug: Testing database access...');
+        const { data: bucketsData, error: bucketsError } = await supabase.storage.listBuckets();
+        console.log('Debug: Buckets:', bucketsData, bucketsError);
+      } catch (bucketsError) {
+        console.error('Debug: Error listing buckets:', bucketsError);
+      }
+      
       const data = await getUserResumes(user.id);
-      console.log('Resumes loaded:', data);
       
       if (Array.isArray(data)) {
+        console.log('Successfully fetched resumes:', data);
         setResumes(data);
       } else {
         console.error('Expected array of resumes but got:', data);
@@ -71,13 +161,18 @@ const Resumes = () => {
   };
   
   useEffect(() => {
-    if (user) {
+    if (user && bucketInitialized) {
       loadResumes();
     }
-  }, [user]);
+  }, [user, bucketInitialized]);
   
   const handleAnalyzeResume = async (resumeId: string) => {
     try {
+      toast({
+        title: "Analyse en cours",
+        description: "L'analyse du CV a démarré...",
+      });
+      
       const { data, error } = await supabase.functions.invoke('analyze-resume', {
         body: { resumeId }
       });
@@ -208,12 +303,16 @@ const Resumes = () => {
               />
             </div>
             
-            <Link to="/resumes/upload">
-              <Button className="button-primary">
-                <Upload size={18} className="mr-2" />
-                Importer un CV
-              </Button>
-            </Link>
+            <div className="flex">
+              <Link to="/resumes/upload">
+                <Button className="button-primary">
+                  <Upload size={18} className="mr-2" />
+                  Importer un CV
+                </Button>
+              </Link>
+              
+              {user && <DebugUploadButton userId={user.id} />}
+            </div>
           </div>
         </div>
         
@@ -287,15 +386,14 @@ const Resumes = () => {
         {!isLoading && errorMessage && (
           <div className="glass rounded-xl p-8 text-center">
             <div className="w-20 h-20 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <AlertCircle className="h-10 w-10 text-red-600" />
             </div>
             <h2 className="text-xl font-semibold text-navy-dark mb-2">Une erreur est survenue</h2>
             <p className="text-muted-foreground mb-6">
               {errorMessage}
             </p>
-            <Button onClick={handleRetry} className="button-primary">
+            <Button onClick={handleRetry} className="button-primary flex items-center">
+              <RefreshCw size={16} className="mr-2" />
               Réessayer
             </Button>
           </div>

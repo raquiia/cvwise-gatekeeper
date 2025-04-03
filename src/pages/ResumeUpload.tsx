@@ -1,28 +1,35 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
 import UploadForm from '@/components/resume/UploadForm';
 import UploadSuccess from '@/components/resume/UploadSuccess';
+import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
 
 const ResumeUpload = () => {
   const [completed, setCompleted] = useState(false);
   const [uploadedFileCount, setUploadedFileCount] = useState(0);
+  const [bucketInitialized, setBucketInitialized] = useState(false);
   const { user } = useAuth();
   
-  const handleUploadComplete = () => {
-    // Get the number of uploaded files from the form component
-    const fileInputs = document.querySelectorAll('input[type="file"]');
-    let totalFileCount = 0;
-    fileInputs.forEach(input => {
-      if (input.files) {
-        totalFileCount += input.files.length;
+  useEffect(() => {
+    // Ensure the bucket exists when the component mounts
+    const initializeBucket = async () => {
+      try {
+        await ensureResumesBucketExists();
+        setBucketInitialized(true);
+      } catch (error) {
+        console.error('Failed to initialize bucket:', error);
       }
-    });
+    };
     
-    setUploadedFileCount(totalFileCount);
+    initializeBucket();
+  }, []);
+  
+  const handleUploadComplete = (count: number) => {
+    setUploadedFileCount(count);
     setCompleted(true);
   };
   
