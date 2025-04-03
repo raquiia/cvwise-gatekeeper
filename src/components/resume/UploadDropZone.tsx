@@ -20,11 +20,11 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
-  // Handle drag and drop
+  // Handle drag and drop with improved error handling
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    setDragging(true);
+    if (!uploading) setDragging(true);
   };
   
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
@@ -38,48 +38,73 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
     e.stopPropagation();
   };
   
+  const validateFiles = (files: File[]): File[] => {
+    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    
+    const validFiles = files.filter(file => {
+      // Vérifier le type
+      if (!validTypes.includes(file.type)) {
+        toast({
+          title: "Format non supporté",
+          description: `Le fichier "${file.name}" n'est pas au format PDF ou Word`,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      // Vérifier la taille
+      if (file.size > maxSize) {
+        toast({
+          title: "Fichier trop volumineux",
+          description: `Le fichier "${file.name}" dépasse la limite de 5MB`,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      return true;
+    });
+    
+    return validFiles;
+  };
+  
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setDragging(false);
     
-    const newFiles = Array.from(e.dataTransfer.files).filter(
-      file => file.type === 'application/pdf' || 
-             file.type === 'application/msword' || 
-             file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    );
+    if (uploading) return;
     
-    if (newFiles.length === 0) {
-      toast({
-        title: "Format non supporté",
-        description: "Veuillez télécharger des fichiers PDF ou Word (.docx)",
-        variant: "destructive",
-      });
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    const validFiles = validateFiles(droppedFiles);
+    
+    if (validFiles.length === 0) {
+      if (droppedFiles.length > 0) {
+        toast({
+          title: "Aucun fichier valide",
+          description: "Veuillez télécharger des fichiers PDF ou Word (.docx) de moins de 5MB",
+          variant: "destructive",
+        });
+      }
       return;
     }
     
-    onFileSelect(newFiles);
+    onFileSelect(validFiles);
   };
   
-  // Handle file selection via button
+  // Handle file selection via button with improved validation
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files).filter(
-        file => file.type === 'application/pdf' || 
-               file.type === 'application/msword' || 
-               file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      );
+    if (e.target.files && !uploading) {
+      const selectedFiles = Array.from(e.target.files);
+      const validFiles = validateFiles(selectedFiles);
       
-      if (newFiles.length === 0) {
-        toast({
-          title: "Format non supporté",
-          description: "Veuillez télécharger des fichiers PDF ou Word (.docx)",
-          variant: "destructive",
-        });
-        return;
+      if (validFiles.length > 0) {
+        onFileSelect(validFiles);
       }
       
-      onFileSelect(newFiles);
+      // Reset input to allow selecting the same file again
+      e.target.value = '';
     }
   };
   
@@ -89,7 +114,7 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
         dragging 
           ? 'border-navy bg-navy/5' 
           : 'border-border hover:border-navy/50 hover:bg-navy/5'
-      }`}
+      } ${uploading ? 'opacity-70 cursor-not-allowed' : ''}`}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
@@ -114,10 +139,19 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
         onChange={handleFileSelect}
         accept=".pdf,.doc,.docx"
         multiple
+        onClick={(e) => {
+          if (uploading) {
+            e.preventDefault();
+          }
+        }}
       />
       
       <Button
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => {
+          if (!uploading && fileInputRef.current) {
+            fileInputRef.current.click();
+          }
+        }}
         className="button-primary"
         disabled={uploading}
       >

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -17,22 +16,16 @@ export const resumeStorageService = {
       const filePath = `${userId}/${uniqueFileName}`;
       
       console.log('Uploading file to storage:', filePath);
-      console.log('File details:', {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        lastModified: file.lastModified
-      });
       
-      // Essayer d'utiliser upload avec transformation en ArrayBuffer
+      // Convertir le fichier en ArrayBuffer
       const fileBuffer = await file.arrayBuffer();
       
+      // Tentative d'upload direct sans référence aux profils
       const { data, error } = await supabase.storage
         .from('resumes')
         .upload(filePath, fileBuffer, {
           contentType: file.type,
-          upsert: true,
-          cacheControl: '3600'
+          upsert: true
         });
         
       if (error) {
@@ -50,7 +43,7 @@ export const resumeStorageService = {
       };
     } catch (error: any) {
       console.error('File upload failed:', error);
-      return null;
+      throw error; // Propager l'erreur pour une meilleure gestion
     }
   },
   

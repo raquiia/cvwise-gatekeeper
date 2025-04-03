@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Upload, Search, Filter, FileText, Eye, Download, 
+  Upload, Search, FileText, Eye, Download, 
   Trash2, Plus, Calendar, ChevronDown, MoreHorizontal, Loader2, 
   AlertCircle, RefreshCw
 } from 'lucide-react';
@@ -80,90 +80,92 @@ const Resumes = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [bucketInitialized, setBucketInitialized] = useState(false);
-  const [initializationAttempted, setInitializationAttempted] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   
   useEffect(() => {
-    const initBucket = async () => {
-      if (!bucketInitialized && !initializationAttempted && user) {
-        setInitializationAttempted(true);
+    const initAndLoad = async () => {
+      if (!user) {
+        setErrorMessage("Vous devez être connecté pour voir vos CV");
+        setIsLoading(false);
+        return;
+      }
+      
+      setIsLoading(true);
+      setErrorMessage(null);
+      
+      try {
         try {
-          const result = await ensureResumesBucketExists();
-          setBucketInitialized(true);
-          console.log('Bucket initialization result:', result);
-        } catch (error) {
-          console.error('Failed to initialize bucket:', error);
-          setBucketInitialized(true);
-          
-          toast({
-            title: "Avertissement",
-            description: "Problème avec l'initialisation du stockage. Certaines fonctionnalités peuvent être limitées.",
-            variant: "destructive"
-          });
+          await ensureResumesBucketExists();
+        } catch (bucketError) {
+          console.error('Failed to initialize bucket:', bucketError);
         }
+        
+        const loadPromise = loadResumes();
+        
+        const timeoutPromise = new Promise<void>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error("Timeout lors du chargement des CV"));
+          }, 5000);
+        });
+        
+        await Promise.race([loadPromise, timeoutPromise]);
+      } catch (error: any) {
+        console.error('Error during initialization or loading:', error);
+        setErrorMessage(error.message || "Une erreur est survenue lors du chargement des CV");
+        setIsLoading(false);
       }
     };
     
-    initBucket();
-  }, [user, bucketInitialized, initializationAttempted, toast]);
+    initAndLoad();
+  }, [user]);
   
   const loadResumes = async () => {
-    if (!user) {
-      setErrorMessage("Vous devez être connecté pour voir vos CV");
-      setIsLoading(false);
-      return;
-    }
-    
-    setIsLoading(true);
-    setErrorMessage(null);
+    if (!user) return;
     
     try {
       console.log('Loading resumes for user:', user.id);
       
-      const data = await getUserResumes(user.id);
-      
-      if (Array.isArray(data)) {
-        console.log('Successfully fetched resumes:', data);
-        setResumes(data);
-      } else {
-        console.error('Expected array of resumes but got:', data);
-        setResumes([]);
-        setErrorMessage('Format de données invalide reçu du serveur');
+      try {
+        const data = await getUserResumes(user.id);
+        
+        if (Array.isArray(data)) {
+          console.log('Successfully fetched resumes:', data);
+          setResumes(data);
+        } else {
+          console.error('Expected array of resumes but got:', data);
+          setResumes([]);
+          setErrorMessage('Format de données invalide reçu du serveur');
+        }
+      } catch (fetchError: any) {
+        console.error('Error loading resumes:', fetchError);
+        setErrorMessage(fetchError?.message || 'Une erreur est survenue lors du chargement des CV');
+        
+        try {
+          const { data, error } = await supabase
+            .from('resumes')
+            .select('*')
+            .eq('user_id', user.id);
+            
+          if (error) throw error;
+          
+          if (Array.isArray(data)) {
+            console.log('Successfully fetched resumes directly:', data);
+            setResumes(data as Resume[]);
+            setErrorMessage(null);
+          }
+        } catch (directError) {
+          console.error('Direct fetch also failed:', directError);
+        }
       }
     } catch (error: any) {
-      console.error('Error loading resumes:', error);
+      console.error('Final error loading resumes:', error);
       setErrorMessage(error?.message || 'Une erreur est survenue lors du chargement des CV');
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les CV: " + (error?.message || 'Erreur inconnue'),
-        variant: "destructive",
-      });
     } finally {
       setIsLoading(false);
     }
   };
-  
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
-    if (user) {
-      if (bucketInitialized) {
-        loadResumes();
-      } else {
-        timeoutId = setTimeout(() => {
-          console.log('Timeout reached, loading resumes anyway');
-          setBucketInitialized(true);
-        }, 3000);
-      }
-    }
-    
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [user, bucketInitialized]);
   
   const handleAnalyzeResume = async (resumeId: string) => {
     try {
@@ -379,6 +381,12 @@ const Resumes = () => {
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 size={40} className="text-navy animate-spin mb-4" />
             <p className="text-navy-dark font-medium">Chargement des CV...</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Si le chargement persiste trop longtemps, 
+              <Button variant="link" className="p-0 h-auto text-sm" onClick={() => window.location.reload()}>
+                essayez de rafraîchir la page
+              </Button>
+            </p>
           </div>
         )}
         

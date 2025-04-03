@@ -10,24 +10,27 @@ import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket'
 import type { ResumeData, CandidateData } from './data/resumeDataService';
 export type { ResumeData, CandidateData };
 
-/**
- * Télécharge un CV dans le stockage et crée un enregistrement dans la base de données
- */
 export const uploadResume = async (file: File, userId: string): Promise<ResumeData | null> => {
   try {
     console.log('Starting upload process for file:', file.name);
     console.log('User ID:', userId);
     
-    // Ensure the storage bucket exists
+    // Vérifier que le bucket existe, mais ne pas bloquer en cas d'erreur
     try {
       await ensureResumesBucketExists();
     } catch (bucketError) {
       console.error('Error checking/creating bucket:', bucketError);
-      // Continue anyway to prevent blocking the upload process
+      // Continuer quand même
     }
     
-    // Téléchargement du fichier
-    const fileData = await resumeStorageService.uploadFile(file, userId);
+    // Téléchargement du fichier avec gestion d'erreur améliorée
+    let fileData;
+    try {
+      fileData = await resumeStorageService.uploadFile(file, userId);
+    } catch (uploadError: any) {
+      console.error('File upload error:', uploadError);
+      throw new Error(uploadError.message || "Échec du téléchargement du fichier");
+    }
     
     if (!fileData) {
       throw new Error("Échec du téléchargement du fichier");
@@ -46,8 +49,12 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
       );
       
       if (!resumeId) {
-        // Si l'insertion échoue, supprimer le fichier téléchargé
-        await resumeStorageService.deleteFile(fileData.filePath);
+        // Si l'insertion échoue, tenter de supprimer le fichier téléchargé
+        try {
+          await resumeStorageService.deleteFile(fileData.filePath);
+        } catch (deleteError) {
+          console.error('Error deleting file after failed DB insert:', deleteError);
+        }
         throw new Error("Échec de la création de l'enregistrement du CV");
       }
       
@@ -62,10 +69,14 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
         file_size: fileData.fileSize,
         parsed: false
       };
-    } catch (dbError) {
+    } catch (dbError: any) {
       console.error('Database error:', dbError);
-      // Si l'insertion échoue, supprimer le fichier téléchargé
-      await resumeStorageService.deleteFile(fileData.filePath);
+      // Tenter de supprimer le fichier téléchargé en cas d'erreur
+      try {
+        await resumeStorageService.deleteFile(fileData.filePath);
+      } catch (deleteError) {
+        console.error('Error deleting file after failed DB insert:', deleteError);
+      }
       throw dbError;
     }
   } catch (error: any) {
@@ -74,18 +85,38 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
   }
 };
 
-/**
- * Récupère tous les CV d'un utilisateur
- */
 export const getUserResumes = async (userId: string): Promise<ResumeData[]> => {
   try {
     console.log('Getting resumes for user:', userId);
-    const resumes = await resumeDataService.getUserResumes(userId);
-    console.log('Retrieved resumes:', resumes);
-    return resumes;
+    
+    // Tentative directe d'accès aux données
+    try {
+      const { data, error } = await supabase
+        .from('resumes')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        console.error('Error fetching resumes directly:', error);
+        throw error;
+      }
+      
+      console.log('Retrieved resumes:', data);
+      
+      return data as ResumeData[];
+    } catch (directError) {
+      console.error('Direct fetch failed, trying service method:', directError);
+      
+      // Fallback à l'ancienne méthode
+      const resumes = await resumeDataService.getUserResumes(userId);
+      console.log('Retrieved resumes via service:', resumes);
+      return resumes;
+    }
   } catch (error) {
     console.error('Error in getUserResumes:', error);
-    throw error;
+    // Retourner un tableau vide en cas d'erreur pour éviter le blocage de l'interface
+    return [];
   }
 };
 
