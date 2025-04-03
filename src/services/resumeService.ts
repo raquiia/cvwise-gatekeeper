@@ -1,91 +1,48 @@
 
-import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
+import { resumeStorageService } from './storage/resumeStorageService';
+import { resumeDataService, ResumeData, CandidateData } from './data/resumeDataService';
+import { candidateDataService } from './data/candidateDataService';
+import { resumeAnalysisService } from './analysis/resumeAnalysisService';
 
-export interface ResumeData {
-  id?: string;
-  user_id: string;
-  file_name: string;
-  file_path: string;
-  file_type: string;
-  file_size: number;
-  parsed: boolean;
-}
+// Re-exporter les interfaces pour compatibilité
+export { ResumeData, CandidateData };
 
-export interface CandidateData {
-  id?: string;
-  resume_id?: string;
-  user_id: string;
-  first_name: string;
-  last_name: string;
-  email?: string;
-  phone?: string;
-  position?: string;
-  years_experience?: number;
-  location?: string;
-  skills?: any[];
-  score?: number;
-  status?: string;
-}
-
-// Upload a resume file to storage
+/**
+ * Télécharge un CV dans le stockage et crée un enregistrement dans la base de données
+ */
 export const uploadResume = async (file: File, userId: string): Promise<ResumeData | null> => {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${uuidv4()}.${fileExt}`;
-  const filePath = `${userId}/${fileName}`;
-  
-  console.log('Uploading file to storage:', filePath);
-  
   try {
-    // Upload to storage directly without checking buckets
-    // The bucket is created via migration now
-    console.log('Uploading file to storage...');
-    const { error: uploadError } = await supabase.storage
-      .from('resumes')
-      .upload(filePath, file);
-      
-    if (uploadError) {
-      console.error('Error uploading file to storage:', uploadError);
-      throw new Error(uploadError.message);
+    // Téléchargement du fichier
+    const fileData = await resumeStorageService.uploadFile(file, userId);
+    
+    if (!fileData) {
+      throw new Error("Échec du téléchargement du fichier");
     }
     
-    console.log('File uploaded successfully, creating resume record');
+    // Création de l'enregistrement
+    const resumeId = await resumeDataService.createResumeRecord(
+      userId,
+      fileData.fileName,
+      fileData.filePath,
+      fileData.fileType,
+      fileData.fileSize
+    );
     
-    // Create resume record in database
-    const resumeData: ResumeData = {
-      user_id: userId,
-      file_name: file.name,
-      file_path: filePath,
-      file_type: file.type,
-      file_size: file.size,
-      parsed: false
-    };
-    
-    // Use RPC function to insert resume directly to avoid recursion issues
-    const { data, error } = await supabase
-      .rpc('insert_resume', { 
-        p_user_id: userId,
-        p_file_name: file.name,
-        p_file_path: filePath,
-        p_file_type: file.type,
-        p_file_size: file.size
-      });
-      
-    if (error) {
-      console.error('Error creating resume record:', error);
-      
-      // If insertion fails, delete the uploaded file to clean up
-      await supabase.storage
-        .from('resumes')
-        .remove([filePath]);
-        
-      throw new Error(error.message);
+    if (!resumeId) {
+      // Si l'insertion échoue, supprimer le fichier téléchargé
+      await resumeStorageService.deleteFile(fileData.filePath);
+      throw new Error("Échec de la création de l'enregistrement du CV");
     }
     
-    console.log('Resume record created successfully with ID:', data);
     return {
-      ...resumeData,
-      id: data as string
+      id: resumeId,
+      user_id: userId,
+      file_name: fileData.fileName,
+      file_path: fileData.filePath,
+      file_type: fileData.fileType,
+      file_size: fileData.fileSize,
+      parsed: false
     };
   } catch (error: any) {
     console.error('Resume upload failed:', error);
@@ -93,73 +50,29 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
   }
 };
 
-// Fetch all resumes for a user - fixed to avoid recursion issues
-export const getUserResumes = async (userId: string) => {
-  try {
-    console.log('Fetching resumes for user:', userId);
-    
-    // Use a simplified query approach to avoid recursion issues
-    const { data, error } = await supabase
-      .from('resumes')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-      
-    if (error) {
-      console.error('Error fetching resumes:', error);
-      throw error;
-    }
-    
-    console.log(`Successfully fetched ${data?.length || 0} resumes`);
-    
-    if (!data || data.length === 0) {
-      return [];
-    }
-    
-    // Process each resume to get its candidates
-    const resumesWithCandidates = await Promise.all(data.map(async (resume) => {
-      try {
-        const { data: candidates, error: candidateError } = await supabase
-          .from('candidates')
-          .select('*')
-          .eq('resume_id', resume.id);
-          
-        if (candidateError) {
-          console.error(`Error fetching candidates for resume ${resume.id}:`, candidateError);
-          return { ...resume, candidates: [] };
-        }
-        
-        return { ...resume, candidates: candidates || [] };
-      } catch (error) {
-        console.error(`Error processing candidates for resume ${resume.id}:`, error);
-        return { ...resume, candidates: [] };
-      }
-    }));
-    
-    return resumesWithCandidates;
-  } catch (error) {
-    console.error('Error in getUserResumes:', error);
-    return [];
-  }
-};
+/**
+ * Récupère tous les CV d'un utilisateur
+ */
+export const getUserResumes = resumeDataService.getUserResumes;
 
-// Delete a resume
-export const deleteResume = async (resumeId: string, filePath: string) => {
+/**
+ * Supprime un CV (enregistrement et fichier)
+ */
+export const deleteResume = async (resumeId: string, filePath: string): Promise<boolean> => {
   try {
-    // Delete resume record
-    const { error: deleteRecordError } = await supabase
-      .from('resumes')
-      .delete()
-      .eq('id', resumeId);
-      
-    if (deleteRecordError) throw deleteRecordError;
+    // Suppression de l'enregistrement
+    const recordDeleted = await resumeDataService.deleteResumeRecord(resumeId);
     
-    // Delete file from storage
-    const { error: deleteFileError } = await supabase.storage
-      .from('resumes')
-      .remove([filePath]);
-      
-    if (deleteFileError) throw deleteFileError;
+    if (!recordDeleted) {
+      throw new Error("Échec de la suppression de l'enregistrement du CV");
+    }
+    
+    // Suppression du fichier
+    const fileDeleted = await resumeStorageService.deleteFile(filePath);
+    
+    if (!fileDeleted) {
+      console.warn("Le fichier n'a pas pu être supprimé, mais l'enregistrement a été supprimé");
+    }
     
     return true;
   } catch (error) {
@@ -168,34 +81,17 @@ export const deleteResume = async (resumeId: string, filePath: string) => {
   }
 };
 
-// Create or update a candidate from resume data
-export const saveCandidate = async (candidateData: CandidateData) => {
-  try {
-    const { data, error } = await supabase
-      .from('candidates')
-      .upsert(candidateData)
-      .select();
-      
-    if (error) throw error;
-    return data[0];
-  } catch (error) {
-    console.error('Error saving candidate:', error);
-    return null;
-  }
-};
+/**
+ * Enregistre un candidat
+ */
+export const saveCandidate = candidateDataService.saveCandidate;
 
-// Get candidates for a user
-export const getUserCandidates = async (userId: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('candidates')
-      .select('*')
-      .eq('user_id', userId);
-      
-    if (error) throw error;
-    return data;
-  } catch (error) {
-    console.error('Error fetching candidates:', error);
-    return [];
-  }
-};
+/**
+ * Récupère tous les candidats d'un utilisateur
+ */
+export const getUserCandidates = candidateDataService.getUserCandidates;
+
+/**
+ * Analyse un CV
+ */
+export const analyzeResume = resumeAnalysisService.analyzeResume;
