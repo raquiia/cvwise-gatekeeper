@@ -77,7 +77,7 @@ export const resumeDataService = {
     try {
       console.log('Fetching resumes for user:', userId);
       
-      // Simplifier la requête pour éviter la récursion infinie
+      // Simplified query to avoid infinite recursion
       const { data: resumes, error } = await supabase
         .from('resumes')
         .select('*')
@@ -96,11 +96,11 @@ export const resumeDataService = {
       
       console.log(`Successfully fetched ${resumes.length} resumes`);
       
-      // Transformer les données pour correspondre à notre type ResumeData
+      // Transform data to match our ResumeData type
       const resumesWithCandidates: ResumeData[] = [];
       
       for (const resume of resumes) {
-        // Créer l'objet resume de base
+        // Create base resume object
         const resumeData: ResumeData = {
           id: resume.id,
           user_id: resume.user_id,
@@ -114,9 +114,10 @@ export const resumeDataService = {
           candidates: []
         };
         
-        // Seulement récupérer les candidats si le CV a été analysé
+        // Only fetch candidates if the resume has been parsed
         if (resume.parsed) {
           try {
+            // Direct query to candidates table without using RLS policies that might cause recursion
             const { data: candidates, error: candidateError } = await supabase
               .from('candidates')
               .select('id, first_name, last_name, email, phone, position, years_experience, location, skills, score, status')
@@ -125,7 +126,6 @@ export const resumeDataService = {
             if (candidateError) {
               console.error(`Error fetching candidates for resume ${resume.id}:`, candidateError);
             } else if (candidates && candidates.length > 0) {
-              // Transformer les candidats pour s'assurer que les skills sont un tableau
               resumeData.candidates = candidates.map(candidate => ({
                 id: candidate.id,
                 resume_id: resume.id,

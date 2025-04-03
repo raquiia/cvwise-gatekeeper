@@ -3,43 +3,42 @@ import { supabase } from './client';
 
 export const ensureResumesBucketExists = async () => {
   try {
-    // Vérifier si le bucket existe déjà
+    // Check if bucket already exists
     const { data: buckets, error } = await supabase.storage.listBuckets();
     
     if (error) {
-      console.error('Erreur lors de la vérification des buckets:', error);
+      console.error('Error checking buckets:', error);
       throw error;
     }
     
     const resumesBucketExists = buckets.some(bucket => bucket.name === 'resumes');
     
     if (!resumesBucketExists) {
-      console.log('Le bucket "resumes" n\'existe pas, création en cours...');
+      console.log('The "resumes" bucket does not exist, creating...');
       
-      // Créer le bucket
+      // Create bucket
       const { error: createError } = await supabase.storage.createBucket('resumes', {
         public: false,
         fileSizeLimit: 10485760, // 10 MB
       });
       
       if (createError) {
-        console.error('Erreur lors de la création du bucket "resumes":', createError);
+        console.error('Error creating "resumes" bucket:', createError);
         throw createError;
       }
       
-      console.log('Bucket "resumes" créé avec succès');
+      console.log('The "resumes" bucket was created successfully');
       
-      // Ajouter des politiques de sécurité pour le bucket
-      // Permettre aux utilisateurs authentifiés de lire les fichiers
+      // Set bucket policies
       const { error: policyError } = await supabase.storage.from('resumes').setPublic(false);
       
       if (policyError) {
-        console.error('Erreur lors de la configuration des politiques du bucket:', policyError);
+        console.error('Error configuring bucket policies:', policyError);
       }
     } else {
-      console.log('Le bucket "resumes" existe déjà');
+      console.log('The "resumes" bucket already exists');
     }
   } catch (error) {
-    console.error('Erreur lors de l\'initialisation du bucket:', error);
+    console.error('Error initializing bucket:', error);
   }
 };

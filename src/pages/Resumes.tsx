@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { getUserResumes, deleteResume, ResumeData } from '@/services/resumeService';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -42,6 +43,9 @@ const Resumes = () => {
     setErrorMessage(null);
     
     try {
+      // Ensure the resumes bucket exists
+      await ensureResumesBucketExists();
+      
       console.log('Loading resumes for user:', user.id);
       const data = await getUserResumes(user.id);
       console.log('Resumes loaded:', data);
@@ -67,7 +71,9 @@ const Resumes = () => {
   };
   
   useEffect(() => {
-    loadResumes();
+    if (user) {
+      loadResumes();
+    }
   }, [user]);
   
   const handleAnalyzeResume = async (resumeId: string) => {
