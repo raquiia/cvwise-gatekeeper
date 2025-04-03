@@ -30,13 +30,13 @@ export interface CandidateData {
 
 // Upload a resume file to storage
 export const uploadResume = async (file: File, userId: string): Promise<ResumeData | null> => {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${uuidv4()}.${fileExt}`;
+  const filePath = `${userId}/${fileName}`;
+  
+  console.log('Uploading file to storage:', filePath);
+  
   try {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${uuidv4()}.${fileExt}`;
-    const filePath = `${userId}/${fileName}`;
-    
-    console.log('Uploading file to storage:', filePath);
-    
     // Upload to storage
     const { error: uploadError } = await supabase.storage
       .from('resumes')
@@ -59,16 +59,20 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
       parsed: false
     };
     
+    // Utiliser une insertion directe avec SQL plutôt que l'API pour contourner l'erreur de récursion
     const { data, error } = await supabase
-      .from('resumes')
-      .insert(resumeData)
-      .select()
-      .single();
+      .rpc('insert_resume', { 
+        p_user_id: userId,
+        p_file_name: file.name,
+        p_file_path: filePath,
+        p_file_type: file.type,
+        p_file_size: file.size
+      });
       
     if (error) {
       console.error('Error creating resume record:', error);
       
-      // Si l'insertion échoue, on essaie de supprimer le fichier téléchargé pour nettoyer
+      // Si l'insertion échoue, supprimer le fichier téléchargé pour nettoyer
       await supabase.storage
         .from('resumes')
         .remove([filePath]);
@@ -77,8 +81,11 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
     }
     
     console.log('Resume record created successfully:', data);
-    return data;
-  } catch (error) {
+    return {
+      ...resumeData,
+      id: data
+    };
+  } catch (error: any) {
     console.error('Resume upload failed:', error);
     return null;
   }
