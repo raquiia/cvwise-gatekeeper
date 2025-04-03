@@ -13,6 +13,7 @@ import Candidates from "./pages/Candidates";
 import Resumes from "./pages/Resumes";
 import ResumeUpload from "./pages/ResumeUpload";
 import Admin from "./pages/Admin";
+import AllUsers from "./pages/AllUsers";
 import NotFound from "./pages/NotFound";
 
 // Protected route component
@@ -62,6 +63,11 @@ const App = () => (
       <Route path="/admin" element={
         <ProtectedRoute>
           <Admin />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/users" element={
+        <ProtectedRoute>
+          <AllUsers />
         </ProtectedRoute>
       } />
       

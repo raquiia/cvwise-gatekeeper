@@ -29,6 +29,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Link } from 'react-router-dom';
 
 // Données fictives pour les utilisateurs en attente de validation
 const pendingUsersData = [
@@ -137,7 +138,7 @@ const systemActivitiesData = [
   },
   {
     id: 5,
-    action: 'Tentative de connexion échouée',
+    action: 'Tentative de connexion ��chouée',
     description: 'Plusieurs tentatives de connexion échouées pour l\'utilisateur marc.dupont@example.com',
     timestamp: '24/07/2023 09:45',
     icon: <Shield size={16} className="text-red-500" />
@@ -575,12 +576,14 @@ const Admin = () => {
                           </Tooltip>
                         </TooltipProvider>
                       </CardTitle>
-                      <Button variant="outline" size="sm">
-                        <div className="flex items-center gap-1">
-                          Voir tous
-                          <ArrowUpRight size={14} />
-                        </div>
-                      </Button>
+                      <Link to="/admin/users">
+                        <Button variant="outline" size="sm">
+                          <div className="flex items-center gap-1">
+                            Voir tous
+                            <ArrowUpRight size={14} />
+                          </div>
+                        </Button>
+                      </Link>
                     </div>
                     <CardDescription>
                       Exemples d'utilisateurs (données fictives)
@@ -629,7 +632,9 @@ const Admin = () => {
                                   {user.role}
                                 </Badge>
                               </td>
-                              <td className="p-3 text-sm text-muted-foreground">{user.lastLogin}</td>
+                              <td className="p-3 text-sm text-muted-foreground">
+                                {user.lastLogin}
+                              </td>
                               <td className="p-3 text-right">
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
