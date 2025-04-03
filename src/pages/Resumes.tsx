@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Upload, Search, FileText, Eye, Download, 
@@ -208,18 +207,32 @@ const Resumes = () => {
     try {
       console.log('Downloading file:', filePath);
       
+      toast({
+        title: "Téléchargement en cours",
+        description: "Veuillez patienter pendant le téléchargement du fichier...",
+      });
+      
       const { data, error } = await resumeStorageService.downloadFile(filePath);
       
       if (error) {
         console.error('Download error:', error);
-        throw error;
+        toast({
+          title: "Échec du téléchargement",
+          description: `Impossible de télécharger le fichier: ${error.message}`,
+          variant: "destructive",
+        });
+        return;
       }
       
       if (!data) {
-        throw new Error('No data received during download');
+        toast({
+          title: "Échec du téléchargement",
+          description: "Aucune donnée reçue pendant le téléchargement",
+          variant: "destructive",
+        });
+        return;
       }
       
-      // Create a download link and trigger it
       const url = URL.createObjectURL(data);
       const link = document.createElement('a');
       link.href = url;

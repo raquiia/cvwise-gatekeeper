@@ -106,52 +106,71 @@ export const resumeStorageService = {
   
   downloadFile: async (filePath: string): Promise<{ data: Blob | null; error: Error | null }> => {
     try {
-      // First ensure the bucket exists
-      await ensureResumesBucketExists();
+      console.log('Starting download process for:', filePath);
       
-      console.log('Downloading file:', filePath);
+      // First get the public URL
+      const publicUrl = await resumeStorageService.getFileUrl(filePath);
+      if (!publicUrl) {
+        return { data: null, error: new Error('Failed to get public URL for the file') };
+      }
       
-      // Try to download the file with retry
-      let retryCount = 0;
-      const maxRetries = 3;
+      console.log('Got public URL:', publicUrl);
       
-      while (retryCount < maxRetries) {
+      // Try to download directly using fetch
+      try {
+        const response = await fetch(publicUrl, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        console.log('Successfully downloaded file via public URL, size:', blob.size);
+        return { data: blob, error: null };
+      } catch (fetchError) {
+        console.error('Error downloading via public URL:', fetchError);
+        
+        // Fallback to storage API
+        console.log('Falling back to storage API download...');
         try {
+          // Ensure bucket exists
+          await ensureResumesBucketExists();
+          
           const { data, error } = await supabase.storage
             .from('resumes')
             .download(filePath);
             
           if (error) {
-            console.error(`Download attempt ${retryCount + 1} failed:`, error.message);
-            
-            if (retryCount === maxRetries - 1) {
-              return { data: null, error: new Error(`Failed to download file: ${error.message}`) };
-            }
-            
-            retryCount++;
-            // Wait before retrying
-            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-            continue;
+            console.error('Storage API download error:', error);
+            return { data: null, error: new Error(`Storage API download failed: ${JSON.stringify(error)}`) };
           }
           
-          console.log('File downloaded successfully');
+          if (!data) {
+            return { data: null, error: new Error('No data received from Storage API') };
+          }
+          
+          console.log('Successfully downloaded file via Storage API');
           return { data, error: null };
-        } catch (e: any) {
-          console.error('Exception during download attempt:', e);
-          
-          if (retryCount === maxRetries - 1) {
-            return { data: null, error: e };
-          }
-          
-          retryCount++;
-          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        } catch (storageError) {
+          console.error('Exception during Storage API download:', storageError);
+          return { 
+            data: null, 
+            error: new Error(`Storage API download exception: ${storageError instanceof Error ? storageError.message : String(storageError)}`) 
+          };
         }
       }
-      
-      return { data: null, error: new Error('Failed to download file after multiple attempts') };
-    } catch (error: any) {
-      console.error('Exception during download:', error);
-      return { data: null, error };
+    } catch (error) {
+      console.error('Top-level exception during download process:', error);
+      return { 
+        data: null, 
+        error: new Error(`Download process failed: ${error instanceof Error ? error.message : String(error)}`) 
+      };
     }
   }
 };
