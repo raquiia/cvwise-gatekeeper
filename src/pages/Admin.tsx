@@ -1,10 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, UserCheck, UserX, Clock, Settings, Shield, 
   Briefcase, RefreshCw, Building, ArrowUpRight, 
   LogOut, Mail, CheckCircle, XCircle, MessageSquare,
-  AlertTriangle, MoreHorizontal
+  AlertTriangle, MoreHorizontal, FileQuestion, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
@@ -24,8 +23,12 @@ import {
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Données fictives pour les utilisateurs en attente de validation
 const pendingUsersData = [
@@ -141,10 +144,84 @@ const systemActivitiesData = [
   }
 ];
 
+// Interface pour les utilisateurs réels
+interface RealUser {
+  id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  company?: string;
+  created_at: string;
+  last_sign_in_at?: string;
+  avatar_url?: string;
+}
+
 const Admin = () => {
   // État pour suivre les utilisateurs validés/rejetés
   const [pendingUsers, setPendingUsers] = useState(pendingUsersData);
   const [activeUsers, setActiveUsers] = useState(activeUsersData);
+  const [realUsers, setRealUsers] = useState<RealUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  
+  // Charger les utilisateurs réels depuis Supabase
+  useEffect(() => {
+    const fetchRealUsers = async () => {
+      try {
+        setLoading(true);
+        
+        // Récupérer les utilisateurs depuis auth.users
+        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+        
+        if (authError) {
+          console.error('Erreur lors de la récupération des utilisateurs:', authError);
+          toast({
+            title: "Erreur",
+            description: "Impossible de récupérer les utilisateurs",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        
+        // Récupérer les profils pour obtenir les noms et autres informations
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*');
+          
+        if (profilesError) {
+          console.error('Erreur lors de la récupération des profils:', profilesError);
+        }
+        
+        // Combiner les données des utilisateurs et des profils
+        if (authUsers) {
+          const usersWithProfiles = authUsers.users.map(user => {
+            const profile = profiles?.find(p => p.id === user.id);
+            return {
+              id: user.id,
+              email: user.email || '',
+              first_name: profile?.first_name || user.user_metadata?.first_name || '',
+              last_name: profile?.last_name || user.user_metadata?.last_name || '',
+              company: profile?.company || user.user_metadata?.company || '',
+              created_at: user.created_at,
+              last_sign_in_at: user.last_sign_in_at,
+              avatar_url: profile?.avatar_url || null
+            };
+          });
+          
+          setRealUsers(usersWithProfiles);
+          console.log("Utilisateurs réels chargés:", usersWithProfiles);
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Erreur inattendue:', error);
+        setLoading(false);
+      }
+    };
+    
+    fetchRealUsers();
+  }, [toast]);
   
   // Gérer la validation d'un utilisateur
   const handleApproveUser = (userId: number) => {
@@ -169,6 +246,20 @@ const Admin = () => {
   // Gérer le rejet d'un utilisateur
   const handleRejectUser = (userId: number) => {
     setPendingUsers(prev => prev.filter(user => user.id !== userId));
+  };
+  
+  // Formater la date en français
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Jamais';
+    const date = new Date(dateString);
+    
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
   };
   
   return (
@@ -220,7 +311,7 @@ const Admin = () => {
                           </div>
                           <span className="text-sm font-medium">Utilisateurs actifs</span>
                         </div>
-                        <span className="font-semibold">{activeUsers.length}</span>
+                        <span className="font-semibold">{realUsers.length}</span>
                       </div>
                       
                       <div className="flex items-center justify-between">
@@ -248,16 +339,16 @@ const Admin = () => {
                       <div>
                         <h4 className="text-sm font-medium mb-2">Accès récents</h4>
                         <div className="space-y-2">
-                          {activeUsers.slice(0, 3).map((user, idx) => (
+                          {realUsers.slice(0, 3).map((user, idx) => (
                             <div key={idx} className="flex items-center justify-between">
                               <div className="flex items-center">
-                                <div className={`w-2 h-2 rounded-full ${
-                                  user.status === 'online' ? 'bg-emerald-500' : 'bg-gray-300'
-                                } mr-2`}></div>
-                                <span className="text-xs">{user.name}</span>
+                                <div className="w-2 h-2 rounded-full bg-gray-300 mr-2"></div>
+                                <span className="text-xs">{user.first_name} {user.last_name}</span>
                               </div>
                               <span className="text-xs text-muted-foreground">
-                                {user.status === 'online' ? 'En ligne' : 'Dernière connexion: aujourd\'hui'}
+                                {user.last_sign_in_at 
+                                  ? formatDate(user.last_sign_in_at) 
+                                  : 'Jamais connecté'}
                               </span>
                             </div>
                           ))}
@@ -275,6 +366,16 @@ const Admin = () => {
                       <CardTitle className="flex items-center gap-2">
                         <Clock size={18} className="text-amber-500" />
                         Utilisateurs en attente
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info size={16} className="text-muted-foreground ml-1 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="max-w-xs">Données fictives pour démonstration</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </CardTitle>
                       <Badge variant="outline" className="bg-amber-50 text-amber-700 hover:bg-amber-100">
                         {pendingUsers.length} demandes
@@ -345,6 +446,7 @@ const Admin = () => {
                   </CardContent>
                 </Card>
                 
+                {/* Utilisateurs réels */}
                 <Card>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
@@ -354,13 +456,134 @@ const Admin = () => {
                       </CardTitle>
                       <Button variant="outline" size="sm">
                         <div className="flex items-center gap-1">
+                          {loading ? "Chargement..." : `${realUsers.length} utilisateurs`}
+                        </div>
+                      </Button>
+                    </div>
+                    <CardDescription>
+                      Utilisateurs enregistrés dans la base de données
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {loading ? (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">Chargement des utilisateurs...</p>
+                      </div>
+                    ) : realUsers.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                          <Users size={24} className="text-muted-foreground" />
+                        </div>
+                        <p className="text-muted-foreground">Aucun utilisateur trouvé</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-muted/50">
+                              <th className="text-left p-3 text-sm font-medium text-muted-foreground">Utilisateur</th>
+                              <th className="text-left p-3 text-sm font-medium text-muted-foreground">Entreprise</th>
+                              <th className="text-left p-3 text-sm font-medium text-muted-foreground">Rôle</th>
+                              <th className="text-left p-3 text-sm font-medium text-muted-foreground">Création</th>
+                              <th className="text-left p-3 text-sm font-medium text-muted-foreground">Dernière connexion</th>
+                              <th className="text-right p-3 text-sm font-medium text-muted-foreground">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {realUsers.map((user) => (
+                              <tr key={user.id} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
+                                <td className="p-3">
+                                  <div className="flex items-center">
+                                    <Avatar className="h-8 w-8 mr-3">
+                                      <AvatarImage src={user.avatar_url || undefined} />
+                                      <AvatarFallback className="bg-navy/10 text-navy-dark text-xs">
+                                        {user.first_name && user.last_name 
+                                          ? `${user.first_name[0]}${user.last_name[0]}`
+                                          : user.email.substring(0, 2).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <div className="font-medium text-navy-dark flex items-center">
+                                        {user.first_name && user.last_name 
+                                          ? `${user.first_name} ${user.last_name}`
+                                          : 'Utilisateur'}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">{user.email}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="p-3 text-sm">{user.company || '-'}</td>
+                                <td className="p-3">
+                                  <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                                    Admin
+                                  </Badge>
+                                </td>
+                                <td className="p-3 text-sm text-muted-foreground">
+                                  {formatDate(user.created_at)}
+                                </td>
+                                <td className="p-3 text-sm text-muted-foreground">
+                                  {user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Jamais'}
+                                </td>
+                                <td className="p-3 text-right">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreHorizontal size={16} />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem>
+                                        <MessageSquare size={14} className="mr-2" />
+                                        Contacter
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem>
+                                        <Settings size={14} className="mr-2" />
+                                        Modifier les droits
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-red-600">
+                                        <LogOut size={14} className="mr-2" />
+                                        Déconnecter
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                {/* Utilisateurs fictifs */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <UserCheck size={18} className="text-emerald-500" />
+                        Exemples d'utilisateurs
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <FileQuestion size={16} className="text-muted-foreground ml-1 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="max-w-xs">Données fictives pour démonstration</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </CardTitle>
+                      <Button variant="outline" size="sm">
+                        <div className="flex items-center gap-1">
                           Voir tous
                           <ArrowUpRight size={14} />
                         </div>
                       </Button>
                     </div>
                     <CardDescription>
-                      Gérez les utilisateurs ayant accès à l'application
+                      Exemples d'utilisateurs (données fictives)
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
