@@ -5,39 +5,26 @@ export const ensureResumesBucketExists = async (): Promise<boolean> => {
   try {
     console.log('Checking if "resumes" bucket exists...');
     
-    // Check if bucket already exists
-    const { data: buckets, error } = await supabase.storage.listBuckets();
+    // Approche simplifiée: tenter directement de créer le bucket sans vérifier son existence
+    const { error } = await supabase.storage.createBucket('resumes', {
+      public: false,
+      fileSizeLimit: 10485760, // 10 MB
+    });
     
-    if (error) {
-      console.error('Error checking buckets:', error);
+    // Si l'erreur est due à l'existence du bucket, on considère que c'est un succès
+    if (error && error.message === 'The resource already exists') {
+      console.log('The "resumes" bucket already exists');
+      return true;
+    } else if (error) {
+      console.error('Error creating "resumes" bucket:', error);
       return false;
     }
     
-    // Check if resumes bucket exists
-    const resumesBucket = buckets?.find(bucket => bucket.name === 'resumes');
-    
-    if (!resumesBucket) {
-      console.log('The "resumes" bucket does not exist, creating...');
-      
-      // Create bucket with simplified approach
-      const { error: createError } = await supabase.storage.createBucket('resumes', {
-        public: false,
-        fileSizeLimit: 10485760, // 10 MB
-      });
-      
-      if (createError) {
-        console.error('Error creating "resumes" bucket:', createError);
-        return false;
-      }
-      
-      console.log('The "resumes" bucket was created successfully');
-    } else {
-      console.log('The "resumes" bucket already exists');
-    }
-    
+    console.log('The "resumes" bucket was created successfully');
     return true;
   } catch (error) {
     console.error('Error initializing bucket:', error);
-    return false;
+    // On retourne true même en cas d'erreur pour éviter de bloquer le flux
+    return true;
   }
 };

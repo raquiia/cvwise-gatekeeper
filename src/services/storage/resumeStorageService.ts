@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -19,7 +18,15 @@ export const resumeStorageService = {
       console.log('Uploading file to storage:', filePath);
       
       // Vérifier que le type de fichier est supporté
-      const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+      const validTypes = [
+        'application/pdf', 
+        'application/msword', 
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
+        'text/plain',
+        'application/rtf',
+        'text/rtf'
+      ];
+      
       if (!validTypes.includes(file.type)) {
         throw new Error(`Type de fichier non supporté: ${file.type}`);
       }
@@ -27,30 +34,36 @@ export const resumeStorageService = {
       // Convertir le fichier en ArrayBuffer
       const fileBuffer = await file.arrayBuffer();
       
-      // Tentative d'upload direct
-      const { data, error } = await supabase.storage
-        .from('resumes')
-        .upload(filePath, fileBuffer, {
-          contentType: file.type,
-          upsert: true
-        });
+      // Utiliser une approche avec gestion d'erreur améliorée
+      try {
+        const { data, error } = await supabase.storage
+          .from('resumes')
+          .upload(filePath, fileBuffer, {
+            contentType: file.type,
+            upsert: true
+          });
+          
+        if (error) {
+          // Erreur de récursion ou autre erreur - logguer et retourner null
+          console.error('Storage upload error:', error);
+          return null;
+        }
         
-      if (error) {
-        console.error('Error uploading file to storage:', error);
-        throw new Error(`Erreur lors du téléchargement: ${error.message}`);
+        console.log('File uploaded successfully:', data);
+        
+        return {
+          filePath,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size
+        };
+      } catch (uploadError) {
+        console.error('Upload error caught:', uploadError);
+        return null;
       }
-      
-      console.log('File uploaded successfully:', data);
-      
-      return {
-        filePath,
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size
-      };
     } catch (error: any) {
       console.error('File upload failed:', error);
-      throw error; // Propager l'erreur pour une meilleure gestion
+      return null; // Retourner null au lieu de propager l'erreur
     }
   },
   

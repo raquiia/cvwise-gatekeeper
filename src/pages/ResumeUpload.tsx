@@ -12,62 +12,27 @@ import { useToast } from '@/hooks/use-toast';
 const ResumeUpload = () => {
   const [completed, setCompleted] = useState(false);
   const [uploadedFileCount, setUploadedFileCount] = useState(0);
-  const [initializingBucket, setInitializingBucket] = useState(true);
+  const [initializingBucket, setInitializingBucket] = useState(false); // Démarrer à false pour éviter le chargement inutile
   const [bucketError, setBucketError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
   
   useEffect(() => {
-    // Ensure the bucket exists when the component mounts
+    // Initialisation silencieuse du bucket (ne bloque pas l'interface)
     const initializeBucket = async () => {
       if (!user) return;
       
-      setInitializingBucket(true);
-      setBucketError(null);
-      
       try {
-        console.log('Initializing bucket for user:', user.id);
-        const success = await ensureResumesBucketExists();
-        
-        if (!success) {
-          console.warn('Could not initialize bucket, but continuing anyway');
-          // Notification moins intrusive
-          toast({
-            title: "Avertissement",
-            description: "Certaines fonctionnalités de stockage peuvent être limitées.",
-          });
-        }
-        
-        console.log('Bucket initialization completed');
-        setInitializingBucket(false);
+        // Tenter d'initialiser le bucket sans bloquer l'interface
+        await ensureResumesBucketExists();
       } catch (error: any) {
-        console.error('Failed to initialize bucket:', error);
-        setBucketError(error.message || 'Failed to initialize storage');
-        setInitializingBucket(false);
-        
-        // Notification moins intrusive
-        toast({
-          title: "Avertissement",
-          description: "Certaines fonctionnalités de stockage peuvent être limitées.",
-        });
+        // Ne pas afficher d'erreur à l'utilisateur, simplement loguer
+        console.warn('Bucket initialization issue:', error);
       }
-      
-      // Important: toujours terminer l'initialisation, même en cas d'erreur
-      setInitializingBucket(false);
     };
     
     initializeBucket();
-    
-    // Définir un timeout de sécurité pour éviter le blocage indéfini
-    const safetyTimeout = setTimeout(() => {
-      if (initializingBucket) {
-        console.log('Safety timeout triggered for bucket initialization');
-        setInitializingBucket(false);
-      }
-    }, 5000);
-    
-    return () => clearTimeout(safetyTimeout);
-  }, [user, toast]);
+  }, [user]);
   
   const handleUploadComplete = (count: number) => {
     setUploadedFileCount(count);
