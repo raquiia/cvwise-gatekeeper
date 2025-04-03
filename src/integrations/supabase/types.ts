@@ -181,6 +181,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_resume_by_id: {
+        Args: {
+          resume_id_param: string
+        }
+        Returns: boolean
+      }
       get_auth_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string

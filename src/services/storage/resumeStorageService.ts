@@ -102,5 +102,56 @@ export const resumeStorageService = {
       console.error('Error getting file URL:', error);
       return null;
     }
+  },
+  
+  downloadFile: async (filePath: string): Promise<{ data: Blob | null; error: Error | null }> => {
+    try {
+      // First ensure the bucket exists
+      await ensureResumesBucketExists();
+      
+      console.log('Downloading file:', filePath);
+      
+      // Try to download the file with retry
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          const { data, error } = await supabase.storage
+            .from('resumes')
+            .download(filePath);
+            
+          if (error) {
+            console.error(`Download attempt ${retryCount + 1} failed:`, error.message);
+            
+            if (retryCount === maxRetries - 1) {
+              return { data: null, error: new Error(`Failed to download file: ${error.message}`) };
+            }
+            
+            retryCount++;
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+            continue;
+          }
+          
+          console.log('File downloaded successfully');
+          return { data, error: null };
+        } catch (e: any) {
+          console.error('Exception during download attempt:', e);
+          
+          if (retryCount === maxRetries - 1) {
+            return { data: null, error: e };
+          }
+          
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+      }
+      
+      return { data: null, error: new Error('Failed to download file after multiple attempts') };
+    } catch (error: any) {
+      console.error('Exception during download:', error);
+      return { data: null, error };
+    }
   }
 };

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Upload, Search, FileText, Eye, Download, 
@@ -19,6 +20,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { formatDate } from '@/utils/dateFormatter';
+import { resumeStorageService } from '@/services/storage/resumeStorageService';
 
 type Resume = ResumeData;
 
@@ -206,10 +208,8 @@ const Resumes = () => {
     try {
       console.log('Downloading file:', filePath);
       
-      const { data, error } = await supabase.storage
-        .from('resumes')
-        .download(filePath);
-        
+      const { data, error } = await resumeStorageService.downloadFile(filePath);
+      
       if (error) {
         console.error('Download error:', error);
         throw error;
@@ -219,6 +219,7 @@ const Resumes = () => {
         throw new Error('No data received during download');
       }
       
+      // Create a download link and trigger it
       const url = URL.createObjectURL(data);
       const link = document.createElement('a');
       link.href = url;
