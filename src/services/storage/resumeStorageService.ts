@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -17,10 +18,16 @@ export const resumeStorageService = {
       
       console.log('Uploading file to storage:', filePath);
       
+      // Vérifier que le type de fichier est supporté
+      const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+      if (!validTypes.includes(file.type)) {
+        throw new Error(`Type de fichier non supporté: ${file.type}`);
+      }
+      
       // Convertir le fichier en ArrayBuffer
       const fileBuffer = await file.arrayBuffer();
       
-      // Tentative d'upload direct sans référence aux profils
+      // Tentative d'upload direct
       const { data, error } = await supabase.storage
         .from('resumes')
         .upload(filePath, fileBuffer, {

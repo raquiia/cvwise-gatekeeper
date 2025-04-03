@@ -15,12 +15,10 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
     console.log('Starting upload process for file:', file.name);
     console.log('User ID:', userId);
     
-    // Vérifier que le bucket existe, mais ne pas bloquer en cas d'erreur
-    try {
-      await ensureResumesBucketExists();
-    } catch (bucketError) {
-      console.error('Error checking/creating bucket:', bucketError);
-      // Continuer quand même
+    // Vérifier que le bucket existe - ne pas bloquer l'upload si l'initialisation échoue
+    const bucketExists = await ensureResumesBucketExists();
+    if (!bucketExists) {
+      console.warn('Warning: Could not verify bucket existence, continuing anyway');
     }
     
     // Téléchargement du fichier avec gestion d'erreur améliorée
@@ -40,35 +38,33 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
     
     // Création de l'enregistrement dans la base de données
     try {
-      const resumeId = await resumeDataService.createResumeRecord(
-        userId,
-        fileData.fileName,
-        fileData.filePath,
-        fileData.fileType,
-        fileData.fileSize
-      );
-      
-      if (!resumeId) {
+      // Utiliser directement l'insertion Supabase plutôt que de passer par le service
+      const { data: resumeRecord, error } = await supabase
+        .from('resumes')
+        .insert({
+          user_id: userId,
+          file_name: fileData.fileName,
+          file_path: fileData.filePath,
+          file_type: fileData.fileType,
+          file_size: fileData.fileSize,
+          parsed: false
+        })
+        .select('*')
+        .single();
+        
+      if (error) {
         // Si l'insertion échoue, tenter de supprimer le fichier téléchargé
         try {
           await resumeStorageService.deleteFile(fileData.filePath);
         } catch (deleteError) {
           console.error('Error deleting file after failed DB insert:', deleteError);
         }
-        throw new Error("Échec de la création de l'enregistrement du CV");
+        throw error;
       }
       
-      console.log('Resume record created with ID:', resumeId);
+      console.log('Resume record created:', resumeRecord);
       
-      return {
-        id: resumeId,
-        user_id: userId,
-        file_name: fileData.fileName,
-        file_path: fileData.filePath,
-        file_type: fileData.fileType,
-        file_size: fileData.fileSize,
-        parsed: false
-      };
+      return resumeRecord as ResumeData;
     } catch (dbError: any) {
       console.error('Database error:', dbError);
       // Tenter de supprimer le fichier téléchargé en cas d'erreur

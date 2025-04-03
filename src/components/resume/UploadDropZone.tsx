@@ -39,15 +39,23 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
   };
   
   const validateFiles = (files: File[]): File[] => {
-    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const validTypes = [
+      'application/pdf', 
+      'application/msword', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain' // Ajout pour les tests
+    ];
     const maxSize = 5 * 1024 * 1024; // 5MB
     
     const validFiles = files.filter(file => {
+      // Debug info
+      console.log('Validating file:', file.name, 'Type:', file.type, 'Size:', file.size);
+      
       // Vérifier le type
       if (!validTypes.includes(file.type)) {
         toast({
           title: "Format non supporté",
-          description: `Le fichier "${file.name}" n'est pas au format PDF ou Word`,
+          description: `Le fichier "${file.name}" n'est pas au format supporté. Types acceptés: PDF, Word, TXT`,
           variant: "destructive",
         });
         return false;
@@ -77,13 +85,15 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
     if (uploading) return;
     
     const droppedFiles = Array.from(e.dataTransfer.files);
+    console.log('Files dropped:', droppedFiles.map(f => f.name));
+    
     const validFiles = validateFiles(droppedFiles);
     
     if (validFiles.length === 0) {
       if (droppedFiles.length > 0) {
         toast({
           title: "Aucun fichier valide",
-          description: "Veuillez télécharger des fichiers PDF ou Word (.docx) de moins de 5MB",
+          description: "Veuillez télécharger des fichiers PDF, Word ou TXT de moins de 5MB",
           variant: "destructive",
         });
       }
@@ -96,6 +106,8 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
   // Handle file selection via button with improved validation
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && !uploading) {
+      console.log('Files selected:', Array.from(e.target.files).map(f => f.name));
+      
       const selectedFiles = Array.from(e.target.files);
       const validFiles = validateFiles(selectedFiles);
       
@@ -137,7 +149,7 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
         ref={fileInputRef}
         className="hidden"
         onChange={handleFileSelect}
-        accept=".pdf,.doc,.docx"
+        accept=".pdf,.doc,.docx,.txt"
         multiple
         onClick={(e) => {
           if (uploading) {
@@ -160,7 +172,7 @@ const UploadDropZone: React.FC<UploadDropZoneProps> = ({
       </Button>
       
       <p className="text-xs text-muted-foreground mt-4">
-        Formats acceptés: PDF, DOC, DOCX. Taille maximale: 5MB par fichier.
+        Formats acceptés: PDF, DOC, DOCX, TXT. Taille maximale: 5MB par fichier.
       </p>
     </div>
   );
