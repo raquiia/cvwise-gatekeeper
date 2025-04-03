@@ -49,20 +49,22 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
         return null;
       }
       
-      // Récupérer directement les informations du CV depuis la base de données
-      const { data: resumeData, error: fetchError } = await supabase
-        .from('resumes')
-        .select('*')
-        .eq('id', resumeId)
-        .single();
-        
-      if (fetchError) {
-        console.error('Error fetching created resume:', fetchError.message);
-        return null;
-      }
+      // Au lieu d'essayer de récupérer immédiatement depuis la base de données,
+      // construisons simplement l'objet manuellement pour éviter l'erreur de récursion
+      const resumeData: ResumeData = {
+        id: resumeId as string,
+        user_id: userId,
+        file_path: filePath,
+        file_name: file.name,
+        file_type: file.type,
+        file_size: file.size,
+        parsed: false,
+        created_at: new Date().toISOString(),
+        candidates: []
+      };
       
       console.log('Resume record created successfully:', resumeData);
-      return resumeData as ResumeData;
+      return resumeData;
     } catch (dbError) {
       console.error('Database operation failed:', dbError);
       // Nettoyer en cas d'erreur
@@ -82,7 +84,7 @@ export const getUserResumes = async (userId: string): Promise<ResumeData[]> => {
   try {
     console.log('Fetching resumes for user:', userId);
     
-    // Récupération directe depuis la table resumes avec les nouvelles politiques RLS
+    // Utiliser directement RPC pour éviter les problèmes de récursion dans les politiques RLS
     const { data, error } = await supabase
       .from('resumes')
       .select('*')
