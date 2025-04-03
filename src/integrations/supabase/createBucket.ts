@@ -41,7 +41,7 @@ export const ensureResumesBucketExists = async () => {
           definition: {
             role: 'authenticated',
             action: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
-            conditions: { auth.uid: 'eq.user_id' }
+            conditions: { "auth.uid": 'eq.user_id' } // Fixed: Added quotes around the property name with a dot
           }
         }
       );
