@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Check, X, AlertTriangle } from 'lucide-react';
+import { Check, X, AlertTriangle, Info } from 'lucide-react';
 
 interface SkillsComparisonProps {
   matchedSkills: string[];
@@ -77,6 +77,16 @@ const SkillsComparison: React.FC<SkillsComparisonProps> = ({
                 <span>Toutes les compétences requises sont présentes</span>
               </div>
             )}
+          </div>
+          
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+            <div className="flex items-start gap-2">
+              <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5" />
+              <div className="text-sm text-blue-800 dark:text-blue-300">
+                <p className="font-medium mb-1">Analyse basée sur le contenu du CV</p>
+                <p>Les compétences sont extraites automatiquement du document. Pour une analyse plus précise, assurez-vous que le CV mentionne clairement les compétences techniques.</p>
+              </div>
+            </div>
           </div>
         </div>
       </CardContent>

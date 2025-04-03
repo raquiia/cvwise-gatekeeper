@@ -46,33 +46,9 @@ async function extractTextFromPDF(pdfBytes: Uint8Array): Promise<string> {
     return fullText;
   } catch (error) {
     console.error("Error extracting text from PDF:", error);
-    // Fallback to simulated content if PDF extraction fails
-    return simulateCVText();
+    // Ne plus utiliser la fonction simulateCVText pour les fallbacks
+    return "Erreur lors de l'extraction du texte du document PDF";
   }
-}
-
-// Fallback function to generate simulated CV text
-function simulateCVText(): string {
-  console.log("Using simulated CV text as fallback");
-  return `
-    CV Professionnel
-    
-    COMPÉTENCES TECHNIQUES:
-    JavaScript, React, Node.js, TypeScript, Git
-    
-    EXPÉRIENCE PROFESSIONNELLE:
-    Développeur Full Stack chez TechCorp (2018-2023)
-    - Développement d'applications web React/Node.js
-    - Utilisation de TypeScript et GraphQL
-    - Mise en place de CI/CD avec GitHub Actions
-    
-    FORMATION:
-    Master en Informatique, Université de Paris (2016-2018)
-    
-    CONTACT:
-    email@example.com
-    +33 6 12 34 56 78
-  `;
 }
 
 // Fonction pour extraire les compétences à partir du texte du CV
@@ -96,60 +72,54 @@ function extractSkills(text: string) {
     text.toLowerCase().includes(skill.toLowerCase())
   );
   
-  // Si peu de compétences sont trouvées, ajouter des compétences aléatoires pour l'exemple
-  if (foundSkills.length < 3) {
-    const randomSkills = commonSkills
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 5 - foundSkills.length);
-    
-    return [...new Set([...foundSkills, ...randomSkills])].slice(0, 5);
-  }
-  
-  return foundSkills.slice(0, 5); // Limiter à 5 compétences
+  return foundSkills.slice(0, 5); // Limiter à 5 compétences mais ne pas ajouter de compétences aléatoires
 }
 
 // Fonction pour extraire les informations d'un CV
 async function extractResumeInfo(resumeText: string, fileName: string) {
   console.log("Extracting resume information...");
   
-  // Extraire le nom à partir du nom de fichier (simulation)
-  let firstName = "Jean";
-  let lastName = "Dupont";
-  
   // Essayer d'extraire un nom du fichier (si format "Prénom_Nom.pdf")
+  let firstName = "";
+  let lastName = "";
+  
   const fileNameParts = fileName.split('.')[0].split('_');
   if (fileNameParts.length >= 2) {
     firstName = fileNameParts[0].charAt(0).toUpperCase() + fileNameParts[0].slice(1).toLowerCase();
     lastName = fileNameParts[1].charAt(0).toUpperCase() + fileNameParts[1].slice(1).toLowerCase();
+  } else {
+    // Si le nom de fichier ne suit pas le format attendu, essayer d'extraire du texte
+    const nameRegex = /(?:nom|name|je suis|je m'appelle|cv de)\s+([A-Z][a-z]+)\s+([A-Z][a-zÀ-ÿ-]+)/i;
+    const nameMatch = resumeText.match(nameRegex);
+    if (nameMatch) {
+      firstName = nameMatch[1];
+      lastName = nameMatch[2];
+    } else {
+      // Si aucun nom n'est trouvé, utiliser le nom du fichier comme base
+      firstName = fileName.split('.')[0].replace(/_/g, ' ');
+      lastName = "";
+    }
   }
   
   // Essayer de trouver un email dans le texte
   const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
   const emailMatches = resumeText.match(emailRegex);
-  const email = emailMatches ? emailMatches[0] : `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`;
+  const email = emailMatches ? emailMatches[0] : "";
   
   // Essayer de trouver un numéro de téléphone
-  const phoneRegex = /(\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/g;
+  const phoneRegex = /(\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}|(\+\d{1,3}[\s.-]?)?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}/g;
   const phoneMatches = resumeText.match(phoneRegex);
-  const phone = phoneMatches ? phoneMatches[0] : "+33" + Math.floor(Math.random() * 10000000000).toString().padStart(9, '0');
+  const phone = phoneMatches ? phoneMatches[0] : "";
   
   // Extraire des compétences du texte
   const skills = extractSkills(resumeText);
   
-  // Générer d'autres informations de manière semi-aléatoire mais réaliste
-  const positions = [
-    "Développeur Full Stack", "Développeur Frontend", "Développeur Backend",
-    "Chef de Projet", "Product Owner", "Scrum Master", "DevOps Engineer",
-    "Data Scientist", "UX/UI Designer", "Architecte Logiciel", "Consultant IT"
-  ];
+  // Extraire d'autres informations
+  const position = extractPosition(resumeText) || "";
+  const yearsExperience = estimateYearsExperience(resumeText) || 0;
+  const location = extractLocation(resumeText) || "";
   
-  const locations = [
-    "Paris, France", "Lyon, France", "Marseille, France", "Bordeaux, France",
-    "Lille, France", "Toulouse, France", "Nantes, France", "Strasbourg, France",
-    "Montpellier, France", "Nice, France", "Rennes, France"
-  ];
-  
-  // Generate a more realistic score based on skills and experience
+  // Calculer un score basé sur le contenu
   const score = calculateScore(resumeText, skills);
   
   return {
@@ -157,9 +127,9 @@ async function extractResumeInfo(resumeText: string, fileName: string) {
     last_name: lastName,
     email: email,
     phone: phone,
-    position: extractPosition(resumeText) || positions[Math.floor(Math.random() * positions.length)],
-    years_experience: estimateYearsExperience(resumeText) || Math.floor(Math.random() * 15) + 1,
-    location: extractLocation(resumeText) || locations[Math.floor(Math.random() * locations.length)],
+    position: position,
+    years_experience: yearsExperience,
+    location: location,
     skills: skills,
     score: score,
     status: "qualification"
@@ -319,9 +289,9 @@ serve(async (req) => {
     if (resumeData.file_type === "application/pdf") {
       resumeText = await extractTextFromPDF(fileBytes);
     } else {
-      // For non-PDF files, use a simulated text for now
-      // In a real implementation, we would need different parsers for different file types
-      resumeText = simulateCVText();
+      // Pour les fichiers non-PDF, essayer de les traiter comme du texte
+      const decoder = new TextDecoder('utf-8');
+      resumeText = decoder.decode(fileBytes);
     }
     
     console.log(`Extracted ${resumeText.length} characters of text from the resume`);
