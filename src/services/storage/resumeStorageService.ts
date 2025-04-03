@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
@@ -6,13 +5,6 @@ import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket'
 export const resumeStorageService = {
   uploadFile: async (file: File, userId: string): Promise<string | null> => {
     try {
-      // Ensure bucket exists
-      const bucketExists = await ensureResumesBucketExists();
-      if (!bucketExists) {
-        console.error('Failed to ensure resumes bucket exists');
-        return null;
-      }
-      
       // Generate unique filename
       const fileExt = file.name.split('.').pop() || 'pdf';
       const fileName = `${uuidv4()}.${fileExt}`;

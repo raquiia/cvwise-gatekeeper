@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { resumeStorageService } from './storage/resumeStorageService';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,14 +14,13 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
   try {
     console.log(`Starting upload for ${file.name} (${file.size} bytes)`);
     
-    // Ensure bucket exists first
+    // Ensure bucket exists first, but don't stop the flow if it already exists
     const bucketExists = await ensureResumesBucketExists();
-    if (!bucketExists) {
-      console.error('Failed to ensure bucket exists');
-      return null;
-    }
     
-    // Upload the file to storage first
+    // Even if bucket creation reported an error, try to upload anyway
+    // as it might be just that the bucket already exists
+    
+    // Upload the file to storage
     const filePath = await resumeStorageService.uploadFile(file, userId);
     if (!filePath) {
       console.error('File upload failed');

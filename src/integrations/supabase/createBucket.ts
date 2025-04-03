@@ -24,6 +24,12 @@ export const ensureResumesBucketExists = async (): Promise<boolean> => {
     });
     
     if (error) {
+      // If the error is because the bucket already exists, that's actually a success case
+      if (error.message.includes('already exists')) {
+        console.log('Bucket already exists, continuing...');
+        return true;
+      }
+      
       console.error('Error creating resumes bucket:', error.message);
       return false;
     }
