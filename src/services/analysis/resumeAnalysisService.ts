@@ -2,16 +2,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { calculateOverallMatch, MatchResult } from './matchingUtils';
 import { toast } from '@/hooks/use-toast';
-import React from 'react';
-
-/**
- * Toast personnalisé pour afficher le texte brut d'un CV
- */
-const RawTextToast = ({ text }: { text: string }) => (
-  <div className="max-h-[300px] overflow-y-auto mt-2 p-2 border rounded bg-gray-50">
-    <pre className="whitespace-pre-wrap text-xs">{text}</pre>
-  </div>
-);
 
 /**
  * Service responsable de l'analyse des CV
@@ -53,15 +43,64 @@ export const resumeAnalysisService = {
       
       // Afficher le texte brut extrait dans une popup temporaire
       if (data.rawText) {
+        // Créer un élément temporaire pour afficher le texte brut
+        const textDisplay = document.createElement('div');
+        textDisplay.className = 'max-h-[300px] overflow-y-auto mt-2 p-2 border rounded bg-gray-50';
+        
+        const preElement = document.createElement('pre');
+        preElement.className = 'whitespace-pre-wrap text-xs';
+        preElement.textContent = data.rawText;
+        
+        textDisplay.appendChild(preElement);
+        
         toast({
           title: "Texte brut extrait du CV",
-          description: (
-            <div className="max-h-[300px] overflow-y-auto mt-2 p-2 border rounded bg-gray-50">
-              <pre className="whitespace-pre-wrap text-xs">{data.rawText}</pre>
-            </div>
-          ),
+          description: "Visualisation du texte brut extrait du CV",
           duration: 30000, // 30 secondes d'affichage
         });
+        
+        // Utiliser une approche alternative pour afficher le texte brut
+        // Créer une modal ou dialogue temporaire
+        const dialogContainer = document.createElement('div');
+        dialogContainer.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        dialogContainer.style.zIndex = '9999';
+        
+        const dialogContent = document.createElement('div');
+        dialogContent.className = 'bg-white rounded-lg p-6 max-w-3xl max-h-[80vh] overflow-hidden flex flex-col';
+        
+        const dialogHeader = document.createElement('div');
+        dialogHeader.className = 'flex justify-between items-center mb-4';
+        
+        const dialogTitle = document.createElement('h3');
+        dialogTitle.className = 'text-lg font-semibold';
+        dialogTitle.textContent = 'Texte brut extrait du CV';
+        
+        const closeButton = document.createElement('button');
+        closeButton.className = 'text-gray-500 hover:text-gray-700';
+        closeButton.textContent = '×';
+        closeButton.style.fontSize = '24px';
+        closeButton.onclick = () => document.body.removeChild(dialogContainer);
+        
+        dialogHeader.appendChild(dialogTitle);
+        dialogHeader.appendChild(closeButton);
+        
+        const dialogBody = document.createElement('div');
+        dialogBody.className = 'overflow-y-auto flex-grow';
+        dialogBody.appendChild(textDisplay);
+        
+        dialogContent.appendChild(dialogHeader);
+        dialogContent.appendChild(dialogBody);
+        dialogContainer.appendChild(dialogContent);
+        
+        // Ajouter à la page (sera supprimé automatiquement après)
+        document.body.appendChild(dialogContainer);
+        
+        // Définir un timeout pour supprimer automatiquement après 30 secondes
+        setTimeout(() => {
+          if (document.body.contains(dialogContainer)) {
+            document.body.removeChild(dialogContainer);
+          }
+        }, 30000);
       }
       
       if (data.success) {
