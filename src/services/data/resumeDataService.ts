@@ -27,33 +27,86 @@ export interface CandidateData {
   position?: string;
   years_experience?: number;
   location?: string;
-  skills?: any[];
+  skills?: string[];
   score?: number;
   status?: string;
   company?: string;
   created_at?: string;
   updated_at?: string;
-  experiences?: any[];
-  education?: any[];
-  certifications?: any[];
-  languages?: any[];
-  publications?: any[];
+  
+  // Additional candidate fields for detailed view
+  experiences?: {
+    title?: string;
+    company?: string;
+    dates?: string;
+    description?: string;
+  }[];
+  
+  education?: {
+    degree?: string;
+    institution?: string;
+    year?: string;
+    description?: string;
+  }[];
+  
+  certifications?: {
+    name?: string;
+    issuer?: string;
+    date?: string;
+  }[];
+  
+  languages?: {
+    language?: string;
+    level?: string;
+  }[];
+  
+  publications?: {
+    title?: string;
+    publisher?: string;
+    year?: string;
+  }[];
+  
   interests?: string;
-  professional_references?: any[];
+  
+  professional_references?: {
+    name?: string;
+    position?: string;
+    company?: string;
+    contact?: string;
+  }[];
+  
   availability?: string;
   salary_expectations?: string;
   mobility?: string;
   contract_type?: string;
   remote_preference?: string;
   travel_willingness?: string;
-  professional_networks?: any[];
-  continuous_training?: any[];
+  
+  professional_networks?: {
+    platform?: string;
+    url?: string;
+  }[];
+  
+  continuous_training?: {
+    course?: string;
+    provider?: string;
+    year?: string;
+  }[];
+  
   career_objectives?: string;
   professional_values?: string;
   work_authorization?: string;
-  special_permits?: any[];
-  industries?: any[];
-  projects?: any[];
+  
+  special_permits?: string[];
+  industries?: string[];
+  projects?: {
+    name?: string;
+    description?: string;
+    technologies?: string[];
+    role?: string;
+    year?: string;
+  }[];
+  
   profile_completeness?: number;
   last_updated_at?: string;
 }

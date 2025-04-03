@@ -9,7 +9,10 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     console.log(`Triggering analysis for resume ID: ${resumeId}`);
     
     const { data, error } = await supabase.functions.invoke('analyze-resume', {
-      body: { resumeId }
+      body: { 
+        resumeId,
+        extractDetails: true  // Signal to extract detailed information
+      }
     });
     
     if (error) {

@@ -1,27 +1,7 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from './resumeDataService';
 import { Json } from '@/integrations/supabase/types';
-
-/**
- * Helper function to ensure skills are properly parsed as arrays
- */
-const processSkills = (data: any): any => {
-  if (!data) return data;
-  
-  if (Array.isArray(data)) {
-    return data.map(item => ({
-      ...item,
-      skills: Array.isArray(item.skills) ? item.skills : 
-              (typeof item.skills === 'string' ? JSON.parse(item.skills) : [])
-    }));
-  }
-  
-  return {
-    ...data,
-    skills: Array.isArray(data.skills) ? data.skills : 
-            (typeof data.skills === 'string' ? JSON.parse(data.skills) : [])
-  };
-};
 
 /**
  * Helper function to safely parse JSON data
@@ -38,6 +18,10 @@ const safelyParseJsonField = (field: Json | null): any[] => {
     } catch (e) {
       return [];
     }
+  }
+  
+  if (typeof field === 'object') {
+    return Object.values(field);
   }
   
   return [];
@@ -68,7 +52,7 @@ export const candidateDataService = {
       
       // Transform the returned data to match our expected format
       if (data && data[0]) {
-        return processSkills(data[0]) as CandidateData;
+        return transformCandidateData(data[0]);
       }
       
       return null;
@@ -102,49 +86,8 @@ export const candidateDataService = {
         return [];
       }
       
-      // Transformer les données pour correspondre à notre format
-      const transformedData = data.map((candidate: any) => {
-        // Create a new object without modifying the original candidate object
-        return {
-          id: candidate.id,
-          user_id: candidate.user_id,
-          resume_id: candidate.resume_id,
-          first_name: candidate.first_name,
-          last_name: candidate.last_name,
-          email: candidate.email,
-          phone: candidate.phone,
-          position: candidate.position,
-          years_experience: candidate.years_experience,
-          location: candidate.location,
-          // Safely parse all JSON fields
-          skills: safelyParseJsonField(candidate.skills),
-          experiences: safelyParseJsonField(candidate.experiences),
-          education: safelyParseJsonField(candidate.education),
-          certifications: safelyParseJsonField(candidate.certifications),
-          languages: safelyParseJsonField(candidate.languages),
-          projects: safelyParseJsonField(candidate.projects),
-          industries: safelyParseJsonField(candidate.industries),
-          // Other fields
-          score: candidate.score,
-          status: candidate.status,
-          company: candidate.company || '',
-          created_at: candidate.created_at,
-          updated_at: candidate.updated_at,
-          interests: candidate.interests,
-          availability: candidate.availability,
-          salary_expectations: candidate.salary_expectations,
-          mobility: candidate.mobility,
-          contract_type: candidate.contract_type,
-          remote_preference: candidate.remote_preference,
-          travel_willingness: candidate.travel_willingness,
-          career_objectives: candidate.career_objectives,
-          professional_values: candidate.professional_values,
-          work_authorization: candidate.work_authorization,
-          profile_completeness: candidate.profile_completeness
-        };
-      });
-      
-      return transformedData as CandidateData[];
+      // Transform each candidate data
+      return data.map(candidate => transformCandidateData(candidate));
     } catch (error) {
       console.error('Error fetching candidates:', error);
       return [];
@@ -174,50 +117,59 @@ export const candidateDataService = {
         return null;
       }
       
-      // Transformer les données pour correspondre à notre format
-      const candidate = data[0] as any;
-      const transformedData = {
-        id: candidate.id,
-        user_id: candidate.user_id,
-        resume_id: candidate.resume_id,
-        first_name: candidate.first_name,
-        last_name: candidate.last_name,
-        email: candidate.email,
-        phone: candidate.phone,
-        position: candidate.position,
-        years_experience: candidate.years_experience,
-        location: candidate.location,
-        // Safely parse all JSON fields
-        skills: safelyParseJsonField(candidate.skills),
-        experiences: safelyParseJsonField(candidate.experiences),
-        education: safelyParseJsonField(candidate.education),
-        certifications: safelyParseJsonField(candidate.certifications),
-        languages: safelyParseJsonField(candidate.languages),
-        projects: safelyParseJsonField(candidate.projects),
-        industries: safelyParseJsonField(candidate.industries),
-        // Other fields
-        score: candidate.score,
-        status: candidate.status,
-        company: candidate.company || '',
-        created_at: candidate.created_at,
-        updated_at: candidate.updated_at,
-        interests: candidate.interests,
-        availability: candidate.availability,
-        salary_expectations: candidate.salary_expectations,
-        mobility: candidate.mobility,
-        contract_type: candidate.contract_type,
-        remote_preference: candidate.remote_preference,
-        travel_willingness: candidate.travel_willingness,
-        career_objectives: candidate.career_objectives,
-        professional_values: candidate.professional_values,
-        work_authorization: candidate.work_authorization,
-        profile_completeness: candidate.profile_completeness
-      };
-      
-      return transformedData as CandidateData;
+      // Transform the candidate data
+      return transformCandidateData(data[0]);
     } catch (error) {
       console.error('Error fetching candidate:', error);
       return null;
     }
   }
 };
+
+/**
+ * Transform raw candidate data from the database to the CandidateData format
+ */
+function transformCandidateData(candidate: any): CandidateData {
+  if (!candidate) return {} as CandidateData;
+  
+  return {
+    id: candidate.id,
+    user_id: candidate.user_id,
+    resume_id: candidate.resume_id,
+    first_name: candidate.first_name,
+    last_name: candidate.last_name,
+    email: candidate.email,
+    phone: candidate.phone,
+    position: candidate.position || candidate.job_position, // Handle both field names
+    years_experience: candidate.years_experience,
+    location: candidate.location,
+    skills: safelyParseJsonField(candidate.skills),
+    experiences: safelyParseJsonField(candidate.experiences),
+    education: safelyParseJsonField(candidate.education),
+    certifications: safelyParseJsonField(candidate.certifications),
+    languages: safelyParseJsonField(candidate.languages),
+    projects: safelyParseJsonField(candidate.projects),
+    industries: safelyParseJsonField(candidate.industries),
+    score: candidate.score,
+    status: candidate.status,
+    company: candidate.company || '',
+    created_at: candidate.created_at,
+    updated_at: candidate.updated_at,
+    interests: candidate.interests,
+    availability: candidate.availability,
+    salary_expectations: candidate.salary_expectations,
+    mobility: candidate.mobility,
+    contract_type: candidate.contract_type,
+    remote_preference: candidate.remote_preference,
+    travel_willingness: candidate.travel_willingness,
+    career_objectives: candidate.career_objectives,
+    professional_values: candidate.professional_values,
+    work_authorization: candidate.work_authorization,
+    profile_completeness: candidate.profile_completeness,
+    professional_references: safelyParseJsonField(candidate.professional_references),
+    professional_networks: safelyParseJsonField(candidate.professional_networks),
+    continuous_training: safelyParseJsonField(candidate.continuous_training),
+    publications: safelyParseJsonField(candidate.publications),
+    special_permits: safelyParseJsonField(candidate.special_permits)
+  };
+}

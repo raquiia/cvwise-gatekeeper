@@ -14,7 +14,6 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, ArrowLeft, Briefcase } from 'lucide-react';
 import JobMatchingView from '@/components/resume/JobMatchingView';
-import { Json } from '@/integrations/supabase/types';
 
 interface JobPosition {
   id: string;
@@ -66,7 +65,8 @@ const CandidateJobMatch = () => {
         const typedJobs: JobPosition[] = (jobs || []).map((job: any) => ({
           ...job,
           skills: Array.isArray(job.skills) ? job.skills : 
-                 (typeof job.skills === 'string' ? JSON.parse(job.skills) : [])
+                 (typeof job.skills === 'object' && job.skills !== null ? Object.values(job.skills) :
+                 (typeof job.skills === 'string' ? JSON.parse(job.skills) : []))
         }));
         
         setJobPositions(typedJobs);
