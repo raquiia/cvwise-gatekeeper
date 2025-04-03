@@ -30,9 +30,9 @@ export interface CandidateData {
   skills?: any[];
   score?: number;
   status?: string;
-  company?: string; // Add missing 'company' property
+  company?: string;
   created_at?: string;
-  updated_at?: string; // Add missing 'updated_at' property
+  updated_at?: string;
   experiences?: any[];
   education?: any[];
   certifications?: any[];

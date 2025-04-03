@@ -82,13 +82,27 @@ export const candidateDataService = {
         return [];
       }
       
-      // Transformer les données pour correspondre à notre format (notamment position au lieu de job_position)
+      // Transformer les données pour correspondre à notre format
       const transformedData = data.map(candidate => ({
         ...candidate,
-        position: candidate.job_position, // Remapper job_position vers position
+        // S'assurer que les tableaux JSONB sont correctement parsés
+        skills: Array.isArray(candidate.skills) ? candidate.skills : 
+                (typeof candidate.skills === 'string' ? JSON.parse(candidate.skills) : []),
+        experiences: Array.isArray(candidate.experiences) ? candidate.experiences : 
+                     (typeof candidate.experiences === 'string' ? JSON.parse(candidate.experiences) : []),
+        education: Array.isArray(candidate.education) ? candidate.education : 
+                   (typeof candidate.education === 'string' ? JSON.parse(candidate.education) : []),
+        certifications: Array.isArray(candidate.certifications) ? candidate.certifications :
+                        (typeof candidate.certifications === 'string' ? JSON.parse(candidate.certifications) : []),
+        languages: Array.isArray(candidate.languages) ? candidate.languages :
+                   (typeof candidate.languages === 'string' ? JSON.parse(candidate.languages) : []),
+        projects: Array.isArray(candidate.projects) ? candidate.projects :
+                  (typeof candidate.projects === 'string' ? JSON.parse(candidate.projects) : []),
+        industries: Array.isArray(candidate.industries) ? candidate.industries :
+                    (typeof candidate.industries === 'string' ? JSON.parse(candidate.industries) : [])
       }));
       
-      return processSkills(transformedData) as CandidateData[];
+      return transformedData as CandidateData[];
     } catch (error) {
       console.error('Error fetching candidates:', error);
       return [];
@@ -118,8 +132,28 @@ export const candidateDataService = {
         return null;
       }
       
-      // Return the first result (should only be one)
-      return processSkills(data[0]) as CandidateData;
+      // Transformer les données pour correspondre à notre format
+      const candidate = data[0];
+      const transformedData = {
+        ...candidate,
+        // S'assurer que les tableaux JSONB sont correctement parsés
+        skills: Array.isArray(candidate.skills) ? candidate.skills : 
+                (typeof candidate.skills === 'string' ? JSON.parse(candidate.skills) : []),
+        experiences: Array.isArray(candidate.experiences) ? candidate.experiences : 
+                     (typeof candidate.experiences === 'string' ? JSON.parse(candidate.experiences) : []),
+        education: Array.isArray(candidate.education) ? candidate.education : 
+                   (typeof candidate.education === 'string' ? JSON.parse(candidate.education) : []),
+        certifications: Array.isArray(candidate.certifications) ? candidate.certifications :
+                        (typeof candidate.certifications === 'string' ? JSON.parse(candidate.certifications) : []),
+        languages: Array.isArray(candidate.languages) ? candidate.languages :
+                   (typeof candidate.languages === 'string' ? JSON.parse(candidate.languages) : []),
+        projects: Array.isArray(candidate.projects) ? candidate.projects :
+                  (typeof candidate.projects === 'string' ? JSON.parse(candidate.projects) : []),
+        industries: Array.isArray(candidate.industries) ? candidate.industries :
+                    (typeof candidate.industries === 'string' ? JSON.parse(candidate.industries) : [])
+      };
+      
+      return transformedData as CandidateData;
     } catch (error) {
       console.error('Error fetching candidate:', error);
       return null;
