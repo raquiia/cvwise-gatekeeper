@@ -22,7 +22,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, AlertTriangle } from "lucide-react";
+import { supabase } from '@/integrations/supabase/client';
 
 // Données fictives pour démonstration
 const demoUsersData = [
@@ -112,7 +113,38 @@ const AllUsers = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [filteredUsers, setFilteredUsers] = useState(demoUsersData);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Tentative de récupération des utilisateurs réels (échouera sans privilèges admin)
+  useEffect(() => {
+    const fetchRealUsers = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        // Cette fonction nécessite des privilèges administratifs
+        const { data, error } = await supabase.auth.admin.listUsers();
+        
+        if (error) throw error;
+        
+        // Si nous arrivons ici, c'est que nous avons réussi (peu probable sans privilèges admin)
+        console.log("Utilisateurs réels récupérés:", data);
+        toast({
+          title: "Succès",
+          description: "Utilisateurs récupérés avec succès. Vous avez des privilèges administratifs.",
+        });
+      } catch (err: any) {
+        console.error("Erreur lors de la récupération des utilisateurs:", err);
+        setError(err.message || "Impossible de récupérer les utilisateurs. Accès administrateur requis.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Tentative de récupération (échouera sans privilèges admin)
+    fetchRealUsers();
+  }, [toast]);
 
   // Filtrer les utilisateurs en fonction de la recherche et du rôle sélectionné
   useEffect(() => {
@@ -202,6 +234,17 @@ const AllUsers = () => {
             </div>
           </div>
         </div>
+        
+        {/* Error Alert - Displayed if there was an error getting real users */}
+        {error && (
+          <Alert className="mb-6 bg-amber-50 border-amber-200">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTitle className="text-amber-700">Accès limité</AlertTitle>
+            <AlertDescription className="text-amber-600">
+              {error} Nous affichons des données de démonstration à la place.
+            </AlertDescription>
+          </Alert>
+        )}
         
         {/* Info Alert */}
         <Alert className="mb-6 bg-blue-50 border-blue-200">
