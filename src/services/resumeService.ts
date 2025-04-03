@@ -113,18 +113,20 @@ export const getUserResumes = async (userId: string): Promise<ResumeData[]> => {
  */
 export const deleteResume = async (resumeId: string, filePath: string): Promise<boolean> => {
   try {
-    // Delete the database record first
-    const { error } = await supabase
-      .from('resumes')
-      .delete()
-      .eq('id', resumeId);
-      
+    console.log('Deleting resume record and file:', { resumeId, filePath });
+    
+    // Utiliser une procédure RPC sécurisée au lieu d'une requête directe
+    // pour éviter les problèmes de récursion dans les politiques RLS
+    const { error } = await supabase.rpc('delete_resume_by_id', {
+      resume_id_param: resumeId
+    });
+    
     if (error) {
       console.error('Error deleting resume record:', error.message);
       return false;
     }
     
-    // Then delete the file
+    // Puis supprimer le fichier
     await resumeStorageService.deleteFile(filePath);
     return true;
   } catch (error) {
