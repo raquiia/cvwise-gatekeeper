@@ -334,14 +334,22 @@ serve(async (req) => {
       .single();
     
     if (candidateError) {
+      console.error("Error creating/updating candidate:", candidateError);
       throw new Error(candidateError.message);
     }
     
+    console.log("Candidate created/updated successfully:", candidateData);
+    
     // Marquer le CV comme analysé
-    await supabase
+    const { error: updateError } = await supabase
       .from("resumes")
       .update({ parsed: true })
       .eq("id", resumeId);
+      
+    if (updateError) {
+      console.error("Error updating resume parsed status:", updateError);
+      // On ne fait pas échouer l'opération complète si cette mise à jour échoue
+    }
     
     console.log("Resume analysis completed successfully");
     

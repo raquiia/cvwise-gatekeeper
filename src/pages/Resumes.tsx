@@ -9,7 +9,7 @@ import Layout from '@/components/Layout';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { getUserResumes, deleteResume, ResumeData, uploadResume, downloadResume } from '@/services/resumeService';
+import { getUserResumes, deleteResume, ResumeData, uploadResume, downloadResume, analyzeResume } from '@/services/resumeService';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
 import { 
@@ -197,21 +197,17 @@ const Resumes = () => {
         description: "L'analyse du CV a démarré...",
       });
       
-      const { data, error } = await supabase.functions.invoke('analyze-resume', {
-        body: { resumeId }
-      });
+      const result = await analyzeResume(resumeId);
       
-      if (error) throw error;
-      
-      if (data.success) {
+      if (result.success) {
         toast({
           title: "Analyse terminée",
-          description: "Le CV a été analysé avec succès",
+          description: "Le CV a été analysé et le candidat a été créé avec succès",
         });
         
         await loadResumes();
       } else {
-        throw new Error(data.message);
+        throw new Error(result.message);
       }
     } catch (error: any) {
       console.error('Error analyzing resume:', error);
@@ -239,13 +235,9 @@ const Resumes = () => {
       
       for (const resumeId of selectedResumes) {
         try {
-          const { data, error } = await supabase.functions.invoke('analyze-resume', {
-            body: { resumeId }
-          });
+          const result = await analyzeResume(resumeId);
           
-          if (error) throw error;
-          
-          if (data.success) {
+          if (result.success) {
             successCount++;
           }
         } catch (error) {
