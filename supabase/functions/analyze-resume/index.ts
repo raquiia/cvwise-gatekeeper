@@ -18,64 +18,130 @@ function handleCors(req: Request) {
   return null;
 }
 
-// Function to extract text from a PDF file - improved version
+// Fonction améliorée pour extraire du texte à partir d'un PDF
 async function extractTextFromPDF(pdfBytes: Uint8Array): Promise<string> {
   try {
-    console.log("PDF extraction: Using improved extraction method");
+    console.log("Démarrage de l'extraction de texte améliorée");
     
-    // On va essayer d'extraire le texte de manière plus intelligente
+    // Decoder le PDF brut
     const decoder = new TextDecoder("utf-8");
     let rawText = decoder.decode(pdfBytes);
     
-    // Filtrer les parties qui contiennent du texte lisible
-    // Rechercher des séquences de caractères alphanumériques
-    let extractedText = "";
+    // Filtrer uniquement le contenu textuel significatif
+    const textChunks: string[] = [];
     
-    // Extraction de segments de texte potentiellement utiles
-    const textSegments = rawText.match(/[a-zA-Z0-9àáâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ,.;:'\- ]{4,}/g);
+    // Rechercher des blocs de texte significatifs avec des expressions régulières
+    // Capturer des mots et phrases probables
+    const textMatches = rawText.match(/[a-zA-Z0-9àáâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ\s.,;:'\-\(\)@\/]{5,}/g);
     
-    if (textSegments && textSegments.length > 0) {
-      // Filtre pour enlever les segments qui sont probablement juste des métadonnées ou du bruit
-      const filteredSegments = textSegments.filter(segment => {
-        // Ignorer les segments qui contiennent beaucoup de caractères spéciaux
-        const specialCharsRatio = (segment.match(/[^a-zA-Z0-9àáâäãåèéêëìíîïłńòóôöõùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ,.:;'\- ]/g) || []).length / segment.length;
-        return specialCharsRatio < 0.3 && segment.length > 5;
-      });
+    if (textMatches) {
+      // Filtrer et nettoyer les correspondances
+      const cleanedMatches = textMatches
+        .filter(match => {
+          // Éliminer les chaînes avec trop de caractères spéciaux ou non pertinents
+          const specialCharRatio = (match.match(/[^a-zA-Z0-9àáâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ\s.,;:'\-\(\)@\/]/g) || []).length / match.length;
+          const worthKeeping = specialCharRatio < 0.15 && match.length > 5;
+          
+          // Vérifier si le texte contient du contenu significatif (au moins quelques lettres)
+          const containsLetters = /[a-zA-Z]{3,}/.test(match);
+          
+          return worthKeeping && containsLetters;
+        })
+        .map(match => match.trim())
+        .filter(match => match.length > 0);
       
-      // Jointure des segments en un texte unique avec espacement
-      extractedText = filteredSegments.join("\n");
+      textChunks.push(...cleanedMatches);
     }
     
-    // S'il n'y a pas assez de texte extrait, utiliser une approche plus simple
-    if (extractedText.length < 100) {
-      // Rechercher des patterns courants dans les CV
-      const namePattern = /([A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+\s+[A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+)/g;
-      const emailPattern = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
-      const phonePattern = /(\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}|(\+\d{1,3}[\s.-]?)?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}/g;
-      
-      const names = rawText.match(namePattern);
-      const emails = rawText.match(emailPattern);
-      const phones = rawText.match(phonePattern);
-      
-      if (names || emails || phones) {
-        extractedText += "\nInformations extraites du CV:\n";
-        if (names) extractedText += "Noms potentiels: " + names.join(", ") + "\n";
-        if (emails) extractedText += "Emails: " + emails.join(", ") + "\n";
-        if (phones) extractedText += "Téléphones: " + phones.join(", ") + "\n";
+    // Recherche spécifique pour les informations cruciales comme emails, numéros de téléphone, etc.
+    const emailPattern = /([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/g;
+    const phonePattern = /(\+?\d{1,4}[\s\-.]?)?(\(?\d{2,4}\)?[\s\-.]?){2,}(\d{2,4})/g;
+    const namePattern = /([A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+\s+[A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+)/g;
+    
+    // Extraire les emails
+    const emailMatches = rawText.match(emailPattern);
+    if (emailMatches) {
+      textChunks.push("Emails trouvés:");
+      textChunks.push(...emailMatches);
+    }
+    
+    // Extraire les numéros de téléphone
+    const phoneMatches = rawText.match(phonePattern);
+    if (phoneMatches) {
+      textChunks.push("Numéros de téléphone trouvés:");
+      textChunks.push(...phoneMatches.filter(phone => phone.length > 6));
+    }
+    
+    // Extraire les noms possibles
+    const nameMatches = rawText.match(namePattern);
+    if (nameMatches) {
+      textChunks.push("Noms possibles trouvés:");
+      textChunks.push(...nameMatches);
+    }
+    
+    // Essayer d'extraire des mots-clés spécifiques aux CV
+    const keySkills = [
+      "JavaScript", "React", "Vue", "Angular", "TypeScript", "Node.js", 
+      "Python", "Java", "C#", "C++", "PHP", "Ruby", "Go", "Rust",
+      "HTML", "CSS", "SASS", "LESS", "Bootstrap", "Tailwind",
+      "SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch",
+      "Git", "Docker", "Kubernetes", "AWS", "Azure", "GCP",
+      "DevOps", "CI/CD", "Jenkins", "GitHub Actions", "CircleCI",
+      "Agile", "Scrum", "Kanban", "Project Management", "Jira", "Confluence",
+      "Machine Learning", "AI", "Data Science", "Data Analysis", "BigData"
+    ];
+    
+    const foundSkills: string[] = [];
+    keySkills.forEach(skill => {
+      if (rawText.toLowerCase().includes(skill.toLowerCase())) {
+        foundSkills.push(skill);
       }
+    });
+    
+    if (foundSkills.length > 0) {
+      textChunks.push("Compétences détectées:");
+      textChunks.push(foundSkills.join(", "));
     }
     
-    console.log(`Extraction améliorée: ${extractedText.length} caractères extraits`);
+    // Extraire les sections principales d'un CV
+    const cvSections = [
+      "expérience", "experience", "education", "formation", "compétences", 
+      "skills", "projets", "projects", "langues", "languages", 
+      "certifications", "références", "references", "profile", "profil"
+    ];
     
-    // Si on n'a toujours pas assez de texte, utiliser un message d'erreur explicite
+    cvSections.forEach(section => {
+      const sectionRegex = new RegExp(`(${section}[s]?\\s*:?[\\s\\n]*)([^\\n\\r]*(?:[\\n\\r][^\\n\\r]+){0,5})`, "gi");
+      const sectionMatches = rawText.matchAll(sectionRegex);
+      
+      for (const match of sectionMatches) {
+        if (match[2] && match[2].length > 10) {
+          textChunks.push(`Section "${section}" trouvée:`);
+          textChunks.push(match[2].trim());
+        }
+      }
+    });
+    
+    // Fusion des résultats et formatage
+    let extractedText = textChunks.join("\n\n");
+    
+    // Nettoyer les caractères non désirables et les doublons
+    extractedText = extractedText
+      .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, "") // Supprimer les caractères de contrôle
+      .replace(/\s+/g, " ") // Normaliser les espaces
+      .replace(/(\n\n)\s*\n+/g, "\n\n"); // Supprimer les lignes vides multiples
+    
+    console.log(`Extraction améliorée terminée: ${extractedText.length} caractères extraits`);
+    
+    // Si toujours pas assez de contenu extrait, indiquer l'échec
     if (extractedText.length < 50) {
-      return "L'extraction du texte a échoué. Le PDF semble être protégé, scanné ou ne contient pas de texte sélectionnable. Essayez avec un autre document.";
+      return "L'extraction du texte a échoué. Le PDF semble être protégé, scanné ou d'un format complexe. Pour de meilleurs résultats, essayez avec un PDF contenant du texte sélectionnable.";
     }
     
     return extractedText;
   } catch (error) {
-    console.error("Error extracting text from PDF:", error);
-    return "Erreur lors de l'extraction du texte du document PDF. Message: " + error.message;
+    console.error("Erreur lors de l'extraction du texte:", error);
+    return `Erreur lors de l'extraction: ${error.message || "Erreur inconnue"}`;
   }
 }
 
@@ -430,8 +496,8 @@ function extractProjects(text: string) {
 
 // Fonction pour extraire les informations d'un CV
 async function extractResumeInfo(resumeText: string, fileName: string) {
-  console.log("Extracting resume information from text of length:", resumeText.length);
-  console.log("First 100 characters of text:", resumeText.substring(0, 100));
+  console.log("Extraction des informations du CV à partir du texte de longueur:", resumeText.length);
+  console.log("100 premiers caractères du texte:", resumeText.substring(0, 100));
   
   // Essayer d'extraire un nom du fichier (si format "Prénom_Nom.pdf")
   let firstName = "";

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { calculateOverallMatch, MatchResult } from './matchingUtils';
 import { toast } from '@/hooks/use-toast';
@@ -45,23 +46,23 @@ export const resumeAnalysisService = {
         // Affichage dans la console pour le débogage
         console.log("Texte brut extrait:", data.rawText);
         
-        // Créer une modal ou dialogue temporaire
+        // Créer une modal ou dialogue temporaire avec une meilleure mise en forme
         const dialogContainer = document.createElement('div');
         dialogContainer.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
         dialogContainer.style.zIndex = '9999';
         
         const dialogContent = document.createElement('div');
-        dialogContent.className = 'bg-white rounded-lg p-6 max-w-3xl max-h-[80vh] overflow-hidden flex flex-col';
+        dialogContent.className = 'bg-white dark:bg-gray-800 rounded-lg p-6 max-w-3xl max-h-[80vh] overflow-hidden flex flex-col';
         
         const dialogHeader = document.createElement('div');
         dialogHeader.className = 'flex justify-between items-center mb-4';
         
         const dialogTitle = document.createElement('h3');
-        dialogTitle.className = 'text-lg font-semibold';
+        dialogTitle.className = 'text-lg font-semibold dark:text-white';
         dialogTitle.textContent = 'Texte extrait du CV';
         
         const closeButton = document.createElement('button');
-        closeButton.className = 'text-gray-500 hover:text-gray-700';
+        closeButton.className = 'text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100';
         closeButton.textContent = '×';
         closeButton.style.fontSize = '24px';
         closeButton.onclick = () => document.body.removeChild(dialogContainer);
@@ -72,19 +73,30 @@ export const resumeAnalysisService = {
         const dialogBody = document.createElement('div');
         dialogBody.className = 'overflow-y-auto flex-grow';
         
-        // Créer un conteneur pour le texte brut
+        // Créer un conteneur pour le texte brut avec une meilleure mise en forme
         const textDisplay = document.createElement('div');
-        textDisplay.className = 'max-h-[60vh] overflow-y-auto mt-2 p-4 border rounded bg-gray-50';
+        textDisplay.className = 'max-h-[60vh] overflow-y-auto mt-2 p-4 border rounded bg-gray-50 dark:bg-gray-700 dark:text-gray-200';
         
         // Formater le texte pour une meilleure lisibilité
-        const formattedText = data.rawText.replace(/\n/g, '<br>');
-        textDisplay.innerHTML = `<div class="whitespace-pre-wrap text-sm font-mono">${formattedText}</div>`;
+        // Convertir les sauts de ligne en éléments HTML
+        const paragraphs = data.rawText.split(/\n\s*\n/);
+        const formattedHtml = paragraphs.map(para => {
+          if (para.trim() === '') return '';
+          // Déterminer si c'est un titre de section
+          if (para.includes('trouvés:') || para.includes('trouvée:') || para.includes('détectées:')) {
+            return `<h4 class="font-bold text-blue-600 dark:text-blue-400 mt-3 mb-1">${para}</h4>`;
+          }
+          // Sinon, c'est un paragraphe normal
+          return `<p class="mb-2">${para.replace(/\n/g, '<br>')}</p>`;
+        }).join('');
+        
+        textDisplay.innerHTML = `<div class="whitespace-pre-wrap text-sm font-mono">${formattedHtml}</div>`;
         
         dialogBody.appendChild(textDisplay);
         
         // Ajouter un bouton pour copier le texte
         const copyButton = document.createElement('button');
-        copyButton.className = 'mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600';
+        copyButton.className = 'mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700';
         copyButton.textContent = 'Copier le texte';
         copyButton.onclick = () => {
           navigator.clipboard.writeText(data.rawText)
@@ -97,6 +109,11 @@ export const resumeAnalysisService = {
             })
             .catch(err => {
               console.error('Erreur lors de la copie:', err);
+              toast({
+                title: "Erreur",
+                description: "Impossible de copier le texte. Veuillez réessayer.",
+                variant: "destructive",
+              });
             });
         };
         
@@ -116,12 +133,12 @@ export const resumeAnalysisService = {
           duration: 5000,
         });
         
-        // Définir un timeout pour supprimer automatiquement après 60 secondes
+        // Définir un timeout pour supprimer automatiquement après 2 minutes
         setTimeout(() => {
           if (document.body.contains(dialogContainer)) {
             document.body.removeChild(dialogContainer);
           }
-        }, 60000);
+        }, 120000);
       }
       
       if (data.success) {
