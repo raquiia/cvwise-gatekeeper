@@ -27,7 +27,7 @@ const UserStats: React.FC<UserStatsProps> = ({
   formatDate
 }) => {
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="pb-3">
         <CardTitle>Statistiques</CardTitle>
       </CardHeader>
@@ -35,8 +35,8 @@ const UserStats: React.FC<UserStatsProps> = ({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center mr-3">
-                <UserCheck size={16} className="text-emerald-600" />
+              <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center mr-3">
+                <UserCheck size={16} className="text-emerald-600 dark:text-emerald-400" />
               </div>
               <span className="text-sm font-medium">Utilisateurs actifs</span>
             </div>
@@ -45,8 +45,8 @@ const UserStats: React.FC<UserStatsProps> = ({
           
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center mr-3">
-                <Clock size={16} className="text-amber-600" />
+              <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-950/60 flex items-center justify-center mr-3">
+                <Clock size={16} className="text-amber-600 dark:text-amber-400" />
               </div>
               <span className="text-sm font-medium">En attente</span>
             </div>
@@ -55,15 +55,15 @@ const UserStats: React.FC<UserStatsProps> = ({
           
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                <Building size={16} className="text-blue-600" />
+              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950/60 flex items-center justify-center mr-3">
+                <Building size={16} className="text-blue-600 dark:text-blue-400" />
               </div>
               <span className="text-sm font-medium">Entreprises</span>
             </div>
             <span className="font-semibold">5</span>
           </div>
           
-          <Separator />
+          <Separator className="dark:bg-border/10" />
           
           <div>
             <h4 className="text-sm font-medium mb-2">Accès récents</h4>
@@ -72,7 +72,7 @@ const UserStats: React.FC<UserStatsProps> = ({
                 recentUsers.slice(0, 3).map((user, idx) => (
                   <div key={idx} className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <div className="w-2 h-2 rounded-full bg-gray-300 mr-2"></div>
+                      <div className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 mr-2"></div>
                       <span className="text-xs">
                         {user.first_name} {user.last_name || ''}
                       </span>

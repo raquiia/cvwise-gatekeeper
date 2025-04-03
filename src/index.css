@@ -57,7 +57,7 @@
     --popover: 210 38% 20%;
     --popover-foreground: 43 60% 91%;
 
-    --primary: 211 55% 35%;
+    --primary: 211 50% 45%;
     --primary-foreground: 43 60% 91%;
 
     --secondary: 210 38% 25%;
@@ -66,7 +66,7 @@
     --muted: 210 38% 25%;
     --muted-foreground: 210 20% 70%;
 
-    --accent: 35 60% 60%;
+    --accent: 35 60% 50%;
     --accent-foreground: 210 38% 20%;
 
     --destructive: 0 62% 40%;
@@ -105,7 +105,7 @@
   .glass {
     @apply bg-white/80 backdrop-blur-lg dark:bg-navy-dark/60;
     @apply border border-white/20 dark:border-white/10;
-    @apply shadow-lg;
+    @apply shadow-lg dark:shadow-dark-md;
   }
   
   .page-transition-wrapper {
@@ -140,16 +140,16 @@
 
 @layer components {
   .main-gradient {
-    background: linear-gradient(to bottom right, #F5EEDC, #F5EEDC, rgba(221, 168, 83, 0.2));
+    @apply bg-gradient-to-br from-sand via-sand to-gold/20 dark:from-navy-dark dark:via-navy-dark dark:to-navy/50;
   }
   
   .card-hover {
-    @apply transition-all duration-300 hover:shadow-md hover:-translate-y-1;
+    @apply transition-all duration-300 hover:shadow-md dark:hover:shadow-dark-sm hover:-translate-y-1;
   }
   
   .nav-link {
     @apply relative px-4 py-2 text-foreground/80 hover:text-foreground transition-colors duration-200;
-    @apply after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-gold after:transition-all after:duration-300;
+    @apply after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-gold dark:after:bg-gold/80 after:transition-all after:duration-300;
     @apply hover:after:w-full;
   }
   
@@ -159,25 +159,28 @@
   
   .button-primary {
     @apply bg-navy text-sand hover:bg-navy/90 focus:ring-2 focus:ring-navy/50 focus:ring-offset-2;
+    @apply dark:bg-navy-light dark:hover:bg-navy-light/90 dark:focus:ring-navy-light/50;
     @apply px-4 py-2 rounded-md font-medium transition-all duration-200;
     @apply flex items-center justify-center gap-2;
   }
   
   .button-secondary {
     @apply bg-sand text-navy hover:bg-sand/90 focus:ring-2 focus:ring-sand/50 focus:ring-offset-2;
+    @apply dark:bg-sand/90 dark:text-navy-dark dark:hover:bg-sand/80;
     @apply px-4 py-2 rounded-md font-medium transition-all duration-200;
     @apply flex items-center justify-center gap-2;
   }
   
   .button-outline {
     @apply border border-navy text-navy hover:bg-navy/10 focus:ring-2 focus:ring-navy/30;
+    @apply dark:border-sand/70 dark:text-sand dark:hover:bg-sand/10 dark:focus:ring-sand/30;
     @apply px-4 py-2 rounded-md font-medium transition-all duration-200;
     @apply flex items-center justify-center gap-2;
   }
   
   .input-field {
     @apply px-4 py-2 rounded-md border border-border bg-background;
-    @apply focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-transparent;
+    @apply focus:outline-none focus:ring-2 focus:ring-navy/30 dark:focus:ring-navy-light/30 focus:border-transparent;
     @apply placeholder:text-muted-foreground transition-all duration-200;
   }
   
@@ -199,5 +202,13 @@
   
   .rating-low {
     @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300;
+  }
+  
+  .admin-card {
+    @apply bg-card border border-border/40 rounded-lg shadow-sm dark:border-border/20 dark:shadow-dark-sm;
+  }
+  
+  .admin-icon-bg {
+    @apply w-8 h-8 rounded-full flex items-center justify-center;
   }
 }

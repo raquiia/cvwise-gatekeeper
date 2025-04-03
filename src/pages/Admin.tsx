@@ -105,35 +105,35 @@ const systemActivitiesData = [
     action: 'Mise à jour du système',
     description: 'Mise à jour des modèles d\'IA pour l\'analyse des CV',
     timestamp: '26/07/2023 08:00',
-    icon: <RefreshCw size={16} className="text-blue-500" />
+    icon: <RefreshCw size={16} className="text-blue-500 dark:text-blue-400" />
   },
   {
     id: 2,
     action: 'Nouvel utilisateur validé',
     description: 'L\'administrateur a validé l\'inscription de Jean Dupont',
     timestamp: '25/07/2023 15:32',
-    icon: <UserCheck size={16} className="text-emerald-500" />
+    icon: <UserCheck size={16} className="text-emerald-500 dark:text-emerald-400" />
   },
   {
     id: 3,
     action: 'Limite d\'utilisation atteinte',
     description: 'TechConsult SA a atteint 80% de sa limite mensuelle d\'analyses de CV',
     timestamp: '25/07/2023 10:15',
-    icon: <AlertTriangle size={16} className="text-amber-500" />
+    icon: <AlertTriangle size={16} className="text-amber-500 dark:text-amber-400" />
   },
   {
     id: 4,
     action: 'Nouvelle entreprise',
     description: 'L\'entreprise "PME Solutions" a été ajoutée au système',
     timestamp: '24/07/2023 14:20',
-    icon: <Building size={16} className="text-purple-500" />
+    icon: <Building size={16} className="text-purple-500 dark:text-purple-400" />
   },
   {
     id: 5,
     action: 'Tentative de connexion échouée',
     description: 'Plusieurs tentatives de connexion échouées pour l\'utilisateur marc.dupont@example.com',
     timestamp: '24/07/2023 09:45',
-    icon: <Shield size={16} className="text-red-500" />
+    icon: <Shield size={16} className="text-red-500 dark:text-red-400" />
   }
 ];
 
@@ -168,30 +168,42 @@ const Admin = () => {
     }));
   
   return (
-    <Layout className="py-8 bg-sand/30">
+    <Layout className="py-8" isAdminPage>
       <div className="container mx-auto px-4">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-navy-dark mb-2">Administration</h1>
+          <h1 className="text-2xl font-bold text-navy-dark dark:text-sand mb-2">Administration</h1>
           <p className="text-muted-foreground">
             Gérez les utilisateurs, les paramètres système et contrôlez l'accès à l'application
           </p>
         </div>
         
         <Tabs defaultValue="users" className="mb-8">
-          <TabsList className="mb-6">
-            <TabsTrigger value="users" className="flex items-center gap-2">
+          <TabsList className="mb-6 bg-background/80 dark:bg-muted/10">
+            <TabsTrigger 
+              value="users" 
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+            >
               <Users size={16} />
               Utilisateurs
             </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="settings" 
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+            >
               <Settings size={16} />
               Paramètres
             </TabsTrigger>
-            <TabsTrigger value="system" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="system" 
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+            >
               <Shield size={16} />
               Système
             </TabsTrigger>
-            <TabsTrigger value="companies" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="companies" 
+              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+            >
               <Building size={16} />
               Entreprises
             </TabsTrigger>
@@ -240,7 +252,7 @@ const Admin = () => {
           </TabsContent>
           
           <TabsContent value="system">
-            <Card>
+            <Card className="dark:border-border/10">
               <CardHeader>
                 <CardTitle>Statut du système</CardTitle>
                 <CardDescription>
@@ -260,7 +272,7 @@ const Admin = () => {
           </TabsContent>
           
           <TabsContent value="companies">
-            <Card>
+            <Card className="dark:border-border/10">
               <CardHeader>
                 <CardTitle>Gestion des entreprises</CardTitle>
                 <CardDescription>

@@ -24,7 +24,7 @@ interface SystemActivitiesProps {
 
 const SystemActivities: React.FC<SystemActivitiesProps> = ({ activities }) => {
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle>Activité système</CardTitle>
         <CardDescription>
@@ -36,7 +36,7 @@ const SystemActivities: React.FC<SystemActivitiesProps> = ({ activities }) => {
           {activities.map((activity) => (
             <div key={activity.id} className="flex gap-3">
               <div className="mt-0.5">
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center dark:bg-muted/80">
                   {activity.icon}
                 </div>
               </div>
@@ -49,8 +49,12 @@ const SystemActivities: React.FC<SystemActivitiesProps> = ({ activities }) => {
           ))}
         </div>
       </CardContent>
-      <CardFooter className="justify-center border-t border-border/20 pt-4">
-        <Button variant="outline" size="sm" className="w-full">
+      <CardFooter className="justify-center border-t border-border/20 pt-4 dark:border-border/10">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="w-full hover:bg-muted/50 dark:hover:bg-muted/20"
+        >
           Voir tout l'historique
         </Button>
       </CardFooter>

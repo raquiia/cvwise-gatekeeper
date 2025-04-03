@@ -65,15 +65,19 @@ export default {
 				},
 				sand: {
 					DEFAULT: '#F5EEDC',
-					foreground: '#183B4E'
+					foreground: '#183B4E',
+					dark: '#2A271F'
 				},
 				navy: {
 					DEFAULT: '#27548A',
 					dark: '#183B4E',
+					light: '#3A77BD',
 					foreground: '#F5EEDC'
 				},
 				gold: {
 					DEFAULT: '#DDA853',
+					dark: '#C99639',
+					light: '#F0C078',
 					foreground: '#183B4E'
 				}
 			},
@@ -128,6 +132,11 @@ export default {
 			},
 			fontFamily: {
 				sans: ['Inter var', 'Inter', 'sans-serif']
+			},
+			boxShadow: {
+				'dark-sm': '0 2px 4px 0 rgba(0, 0, 0, 0.25)',
+				'dark-md': '0 4px 8px 0 rgba(0, 0, 0, 0.3)',
+				'dark-lg': '0 8px 16px 0 rgba(0, 0, 0, 0.35)'
 			}
 		}
 	},
