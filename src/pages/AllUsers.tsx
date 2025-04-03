@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Users, UserCheck, UserX, ArrowLeft, 
@@ -116,8 +117,16 @@ const AllUsers = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [usingDemoData, setUsingDemoData] = useState(true);
+  const [isDefaultAdmin, setIsDefaultAdmin] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Vérifier si l'utilisateur courant est l'admin par défaut
+  useEffect(() => {
+    if (user && user.email === 'louis.lepotvin@migso-pcubed.com') {
+      setIsDefaultAdmin(true);
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchRealUsers = async () => {
@@ -164,6 +173,50 @@ const AllUsers = () => {
 
     fetchRealUsers();
   }, [user, toast]);
+
+  const activateDefaultAdmin = async () => {
+    if (!user) return;
+    
+    try {
+      setLoading(true);
+      
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      
+      if (!token) {
+        throw new Error("Session non trouvée. Veuillez vous reconnecter.");
+      }
+      
+      const { data, error } = await supabase.functions.invoke('list-users/set-default-admin', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Succès",
+        description: "Vous avez maintenant les privilèges administrateur.",
+      });
+      
+      // Recharger les utilisateurs
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      
+    } catch (err: any) {
+      console.error("Erreur lors de l'activation des privilèges admin:", err);
+      toast({
+        title: "Erreur",
+        description: err.message || "Impossible d'activer les privilèges administrateur.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const sourceData = usingDemoData ? demoUsersData : realUsers;
@@ -309,7 +362,28 @@ const AllUsers = () => {
           </Alert>
         )}
         
-        {usingDemoData && (
+        {isDefaultAdmin && usingDemoData && (
+          <Alert className="mb-6 bg-blue-50 border-blue-200">
+            <InfoIcon className="h-4 w-4 text-blue-500" />
+            <AlertTitle className="text-blue-700">Activation des privilèges administrateur</AlertTitle>
+            <AlertDescription className="text-blue-600 flex flex-col gap-2">
+              <p>
+                Votre email correspond à l'administrateur par défaut, mais vous n'avez pas encore les privilèges administrateur.
+              </p>
+              <Button 
+                onClick={activateDefaultAdmin} 
+                variant="outline" 
+                className="bg-blue-100 hover:bg-blue-200 w-fit"
+                disabled={loading}
+              >
+                <Settings size={16} className="mr-2" />
+                Activer mes privilèges administrateur
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {usingDemoData && !isDefaultAdmin && (
           <Alert className="mb-6 bg-blue-50 border-blue-200">
             <InfoIcon className="h-4 w-4 text-blue-500" />
             <AlertTitle className="text-blue-700">Données de démonstration</AlertTitle>

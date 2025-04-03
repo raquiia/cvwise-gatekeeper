@@ -21,14 +21,53 @@ const supabaseAdmin = createClient(
 
 // Cette fonction vérifie si l'utilisateur est un administrateur
 async function isAdmin(userId: string) {
-  const { data, error } = await supabaseAdmin
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', userId)
-    .single()
+  try {
+    // Vérification dans la table profiles
+    const { data: profileData, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', userId)
+      .single()
 
-  if (error || !data) return false
-  return data.is_admin === true
+    if (profileError) {
+      console.error('Erreur lors de la vérification du statut admin:', profileError.message)
+      return false
+    }
+
+    // Si l'utilisateur est explicitement marqué comme admin
+    if (profileData && profileData.is_admin === true) {
+      return true
+    }
+
+    // Si l'administrateur par défaut est configuré, on vérifie si c'est lui
+    const adminEmail = Deno.env.get('DEFAULT_ADMIN_EMAIL')
+    if (adminEmail) {
+      const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
+      if (!userError && userData && userData.user && userData.user.email === adminEmail) {
+        return true
+      }
+    }
+
+    return false
+  } catch (error) {
+    console.error('Exception lors de la vérification admin:', error)
+    return false
+  }
+}
+
+// Fonction pour définir un utilisateur comme administrateur
+async function setUserAsAdmin(userId: string) {
+  try {
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .update({ is_admin: true })
+      .eq('id', userId)
+
+    return !error
+  } catch (error) {
+    console.error('Exception lors de la définition admin:', error)
+    return false
+  }
 }
 
 Deno.serve(async (req) => {
@@ -58,16 +97,58 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Vérification des privilèges administrateur
+    // Analyse de l'URL pour déterminer l'action
+    const url = new URL(req.url)
+    const action = url.pathname.split('/').pop()
+
+    // Action spéciale pour définir l'administrateur par défaut si c'est l'email configuré
+    if (action === 'set-default-admin' && req.method === 'POST') {
+      const adminEmail = Deno.env.get('DEFAULT_ADMIN_EMAIL')
+      if (!adminEmail) {
+        return new Response(
+          JSON.stringify({ error: 'Aucun administrateur par défaut configuré' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      if (user.email !== adminEmail) {
+        return new Response(
+          JSON.stringify({ error: 'Seul l\'utilisateur désigné comme administrateur par défaut peut exécuter cette action' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const success = await setUserAsAdmin(user.id)
+      if (!success) {
+        return new Response(
+          JSON.stringify({ error: 'Impossible de définir l\'utilisateur comme administrateur' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      return new Response(
+        JSON.stringify({ message: 'Vous êtes maintenant administrateur' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Vérification des privilèges administrateur pour les autres actions
     const isUserAdmin = await isAdmin(user.id)
     if (!isUserAdmin) {
+      const adminEmail = Deno.env.get('DEFAULT_ADMIN_EMAIL')
+      let message = 'Accès refusé - privilèges administrateur requis'
+      
+      if (adminEmail && user.email === adminEmail) {
+        message += '. Veuillez d\'abord exécuter l\'action set-default-admin pour vous définir comme administrateur.'
+      }
+
       return new Response(
-        JSON.stringify({ error: 'Accès refusé - privilèges administrateur requis' }),
+        JSON.stringify({ error: message }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Récupération de la liste des utilisateurs avec le rôle service
+    // Si on arrive ici, l'utilisateur est admin, on récupère la liste des utilisateurs
     const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers()
     
     if (listError) {
