@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Upload, Loader2, File, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,15 +19,16 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
-      setFiles(prev => [...prev, ...newFiles]);
+      const currentFilesLength = files.length;
+      setFiles(prevFiles => [...prevFiles, ...newFiles]);
       
       // Initialize status for new files
       const newStatus: Record<number, 'idle' | 'uploading' | 'success' | 'error'> = {};
       newFiles.forEach((_, index) => {
-        newStatus[prev.length + index] = 'idle';
+        newStatus[currentFilesLength + index] = 'idle';
       });
       
-      setUploadStatus(prev => ({...prev, ...newStatus}));
+      setUploadStatus(prevStatus => ({...prevStatus, ...newStatus}));
     }
   };
   
@@ -123,22 +123,22 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
     
     for (let i = 0; i < files.length; i++) {
       try {
-        setUploadStatus(prev => ({...prev, [i]: 'uploading'}));
+        setUploadStatus(prevStatus => ({...prevStatus, [i]: 'uploading'}));
         
         console.log(`Uploading file ${i+1}/${files.length}: ${files[i].name}`);
         const result = await uploadResume(files[i], userId);
         
         if (result) {
           console.log(`Upload succeeded for ${files[i].name}`);
-          setUploadStatus(prev => ({...prev, [i]: 'success'}));
+          setUploadStatus(prevStatus => ({...prevStatus, [i]: 'success'}));
           successCount++;
         } else {
           console.error(`Upload failed for ${files[i].name}`);
-          setUploadStatus(prev => ({...prev, [i]: 'error'}));
+          setUploadStatus(prevStatus => ({...prevStatus, [i]: 'error'}));
         }
       } catch (error) {
         console.error(`Error uploading ${files[i].name}:`, error);
-        setUploadStatus(prev => ({...prev, [i]: 'error'}));
+        setUploadStatus(prevStatus => ({...prevStatus, [i]: 'error'}));
       }
     }
     
