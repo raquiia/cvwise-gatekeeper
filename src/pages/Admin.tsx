@@ -1,37 +1,31 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { 
-  Users, UserCheck, UserX, Clock, Settings, Shield, 
-  Briefcase, RefreshCw, Building, ArrowUpRight, 
-  LogOut, Mail, CheckCircle, XCircle, MessageSquare,
-  AlertTriangle, MoreHorizontal, FileQuestion, Info
+  Users, Settings, Shield, Building, RefreshCw, 
+  UserCheck, AlertTriangle
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useUserData } from '@/hooks/useUserData';
+import { formatDate } from '@/utils/dateFormatter';
 
+// Admin components
+import PendingUsersList from '@/components/admin/PendingUsersList';
+import ActiveUsersList from '@/components/admin/ActiveUsersList';
+import ExampleUsersList from '@/components/admin/ExampleUsersList';
+import UserStats from '@/components/admin/UserStats';
+import SystemActivities from '@/components/admin/SystemActivities';
+import AppSettings from '@/components/admin/AppSettings';
+
+// Mock data
 const pendingUsersData = [
   {
     id: 1,
@@ -136,107 +130,42 @@ const systemActivitiesData = [
   },
   {
     id: 5,
-    action: 'Tentative de connexion ��chouée',
+    action: 'Tentative de connexion échouée',
     description: 'Plusieurs tentatives de connexion échouées pour l\'utilisateur marc.dupont@example.com',
     timestamp: '24/07/2023 09:45',
     icon: <Shield size={16} className="text-red-500" />
   }
 ];
 
-interface RealUser {
-  id: string;
-  email: string;
-  first_name?: string;
-  last_name?: string;
-  company?: string;
-  created_at: string;
-  last_sign_in_at?: string;
-  avatar_url?: string;
-  profile?: {
-    first_name?: string;
-    last_name?: string;
-    company?: string;
-    is_admin?: boolean;
-    avatar_url?: string;
-  }
-}
-
 const Admin = () => {
   const [pendingUsers, setPendingUsers] = useState(pendingUsersData);
-  const [activeUsers, setActiveUsers] = useState(activeUsersData);
-  const [realUsers, setRealUsers] = useState<RealUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
   const { user } = useAuth();
-  
-  useEffect(() => {
-    const fetchRealUsers = async () => {
-      try {
-        setLoading(true);
-        
-        const { data, error } = await supabase.functions.invoke('list-users');
-        
-        if (error) {
-          console.error('Erreur lors de la récupération des utilisateurs:', error);
-          toast({
-            title: "Erreur",
-            description: "Impossible de récupérer les utilisateurs",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-        
-        if (data && data.users) {
-          console.log("Utilisateurs réels chargés:", data.users);
-          setRealUsers(data.users);
-        } else {
-          console.error('Aucune donnée d\'utilisateur reçue de l\'Edge Function');
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Erreur inattendue:', error);
-        setLoading(false);
-      }
-    };
-    
-    fetchRealUsers();
-  }, [toast]);
+  const { realUsers, loading } = useUserData();
   
   const handleApproveUser = (userId: number) => {
     const userToApprove = pendingUsers.find(user => user.id === userId);
     if (userToApprove) {
-      setActiveUsers(prev => [
-        ...prev, 
-        { 
-          ...userToApprove, 
-          id: 1000 + userToApprove.id, 
-          lastLogin: 'Jamais',
-          status: 'offline'
-        }
-      ]);
-      
+      // In a real application, this would call an API to approve the user
       setPendingUsers(prev => prev.filter(user => user.id !== userId));
     }
   };
   
   const handleRejectUser = (userId: number) => {
+    // In a real application, this would call an API to reject the user
     setPendingUsers(prev => prev.filter(user => user.id !== userId));
   };
   
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Jamais';
-    const date = new Date(dateString);
-    
-    return new Intl.DateTimeFormat('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
-  };
+  const recentUsers = realUsers.slice()
+    .sort((a, b) => {
+      const dateA = a.last_sign_in_at ? new Date(a.last_sign_in_at).getTime() : 0;
+      const dateB = b.last_sign_in_at ? new Date(b.last_sign_in_at).getTime() : 0;
+      return dateB - dateA;
+    })
+    .map(user => ({
+      first_name: user.profile?.first_name || user.first_name || '',
+      last_name: user.profile?.last_name || user.last_name || '',
+      last_sign_in_at: user.last_sign_in_at
+    }));
   
   return (
     <Layout className="py-8 bg-sand/30">
@@ -271,381 +200,29 @@ const Admin = () => {
           <TabsContent value="users">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="md:col-span-1">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle>Statistiques</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center mr-3">
-                            <UserCheck size={16} className="text-emerald-600" />
-                          </div>
-                          <span className="text-sm font-medium">Utilisateurs actifs</span>
-                        </div>
-                        <span className="font-semibold">{realUsers.length}</span>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center mr-3">
-                            <Clock size={16} className="text-amber-600" />
-                          </div>
-                          <span className="text-sm font-medium">En attente</span>
-                        </div>
-                        <span className="font-semibold">{pendingUsers.length}</span>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                            <Building size={16} className="text-blue-600" />
-                          </div>
-                          <span className="text-sm font-medium">Entreprises</span>
-                        </div>
-                        <span className="font-semibold">5</span>
-                      </div>
-                      
-                      <Separator />
-                      
-                      <div>
-                        <h4 className="text-sm font-medium mb-2">Accès récents</h4>
-                        <div className="space-y-2">
-                          {realUsers.slice(0, 3).map((user, idx) => (
-                            <div key={idx} className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                <div className="w-2 h-2 rounded-full bg-gray-300 mr-2"></div>
-                                <span className="text-xs">{user.first_name} {user.last_name}</span>
-                              </div>
-                              <span className="text-xs text-muted-foreground">
-                                {user.last_sign_in_at 
-                                  ? formatDate(user.last_sign_in_at) 
-                                  : 'Jamais connecté'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <UserStats 
+                  activeUsersCount={realUsers.length}
+                  pendingUsersCount={pendingUsers.length}
+                  recentUsers={recentUsers}
+                  formatDate={formatDate}
+                />
               </div>
               
               <div className="md:col-span-3 space-y-6">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <Clock size={18} className="text-amber-500" />
-                        Utilisateurs en attente
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info size={16} className="text-muted-foreground ml-1 cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="max-w-xs">Données fictives pour démonstration</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </CardTitle>
-                      <Badge variant="outline" className="bg-amber-50 text-amber-700 hover:bg-amber-100">
-                        {pendingUsers.length} demandes
-                      </Badge>
-                    </div>
-                    <CardDescription>
-                      Validez ou rejetez les demandes d'inscription
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {pendingUsers.length === 0 ? (
-                      <div className="text-center py-8">
-                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
-                          <CheckCircle size={24} className="text-muted-foreground" />
-                        </div>
-                        <p className="text-muted-foreground">Aucune demande en attente</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {pendingUsers.map((user) => (
-                          <div key={user.id} className="flex items-center justify-between bg-card p-4 rounded-lg border border-border">
-                            <div className="flex items-center">
-                              <Avatar className="h-10 w-10 mr-4">
-                                <AvatarFallback className="bg-navy/10 text-navy-dark">
-                                  {user.name.split(' ').map(n => n[0]).join('')}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <h4 className="font-medium text-navy-dark">{user.name}</h4>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <Mail size={12} />
-                                  {user.email}
-                                </div>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                                    <Briefcase size={10} className="mr-1" />
-                                    {user.company}
-                                  </Badge>
-                                  <Badge variant="outline" className="bg-purple-50 text-purple-700">
-                                    {user.role}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
-                                onClick={() => handleApproveUser(user.id)}
-                              >
-                                <CheckCircle size={16} className="mr-1" />
-                                Valider
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                                onClick={() => handleRejectUser(user.id)}
-                              >
-                                <XCircle size={16} className="mr-1" />
-                                Rejeter
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                <PendingUsersList 
+                  pendingUsers={pendingUsers}
+                  onApproveUser={handleApproveUser}
+                  onRejectUser={handleRejectUser}
+                />
                 
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <UserCheck size={18} className="text-emerald-500" />
-                        Utilisateurs actifs
-                      </CardTitle>
-                      <Button variant="outline" size="sm">
-                        <div className="flex items-center gap-1">
-                          {loading ? "Chargement..." : `${realUsers.length} utilisateurs`}
-                        </div>
-                      </Button>
-                    </div>
-                    <CardDescription>
-                      Utilisateurs enregistrés dans la base de données
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {loading ? (
-                      <div className="text-center py-8">
-                        <p className="text-muted-foreground">Chargement des utilisateurs...</p>
-                      </div>
-                    ) : realUsers.length === 0 ? (
-                      <div className="text-center py-8">
-                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
-                          <Users size={24} className="text-muted-foreground" />
-                        </div>
-                        <p className="text-muted-foreground">Aucun utilisateur trouvé</p>
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="bg-muted/50">
-                              <th className="text-left p-3 text-sm font-medium text-muted-foreground">Utilisateur</th>
-                              <th className="text-left p-3 text-sm font-medium text-muted-foreground">Entreprise</th>
-                              <th className="text-left p-3 text-sm font-medium text-muted-foreground">Rôle</th>
-                              <th className="text-left p-3 text-sm font-medium text-muted-foreground">Création</th>
-                              <th className="text-left p-3 text-sm font-medium text-muted-foreground">Dernière connexion</th>
-                              <th className="text-right p-3 text-sm font-medium text-muted-foreground">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {realUsers.map((user) => (
-                              <tr key={user.id} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
-                                <td className="p-3">
-                                  <div className="flex items-center">
-                                    <Avatar className="h-8 w-8 mr-3">
-                                      <AvatarImage src={user.profile?.avatar_url || user.avatar_url || undefined} />
-                                      <AvatarFallback className="bg-navy/10 text-navy-dark text-xs">
-                                        {user.profile?.first_name && user.profile?.last_name 
-                                          ? `${user.profile.first_name[0]}${user.profile.last_name[0]}`
-                                          : user.first_name && user.last_name
-                                            ? `${user.first_name[0]}${user.last_name[0]}`
-                                            : user.email.substring(0, 2).toUpperCase()}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                      <div className="font-medium text-navy-dark flex items-center">
-                                        {user.profile?.first_name && user.profile?.last_name 
-                                          ? `${user.profile.first_name} ${user.profile.last_name}`
-                                          : user.first_name && user.last_name
-                                            ? `${user.first_name} ${user.last_name}`
-                                            : 'Utilisateur'}
-                                          {user.id === user?.id && (
-                                            <Badge variant="outline" className="ml-2 text-xs">Vous</Badge>
-                                          )}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">{user.email}</div>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="p-3 text-sm">{user.profile?.company || user.company || '-'}</td>
-                                <td className="p-3">
-                                  <Badge variant={user.profile?.is_admin ? "default" : "outline"} className={
-                                    user.profile?.is_admin 
-                                      ? "bg-navy text-sand" 
-                                      : "bg-blue-50 text-blue-700"
-                                  }>
-                                    {user.profile?.is_admin ? 'Admin' : 'Utilisateur'}
-                                  </Badge>
-                                </td>
-                                <td className="p-3 text-sm text-muted-foreground">
-                                  {formatDate(user.created_at)}
-                                </td>
-                                <td className="p-3 text-sm text-muted-foreground">
-                                  {user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Jamais'}
-                                </td>
-                                <td className="p-3 text-right">
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <MoreHorizontal size={16} />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem>
-                                        <MessageSquare size={14} className="mr-2" />
-                                        Contacter
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem>
-                                        <Settings size={14} className="mr-2" />
-                                        Modifier les droits
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem className="text-red-600">
-                                        <LogOut size={14} className="mr-2" />
-                                        Déconnecter
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                <ActiveUsersList 
+                  users={realUsers}
+                  loading={loading}
+                  currentUserId={user?.id}
+                  formatDate={formatDate}
+                />
                 
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <UserCheck size={18} className="text-emerald-500" />
-                        Exemples d'utilisateurs
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <FileQuestion size={16} className="text-muted-foreground ml-1 cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="max-w-xs">Données fictives pour démonstration</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </CardTitle>
-                      <Link to="/admin/users">
-                        <Button variant="outline" size="sm">
-                          <div className="flex items-center gap-1">
-                            Voir tous
-                            <ArrowUpRight size={14} />
-                          </div>
-                        </Button>
-                      </Link>
-                    </div>
-                    <CardDescription>
-                      Exemples d'utilisateurs (données fictives)
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-muted/50">
-                            <th className="text-left p-3 text-sm font-medium text-muted-foreground">Utilisateur</th>
-                            <th className="text-left p-3 text-sm font-medium text-muted-foreground">Entreprise</th>
-                            <th className="text-left p-3 text-sm font-medium text-muted-foreground">Rôle</th>
-                            <th className="text-left p-3 text-sm font-medium text-muted-foreground">Dernière connexion</th>
-                            <th className="text-right p-3 text-sm font-medium text-muted-foreground">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {activeUsers.map((user) => (
-                            <tr key={user.id} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
-                              <td className="p-3">
-                                <div className="flex items-center">
-                                  <Avatar className="h-8 w-8 mr-3">
-                                    <AvatarFallback className="bg-navy/10 text-navy-dark text-xs">
-                                      {user.name.split(' ').map(n => n[0]).join('')}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <div className="font-medium text-navy-dark flex items-center">
-                                      {user.name}
-                                      {user.status === 'online' && (
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500 ml-2"></div>
-                                      )}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">{user.email}</div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="p-3 text-sm">{user.company}</td>
-                              <td className="p-3">
-                                <Badge variant={user.role === 'Administrateur' ? 'default' : 'outline'} className={
-                                  user.role === 'Administrateur' 
-                                    ? 'bg-navy text-sand' 
-                                    : 'bg-blue-50 text-blue-700'
-                                }>
-                                  {user.role}
-                                </Badge>
-                              </td>
-                              <td className="p-3 text-sm text-muted-foreground">
-                                {user.lastLogin}
-                              </td>
-                              <td className="p-3 text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                      <MoreHorizontal size={16} />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem>
-                                      <MessageSquare size={14} className="mr-2" />
-                                      Contacter
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                      <Settings size={14} className="mr-2" />
-                                      Modifier les droits
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem className="text-red-600">
-                                      <LogOut size={14} className="mr-2" />
-                                      Déconnecter
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
+                <ExampleUsersList users={activeUsersData} />
               </div>
             </div>
           </TabsContent>
@@ -653,155 +230,11 @@ const Admin = () => {
           <TabsContent value="settings">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Paramètres de l'application</CardTitle>
-                    <CardDescription>
-                      Configurez les paramètres généraux de l'application
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div>
-                      <h3 className="text-sm font-medium mb-3">Analyse des CV</h3>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <label htmlFor="api-key" className="text-sm font-medium block mb-1">Clé API OpenAI</label>
-                            <input
-                              id="api-key"
-                              type="password"
-                              className="input-field w-full max-w-lg"
-                              placeholder="sk-••••••••••••••••••••••••"
-                              defaultValue="sk-••••••••••••••••••••••••"
-                            />
-                          </div>
-                          <Button variant="outline" size="sm">
-                            Mettre à jour
-                          </Button>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <label htmlFor="model" className="text-sm font-medium block mb-1">Modèle d'IA</label>
-                            <select id="model" className="input-field w-full max-w-lg">
-                              <option>gpt-4o-mini</option>
-                              <option>gpt-4o</option>
-                              <option>gpt-4-turbo</option>
-                            </select>
-                          </div>
-                          <Button variant="outline" size="sm">
-                            Mettre à jour
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div>
-                      <h3 className="text-sm font-medium mb-3">Limites d'utilisation</h3>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <label htmlFor="cv-limit" className="text-sm font-medium block mb-1">Limite mensuelle de CV</label>
-                            <input
-                              id="cv-limit"
-                              type="number"
-                              className="input-field w-full max-w-lg"
-                              defaultValue="500"
-                            />
-                          </div>
-                          <Button variant="outline" size="sm">
-                            Mettre à jour
-                          </Button>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <label htmlFor="user-limit" className="text-sm font-medium block mb-1">Limite d'utilisateurs par entreprise</label>
-                            <input
-                              id="user-limit"
-                              type="number"
-                              className="input-field w-full max-w-lg"
-                              defaultValue="10"
-                            />
-                          </div>
-                          <Button variant="outline" size="sm">
-                            Mettre à jour
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div>
-                      <h3 className="text-sm font-medium mb-3">Notification par email</h3>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <input type="checkbox" id="email-new-user" className="h-4 w-4" defaultChecked />
-                            <label htmlFor="email-new-user" className="text-sm">Nouvel utilisateur en attente</label>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <input type="checkbox" id="email-limit" className="h-4 w-4" defaultChecked />
-                            <label htmlFor="email-limit" className="text-sm">Limite d'utilisation atteinte</label>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <input type="checkbox" id="email-error" className="h-4 w-4" defaultChecked />
-                            <label htmlFor="email-error" className="text-sm">Erreurs système</label>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="justify-end space-x-2 border-t border-border/20 pt-4">
-                    <Button variant="outline">Annuler</Button>
-                    <Button className="bg-navy text-sand hover:bg-navy/90">
-                      Enregistrer les modifications
-                    </Button>
-                  </CardFooter>
-                </Card>
+                <AppSettings />
               </div>
               
               <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Activité système</CardTitle>
-                    <CardDescription>
-                      Journal des événements système récents
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {systemActivitiesData.map((activity) => (
-                        <div key={activity.id} className="flex gap-3">
-                          <div className="mt-0.5">
-                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                              {activity.icon}
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">{activity.action}</p>
-                            <p className="text-xs text-muted-foreground mb-1">{activity.description}</p>
-                            <p className="text-xs text-muted-foreground">{activity.timestamp}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="justify-center border-t border-border/20 pt-4">
-                    <Button variant="outline" size="sm" className="w-full">
-                      Voir tout l'historique
-                    </Button>
-                  </CardFooter>
-                </Card>
+                <SystemActivities activities={systemActivitiesData} />
               </div>
             </div>
           </TabsContent>
