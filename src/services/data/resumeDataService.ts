@@ -55,30 +55,22 @@ export const resumeDataService = {
         fileSize
       });
       
-      const { data, error } = await supabase
-        .from('resumes')
-        .insert({
-          user_id: userId,
-          file_name: fileName,
-          file_path: filePath,
-          file_type: fileType,
-          file_size: fileSize,
-          parsed: false
-        })
-        .select('id')
-        .single();
-        
+      // Utiliser la fonction SQL sécurisée pour insérer le CV
+      const { data: resumeId, error } = await supabase.rpc('insert_resume', {
+        p_user_id: userId,
+        p_file_name: fileName,
+        p_file_path: filePath,
+        p_file_type: fileType,
+        p_file_size: fileSize
+      });
+      
       if (error) {
         console.error('Error creating resume record:', error);
         throw new Error(error.message);
       }
       
-      if (!data || !data.id) {
-        throw new Error('No ID returned after insert');
-      }
-      
-      console.log('Resume record created successfully with ID:', data.id);
-      return data.id;
+      console.log('Resume record created successfully with ID:', resumeId);
+      return resumeId as string;
     } catch (error: any) {
       console.error('Error creating resume record:', error);
       throw error;
@@ -151,7 +143,7 @@ export const resumeDataService = {
       return resumesWithCandidates;
     } catch (error: any) {
       console.error('Error in getUserResumes:', error);
-      throw error;
+      return [];
     }
   },
   
