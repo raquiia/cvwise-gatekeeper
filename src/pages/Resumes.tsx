@@ -8,7 +8,7 @@ import Layout from '@/components/Layout';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { getUserResumes, deleteResume } from '@/services/resumeService';
+import { getUserResumes, deleteResume, ResumeData } from '@/services/resumeService';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   DropdownMenu, 
@@ -17,16 +17,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 
-interface Resume {
-  id: string;
-  file_name: string;
-  file_path: string;
-  file_type: string;
-  file_size: number;
-  created_at: string;
-  parsed: boolean;
-  candidates?: any[];
-}
+type Resume = ResumeData;
 
 const Resumes = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,7 +41,7 @@ const Resumes = () => {
       console.log('Resumes loaded:', data);
       
       if (Array.isArray(data)) {
-        setResumes(data);
+        setResumes(data as Resume[]);
       } else {
         console.error('Expected array of resumes but got:', data);
         setResumes([]);
@@ -86,7 +77,7 @@ const Resumes = () => {
           description: "Le CV a été analysé avec succès",
         });
         
-        await loadResumes(); // Reload resumes to get updated data
+        await loadResumes();
       } else {
         throw new Error(data.message);
       }
@@ -129,7 +120,7 @@ const Resumes = () => {
       console.log('Downloading file:', filePath);
       
       if (!filePath.startsWith('/')) {
-        filePath = filePath; // Keep it as is
+        filePath = filePath;
       }
       
       const { data, error } = await supabase.storage

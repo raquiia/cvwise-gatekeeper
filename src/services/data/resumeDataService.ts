@@ -1,9 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { resumeStorageService } from '../storage/resumeStorageService';
+import { Json } from '@/integrations/supabase/types';
 
 export interface ResumeData {
-  id?: string;
+  id: string; // Make this required instead of optional
   user_id: string;
   file_name: string;
   file_path: string;
@@ -26,7 +27,7 @@ export interface CandidateData {
   position?: string;
   years_experience?: number;
   location?: string;
-  skills?: any[];
+  skills?: any[]; // This needs to stay as any[] for compatibility
   score?: number;
   status?: string;
 }
@@ -103,13 +104,33 @@ export const resumeDataService = {
             
           if (candidateError) {
             console.error(`Error fetching candidates for resume ${resume.id}:`, candidateError);
-            return { ...resume, candidates: [] };
+            return { 
+              ...resume, 
+              id: resume.id as string, // Ensure id is a string
+              candidates: [] 
+            } as ResumeData;
           }
           
-          return { ...resume, candidates: candidates || [] };
+          // Transform the candidates data to match our expected format
+          const transformedCandidates = candidates ? candidates.map(candidate => {
+            return {
+              ...candidate,
+              skills: Array.isArray(candidate.skills) ? candidate.skills : []
+            } as CandidateData;
+          }) : [];
+          
+          return { 
+            ...resume,
+            id: resume.id as string, // Ensure id is a string
+            candidates: transformedCandidates 
+          } as ResumeData;
         } catch (error) {
           console.error(`Error processing candidates for resume ${resume.id}:`, error);
-          return { ...resume, candidates: [] };
+          return { 
+            ...resume, 
+            id: resume.id as string, // Ensure id is a string
+            candidates: [] 
+          } as ResumeData;
         }
       }));
       

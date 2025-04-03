@@ -1,12 +1,13 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { resumeStorageService } from './storage/resumeStorageService';
-import { resumeDataService, ResumeData, CandidateData } from './data/resumeDataService';
+import { resumeDataService } from './data/resumeDataService';
 import { candidateDataService } from './data/candidateDataService';
 import { resumeAnalysisService } from './analysis/resumeAnalysisService';
 
 // Re-exporter les interfaces pour compatibilité
-export { ResumeData, CandidateData };
+import type { ResumeData, CandidateData } from './data/resumeDataService';
+export type { ResumeData, CandidateData };
 
 /**
  * Télécharge un CV dans le stockage et crée un enregistrement dans la base de données

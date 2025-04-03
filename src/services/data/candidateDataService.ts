@@ -12,13 +12,28 @@ export const candidateDataService = {
    */
   saveCandidate: async (candidateData: CandidateData): Promise<CandidateData | null> => {
     try {
+      // Ensure skills is an array
+      const dataToSave = {
+        ...candidateData,
+        skills: Array.isArray(candidateData.skills) ? candidateData.skills : []
+      };
+      
       const { data, error } = await supabase
         .from('candidates')
-        .upsert(candidateData)
+        .upsert(dataToSave)
         .select();
         
       if (error) throw error;
-      return data[0];
+      
+      // Transform the returned data to match our expected format
+      if (data && data[0]) {
+        return {
+          ...data[0],
+          skills: Array.isArray(data[0].skills) ? data[0].skills : []
+        } as CandidateData;
+      }
+      
+      return null;
     } catch (error) {
       console.error('Error saving candidate:', error);
       return null;
@@ -36,7 +51,16 @@ export const candidateDataService = {
         .eq('user_id', userId);
         
       if (error) throw error;
-      return data;
+      
+      // Transform the data to match our expected format
+      if (data) {
+        return data.map(candidate => ({
+          ...candidate,
+          skills: Array.isArray(candidate.skills) ? candidate.skills : []
+        }) as CandidateData);
+      }
+      
+      return [];
     } catch (error) {
       console.error('Error fetching candidates:', error);
       return [];
@@ -55,7 +79,16 @@ export const candidateDataService = {
         .single();
         
       if (error) throw error;
-      return data;
+      
+      // Transform the data to match our expected format
+      if (data) {
+        return {
+          ...data,
+          skills: Array.isArray(data.skills) ? data.skills : []
+        } as CandidateData;
+      }
+      
+      return null;
     } catch (error) {
       console.error('Error fetching candidate:', error);
       return null;
