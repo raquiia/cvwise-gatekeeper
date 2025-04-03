@@ -33,32 +33,44 @@ const Resumes = () => {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [resumes, setResumes] = useState<Resume[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  useEffect(() => {
-    const loadResumes = async () => {
-      if (!user) return;
-      
-      setIsLoading(true);
-      try {
-        const data = await getUserResumes(user.id);
-        setResumes(data || []);
-      } catch (error) {
-        console.error('Error loading resumes:', error);
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les CV",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const loadResumes = async () => {
+    if (!user) return;
     
+    setIsLoading(true);
+    setErrorMessage(null);
+    
+    try {
+      console.log('Loading resumes for user:', user.id);
+      const data = await getUserResumes(user.id);
+      console.log('Resumes loaded:', data);
+      
+      if (Array.isArray(data)) {
+        setResumes(data);
+      } else {
+        console.error('Expected array of resumes but got:', data);
+        setResumes([]);
+      }
+    } catch (error: any) {
+      console.error('Error loading resumes:', error);
+      setErrorMessage(error?.message || 'Une erreur est survenue lors du chargement des CV');
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les CV",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  useEffect(() => {
     loadResumes();
-  }, [user, toast]);
+  }, [user]);
   
   const handleAnalyzeResume = async (resumeId: string) => {
     try {
@@ -74,10 +86,7 @@ const Resumes = () => {
           description: "Le CV a été analysé avec succès",
         });
         
-        if (user) {
-          const updatedResumes = await getUserResumes(user.id);
-          setResumes(updatedResumes || []);
-        }
+        await loadResumes(); // Reload resumes to get updated data
       } else {
         throw new Error(data.message);
       }
@@ -117,11 +126,19 @@ const Resumes = () => {
   
   const handleDownloadResume = async (filePath: string, fileName: string) => {
     try {
+      console.log('Downloading file:', filePath);
       const { data, error } = await supabase.storage
         .from('resumes')
         .download(filePath);
         
-      if (error) throw error;
+      if (error) {
+        console.error('Download error:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        throw new Error('No data received during download');
+      }
       
       const url = URL.createObjectURL(data);
       const link = document.createElement('a');
@@ -139,6 +156,10 @@ const Resumes = () => {
         variant: "destructive",
       });
     }
+  };
+  
+  const handleRetry = () => {
+    loadResumes();
   };
   
   const filteredResumes = resumes.filter(resume => {
@@ -258,7 +279,24 @@ const Resumes = () => {
           </div>
         )}
         
-        {!isLoading && resumes.length === 0 && (
+        {!isLoading && errorMessage && (
+          <div className="glass rounded-xl p-8 text-center">
+            <div className="w-20 h-20 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-navy-dark mb-2">Une erreur est survenue</h2>
+            <p className="text-muted-foreground mb-6">
+              {errorMessage}
+            </p>
+            <Button onClick={handleRetry} className="button-primary">
+              Réessayer
+            </Button>
+          </div>
+        )}
+        
+        {!isLoading && !errorMessage && resumes.length === 0 && (
           <div className="glass rounded-xl p-8 text-center">
             <div className="w-20 h-20 mx-auto rounded-full bg-navy/10 flex items-center justify-center mb-4">
               <FileText size={32} className="text-navy" />
@@ -276,7 +314,7 @@ const Resumes = () => {
           </div>
         )}
         
-        {!isLoading && resumes.length > 0 && (
+        {!isLoading && !errorMessage && resumes.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <Link to="/resumes/upload" className="glass rounded-xl border-2 border-dashed border-navy/20 flex flex-col items-center justify-center p-6 h-64 hover:border-navy/40 transition-colors">
               <div className="w-12 h-12 rounded-full bg-navy/10 flex items-center justify-center text-sand">
