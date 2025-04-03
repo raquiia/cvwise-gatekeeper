@@ -230,6 +230,29 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_user_candidates: {
+        Args: {
+          user_id_param: string
+        }
+        Returns: {
+          id: string
+          user_id: string
+          resume_id: string
+          first_name: string
+          last_name: string
+          email: string
+          phone: string
+          job_position: string
+          years_experience: number
+          location: string
+          skills: Json
+          score: number
+          status: string
+          company: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
       get_user_resumes: {
         Args: {
           user_id_param: string

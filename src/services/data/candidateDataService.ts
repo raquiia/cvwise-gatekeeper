@@ -65,7 +65,7 @@ export const candidateDataService = {
     try {
       console.log('Fetching candidates for user:', userId);
       
-      // Using a stored procedure to avoid RLS recursion error
+      // Utiliser directement RPC pour appeler la fonction SQL
       const { data, error } = await supabase.rpc('get_user_candidates', {
         user_id_param: userId
       });
@@ -77,24 +77,18 @@ export const candidateDataService = {
       
       console.log('Candidates data from RPC:', data);
       
-      // Try direct query if RPC doesn't return data
-      if (!data || !Array.isArray(data) || data.length === 0) {
-        console.log('Falling back to direct query...');
-        const { data: directData, error: directError } = await supabase
-          .from('candidates')
-          .select('*')
-          .eq('user_id', userId);
-          
-        if (directError) {
-          console.error('Direct query error:', directError);
-          throw directError;
-        }
-        
-        console.log('Direct query results:', directData);
-        return processSkills(directData) as CandidateData[];
+      if (!data || !Array.isArray(data)) {
+        console.log('No candidates returned or invalid data format');
+        return [];
       }
       
-      return processSkills(data) as CandidateData[];
+      // Transformer les données pour correspondre à notre format (notamment position au lieu de job_position)
+      const transformedData = data.map(candidate => ({
+        ...candidate,
+        position: candidate.job_position, // Remapper job_position vers position
+      }));
+      
+      return processSkills(transformedData) as CandidateData[];
     } catch (error) {
       console.error('Error fetching candidates:', error);
       return [];
