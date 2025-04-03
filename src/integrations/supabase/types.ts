@@ -181,6 +181,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_auth_user_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       insert_resume: {
         Args: {
           p_user_id: string

@@ -37,6 +37,15 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
   console.log('Uploading file to storage:', filePath);
   
   try {
+    // Create storage bucket if it doesn't exist
+    const { data: buckets } = await supabase.storage.listBuckets();
+    if (!buckets?.find(bucket => bucket.name === 'resumes')) {
+      console.log('Creating resumes bucket');
+      await supabase.storage.createBucket('resumes', {
+        public: false
+      });
+    }
+    
     // Upload to storage
     const { error: uploadError } = await supabase.storage
       .from('resumes')
@@ -94,16 +103,23 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
 // Fetch all resumes for a user
 export const getUserResumes = async (userId: string) => {
   try {
-    // Use a simpler query that doesn't cause recursion
+    console.log('Fetching resumes for user:', userId);
+    
+    // Simple query to get all resumes for a user
     const { data, error } = await supabase
       .from('resumes')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
       
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching resumes:', error);
+      throw error;
+    }
     
-    // Now, for each resume, get the candidates separately
+    console.log('Fetched resumes:', data);
+    
+    // Now, for each resume, get the candidates separately to avoid recursion issues
     const resumesWithCandidates = await Promise.all(data.map(async (resume) => {
       const { data: candidates, error: candidateError } = await supabase
         .from('candidates')
@@ -115,9 +131,11 @@ export const getUserResumes = async (userId: string) => {
         return { ...resume, candidates: [] };
       }
       
+      console.log(`Fetched ${candidates?.length || 0} candidates for resume ${resume.id}`);
       return { ...resume, candidates: candidates || [] };
     }));
     
+    console.log('Resumes with candidates:', resumesWithCandidates);
     return resumesWithCandidates;
   } catch (error) {
     console.error('Error fetching resumes:', error);
