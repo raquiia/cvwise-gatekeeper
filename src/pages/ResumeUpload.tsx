@@ -15,12 +15,13 @@ const ResumeUpload = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number[]>([]);
   const [completed, setCompleted] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  // Gérer le glisser-déposer
+  // Handle drag and drop
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -60,9 +61,10 @@ const ResumeUpload = () => {
     
     setFiles(prev => [...prev, ...newFiles]);
     setUploadProgress(prev => [...prev, ...newFiles.map(() => 0)]);
+    setErrors(prev => [...prev, ...newFiles.map(() => '')]);
   };
   
-  // Gérer la sélection de fichier via le bouton
+  // Handle file selection via button
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files).filter(
@@ -82,16 +84,18 @@ const ResumeUpload = () => {
       
       setFiles(prev => [...prev, ...newFiles]);
       setUploadProgress(prev => [...prev, ...newFiles.map(() => 0)]);
+      setErrors(prev => [...prev, ...newFiles.map(() => '')]);
     }
   };
   
-  // Supprimer un fichier
+  // Remove a file
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
     setUploadProgress(prev => prev.filter((_, i) => i !== index));
+    setErrors(prev => prev.filter((_, i) => i !== index));
   };
   
-  // Upload des fichiers à Supabase
+  // Upload files to Supabase
   const handleUpload = async () => {
     if (files.length === 0) {
       toast({
@@ -112,11 +116,17 @@ const ResumeUpload = () => {
     }
     
     setUploading(true);
+    let successCount = 0;
     
     try {
       // Process each file
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        setErrors(prev => {
+          const newErrors = [...prev];
+          newErrors[i] = '';
+          return newErrors;
+        });
         
         // Simulate progress updates
         const progressInterval = setInterval(() => {
@@ -130,50 +140,73 @@ const ResumeUpload = () => {
           });
         }, 300);
         
-        // Upload to Supabase
-        const result = await uploadResume(file, user.id);
-        
-        clearInterval(progressInterval);
-        
-        if (result) {
-          setUploadProgress(prev => {
-            const newProgress = [...prev];
-            newProgress[i] = 100;
-            return newProgress;
-          });
-        } else {
-          toast({
-            title: "Erreur d'upload",
-            description: `Le fichier ${file.name} n'a pas pu être téléchargé`,
-            variant: "destructive",
-          });
+        try {
+          // Upload to Supabase
+          const result = await uploadResume(file, user.id);
+          
+          clearInterval(progressInterval);
+          
+          if (result) {
+            setUploadProgress(prev => {
+              const newProgress = [...prev];
+              newProgress[i] = 100;
+              return newProgress;
+            });
+            successCount++;
+          } else {
+            setUploadProgress(prev => {
+              const newProgress = [...prev];
+              newProgress[i] = -1; // Mark as error
+              return newProgress;
+            });
+            setErrors(prev => {
+              const newErrors = [...prev];
+              newErrors[i] = "Échec du téléchargement";
+              return newErrors;
+            });
+          }
+        } catch (error: any) {
+          clearInterval(progressInterval);
+          console.error(`Error uploading file ${file.name}:`, error);
           
           setUploadProgress(prev => {
             const newProgress = [...prev];
             newProgress[i] = -1; // Mark as error
             return newProgress;
           });
+          
+          setErrors(prev => {
+            const newErrors = [...prev];
+            newErrors[i] = error.message || "Erreur inconnue";
+            return newErrors;
+          });
         }
       }
       
-      // Check if all uploads were successful
-      const allUploaded = uploadProgress.every(progress => progress === 100);
-      
-      if (allUploaded) {
+      // Check if any uploads were successful
+      if (successCount > 0) {
         toast({
           title: "Téléchargement réussi",
-          description: `${files.length} CV ont été téléchargés avec succès`,
+          description: `${successCount} CV sur ${files.length} ont été téléchargés avec succès`,
         });
         
-        setTimeout(() => {
-          setCompleted(true);
-        }, 1000);
+        if (successCount === files.length) {
+          setTimeout(() => {
+            setCompleted(true);
+          }, 1000);
+        }
+      } else {
+        toast({
+          title: "Échec du téléchargement",
+          description: "Aucun CV n'a pu être téléchargé",
+          variant: "destructive",
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload failed:', error);
       toast({
         title: "Échec du téléchargement",
-        description: "Une erreur s'est produite lors du téléchargement des fichiers",
+        description: error.message || "Une erreur s'est produite lors du téléchargement des fichiers",
         variant: "destructive",
       });
     } finally {
@@ -181,7 +214,7 @@ const ResumeUpload = () => {
     }
   };
   
-  // Rediriger vers la page de CV après le téléchargement
+  // Redirect to resumes page after upload
   const handleNavigateToResumes = () => {
     navigate('/resumes');
   };
@@ -296,6 +329,12 @@ const ResumeUpload = () => {
                             {(file.size / 1024 / 1024).toFixed(2)} MB
                           </div>
                           
+                          {errors[index] && (
+                            <div className="text-xs text-red-500 mb-1">
+                              {errors[index]}
+                            </div>
+                          )}
+                          
                           {uploadProgress[index] > 0 && (
                             <div className="w-full bg-muted rounded-full h-1.5 mt-1">
                               <div 
@@ -333,6 +372,7 @@ const ResumeUpload = () => {
                   onClick={() => {
                     setFiles([]);
                     setUploadProgress([]);
+                    setErrors([]);
                   }}
                 >
                   Réinitialiser
@@ -380,6 +420,7 @@ const ResumeUpload = () => {
                 onClick={() => {
                   setFiles([]);
                   setUploadProgress([]);
+                  setErrors([]);
                   setUploading(false);
                   setCompleted(false);
                 }}

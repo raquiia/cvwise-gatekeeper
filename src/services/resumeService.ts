@@ -32,7 +32,10 @@ export interface CandidateData {
 export const uploadResume = async (file: File, userId: string): Promise<ResumeData | null> => {
   try {
     const fileExt = file.name.split('.').pop();
-    const filePath = `${userId}/${uuidv4()}.${fileExt}`;
+    const fileName = `${uuidv4()}.${fileExt}`;
+    const filePath = `${userId}/${fileName}`;
+    
+    console.log('Uploading file to storage:', filePath);
     
     // Upload to storage
     const { error: uploadError } = await supabase.storage
@@ -40,14 +43,11 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
       .upload(filePath, file);
       
     if (uploadError) {
-      console.error('Error uploading file:', uploadError);
+      console.error('Error uploading file to storage:', uploadError);
       throw new Error(uploadError.message);
     }
     
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('resumes')
-      .getPublicUrl(filePath);
+    console.log('File uploaded successfully, creating resume record');
     
     // Create resume record in database
     const resumeData: ResumeData = {
@@ -67,9 +67,16 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
       
     if (error) {
       console.error('Error creating resume record:', error);
+      
+      // Si l'insertion échoue, on essaie de supprimer le fichier téléchargé pour nettoyer
+      await supabase.storage
+        .from('resumes')
+        .remove([filePath]);
+        
       throw new Error(error.message);
     }
     
+    console.log('Resume record created successfully:', data);
     return data;
   } catch (error) {
     console.error('Resume upload failed:', error);
