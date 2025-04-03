@@ -135,6 +135,32 @@
     content: "";
     @apply absolute bottom-0 left-0 h-[30%] w-full bg-gold/30 -z-10 rounded-sm;
   }
+  
+  .selectable-card {
+    @apply cursor-pointer transition-all duration-200;
+    @apply hover:shadow-md dark:hover:shadow-dark-sm;
+  }
+  
+  .selectable-card.selected {
+    @apply ring-2 ring-navy shadow-md;
+    @apply transform -translate-y-1;
+  }
+  
+  .selection-mode-enter {
+    @apply opacity-0;
+  }
+  
+  .selection-mode-enter-active {
+    @apply opacity-100 transition-opacity duration-300;
+  }
+  
+  .selection-mode-exit {
+    @apply opacity-100;
+  }
+  
+  .selection-mode-exit-active {
+    @apply opacity-0 transition-opacity duration-200;
+  }
 }
 
 @layer components {
