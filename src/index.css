@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
@@ -145,6 +144,21 @@
   
   .card-hover {
     @apply transition-all duration-300 hover:shadow-md dark:hover:shadow-dark-sm hover:-translate-y-1;
+  }
+  
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+  }
+
+  .card-hover-disabled {
+    transition: all 0.2s ease-in-out;
+  }
+
+  a.card-hover-disabled {
+    pointer-events: none;
+    text-decoration: none;
+    color: inherit;
   }
   
   .nav-link {
