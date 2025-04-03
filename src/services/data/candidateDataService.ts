@@ -57,7 +57,7 @@ export const candidateDataService = {
         return data.map(candidate => ({
           ...candidate,
           skills: Array.isArray(candidate.skills) ? candidate.skills : []
-        }) as CandidateData);
+        })) as CandidateData[];
       }
       
       return [];

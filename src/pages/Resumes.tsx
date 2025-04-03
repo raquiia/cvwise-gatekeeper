@@ -41,7 +41,7 @@ const Resumes = () => {
       console.log('Resumes loaded:', data);
       
       if (Array.isArray(data)) {
-        setResumes(data as Resume[]);
+        setResumes(data);
       } else {
         console.error('Expected array of resumes but got:', data);
         setResumes([]);
@@ -118,10 +118,6 @@ const Resumes = () => {
   const handleDownloadResume = async (filePath: string, fileName: string) => {
     try {
       console.log('Downloading file:', filePath);
-      
-      if (!filePath.startsWith('/')) {
-        filePath = filePath;
-      }
       
       const { data, error } = await supabase.storage
         .from('resumes')
@@ -385,7 +381,7 @@ const Resumes = () => {
                   
                   <div className="flex items-center text-xs text-muted-foreground">
                     <Calendar size={12} className="mr-1" />
-                    Importé le {formatDate(resume.created_at)}
+                    Importé le {resume.created_at ? formatDate(resume.created_at) : 'N/A'}
                   </div>
                   
                   <div className="text-xs text-muted-foreground mt-1">
