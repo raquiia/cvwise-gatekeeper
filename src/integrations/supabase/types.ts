@@ -185,6 +185,22 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_profile_by_id: {
+        Args: {
+          _id: string
+        }
+        Returns: {
+          avatar_url: string | null
+          company: string | null
+          created_at: string | null
+          first_name: string | null
+          id: string
+          is_admin: boolean | null
+          last_name: string | null
+          title: string | null
+          updated_at: string | null
+        }[]
+      }
       insert_resume: {
         Args: {
           p_user_id: string
