@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 
@@ -21,21 +20,16 @@ const SelectableCard: React.FC<SelectableCardProps> = ({
     <div 
       className={cn(
         "relative rounded-xl overflow-hidden transition-all",
-        selected ? "ring-2 ring-navy shadow-md dark:shadow-dark-sm" : "hover:shadow-sm",
+        selected 
+          ? "ring-2 ring-navy shadow-md dark:shadow-dark-sm transform -translate-y-1" 
+          : "hover:shadow-sm hover:-translate-y-0.5",
         className
       )}
       onClick={onSelect}
     >
-      <div 
-        className={cn(
-          "absolute top-3 right-3 z-10 w-6 h-6 rounded-md flex items-center justify-center transition-colors",
-          selected 
-            ? "bg-navy text-white" 
-            : "bg-background border-2 border-navy/30 text-transparent"
-        )}
-      >
-        <Check size={16} className={selected ? "opacity-100" : "opacity-0"} />
-      </div>
+      {selected && (
+        <div className="absolute top-0 left-0 w-full h-1 bg-navy"></div>
+      )}
       {children}
     </div>
   );

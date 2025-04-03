@@ -137,7 +137,7 @@
   }
   
   .selectable-card {
-    @apply cursor-pointer transition-all duration-200;
+    @apply cursor-pointer transition-all duration-200 ease-out;
     @apply hover:shadow-md dark:hover:shadow-dark-sm;
   }
   
