@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { Search, Filter, MoreHorizontal, Download, Upload, UserPlus } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, Download, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -69,13 +68,6 @@ const CandidatesHeader: React.FC<CandidatesHeaderProps> = ({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          
-          <Link to="/candidates/add">
-            <Button className="button-primary flex-1 sm:flex-none">
-              <UserPlus size={18} className="mr-2" />
-              Nouveau
-            </Button>
-          </Link>
         </div>
       </div>
     </div>
