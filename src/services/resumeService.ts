@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { resumeStorageService } from './storage/resumeStorageService';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,29 +30,49 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
     
     console.log('File uploaded successfully, creating database record');
     
-    // Then create a database record
-    const { data: resumeRecord, error: dbError } = await supabase
-      .from('resumes')
-      .insert({
-        user_id: userId,
-        file_name: file.name,
-        file_path: filePath,
-        file_type: file.type,
-        file_size: file.size,
-        parsed: false
-      })
-      .select('*')
-      .single();
+    // Utiliser la fonction SQL sécurisée pour insérer le CV
+    try {
+      const { data, error } = await supabase.rpc('insert_resume', {
+        p_user_id: userId,
+        p_file_name: file.name,
+        p_file_path: filePath,
+        p_file_type: file.type,
+        p_file_size: file.size
+      });
       
-    if (dbError) {
-      console.error('Database error:', dbError.message);
-      // Clean up the file if database insert fails
+      if (error) {
+        console.error('Database error:', error.message);
+        // Nettoyer le fichier si l'insertion dans la base de données échoue
+        // Mais ne pas bloquer en cas d'erreur lors de la suppression
+        try {
+          await resumeStorageService.deleteFile(filePath);
+        } catch (cleanupError) {
+          console.warn('Could not clean up file after DB error:', cleanupError);
+        }
+        return null;
+      }
+      
+      // Récupérer l'enregistrement complet
+      const resumeId = data;
+      const { data: resumeRecord, error: fetchError } = await supabase
+        .from('resumes')
+        .select('*')
+        .eq('id', resumeId)
+        .single();
+        
+      if (fetchError) {
+        console.error('Error fetching created resume:', fetchError.message);
+        return null;
+      }
+      
+      console.log('Resume record created successfully:', resumeRecord);
+      return resumeRecord as ResumeData;
+    } catch (dbError) {
+      console.error('Database operation failed:', dbError);
+      // Nettoyer en cas d'erreur
       await resumeStorageService.deleteFile(filePath);
       return null;
     }
-    
-    console.log('Resume record created successfully:', resumeRecord);
-    return resumeRecord as ResumeData;
   } catch (error: any) {
     console.error('Exception during resume upload:', error.message);
     return null;
