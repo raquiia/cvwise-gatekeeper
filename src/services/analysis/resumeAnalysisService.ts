@@ -2,6 +2,16 @@
 import { supabase } from '@/integrations/supabase/client';
 import { calculateOverallMatch, MatchResult } from './matchingUtils';
 import { toast } from '@/hooks/use-toast';
+import React from 'react';
+
+/**
+ * Toast personnalisé pour afficher le texte brut d'un CV
+ */
+const RawTextToast = ({ text }: { text: string }) => (
+  <div className="max-h-[300px] overflow-y-auto mt-2 p-2 border rounded bg-gray-50">
+    <pre className="whitespace-pre-wrap text-xs">{text}</pre>
+  </div>
+);
 
 /**
  * Service responsable de l'analyse des CV
@@ -40,6 +50,19 @@ export const resumeAnalysisService = {
       }
       
       console.log('Réponse de l\'analyse:', data);
+      
+      // Afficher le texte brut extrait dans une popup temporaire
+      if (data.rawText) {
+        toast({
+          title: "Texte brut extrait du CV",
+          description: (
+            <div className="max-h-[300px] overflow-y-auto mt-2 p-2 border rounded bg-gray-50">
+              <pre className="whitespace-pre-wrap text-xs">{data.rawText}</pre>
+            </div>
+          ),
+          duration: 30000, // 30 secondes d'affichage
+        });
+      }
       
       if (data.success) {
         toast({
