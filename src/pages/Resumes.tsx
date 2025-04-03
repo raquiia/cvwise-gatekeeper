@@ -1,27 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
-import { 
-  Upload, Search, FileText, Eye, Download, 
-  Trash2, Plus, Calendar, ChevronDown, MoreHorizontal, Loader2, 
-  AlertCircle, RefreshCw, Check, CheckSquare, Square, Filter
-} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Loader2, AlertCircle, RefreshCw, Trash2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
-import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { getUserResumes, deleteResume, ResumeData, uploadResume, downloadResume, analyzeResume } from '@/services/resumeService';
-import { supabase } from '@/integrations/supabase/client';
+import { getUserResumes, deleteResume, downloadResume, analyzeResume, ResumeData } from '@/services/resumeService';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import { formatDate } from '@/utils/dateFormatter';
-import { resumeStorageService } from '@/services/storage/resumeStorageService';
-import SelectableCard from '@/components/resume/SelectableCard';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,67 +19,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Checkbox } from '@/components/ui/checkbox';
 
-type Resume = ResumeData;
-
-const DebugUploadButton = ({ userId }: { userId: string }) => {
-  const { toast } = useToast();
-  const [uploading, setUploading] = useState(false);
-  
-  const handleTestUpload = async () => {
-    setUploading(true);
-    try {
-      const testContent = "This is a test CV file";
-      const testBlob = new Blob([testContent], { type: 'text/plain' });
-      const testFile = new File([testBlob], 'test-cv.txt', { type: 'text/plain' });
-      
-      toast({
-        title: "Test en cours",
-        description: "Tentative de téléchargement d'un fichier test...",
-      });
-      
-      const result = await uploadResume(testFile, userId);
-      
-      if (result) {
-        toast({
-          title: "Test réussi",
-          description: "Le test de téléchargement a réussi. ID: " + result.id,
-        });
-      } else {
-        throw new Error("Le test de téléchargement a échoué");
-      }
-    } catch (error: any) {
-      console.error('Test upload failed:', error);
-      toast({
-        title: "Test échoué",
-        description: error.message || "Erreur inconnue",
-        variant: "destructive",
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
-  
-  return (
-    <Button 
-      variant="outline" 
-      size="sm" 
-      className="ml-2" 
-      onClick={handleTestUpload}
-      disabled={uploading}
-    >
-      {uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-      Tester Upload
-    </Button>
-  );
-};
+import ResumesHeader from '@/components/resume/ResumesHeader';
+import ResumesFilters from '@/components/resume/ResumesFilters';
+import SelectionBar from '@/components/resume/SelectionBar';
+import ResumesGrid from '@/components/resume/ResumesGrid';
+import NoResumesState from '@/components/resume/NoResumesState';
+import ErrorState from '@/components/resume/ErrorState';
+import LoadingState from '@/components/resume/LoadingState';
 
 const Resumes = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [resumes, setResumes] = useState<Resume[]>([]);
+  const [resumes, setResumes] = useState<ResumeData[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<Record<string, boolean>>({});
   const { user } = useAuth();
@@ -105,7 +44,7 @@ const Resumes = () => {
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [openAnalyzeDialog, setOpenAnalyzeDialog] = useState(false);
-  
+
   useEffect(() => {
     const initAndLoad = async () => {
       if (!user) {
@@ -166,30 +105,39 @@ const Resumes = () => {
       setIsLoading(false);
     }
   };
-  
-  const toggleResumeSelection = (resumeId: string) => {
-    setSelectedResumes(prev => {
-      if (prev.includes(resumeId)) {
-        return prev.filter(id => id !== resumeId);
+
+  const handleDownloadResume = async (filePath: string, fileName: string, resumeId: string) => {
+    try {
+      console.log('Downloading file:', filePath);
+      setDownloading(prev => ({ ...prev, [resumeId]: true }));
+      
+      toast({
+        title: "Téléchargement en cours",
+        description: "Veuillez patienter pendant le téléchargement du fichier...",
+      });
+      
+      const success = await downloadResume(filePath, fileName);
+      
+      if (success) {
+        toast({
+          title: "Téléchargement réussi",
+          description: `Le fichier "${fileName}" a été téléchargé avec succès`,
+        });
       } else {
-        return [...prev, resumeId];
+        throw new Error("Erreur lors du téléchargement du fichier");
       }
-    });
-  };
-  
-  const toggleSelectAll = () => {
-    if (selectedResumes.length === filteredResumes.length) {
-      setSelectedResumes([]);
-    } else {
-      setSelectedResumes(filteredResumes.map(resume => resume.id));
+    } catch (error: any) {
+      console.error('Error downloading resume:', error);
+      toast({
+        title: "Échec du téléchargement",
+        description: error.message || "Une erreur s'est produite lors du téléchargement du CV",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloading(prev => ({ ...prev, [resumeId]: false }));
     }
   };
-  
-  const cancelSelection = () => {
-    setSelectionMode(false);
-    setSelectedResumes([]);
-  };
-  
+
   const handleAnalyzeResume = async (resumeId: string) => {
     try {
       toast({
@@ -218,53 +166,7 @@ const Resumes = () => {
       });
     }
   };
-  
-  const handleBatchAnalyze = async () => {
-    if (selectedResumes.length === 0) return;
-    
-    setIsProcessingBatch(true);
-    setOpenAnalyzeDialog(false);
-    
-    try {
-      toast({
-        title: "Analyse en cours",
-        description: `Analyse de ${selectedResumes.length} CV démarrée...`,
-      });
-      
-      let successCount = 0;
-      
-      for (const resumeId of selectedResumes) {
-        try {
-          const result = await analyzeResume(resumeId);
-          
-          if (result.success) {
-            successCount++;
-          }
-        } catch (error) {
-          console.error(`Error analyzing resume ${resumeId}:`, error);
-        }
-      }
-      
-      toast({
-        title: "Analyse terminée",
-        description: `${successCount} sur ${selectedResumes.length} CV ont été analysés avec succès`,
-      });
-      
-      await loadResumes();
-      setSelectedResumes([]);
-      setSelectionMode(false);
-    } catch (error: any) {
-      console.error('Error in batch analysis:', error);
-      toast({
-        title: "Échec de l'analyse groupée",
-        description: error.message || "Une erreur s'est produite lors de l'analyse des CV",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessingBatch(false);
-    }
-  };
-  
+
   const handleDeleteResume = async (resumeId: string, filePath: string) => {
     try {
       const success = await deleteResume(resumeId, filePath);
@@ -288,7 +190,7 @@ const Resumes = () => {
       });
     }
   };
-  
+
   const handleBatchDelete = async () => {
     if (selectedResumes.length === 0) return;
     
@@ -334,43 +236,76 @@ const Resumes = () => {
       setIsProcessingBatch(false);
     }
   };
-  
-  const handleDownloadResume = async (filePath: string, fileName: string, resumeId: string) => {
+
+  const handleBatchAnalyze = async () => {
+    if (selectedResumes.length === 0) return;
+    
+    setIsProcessingBatch(true);
+    setOpenAnalyzeDialog(false);
+    
     try {
-      console.log('Downloading file:', filePath);
-      setDownloading(prev => ({ ...prev, [resumeId]: true }));
-      
       toast({
-        title: "Téléchargement en cours",
-        description: "Veuillez patienter pendant le téléchargement du fichier...",
+        title: "Analyse en cours",
+        description: `Analyse de ${selectedResumes.length} CV démarrée...`,
       });
       
-      const success = await downloadResume(filePath, fileName);
+      let successCount = 0;
       
-      if (success) {
-        toast({
-          title: "Téléchargement réussi",
-          description: `Le fichier "${fileName}" a été téléchargé avec succès`,
-        });
-      } else {
-        throw new Error("Erreur lors du téléchargement du fichier");
+      for (const resumeId of selectedResumes) {
+        try {
+          const result = await analyzeResume(resumeId);
+          
+          if (result.success) {
+            successCount++;
+          }
+        } catch (error) {
+          console.error(`Error analyzing resume ${resumeId}:`, error);
+        }
       }
-    } catch (error: any) {
-      console.error('Error downloading resume:', error);
+      
       toast({
-        title: "Échec du téléchargement",
-        description: error.message || "Une erreur s'est produite lors du téléchargement du CV",
+        title: "Analyse terminée",
+        description: `${successCount} sur ${selectedResumes.length} CV ont été analysés avec succès`,
+      });
+      
+      await loadResumes();
+      setSelectedResumes([]);
+      setSelectionMode(false);
+    } catch (error: any) {
+      console.error('Error in batch analysis:', error);
+      toast({
+        title: "Échec de l'analyse groupée",
+        description: error.message || "Une erreur s'est produite lors de l'analyse des CV",
         variant: "destructive",
       });
     } finally {
-      setDownloading(prev => ({ ...prev, [resumeId]: false }));
+      setIsProcessingBatch(false);
     }
   };
-  
-  const handleRetry = () => {
-    loadResumes();
+
+  const toggleResumeSelection = (resumeId: string) => {
+    setSelectedResumes(prev => {
+      if (prev.includes(resumeId)) {
+        return prev.filter(id => id !== resumeId);
+      } else {
+        return [...prev, resumeId];
+      }
+    });
   };
-  
+
+  const toggleSelectAll = () => {
+    if (selectedResumes.length === filteredResumes.length) {
+      setSelectedResumes([]);
+    } else {
+      setSelectedResumes(filteredResumes.map(resume => resume.id));
+    }
+  };
+
+  const cancelSelection = () => {
+    setSelectionMode(false);
+    setSelectedResumes([]);
+  };
+
   const filteredResumes = resumes.filter(resume => {
     const matchesSearch = !searchQuery 
       || (resume.candidates?.[0]?.first_name && resume.candidates[0].first_name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -383,396 +318,130 @@ const Resumes = () => {
     
     return matchesSearch && matchesStatus;
   });
-  
+
   return (
     <Layout className="py-8 bg-sand/30">
       <div className="container mx-auto px-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-          <div className="mb-4 md:mb-0">
-            <h1 className="text-2xl font-bold text-navy-dark mb-1">CV</h1>
-            <p className="text-muted-foreground">
-              Gérez tous les CV importés dans le système
-            </p>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
-              <input
-                type="text"
-                placeholder="Rechercher un CV..."
-                className="input-field pl-10 w-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            
-            <div className="flex">
-              {!selectionMode ? (
-                <>
-                  <Link to="/resumes/upload">
-                    <Button className="button-primary">
-                      <Upload size={18} className="mr-2" />
-                      Importer un CV
-                    </Button>
-                  </Link>
-                  
-                  {user && <DebugUploadButton userId={user.id} />}
-                </>
-              ) : (
-                <>
-                  <AlertDialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
-                    <AlertDialogTrigger asChild>
-                      <Button 
-                        variant="destructive" 
-                        className="mr-2"
-                        disabled={selectedResumes.length === 0 || isProcessingBatch}
-                      >
-                        {isProcessingBatch ? (
-                          <Loader2 size={16} className="mr-2 animate-spin" />
-                        ) : (
-                          <Trash2 size={16} className="mr-2" />
-                        )}
-                        Supprimer ({selectedResumes.length})
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmation de suppression</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Êtes-vous sûr de vouloir supprimer {selectedResumes.length} CV ? Cette action est irréversible.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBatchDelete} className="bg-red-600 hover:bg-red-700">
-                          Supprimer
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  
-                  <AlertDialog open={openAnalyzeDialog} onOpenChange={setOpenAnalyzeDialog}>
-                    <AlertDialogTrigger asChild>
-                      <Button 
-                        variant="default" 
-                        className="mr-2"
-                        disabled={selectedResumes.length === 0 || isProcessingBatch}
-                      >
-                        {isProcessingBatch ? (
-                          <Loader2 size={16} className="mr-2 animate-spin" />
-                        ) : (
-                          <Eye size={16} className="mr-2" />
-                        )}
-                        Analyser ({selectedResumes.length})
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmation d'analyse</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Vous êtes sur le point d'analyser {selectedResumes.length} CV. Cette opération peut prendre un certain temps.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBatchAnalyze}>
-                          Analyser
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                  
-                  <Button 
-                    variant="outline" 
-                    onClick={cancelSelection}
-                  >
-                    Annuler
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
+        <ResumesHeader userId={user?.id} />
+        
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
+          <input
+            type="text"
+            placeholder="Rechercher un CV..."
+            className="input-field pl-10 w-full"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
         
-        <div className="glass rounded-lg p-3 mb-6 flex flex-wrap items-center gap-3">
-          <div className="flex items-center">
-            <span className="text-sm font-medium text-navy-dark mr-2">Filtres:</span>
-          </div>
-          
-          <div className="flex items-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-1 text-sm">
-                  <Calendar size={16} className="mr-1" />
-                  <span>Date</span>
-                  <ChevronDown size={14} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem>Aujourd'hui</DropdownMenuItem>
-                <DropdownMenuItem>Cette semaine</DropdownMenuItem>
-                <DropdownMenuItem>Ce mois-ci</DropdownMenuItem>
-                <DropdownMenuItem>Tous</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          
-          <div className="flex items-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-1 text-sm">
-                  <span>Statut</span>
-                  <ChevronDown size={14} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setSelectedStatus(null)}>
-                  Tous
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedStatus('analyzed')}>
-                  Analysés
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedStatus('pending')}>
-                  En attente
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          
-          <div className="ml-auto flex gap-2">
-            {!selectionMode && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="h-9 text-navy-dark"
-                onClick={() => setSelectionMode(true)}
-                disabled={resumes.length === 0}
-              >
-                <CheckSquare size={16} className="mr-2" />
-                Sélectionner
-              </Button>
-            )}
-            
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-9 text-muted-foreground"
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedStatus(null);
-              }}
-            >
-              Réinitialiser
-            </Button>
-          </div>
-        </div>
+        <ResumesFilters
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          selectedStatus={selectedStatus}
+          setSelectedStatus={setSelectedStatus}
+          resumesCount={resumes.length}
+          onEnableSelection={() => setSelectionMode(true)}
+          selectionMode={selectionMode}
+        />
         
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 size={40} className="text-navy animate-spin mb-4" />
-            <p className="text-navy-dark font-medium">Chargement des CV...</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Si le chargement persiste trop longtemps, 
-              <Button variant="link" className="p-0 h-auto text-sm" onClick={() => window.location.reload()}>
-                essayez de rafraîchir la page
-              </Button>
-            </p>
-          </div>
-        )}
-        
-        {!isLoading && errorMessage && (
-          <div className="glass rounded-xl p-8 text-center">
-            <div className="w-20 h-20 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-4">
-              <AlertCircle className="h-10 w-10 text-red-600" />
-            </div>
-            <h2 className="text-xl font-semibold text-navy-dark mb-2">Une erreur est survenue</h2>
-            <p className="text-muted-foreground mb-6">
-              {errorMessage}
-            </p>
-            <Button onClick={handleRetry} className="button-primary flex items-center">
-              <RefreshCw size={16} className="mr-2" />
-              Réessayer
-            </Button>
-          </div>
-        )}
-        
-        {!isLoading && !errorMessage && resumes.length === 0 && (
-          <div className="glass rounded-xl p-8 text-center">
-            <div className="w-20 h-20 mx-auto rounded-full bg-navy/10 flex items-center justify-center mb-4">
-              <FileText size={32} className="text-navy" />
-            </div>
-            <h2 className="text-xl font-semibold text-navy-dark mb-2">Aucun CV trouvé</h2>
-            <p className="text-muted-foreground mb-6">
-              Vous n'avez pas encore importé de CV dans le système.
-            </p>
-            <Link to="/resumes/upload">
-              <Button className="button-primary">
-                <Upload size={18} className="mr-2" />
-                Importer un CV
-              </Button>
-            </Link>
-          </div>
-        )}
-        
-        {!isLoading && !errorMessage && resumes.length > 0 && (
+        {selectionMode && (
           <>
-            {selectionMode && (
-              <div className="glass rounded-lg p-3 mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Checkbox 
-                    checked={selectedResumes.length === filteredResumes.length && filteredResumes.length > 0} 
-                    onCheckedChange={toggleSelectAll}
-                    className="h-5 w-5"
-                  />
-                  <span className="text-sm font-medium">
-                    {selectedResumes.length} sur {filteredResumes.length} CV sélectionnés
-                  </span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={toggleSelectAll}
-                  >
-                    {selectedResumes.length === filteredResumes.length && filteredResumes.length > 0 
-                      ? "Désélectionner tout" 
-                      : "Sélectionner tout"}
-                  </Button>
-                </div>
-              </div>
-            )}
+            <SelectionBar
+              selectedCount={selectedResumes.length}
+              totalCount={filteredResumes.length}
+              onToggleSelectAll={toggleSelectAll}
+              isAllSelected={selectedResumes.length === filteredResumes.length && filteredResumes.length > 0}
+            />
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              <Link to="/resumes/upload" className="glass rounded-xl border-2 border-dashed border-navy/20 flex flex-col items-center justify-center p-6 h-64 hover:border-navy/40 transition-colors">
-                <div className="w-12 h-12 rounded-full bg-navy/10 flex items-center justify-center text-sand">
-                  <Plus size={24} className="text-navy" />
-                </div>
-                <p className="text-navy-dark font-medium mb-1 mt-4">Importer un CV</p>
-                <p className="text-sm text-muted-foreground text-center">
-                  Glissez-déposez ou cliquez pour sélectionner
-                </p>
-              </Link>
-              
-              {filteredResumes.map((resume) => (
-                <SelectableCard
-                  key={resume.id}
-                  selected={selectedResumes.includes(resume.id)}
-                  onSelect={() => toggleResumeSelection(resume.id)}
-                  className={`${selectionMode ? 'card-hover-disabled' : 'card-hover'} glass flex flex-col`}
-                >
-                  <div className="p-4 flex-grow">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="w-10 h-10 rounded-full bg-navy flex items-center justify-center text-sand">
-                        <FileText size={18} />
-                      </div>
-                      
-                      {!selectionMode && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal size={16} />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem 
-                              onClick={() => handleDownloadResume(resume.file_path, resume.file_name, resume.id)}
-                              disabled={downloading[resume.id]}
-                            >
-                              {downloading[resume.id] ? (
-                                <Loader2 size={14} className="mr-2 animate-spin" />
-                              ) : (
-                                <Download size={14} className="mr-2" />
-                              )}
-                              Télécharger
-                            </DropdownMenuItem>
-                            {!resume.parsed && (
-                              <DropdownMenuItem onClick={() => handleAnalyzeResume(resume.id)}>
-                                <Eye size={14} className="mr-2" />
-                                Analyser
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-red-600"
-                              onClick={() => handleDeleteResume(resume.id, resume.file_path)}
-                            >
-                              <Trash2 size={14} className="mr-2" />
-                              Supprimer
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                    
-                    <h3 className="font-medium text-navy-dark break-all line-clamp-1 mb-1" title={resume.file_name}>
-                      {resume.file_name}
-                    </h3>
-                    
-                    {resume.candidates && resume.candidates.length > 0 ? (
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Candidat: {resume.candidates[0].first_name} {resume.candidates[0].last_name}
-                      </p>
+            <div className="flex gap-2 mb-6">
+              <AlertDialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="destructive"
+                    disabled={selectedResumes.length === 0 || isProcessingBatch}
+                  >
+                    {isProcessingBatch ? (
+                      <Loader2 size={16} className="mr-2 animate-spin" />
                     ) : (
-                      <p className="text-sm text-amber-600 mb-3 flex items-center">
-                        <svg className="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none">
-                          <path d="M12 9v4m0 4h.01M5.07 19H19a2 2 0 0 0 1.75-2.98L13.75 4.99a2 2 0 0 0-3.5 0L3.25 16.02A2 2 0 0 0 5.07 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        En attente d'analyse
-                      </p>
+                      <Trash2 size={16} className="mr-2" />
                     )}
-                    
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <Calendar size={12} className="mr-1" />
-                      Importé le {resume.created_at ? formatDate(resume.created_at) : 'N/A'}
-                    </div>
-                    
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Taille: {(resume.file_size / 1024 / 1024).toFixed(2)} MB
-                    </div>
-                  </div>
-                  
-                  {!selectionMode && (
-                    <div className="border-t border-border/10 p-3 flex justify-between">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-xs"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          resume.parsed ? 
-                            navigate(`/candidates/${resume.candidates?.[0]?.id}`) :
-                            handleAnalyzeResume(resume.id);
-                        }}
-                      >
-                        <Eye size={14} className="mr-1" />
-                        {resume.parsed ? "Voir candidat" : "Analyser"}
-                      </Button>
-                      
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-xs"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleDownloadResume(resume.file_path, resume.file_name, resume.id);
-                        }}
-                        disabled={downloading[resume.id]}
-                      >
-                        {downloading[resume.id] ? (
-                          <Loader2 size={14} className="mr-1 animate-spin" />
-                        ) : (
-                          <Download size={14} className="mr-1" />
-                        )}
-                        Télécharger
-                      </Button>
-                    </div>
-                  )}
-                </SelectableCard>
-              ))}
+                    Supprimer ({selectedResumes.length})
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmation de suppression</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Êtes-vous sûr de vouloir supprimer {selectedResumes.length} CV ? Cette action est irréversible.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleBatchDelete} className="bg-red-600 hover:bg-red-700">
+                      Supprimer
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              
+              <AlertDialog open={openAnalyzeDialog} onOpenChange={setOpenAnalyzeDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="default"
+                    disabled={selectedResumes.length === 0 || isProcessingBatch}
+                  >
+                    {isProcessingBatch ? (
+                      <Loader2 size={16} className="mr-2 animate-spin" />
+                    ) : (
+                      <Eye size={16} className="mr-2" />
+                    )}
+                    Analyser ({selectedResumes.length})
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmation d'analyse</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Vous êtes sur le point d'analyser {selectedResumes.length} CV. Cette opération peut prendre un certain temps.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleBatchAnalyze}>
+                      Analyser
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              
+              <Button 
+                variant="outline"
+                onClick={cancelSelection}
+              >
+                Annuler
+              </Button>
             </div>
           </>
+        )}
+        
+        {isLoading && <LoadingState />}
+        
+        {!isLoading && errorMessage && <ErrorState errorMessage={errorMessage} onRetry={loadResumes} />}
+        
+        {!isLoading && !errorMessage && resumes.length === 0 && <NoResumesState />}
+        
+        {!isLoading && !errorMessage && resumes.length > 0 && (
+          <ResumesGrid
+            resumes={filteredResumes}
+            selectedResumes={selectedResumes}
+            selectionMode={selectionMode}
+            downloading={downloading}
+            onSelect={toggleResumeSelection}
+            onDownload={handleDownloadResume}
+            onAnalyze={handleAnalyzeResume}
+            onDelete={handleDeleteResume}
+          />
         )}
       </div>
     </Layout>
