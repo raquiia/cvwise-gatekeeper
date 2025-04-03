@@ -4,7 +4,7 @@ import {
   Users, UserCheck, UserX, ArrowLeft, 
   MoreHorizontal, MessageSquare, Settings,
   LogOut, Search, Filter, Download, SortAsc,
-  SortDesc, FileExport, ChevronLeft, Mail, Briefcase
+  SortDesc, FileText, ChevronLeft, Mail, Briefcase
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
@@ -194,7 +194,7 @@ const AllUsers = () => {
               </DropdownMenu>
               
               <Button variant="outline">
-                <FileExport size={16} className="mr-2" />
+                <FileText size={16} className="mr-2" />
                 Exporter
               </Button>
             </div>
