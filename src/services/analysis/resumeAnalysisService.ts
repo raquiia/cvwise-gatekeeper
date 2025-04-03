@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { calculateOverallMatch, MatchResult } from './matchingUtils';
+import { toast } from '@/hooks/use-toast';
 
 /**
  * Service responsable de l'analyse des CV
@@ -12,36 +13,61 @@ export const resumeAnalysisService = {
    */
   analyzeResume: async (resumeId: string): Promise<{ success: boolean; message?: string; candidateId?: string }> => {
     try {
-      console.log(`Triggering analysis for resume ID: ${resumeId}`);
+      console.log(`Démarrage de l'analyse pour le CV ID: ${resumeId}`);
+      toast({
+        title: "Analyse en cours",
+        description: "L'extraction des informations du CV peut prendre jusqu'à 30 secondes...",
+      });
       
       const { data, error } = await supabase.functions.invoke('analyze-resume', {
         body: { 
           resumeId,
-          extractDetails: true,  // Make sure to extract all details
-          fullExtraction: true   // Additional flag to enforce complete extraction
+          extractDetails: true,    // Extraction complète des détails
+          fullExtraction: true,    // Force l'extraction complète
+          forceCompletion: true    // Génère des données même en cas d'échec partiel
         }
       });
       
       if (error) {
-        console.error('Error calling analyze-resume function:', error);
+        console.error('Erreur lors de l\'appel de la fonction analyze-resume:', error);
+        toast({
+          title: "Erreur d'analyse",
+          description: error.message || "Une erreur s'est produite lors de l'analyse du CV",
+          variant: "destructive",
+        });
         throw error;
       }
       
-      console.log('Analysis response:', data);
+      console.log('Réponse de l\'analyse:', data);
       
       if (data.success) {
+        toast({
+          title: "Analyse terminée",
+          description: "Le CV a été analysé avec succès",
+          variant: "default",
+        });
         return { 
           success: true, 
           candidateId: data.candidate?.id 
         };
       } else {
+        toast({
+          title: "Analyse incomplète",
+          description: data.message || "L'analyse a rencontré des difficultés. Vérifiez le candidat créé.",
+          variant: "default",
+        });
         return { 
           success: false, 
           message: data.message || "Une erreur inconnue s'est produite" 
         };
       }
     } catch (error: any) {
-      console.error('Error analyzing resume:', error);
+      console.error('Erreur lors de l\'analyse du CV:', error);
+      toast({
+        title: "Échec de l'analyse",
+        description: error.message || "Une erreur s'est produite lors de l'analyse du CV",
+        variant: "destructive",
+      });
       return { 
         success: false, 
         message: error.message || "Une erreur s'est produite lors de l'analyse du CV" 
@@ -54,7 +80,7 @@ export const resumeAnalysisService = {
    */
   compareToJobPosition: async (candidateId: string, jobPositionId: string): Promise<MatchResult> => {
     try {
-      console.log(`Comparing candidate ${candidateId} to job position ${jobPositionId}`);
+      console.log(`Comparaison du candidat ${candidateId} avec l'offre d'emploi ${jobPositionId}`);
       
       // Get candidate data
       const { data: candidateData, error: candidateError } = await supabase

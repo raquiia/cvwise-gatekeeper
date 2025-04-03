@@ -31,13 +31,31 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ candidate, onView
   const firstInitial = candidate.first_name?.charAt(0) || '?';
   const lastInitial = candidate.last_name?.charAt(0) || '?';
   const fullName = `${candidate.first_name || 'Sans nom'} ${candidate.last_name || ''}`.trim();
-  const position = candidate.position || 'Non spécifié';
+  
+  // Fix for position coming as an object sometimes
+  let position = 'Non spécifié';
+  if (candidate.position) {
+    if (typeof candidate.position === 'string') {
+      position = candidate.position;
+    } else if (typeof candidate.position === 'object' && candidate.position !== null) {
+      // Try to extract value if position is an object
+      const posObj = candidate.position as any;
+      if (posObj.value && posObj.value !== 'undefined') {
+        position = posObj.value;
+      } else if (Object.values(posObj).length > 0) {
+        // Try first value in the object
+        const firstValue = Object.values(posObj).find(v => typeof v === 'string' && v !== 'undefined');
+        if (firstValue) position = String(firstValue);
+      }
+    }
+  }
+  
   const location = candidate.location || 'Non spécifié';
   const yearsExp = candidate.years_experience || 0;
   
   // Make sure skills is an array of strings
   const skills = Array.isArray(candidate.skills) 
-    ? candidate.skills 
+    ? candidate.skills.map(skill => String(skill)) 
     : (typeof candidate.skills === 'object' && candidate.skills !== null)
       ? Object.values(candidate.skills).filter(Boolean).map(skill => String(skill))
       : [];
