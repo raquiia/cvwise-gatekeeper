@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { resumeStorageService } from './storage/resumeStorageService';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,10 +15,7 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
     console.log(`Starting upload for ${file.name} (${file.size} bytes)`);
     
     // Ensure bucket exists first, but don't stop the flow if it already exists
-    const bucketExists = await ensureResumesBucketExists();
-    
-    // Even if bucket creation reported an error, try to upload anyway
-    // as it might be just that the bucket already exists
+    await ensureResumesBucketExists();
     
     // Upload the file to storage
     const filePath = await resumeStorageService.uploadFile(file, userId);
@@ -32,7 +28,7 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
     
     // Utiliser la fonction SQL sécurisée pour insérer le CV
     try {
-      const { data, error } = await supabase.rpc('insert_resume', {
+      const { data: resumeId, error } = await supabase.rpc('insert_resume', {
         p_user_id: userId,
         p_file_name: file.name,
         p_file_path: filePath,
@@ -52,12 +48,9 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
         return null;
       }
       
-      // Récupérer l'enregistrement complet
-      const resumeId = data;
+      // Utiliser notre nouvelle fonction sécurisée pour récupérer l'enregistrement
       const { data: resumeRecord, error: fetchError } = await supabase
-        .from('resumes')
-        .select('*')
-        .eq('id', resumeId)
+        .rpc('get_resume_by_id', { p_resume_id: resumeId })
         .single();
         
       if (fetchError) {
@@ -86,6 +79,8 @@ export const getUserResumes = async (userId: string): Promise<ResumeData[]> => {
   try {
     console.log('Fetching resumes for user:', userId);
     
+    // Utiliser une requête directe vers la table resumes avec un filtre sur user_id
+    // Cela devrait fonctionner avec les politiques RLS correctement configurées
     const { data, error } = await supabase
       .from('resumes')
       .select('*')

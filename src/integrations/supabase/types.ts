@@ -201,6 +201,22 @@ export type Database = {
           updated_at: string | null
         }[]
       }
+      get_resume_by_id: {
+        Args: {
+          p_resume_id: string
+        }
+        Returns: {
+          created_at: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          parsed: boolean | null
+          updated_at: string | null
+          user_id: string
+        }[]
+      }
       insert_resume: {
         Args: {
           p_user_id: string

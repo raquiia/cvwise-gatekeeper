@@ -30,6 +30,15 @@ export const resumeStorageService = {
             });
             
           if (error) {
+            // Vérifier si l'erreur est due au fait que le bucket n'existe pas
+            if (error.message.includes('bucket') && retryCount === 0) {
+              console.log('Bucket might not exist yet, continuing attempt...');
+              retryCount++;
+              // Attendre un court instant avant de réessayer
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              continue;
+            }
+            
             if (retryCount === maxRetries - 1) {
               console.error('Upload error after retries:', error.message);
               return null;
@@ -38,7 +47,7 @@ export const resumeStorageService = {
             console.log(`Retry ${retryCount + 1}/${maxRetries} due to error: ${error.message}`);
             retryCount++;
             // Attendre un court instant avant de réessayer
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount)));
             continue;
           }
           
@@ -52,7 +61,7 @@ export const resumeStorageService = {
             return null;
           }
           
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount)));
         }
       }
       

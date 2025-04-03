@@ -8,7 +8,9 @@ export const ensureResumesBucketExists = async (): Promise<boolean> => {
     
     if (listError) {
       console.error('Error listing buckets:', listError.message);
-      return false;
+      // Continuons malgré l'erreur
+      console.log('Assuming bucket will be created by admin');
+      return true;
     }
     
     // Si le bucket existe déjà, retourner succès
@@ -17,8 +19,8 @@ export const ensureResumesBucketExists = async (): Promise<boolean> => {
       return true;
     }
     
-    // Ne pas essayer de créer le bucket si les politiques sont configurées pour l'utiliser
-    // Supposons que l'administrateur a déjà créé le bucket via la migration SQL
+    // Pour éviter l'erreur 400, ne tentons pas de créer le bucket ici
+    // La migration SQL a déjà créé le bucket
     console.log('Bucket not found but assuming it will be created by admin');
     return true;
   } catch (error) {

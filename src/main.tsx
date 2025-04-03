@@ -7,13 +7,12 @@ import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from '@/context/AuthContext'
 import { Toaster } from "@/components/ui/sonner"
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ensureResumesBucketExists } from './integrations/supabase/createBucket'
 
 // Create a client for React Query
 const queryClient = new QueryClient()
 
-// Ensure the resumes bucket exists
-ensureResumesBucketExists().catch(console.error);
+// Ne pas essayer de créer le bucket au démarrage, cela sera géré lors du téléchargement
+// ensureResumesBucketExists().catch(console.error);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
