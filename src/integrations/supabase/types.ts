@@ -217,6 +217,12 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_user_resumes: {
+        Args: {
+          user_id_param: string
+        }
+        Returns: Json[]
+      }
       insert_resume: {
         Args: {
           p_user_id: string

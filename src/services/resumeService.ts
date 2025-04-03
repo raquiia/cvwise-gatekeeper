@@ -84,7 +84,7 @@ export const getUserResumes = async (userId: string): Promise<ResumeData[]> => {
   try {
     console.log('Fetching resumes for user:', userId);
     
-    // Use direct SQL function call to avoid RLS policy recursion
+    // Use the stored procedure that avoids RLS recursion
     const { data, error } = await supabase.rpc('get_user_resumes', {
       user_id_param: userId
     });
@@ -100,30 +100,8 @@ export const getUserResumes = async (userId: string): Promise<ResumeData[]> => {
       return [];
     }
     
-    // Convert the data to the ResumeData format
-    const resumesWithCandidates: ResumeData[] = data.map((resume: any) => {
-      const resumeData: ResumeData = {
-        id: resume.id,
-        user_id: resume.user_id,
-        file_name: resume.file_name,
-        file_path: resume.file_path,
-        file_type: resume.file_type,
-        file_size: resume.file_size,
-        parsed: resume.parsed || false,
-        created_at: resume.created_at,
-        updated_at: resume.updated_at,
-        candidates: []
-      };
-      
-      if (resume.candidates && resume.candidates.length > 0) {
-        resumeData.candidates = resume.candidates as CandidateData[];
-      }
-      
-      return resumeData;
-    });
-    
-    return resumesWithCandidates;
-  } catch (error) {
+    return data as ResumeData[];
+  } catch (error: any) {
     console.error('Error in getUserResumes:', error);
     // En cas d'erreur, retourner un tableau vide mais ne pas bloquer l'interface
     return [];
