@@ -30,6 +30,29 @@ export interface CandidateData {
   skills?: any[];
   score?: number;
   status?: string;
+  experiences?: any[];
+  education?: any[];
+  certifications?: any[];
+  languages?: any[];
+  publications?: any[];
+  interests?: string;
+  professional_references?: any[];
+  availability?: string;
+  salary_expectations?: string;
+  mobility?: string;
+  contract_type?: string;
+  remote_preference?: string;
+  travel_willingness?: string;
+  professional_networks?: any[];
+  continuous_training?: any[];
+  career_objectives?: string;
+  professional_values?: string;
+  work_authorization?: string;
+  special_permits?: any[];
+  industries?: any[];
+  projects?: any[];
+  profile_completeness?: number;
+  last_updated_at?: string;
 }
 
 /**

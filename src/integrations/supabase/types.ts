@@ -257,6 +257,29 @@ export type Database = {
           company: string
           created_at: string
           updated_at: string
+          experiences: Json
+          education: Json
+          certifications: Json
+          languages: Json
+          publications: Json
+          interests: string
+          professional_references: Json
+          availability: string
+          salary_expectations: string
+          mobility: string
+          contract_type: string
+          remote_preference: string
+          travel_willingness: string
+          professional_networks: Json
+          continuous_training: Json
+          career_objectives: string
+          professional_values: string
+          work_authorization: string
+          special_permits: Json
+          industries: Json
+          projects: Json
+          profile_completeness: number
+          last_updated_at: string
         }[]
       }
       get_user_resumes: {
