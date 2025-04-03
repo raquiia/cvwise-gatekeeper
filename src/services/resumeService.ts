@@ -9,19 +9,29 @@ import type { ResumeData, CandidateData } from './data/resumeDataService';
 export type { ResumeData, CandidateData };
 
 /**
- * Version simplifiée du téléchargement d'un CV
+ * Upload a resume file and create a database record
  */
 export const uploadResume = async (file: File, userId: string): Promise<ResumeData | null> => {
   try {
-    // S'assurer que le bucket existe
-    await ensureResumesBucketExists();
+    console.log(`Starting upload for ${file.name} (${file.size} bytes)`);
     
-    // Générer un chemin de fichier unique
-    const fileExt = file.name.split('.').pop() || 'pdf';
-    const fileName = `${uuidv4()}.${fileExt}`;
-    const filePath = `${userId}/${fileName}`;
+    // Ensure bucket exists first
+    const bucketExists = await ensureResumesBucketExists();
+    if (!bucketExists) {
+      console.error('Failed to ensure bucket exists');
+      return null;
+    }
     
-    // D'abord insérer l'enregistrement dans la base de données
+    // Upload the file to storage first
+    const filePath = await resumeStorageService.uploadFile(file, userId);
+    if (!filePath) {
+      console.error('File upload failed');
+      return null;
+    }
+    
+    console.log('File uploaded successfully, creating database record');
+    
+    // Then create a database record
     const { data: resumeRecord, error: dbError } = await supabase
       .from('resumes')
       .insert({
@@ -36,32 +46,27 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
       .single();
       
     if (dbError) {
-      console.error('Erreur DB:', dbError.message);
+      console.error('Database error:', dbError.message);
+      // Clean up the file if database insert fails
+      await resumeStorageService.deleteFile(filePath);
       return null;
     }
     
-    // Ensuite télécharger le fichier
-    const uploadResult = await resumeStorageService.uploadFile(file, userId);
-    
-    if (!uploadResult) {
-      // Si échec d'upload, supprimer l'enregistrement
-      await supabase.from('resumes').delete().eq('id', resumeRecord.id);
-      console.error('Échec téléchargement du fichier');
-      return null;
-    }
-    
+    console.log('Resume record created successfully:', resumeRecord);
     return resumeRecord as ResumeData;
   } catch (error: any) {
-    console.error('Exception complète:', error.message);
+    console.error('Exception during resume upload:', error.message);
     return null;
   }
 };
 
 /**
- * Récupère tous les CV d'un utilisateur
+ * Get all resumes for a user
  */
 export const getUserResumes = async (userId: string): Promise<ResumeData[]> => {
   try {
+    console.log('Fetching resumes for user:', userId);
+    
     const { data, error } = await supabase
       .from('resumes')
       .select('*')
@@ -69,38 +74,39 @@ export const getUserResumes = async (userId: string): Promise<ResumeData[]> => {
       .order('created_at', { ascending: false });
       
     if (error) {
-      console.error('Erreur récupération CV:', error.message);
+      console.error('Error fetching resumes:', error.message);
       return [];
     }
     
+    console.log(`Found ${data?.length || 0} resumes`);
     return data as ResumeData[];
   } catch (error) {
-    console.error('Exception récupération CV:', error);
+    console.error('Exception fetching resumes:', error);
     return [];
   }
 };
 
 /**
- * Supprime un CV
+ * Delete a resume and its file
  */
 export const deleteResume = async (resumeId: string, filePath: string): Promise<boolean> => {
   try {
-    // Supprimer l'enregistrement
+    // Delete the database record first
     const { error } = await supabase
       .from('resumes')
       .delete()
       .eq('id', resumeId);
       
     if (error) {
-      console.error('Erreur suppression DB:', error.message);
+      console.error('Error deleting resume record:', error.message);
       return false;
     }
     
-    // Supprimer le fichier
+    // Then delete the file
     await resumeStorageService.deleteFile(filePath);
     return true;
   } catch (error) {
-    console.error('Exception suppression CV:', error);
+    console.error('Exception deleting resume:', error);
     return false;
   }
 };

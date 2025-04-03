@@ -1,38 +1,60 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
+import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
 
 export const resumeStorageService = {
   uploadFile: async (file: File, userId: string): Promise<string | null> => {
     try {
-      // Génération d'un nom de fichier unique
+      // Ensure bucket exists
+      const bucketExists = await ensureResumesBucketExists();
+      if (!bucketExists) {
+        console.error('Failed to ensure resumes bucket exists');
+        return null;
+      }
+      
+      // Generate unique filename
       const fileExt = file.name.split('.').pop() || 'pdf';
       const fileName = `${uuidv4()}.${fileExt}`;
       const filePath = `${userId}/${fileName}`;
       
-      // Upload direct sans vérifications complexes
+      console.log(`Uploading file to ${filePath}`);
+      
+      // Upload the file
       const { error } = await supabase.storage
         .from('resumes')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
         
       if (error) {
-        console.error('Erreur upload:', error.message);
+        console.error('Upload error:', error.message);
         return null;
       }
       
+      console.log('File uploaded successfully');
       return filePath;
     } catch (error) {
-      console.error('Exception upload:', error);
+      console.error('Exception during upload:', error);
       return null;
     }
   },
   
   deleteFile: async (filePath: string): Promise<boolean> => {
     try {
-      await supabase.storage.from('resumes').remove([filePath]);
+      const { error } = await supabase.storage
+        .from('resumes')
+        .remove([filePath]);
+        
+      if (error) {
+        console.error('File deletion error:', error.message);
+        return false;
+      }
+      
       return true;
     } catch (error) {
-      console.error('Erreur suppression:', error);
+      console.error('Exception during file deletion:', error);
       return false;
     }
   },
@@ -45,7 +67,7 @@ export const resumeStorageService = {
         
       return data.publicUrl;
     } catch (error) {
-      console.error('Erreur URL:', error);
+      console.error('Error getting file URL:', error);
       return null;
     }
   }

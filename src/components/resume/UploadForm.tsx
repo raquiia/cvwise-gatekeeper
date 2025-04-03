@@ -13,28 +13,98 @@ interface UploadFormProps {
 const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<('idle' | 'success' | 'error')[]>([]);
+  const [uploadStatus, setUploadStatus] = useState<Record<number, 'idle' | 'uploading' | 'success' | 'error'>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFiles(Array.from(e.target.files));
-      setUploadStatus(Array.from(e.target.files).map(() => 'idle'));
+      const newFiles = Array.from(e.target.files);
+      setFiles(prev => [...prev, ...newFiles]);
+      
+      // Initialize status for new files
+      const newStatus: Record<number, 'idle' | 'uploading' | 'success' | 'error'> = {};
+      newFiles.forEach((_, index) => {
+        newStatus[prev.length + index] = 'idle';
+      });
+      
+      setUploadStatus(prev => ({...prev, ...newStatus}));
+    }
+  };
+  
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (uploading) return;
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const newFiles = Array.from(e.dataTransfer.files).filter(
+        file => file.type === 'application/pdf' || 
+               file.type === 'application/msword' || 
+               file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+               file.type === 'text/plain'
+      );
+      
+      if (newFiles.length === 0) {
+        toast({
+          title: "Format non supporté",
+          description: "Veuillez déposer des fichiers au format PDF, DOC, DOCX ou TXT.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setFiles(prev => [...prev, ...newFiles]);
+      
+      // Initialize status for new files
+      const newStatus: Record<number, 'idle' | 'uploading' | 'success' | 'error'> = {};
+      newFiles.forEach((_, index) => {
+        newStatus[files.length + index] = 'idle';
+      });
+      
+      setUploadStatus(prev => ({...prev, ...newStatus}));
     }
   };
   
   const clearFiles = () => {
     setFiles([]);
-    setUploadStatus([]);
+    setUploadStatus({});
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+  
+  const removeFile = (index: number) => {
+    setFiles(files.filter((_, i) => i !== index));
+    
+    // Update status object
+    const newStatus = {...uploadStatus};
+    delete newStatus[index];
+    
+    // Reindex remaining files
+    const updatedStatus: Record<number, 'idle' | 'uploading' | 'success' | 'error'> = {};
+    Object.entries(newStatus).forEach(([key, value]) => {
+      const keyNum = parseInt(key);
+      if (keyNum > index) {
+        updatedStatus[keyNum - 1] = value;
+      } else {
+        updatedStatus[keyNum] = value;
+      }
+    });
+    
+    setUploadStatus(updatedStatus);
   };
   
   const handleUpload = async () => {
     if (!files.length) {
       toast({
         title: "Aucun fichier",
-        description: "Veuillez sélectionner au moins un fichier à télécharger"
+        description: "Veuillez sélectionner au moins un fichier à télécharger",
+        variant: "destructive"
       });
       return;
     }
@@ -42,7 +112,8 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
     if (!userId) {
       toast({
         title: "Non connecté",
-        description: "Vous devez être connecté pour télécharger des fichiers"
+        description: "Vous devez être connecté pour télécharger des fichiers",
+        variant: "destructive"
       });
       return;
     }
@@ -52,29 +123,22 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
     
     for (let i = 0; i < files.length; i++) {
       try {
+        setUploadStatus(prev => ({...prev, [i]: 'uploading'}));
+        
+        console.log(`Uploading file ${i+1}/${files.length}: ${files[i].name}`);
         const result = await uploadResume(files[i], userId);
         
         if (result) {
-          setUploadStatus(prev => {
-            const newStatus = [...prev];
-            newStatus[i] = 'success';
-            return newStatus;
-          });
+          console.log(`Upload succeeded for ${files[i].name}`);
+          setUploadStatus(prev => ({...prev, [i]: 'success'}));
           successCount++;
         } else {
-          setUploadStatus(prev => {
-            const newStatus = [...prev];
-            newStatus[i] = 'error';
-            return newStatus;
-          });
+          console.error(`Upload failed for ${files[i].name}`);
+          setUploadStatus(prev => ({...prev, [i]: 'error'}));
         }
       } catch (error) {
-        console.error(`Erreur upload ${files[i].name}:`, error);
-        setUploadStatus(prev => {
-          const newStatus = [...prev];
-          newStatus[i] = 'error';
-          return newStatus;
-        });
+        console.error(`Error uploading ${files[i].name}:`, error);
+        setUploadStatus(prev => ({...prev, [i]: 'error'}));
       }
     }
     
@@ -89,7 +153,8 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
     } else {
       toast({
         title: "Échec du téléchargement",
-        description: "Aucun fichier n'a pu être téléchargé"
+        description: "Aucun fichier n'a pu être téléchargé",
+        variant: "destructive"
       });
     }
   };
@@ -103,8 +168,12 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
         <h2 className="text-xl font-semibold">Télécharger des CV</h2>
       </div>
       
-      {/* Zone de dépôt simplifiée */}
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6">
+      {/* Zone de dépôt */}
+      <div 
+        className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6 hover:border-navy/50 hover:bg-navy/5 transition-colors"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
         <input
           type="file"
           ref={fileInputRef}
@@ -129,7 +198,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
         </p>
       </div>
       
-      {/* Liste de fichiers simplifiée */}
+      {/* Liste de fichiers */}
       {files.length > 0 && (
         <div className="mb-6">
           <h3 className="text-sm font-medium mb-3">
@@ -162,12 +231,15 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
                   </div>
                 )}
                 
-                {uploadStatus[index] === 'idle' && !uploading && (
+                {uploadStatus[index] === 'uploading' && (
+                  <div className="w-6 h-6 flex items-center justify-center">
+                    <Loader2 size={14} className="animate-spin text-navy" />
+                  </div>
+                )}
+                
+                {(uploadStatus[index] === 'idle' && !uploading) && (
                   <button 
-                    onClick={() => {
-                      setFiles(files.filter((_, i) => i !== index));
-                      setUploadStatus(uploadStatus.filter((_, i) => i !== index));
-                    }}
+                    onClick={() => removeFile(index)}
                     className="w-6 h-6 hover:bg-gray-200 rounded-full flex items-center justify-center"
                   >
                     <X size={14} />
@@ -202,7 +274,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
           ) : (
             <>
               <Upload size={16} className="mr-2" />
-              Télécharger
+              Télécharger ({files.length})
             </>
           )}
         </Button>
