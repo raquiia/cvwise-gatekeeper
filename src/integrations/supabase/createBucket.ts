@@ -38,6 +38,15 @@ export const ensureResumesBucketExists = async () => {
     } else {
       console.log('The "resumes" bucket already exists');
     }
+    
+    // Additional check to ensure the bucket is properly accessible
+    const { data: bucketInfo, error: bucketError } = await supabase.storage.getBucket('resumes');
+    
+    if (bucketError) {
+      console.error('Error accessing "resumes" bucket:', bucketError);
+    } else {
+      console.log('Bucket "resumes" is accessible:', bucketInfo);
+    }
   } catch (error) {
     console.error('Error initializing bucket:', error);
   }
