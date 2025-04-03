@@ -16,28 +16,58 @@ interface CandidateTableRowProps {
 }
 
 const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ candidate, onViewCandidate }) => {
+  if (!candidate || typeof candidate !== 'object') {
+    console.error('Invalid candidate object:', candidate);
+    return null;
+  }
+
+  // Make sure we have an id
+  if (!candidate.id) {
+    console.error('Candidate without ID:', candidate);
+    return null;
+  }
+
+  // Get safe values with fallbacks
+  const firstInitial = candidate.first_name?.charAt(0) || '?';
+  const lastInitial = candidate.last_name?.charAt(0) || '?';
+  const fullName = `${candidate.first_name || 'Sans nom'} ${candidate.last_name || ''}`.trim();
+  const position = candidate.position || 'Non spécifié';
+  const location = candidate.location || 'Non spécifié';
+  const yearsExp = candidate.years_experience || 0;
+  const skills = Array.isArray(candidate.skills) ? candidate.skills : [];
+  const score = candidate.score || 0;
+  const status = candidate.status || 'qualification';
+  const updatedAt = candidate.updated_at ? new Date(candidate.updated_at) : null;
+  
+  // Safe click handler
+  const handleViewClick = () => {
+    if (candidate.id) {
+      onViewCandidate(candidate.id);
+    }
+  };
+
   return (
-    <tr key={candidate.id} className="border-b border-border/10 hover:bg-navy/5 transition-colors">
+    <tr className="border-b border-border/10 hover:bg-navy/5 transition-colors">
       <td className="p-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-navy/10 flex items-center justify-center text-navy-dark font-medium">
-            {candidate.first_name?.[0]}{candidate.last_name?.[0]}
+            {firstInitial}{lastInitial}
           </div>
           <div>
-            <span className="font-medium text-navy-dark">{candidate.first_name} {candidate.last_name}</span>
+            <span className="font-medium text-navy-dark">{fullName}</span>
             <div className="flex items-center mt-0.5">
-              {candidate.status === 'active' ? (
+              {status === 'active' ? (
                 <div className="flex items-center text-xs text-emerald-600">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1"></div>
                   Actif
                 </div>
               ) : (
-                <div className="flex items-center text-xs text-red-600">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1"></div>
-                  {candidate.status === 'qualification' ? 'En qualification' : 
-                   candidate.status === 'inactive' ? 'Inactif' : 
-                   candidate.status === 'interview' ? 'En entretien' :
-                   candidate.status === 'hired' ? 'Embauché' : 'Statut inconnu'}
+                <div className="flex items-center text-xs text-amber-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1"></div>
+                  {status === 'qualification' ? 'En qualification' : 
+                   status === 'inactive' ? 'Inactif' : 
+                   status === 'interview' ? 'En entretien' :
+                   status === 'hired' ? 'Embauché' : 'Statut inconnu'}
                 </div>
               )}
             </div>
@@ -45,26 +75,26 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ candidate, onView
         </div>
       </td>
       <td className="p-4 text-navy-dark">
-        {candidate.position || 'Non spécifié'}
+        {position}
       </td>
       <td className="p-4 text-navy-dark">
         {candidate.company || 'Non spécifié'}
       </td>
       <td className="p-4 text-muted-foreground hidden lg:table-cell">
-        {candidate.location ? (
+        {location !== 'Non spécifié' ? (
           <div className="flex items-center">
             <MapPin size={14} className="mr-1" />
-            {candidate.location}
+            {location}
           </div>
         ) : 'Non spécifié'}
       </td>
       <td className="p-4 text-muted-foreground hidden lg:table-cell">
-        {candidate.years_experience ? `${candidate.years_experience} ans` : 'Non spécifié'}
+        {yearsExp > 0 ? `${yearsExp} ans` : 'Non spécifié'}
       </td>
       <td className="p-4">
         <div className="flex flex-wrap gap-1">
-          {candidate.skills && candidate.skills.length > 0 ? (
-            candidate.skills.slice(0, 3).map((skill, idx) => (
+          {skills.length > 0 ? (
+            skills.slice(0, 3).map((skill, idx) => (
               <span key={idx} className="inline-block px-2 py-0.5 bg-navy/10 text-navy-dark text-xs rounded-full">
                 {skill}
               </span>
@@ -72,29 +102,29 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ candidate, onView
           ) : (
             <span className="text-muted-foreground text-xs">Non spécifié</span>
           )}
-          {candidate.skills && candidate.skills.length > 3 && (
+          {skills.length > 3 && (
             <span className="inline-block px-2 py-0.5 bg-navy/5 text-navy-dark text-xs rounded-full">
-              +{candidate.skills.length - 3}
+              +{skills.length - 3}
             </span>
           )}
         </div>
       </td>
       <td className="p-4">
-        {candidate.score ? (
+        {score > 0 ? (
           <div className={`rating-chip ${
-            candidate.score > 85 ? 'rating-high' : 
-            candidate.score > 65 ? 'rating-medium' : 
+            score > 85 ? 'rating-high' : 
+            score > 65 ? 'rating-medium' : 
             'rating-low'
           }`}>
             <Star size={12} />
-            {candidate.score}%
+            {score}%
           </div>
         ) : (
           <span className="text-muted-foreground text-xs">N/A</span>
         )}
       </td>
       <td className="p-4 text-muted-foreground hidden md:table-cell">
-        {candidate.updated_at ? new Date(candidate.updated_at).toLocaleDateString() : 'N/A'}
+        {updatedAt ? updatedAt.toLocaleDateString() : 'N/A'}
       </td>
       <td className="p-4">
         <div className="flex items-center justify-center gap-1">
@@ -102,7 +132,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ candidate, onView
             variant="ghost" 
             size="icon" 
             className="h-8 w-8"
-            onClick={() => onViewCandidate(candidate.id)}
+            onClick={handleViewClick}
           >
             <Eye size={16} />
           </Button>

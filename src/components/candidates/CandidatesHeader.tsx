@@ -1,13 +1,8 @@
 
 import React from 'react';
-import { Search, Filter, MoreHorizontal, Download, Upload } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Upload, Search, FileText, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
 
 interface CandidatesHeaderProps {
   searchQuery: string;
@@ -25,50 +20,35 @@ const CandidatesHeader: React.FC<CandidatesHeaderProps> = ({
       <div className="mb-4 md:mb-0">
         <h1 className="text-2xl font-bold text-navy-dark mb-1">Candidats</h1>
         <p className="text-muted-foreground">
-          Gérez et analysez votre vivier de talents
+          Gérez les profils des candidats issus de vos CV
         </p>
       </div>
       
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
-          <input
-            type="text"
-            placeholder="Rechercher un candidat..."
-            className="input-field pl-10 w-full"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
-        </div>
-        
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            className="flex-1 sm:flex-none"
-            onClick={onToggleFilters}
-          >
-            <Filter size={18} className="mr-2" />
-            Filtres
+      <div className="flex gap-2">
+        <Link to="/resumes/upload">
+          <Button variant="outline" className="gap-2">
+            <Upload size={16} />
+            <span className="hidden sm:inline">Importer</span>
           </Button>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <MoreHorizontal size={18} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>
-                <Download size={16} className="mr-2" />
-                Exporter
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Upload size={16} className="mr-2" />
-                Importer
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        </Link>
+        
+        <Link to="/resumes">
+          <Button variant="outline" className="gap-2">
+            <FileText size={16} />
+            <span className="hidden sm:inline">CV</span>
+          </Button>
+        </Link>
+        
+        <Button 
+          className="gap-2"
+          onClick={() => {
+            // TODO: Add new candidate functionality
+            alert("Fonction à venir: Ajouter un candidat manuellement");
+          }}
+        >
+          <UserPlus size={16} />
+          <span className="hidden sm:inline">Ajouter</span>
+        </Button>
       </div>
     </div>
   );

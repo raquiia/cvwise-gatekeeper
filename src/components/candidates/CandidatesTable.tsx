@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -25,13 +25,20 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   onStatusChange,
   onViewCandidate
 }) => {
+  // Debug: Log the candidates data being received
+  console.log('CandidatesTable - received candidates:', candidates);
+  
+  // Check if we have valid candidates data
+  const validCandidates = Array.isArray(candidates) ? candidates : [];
+  const candidatesCount = validCandidates.length;
+  
   return (
     <div className="glass rounded-xl overflow-hidden">
       {/* Table Header with Sort Controls */}
       <div className="p-4 border-b border-border/30 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-navy-dark">
-            {candidates.length} candidats
+            {candidatesCount} candidats
           </span>
           
           <Separator orientation="vertical" className="h-4" />
@@ -50,6 +57,10 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
               <DropdownMenuItem onClick={() => onStatusChange('active')}>
                 <CheckCircle size={14} className="mr-2 text-emerald-500" />
                 Actifs
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onStatusChange('qualification')}>
+                <AlertTriangle size={14} className="mr-2 text-amber-500" />
+                En qualification
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onStatusChange('inactive')}>
                 <XCircle size={14} className="mr-2 text-red-500" />
@@ -89,16 +100,16 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {candidates.length === 0 ? (
+            {validCandidates.length === 0 ? (
               <tr>
                 <td colSpan={9} className="p-8 text-center text-muted-foreground">
                   Aucun candidat trouvé. Importez des CV pour commencer à créer des candidats.
                 </td>
               </tr>
             ) : (
-              candidates.map((candidate) => (
+              validCandidates.map((candidate) => (
                 <CandidateTableRow 
-                  key={candidate.id}
+                  key={candidate.id || `temp-${Math.random()}`}
                   candidate={candidate}
                   onViewCandidate={onViewCandidate}
                 />

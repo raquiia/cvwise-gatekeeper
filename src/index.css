@@ -229,19 +229,28 @@
   }
   
   .rating-chip {
-    @apply px-2.5 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
   }
   
   .rating-high {
-    @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300;
+    background-color: rgba(16, 185, 129, 0.1);
+    color: rgb(16, 185, 129);
   }
   
   .rating-medium {
-    @apply bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300;
+    background-color: rgba(245, 158, 11, 0.1);
+    color: rgb(245, 158, 11);
   }
   
   .rating-low {
-    @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300;
+    background-color: rgba(239, 68, 68, 0.1);
+    color: rgb(239, 68, 68);
   }
   
   .admin-card {
@@ -250,5 +259,22 @@
   
   .admin-icon-bg {
     @apply w-8 h-8 rounded-full flex items-center justify-center;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .rating-high {
+    background-color: rgba(16, 185, 129, 0.2);
+    color: rgb(52, 211, 153);
+  }
+  
+  .rating-medium {
+    background-color: rgba(245, 158, 11, 0.2);
+    color: rgb(251, 191, 36);
+  }
+  
+  .rating-low {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: rgb(248, 113, 113);
   }
 }
