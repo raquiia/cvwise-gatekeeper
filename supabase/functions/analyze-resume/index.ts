@@ -46,7 +46,6 @@ async function extractTextFromPDF(pdfBytes: Uint8Array): Promise<string> {
     return fullText;
   } catch (error) {
     console.error("Error extracting text from PDF:", error);
-    // Ne plus utiliser la fonction simulateCVText pour les fallbacks
     return "Erreur lors de l'extraction du texte du document PDF";
   }
 }
@@ -72,12 +71,13 @@ function extractSkills(text: string) {
     text.toLowerCase().includes(skill.toLowerCase())
   );
   
-  return foundSkills.slice(0, 5); // Limiter à 5 compétences mais ne pas ajouter de compétences aléatoires
+  return foundSkills;
 }
 
 // Fonction pour extraire les informations d'un CV
 async function extractResumeInfo(resumeText: string, fileName: string) {
-  console.log("Extracting resume information...");
+  console.log("Extracting resume information from text of length:", resumeText.length);
+  console.log("First 100 characters of text:", resumeText.substring(0, 100));
   
   // Essayer d'extraire un nom du fichier (si format "Prénom_Nom.pdf")
   let firstName = "";
@@ -89,15 +89,28 @@ async function extractResumeInfo(resumeText: string, fileName: string) {
     lastName = fileNameParts[1].charAt(0).toUpperCase() + fileNameParts[1].slice(1).toLowerCase();
   } else {
     // Si le nom de fichier ne suit pas le format attendu, essayer d'extraire du texte
-    const nameRegex = /(?:nom|name|je suis|je m'appelle|cv de)\s+([A-Z][a-z]+)\s+([A-Z][a-zÀ-ÿ-]+)/i;
-    const nameMatch = resumeText.match(nameRegex);
-    if (nameMatch) {
-      firstName = nameMatch[1];
-      lastName = nameMatch[2];
-    } else {
-      // Si aucun nom n'est trouvé, utiliser le nom du fichier comme base
-      firstName = fileName.split('.')[0].replace(/_/g, ' ');
-      lastName = "";
+    // Patterns plus complexes pour trouver des noms
+    const namePatterns = [
+      /(?:nom|name|je suis|je m'appelle|cv de)\s+([A-Z][a-zÀ-ÿ-]+)\s+([A-Z][a-zÀ-ÿ-]+)/i,
+      /([A-Z][a-zÀ-ÿ-]+)\s+([A-Z][a-zÀ-ÿ-]+)(?:\s+CV|\s+Resume|$)/i,
+      /^([A-Z][a-zÀ-ÿ-]+)\s+([A-Z][a-zÀ-ÿ-]+)/im
+    ];
+    
+    let nameFound = false;
+    for (const pattern of namePatterns) {
+      const nameMatch = resumeText.match(pattern);
+      if (nameMatch) {
+        firstName = nameMatch[1];
+        lastName = nameMatch[2];
+        nameFound = true;
+        break;
+      }
+    }
+    
+    if (!nameFound) {
+      // If no name is found in the text, use a generic name based on the file
+      firstName = "CV";
+      lastName = fileName.split('.')[0].replace(/_/g, ' ');
     }
   }
   
@@ -121,6 +134,16 @@ async function extractResumeInfo(resumeText: string, fileName: string) {
   
   // Calculer un score basé sur le contenu
   const score = calculateScore(resumeText, skills);
+  
+  // Log the extracted info for debugging
+  console.log("Extracted resume info:", {
+    first_name: firstName,
+    last_name: lastName,
+    email,
+    phone,
+    position,
+    skills
+  });
   
   return {
     first_name: firstName,
@@ -288,18 +311,24 @@ serve(async (req) => {
     let resumeText = "";
     if (resumeData.file_type === "application/pdf") {
       resumeText = await extractTextFromPDF(fileBytes);
+      console.log(`PDF text extraction complete, extracted ${resumeText.length} characters`);
     } else {
       // Pour les fichiers non-PDF, essayer de les traiter comme du texte
       const decoder = new TextDecoder('utf-8');
       resumeText = decoder.decode(fileBytes);
+      console.log(`Non-PDF file decoded as text, extracted ${resumeText.length} characters`);
     }
     
-    console.log(`Extracted ${resumeText.length} characters of text from the resume`);
+    if (resumeText.length < 10) {
+      console.error("Warning: Extracted text is very short or empty!");
+      resumeText = "CV sans contenu détectable - " + resumeData.file_name;
+    }
     
     // Extraire les informations du CV
     const extractedInfo = await extractResumeInfo(resumeText, resumeData.file_name);
     
     console.log(`Extracted candidate info: ${extractedInfo.first_name} ${extractedInfo.last_name}`);
+    console.log(`Extracted ${extractedInfo.skills.length} skills: ${extractedInfo.skills.join(', ')}`);
     
     // Créer ou mettre à jour le candidat dans la base de données
     const { data: candidateData, error: candidateError } = await supabase
