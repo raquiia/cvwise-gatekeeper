@@ -1,4 +1,37 @@
 
-project_id = "xgsaazntnhtbrwchvnxl"
-[functions.analyze-resume]
-verify_jwt = false
+# This file is used to configure your Supabase project.
+# It contains your project's configuration like database connections, storage buckets, edge functions, etc.
+# The recommended way to apply configuration is to run the "supabase up -c" command,
+# but you can also apply configuration by updating the "config.toml" file.
+# For more info, check out: https://supabase.io/docs/guides/local-development
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[[storage.buckets]]
+name = "resumes"
+public = false
+file_size_limit = "50MiB"
+allowed_mime_types = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]

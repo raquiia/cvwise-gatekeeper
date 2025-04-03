@@ -93,12 +93,12 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
   }
 };
 
-// Fetch all resumes for a user
+// Fetch all resumes for a user - fixed to avoid recursion issues
 export const getUserResumes = async (userId: string) => {
   try {
     console.log('Fetching resumes for user:', userId);
     
-    // Direct query that doesn't cause recursion issues
+    // Use a simplified query approach to avoid recursion issues
     const { data, error } = await supabase
       .from('resumes')
       .select('*')
@@ -113,14 +113,12 @@ export const getUserResumes = async (userId: string) => {
     console.log(`Successfully fetched ${data?.length || 0} resumes`);
     
     if (!data || data.length === 0) {
-      console.log('No resumes found for user');
       return [];
     }
     
-    // Fetch candidates separately for each resume
+    // Process each resume to get its candidates
     const resumesWithCandidates = await Promise.all(data.map(async (resume) => {
       try {
-        console.log(`Fetching candidates for resume: ${resume.id}`);
         const { data: candidates, error: candidateError } = await supabase
           .from('candidates')
           .select('*')
@@ -131,17 +129,16 @@ export const getUserResumes = async (userId: string) => {
           return { ...resume, candidates: [] };
         }
         
-        console.log(`Fetched ${candidates?.length || 0} candidates for resume ${resume.id}`);
         return { ...resume, candidates: candidates || [] };
-      } catch (candidateError)  {
-        console.error(`Error in candidate fetch for resume ${resume.id}:`, candidateError);
+      } catch (error) {
+        console.error(`Error processing candidates for resume ${resume.id}:`, error);
         return { ...resume, candidates: [] };
       }
     }));
     
     return resumesWithCandidates;
   } catch (error) {
-    console.error('Error fetching resumes:', error);
+    console.error('Error in getUserResumes:', error);
     return [];
   }
 };
