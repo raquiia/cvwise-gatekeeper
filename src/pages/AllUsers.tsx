@@ -21,9 +21,11 @@ import {
   DropdownMenuSeparator 
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
 
-// Les mêmes données fictives que dans Admin.tsx
-const activeUsersData = [
+// Données fictives pour démonstration
+const demoUsersData = [
   {
     id: 101,
     name: 'Antoine Leroy',
@@ -109,12 +111,12 @@ const activeUsersData = [
 const AllUsers = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
-  const [filteredUsers, setFilteredUsers] = useState(activeUsersData);
+  const [filteredUsers, setFilteredUsers] = useState(demoUsersData);
   const { toast } = useToast();
 
   // Filtrer les utilisateurs en fonction de la recherche et du rôle sélectionné
   useEffect(() => {
-    const filtered = activeUsersData.filter(user => {
+    const filtered = demoUsersData.filter(user => {
       const matchesSearch = !searchQuery || 
         user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -152,7 +154,7 @@ const AllUsers = () => {
               <h1 className="text-2xl font-bold text-navy-dark">Tous les utilisateurs</h1>
             </div>
             <p className="text-muted-foreground">
-              Liste complète des utilisateurs (données fictives pour démonstration)
+              Liste complète des utilisateurs
             </p>
           </div>
           
@@ -201,6 +203,15 @@ const AllUsers = () => {
           </div>
         </div>
         
+        {/* Info Alert */}
+        <Alert className="mb-6 bg-blue-50 border-blue-200">
+          <InfoIcon className="h-4 w-4 text-blue-500" />
+          <AlertTitle className="text-blue-700">Données de démonstration</AlertTitle>
+          <AlertDescription className="text-blue-600">
+            Cette page affiche des données fictives à des fins de démonstration. Pour accéder aux données utilisateurs réelles, une API avec des privilèges administratifs est nécessaire.
+          </AlertDescription>
+        </Alert>
+        
         {/* Stats bar */}
         <div className="bg-white rounded-xl p-4 shadow-sm mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -210,7 +221,7 @@ const AllUsers = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total utilisateurs</p>
-                <p className="text-xl font-semibold">{activeUsersData.length}</p>
+                <p className="text-xl font-semibold">{demoUsersData.length}</p>
               </div>
             </div>
             
