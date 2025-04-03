@@ -127,7 +127,7 @@ export const resumeDataService = {
         return [];
       }
       
-      // Explicitly cast the data to ResumeData[] to resolve type error
+      // Explicitly cast the data to ResumeData[] with type assertion
       return data as unknown as ResumeData[];
     } catch (error: any) {
       console.error('Error in getUserResumes:', error);

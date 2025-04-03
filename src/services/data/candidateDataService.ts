@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from './resumeDataService';
+import { Json } from '@/integrations/supabase/types';
 
 /**
  * Helper function to ensure skills are properly parsed as arrays
@@ -21,6 +21,26 @@ const processSkills = (data: any): any => {
     skills: Array.isArray(data.skills) ? data.skills : 
             (typeof data.skills === 'string' ? JSON.parse(data.skills) : [])
   };
+};
+
+/**
+ * Helper function to safely parse JSON data
+ */
+const safelyParseJsonField = (field: Json | null): any[] => {
+  if (!field) return [];
+  
+  if (Array.isArray(field)) return field;
+  
+  if (typeof field === 'string') {
+    try {
+      const parsed = JSON.parse(field);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  
+  return [];
 };
 
 /**
@@ -83,24 +103,46 @@ export const candidateDataService = {
       }
       
       // Transformer les données pour correspondre à notre format
-      const transformedData = data.map(candidate => ({
-        ...candidate,
-        // S'assurer que les tableaux JSONB sont correctement parsés
-        skills: Array.isArray(candidate.skills) ? candidate.skills : 
-                (typeof candidate.skills === 'string' ? JSON.parse(candidate.skills) : []),
-        experiences: Array.isArray(candidate.experiences) ? candidate.experiences : 
-                     (typeof candidate.experiences === 'string' ? JSON.parse(candidate.experiences) : []),
-        education: Array.isArray(candidate.education) ? candidate.education : 
-                   (typeof candidate.education === 'string' ? JSON.parse(candidate.education) : []),
-        certifications: Array.isArray(candidate.certifications) ? candidate.certifications :
-                        (typeof candidate.certifications === 'string' ? JSON.parse(candidate.certifications) : []),
-        languages: Array.isArray(candidate.languages) ? candidate.languages :
-                   (typeof candidate.languages === 'string' ? JSON.parse(candidate.languages) : []),
-        projects: Array.isArray(candidate.projects) ? candidate.projects :
-                  (typeof candidate.projects === 'string' ? JSON.parse(candidate.projects) : []),
-        industries: Array.isArray(candidate.industries) ? candidate.industries :
-                    (typeof candidate.industries === 'string' ? JSON.parse(candidate.industries) : [])
-      }));
+      const transformedData = data.map((candidate: any) => {
+        // Create a new object without modifying the original candidate object
+        return {
+          id: candidate.id,
+          user_id: candidate.user_id,
+          resume_id: candidate.resume_id,
+          first_name: candidate.first_name,
+          last_name: candidate.last_name,
+          email: candidate.email,
+          phone: candidate.phone,
+          position: candidate.position,
+          years_experience: candidate.years_experience,
+          location: candidate.location,
+          // Safely parse all JSON fields
+          skills: safelyParseJsonField(candidate.skills),
+          experiences: safelyParseJsonField(candidate.experiences),
+          education: safelyParseJsonField(candidate.education),
+          certifications: safelyParseJsonField(candidate.certifications),
+          languages: safelyParseJsonField(candidate.languages),
+          projects: safelyParseJsonField(candidate.projects),
+          industries: safelyParseJsonField(candidate.industries),
+          // Other fields
+          score: candidate.score,
+          status: candidate.status,
+          company: candidate.company || '',
+          created_at: candidate.created_at,
+          updated_at: candidate.updated_at,
+          interests: candidate.interests,
+          availability: candidate.availability,
+          salary_expectations: candidate.salary_expectations,
+          mobility: candidate.mobility,
+          contract_type: candidate.contract_type,
+          remote_preference: candidate.remote_preference,
+          travel_willingness: candidate.travel_willingness,
+          career_objectives: candidate.career_objectives,
+          professional_values: candidate.professional_values,
+          work_authorization: candidate.work_authorization,
+          profile_completeness: candidate.profile_completeness
+        };
+      });
       
       return transformedData as CandidateData[];
     } catch (error) {
@@ -133,24 +175,43 @@ export const candidateDataService = {
       }
       
       // Transformer les données pour correspondre à notre format
-      const candidate = data[0];
+      const candidate = data[0] as any;
       const transformedData = {
-        ...candidate,
-        // S'assurer que les tableaux JSONB sont correctement parsés
-        skills: Array.isArray(candidate.skills) ? candidate.skills : 
-                (typeof candidate.skills === 'string' ? JSON.parse(candidate.skills) : []),
-        experiences: Array.isArray(candidate.experiences) ? candidate.experiences : 
-                     (typeof candidate.experiences === 'string' ? JSON.parse(candidate.experiences) : []),
-        education: Array.isArray(candidate.education) ? candidate.education : 
-                   (typeof candidate.education === 'string' ? JSON.parse(candidate.education) : []),
-        certifications: Array.isArray(candidate.certifications) ? candidate.certifications :
-                        (typeof candidate.certifications === 'string' ? JSON.parse(candidate.certifications) : []),
-        languages: Array.isArray(candidate.languages) ? candidate.languages :
-                   (typeof candidate.languages === 'string' ? JSON.parse(candidate.languages) : []),
-        projects: Array.isArray(candidate.projects) ? candidate.projects :
-                  (typeof candidate.projects === 'string' ? JSON.parse(candidate.projects) : []),
-        industries: Array.isArray(candidate.industries) ? candidate.industries :
-                    (typeof candidate.industries === 'string' ? JSON.parse(candidate.industries) : [])
+        id: candidate.id,
+        user_id: candidate.user_id,
+        resume_id: candidate.resume_id,
+        first_name: candidate.first_name,
+        last_name: candidate.last_name,
+        email: candidate.email,
+        phone: candidate.phone,
+        position: candidate.position,
+        years_experience: candidate.years_experience,
+        location: candidate.location,
+        // Safely parse all JSON fields
+        skills: safelyParseJsonField(candidate.skills),
+        experiences: safelyParseJsonField(candidate.experiences),
+        education: safelyParseJsonField(candidate.education),
+        certifications: safelyParseJsonField(candidate.certifications),
+        languages: safelyParseJsonField(candidate.languages),
+        projects: safelyParseJsonField(candidate.projects),
+        industries: safelyParseJsonField(candidate.industries),
+        // Other fields
+        score: candidate.score,
+        status: candidate.status,
+        company: candidate.company || '',
+        created_at: candidate.created_at,
+        updated_at: candidate.updated_at,
+        interests: candidate.interests,
+        availability: candidate.availability,
+        salary_expectations: candidate.salary_expectations,
+        mobility: candidate.mobility,
+        contract_type: candidate.contract_type,
+        remote_preference: candidate.remote_preference,
+        travel_willingness: candidate.travel_willingness,
+        career_objectives: candidate.career_objectives,
+        professional_values: candidate.professional_values,
+        work_authorization: candidate.work_authorization,
+        profile_completeness: candidate.profile_completeness
       };
       
       return transformedData as CandidateData;

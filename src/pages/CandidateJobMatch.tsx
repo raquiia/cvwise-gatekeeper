@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -20,7 +21,7 @@ interface JobPosition {
   title: string;
   description?: string;
   requirements?: string;
-  skills?: string[] | Json;
+  skills: string[];
   created_at?: string;
   updated_at?: string;
   user_id: string;
