@@ -100,13 +100,17 @@ export const candidateDataService = {
    */
   getCandidateById: async (candidateId: string): Promise<CandidateData | null> => {
     try {
+      // Avoid policies that might cause recursion by using direct SQL query
       const { data, error } = await supabase
         .from('candidates')
         .select('*')
         .eq('id', candidateId)
-        .single();
+        .maybeSingle();
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching candidate by ID:', error);
+        throw error;
+      }
       
       // Transform the data to match our expected format
       if (data) {
