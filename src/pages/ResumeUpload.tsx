@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Upload, File, FileText, X, Check, ChevronRight, Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -399,7 +398,6 @@ const ResumeUpload = () => {
             </div>
           </div>
         ) : (
-          /* Success Screen */
           <div className="glass rounded-xl p-8 text-center">
             <div className="w-20 h-20 mx-auto rounded-full bg-emerald-100 flex items-center justify-center mb-6">
               <Check size={32} className="text-emerald-600" />

@@ -37,32 +37,8 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
   console.log('Uploading file to storage:', filePath);
   
   try {
-    // Check if bucket exists and create if not
-    console.log('Checking if resumes bucket exists...');
-    const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
-    
-    if (bucketError) {
-      console.error('Error checking buckets:', bucketError);
-      throw bucketError;
-    }
-    
-    const bucketExists = buckets?.find(bucket => bucket.name === 'resumes');
-    console.log('Bucket exists?', !!bucketExists);
-    
-    if (!bucketExists) {
-      console.log('Creating resumes bucket');
-      const { error: createBucketError } = await supabase.storage.createBucket('resumes', {
-        public: false,
-      });
-      
-      if (createBucketError) {
-        console.error('Error creating bucket:', createBucketError);
-        throw createBucketError;
-      }
-      console.log('Bucket created successfully');
-    }
-    
-    // Upload to storage
+    // Upload to storage directly without checking buckets
+    // The bucket is created via migration now
     console.log('Uploading file to storage...');
     const { error: uploadError } = await supabase.storage
       .from('resumes')

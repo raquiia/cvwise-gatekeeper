@@ -127,6 +127,11 @@ const Resumes = () => {
   const handleDownloadResume = async (filePath: string, fileName: string) => {
     try {
       console.log('Downloading file:', filePath);
+      
+      if (!filePath.startsWith('/')) {
+        filePath = filePath; // Keep it as is
+      }
+      
       const { data, error } = await supabase.storage
         .from('resumes')
         .download(filePath);
@@ -148,6 +153,11 @@ const Resumes = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Téléchargement réussi",
+        description: `Le fichier "${fileName}" a été téléchargé avec succès`,
+      });
     } catch (error: any) {
       console.error('Error downloading resume:', error);
       toast({
