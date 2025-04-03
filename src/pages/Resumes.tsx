@@ -9,7 +9,7 @@ import Layout from '@/components/Layout';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { getUserResumes, deleteResume, ResumeData, uploadResume } from '@/services/resumeService';
+import { getUserResumes, deleteResume, ResumeData, uploadResume, downloadResume } from '@/services/resumeService';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
 import { 
@@ -81,6 +81,7 @@ const Resumes = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<Record<string, boolean>>({});
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -203,49 +204,26 @@ const Resumes = () => {
     }
   };
   
-  const handleDownloadResume = async (filePath: string, fileName: string) => {
+  const handleDownloadResume = async (filePath: string, fileName: string, resumeId: string) => {
     try {
       console.log('Downloading file:', filePath);
+      setDownloading(prev => ({ ...prev, [resumeId]: true }));
       
       toast({
         title: "Téléchargement en cours",
         description: "Veuillez patienter pendant le téléchargement du fichier...",
       });
       
-      const { data, error } = await resumeStorageService.downloadFile(filePath);
+      const success = await downloadResume(filePath, fileName);
       
-      if (error) {
-        console.error('Download error:', error);
+      if (success) {
         toast({
-          title: "Échec du téléchargement",
-          description: `Impossible de télécharger le fichier: ${error.message}`,
-          variant: "destructive",
+          title: "Téléchargement réussi",
+          description: `Le fichier "${fileName}" a été téléchargé avec succès`,
         });
-        return;
+      } else {
+        throw new Error("Erreur lors du téléchargement du fichier");
       }
-      
-      if (!data) {
-        toast({
-          title: "Échec du téléchargement",
-          description: "Aucune donnée reçue pendant le téléchargement",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      const url = URL.createObjectURL(data);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      toast({
-        title: "Téléchargement réussi",
-        description: `Le fichier "${fileName}" a été téléchargé avec succès`,
-      });
     } catch (error: any) {
       console.error('Error downloading resume:', error);
       toast({
@@ -253,6 +231,8 @@ const Resumes = () => {
         description: error.message || "Une erreur s'est produite lors du téléchargement du CV",
         variant: "destructive",
       });
+    } finally {
+      setDownloading(prev => ({ ...prev, [resumeId]: false }));
     }
   };
   
@@ -446,8 +426,15 @@ const Resumes = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleDownloadResume(resume.file_path, resume.file_name)}>
-                          <Download size={14} className="mr-2" />
+                        <DropdownMenuItem 
+                          onClick={() => handleDownloadResume(resume.file_path, resume.file_name, resume.id)}
+                          disabled={downloading[resume.id]}
+                        >
+                          {downloading[resume.id] ? (
+                            <Loader2 size={14} className="mr-2 animate-spin" />
+                          ) : (
+                            <Download size={14} className="mr-2" />
+                          )}
                           Télécharger
                         </DropdownMenuItem>
                         {!resume.parsed && (
@@ -512,9 +499,14 @@ const Resumes = () => {
                     variant="ghost" 
                     size="sm" 
                     className="text-xs"
-                    onClick={() => handleDownloadResume(resume.file_path, resume.file_name)}
+                    onClick={() => handleDownloadResume(resume.file_path, resume.file_name, resume.id)}
+                    disabled={downloading[resume.id]}
                   >
-                    <Download size={14} className="mr-1" />
+                    {downloading[resume.id] ? (
+                      <Loader2 size={14} className="mr-1 animate-spin" />
+                    ) : (
+                      <Download size={14} className="mr-1" />
+                    )}
                     Télécharger
                   </Button>
                 </div>

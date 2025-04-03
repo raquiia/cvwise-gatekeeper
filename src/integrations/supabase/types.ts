@@ -181,6 +181,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_duplicate_resume: {
+        Args: {
+          p_file_name: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       delete_resume_by_id: {
         Args: {
           resume_id_param: string
