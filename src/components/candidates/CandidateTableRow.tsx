@@ -35,11 +35,11 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ candidate, onView
   const location = candidate.location || 'Non spécifié';
   const yearsExp = candidate.years_experience || 0;
   
-  // Make sure skills is an array
+  // Make sure skills is an array of strings
   const skills = Array.isArray(candidate.skills) 
     ? candidate.skills 
     : (typeof candidate.skills === 'object' && candidate.skills !== null)
-      ? Object.values(candidate.skills).filter(Boolean)
+      ? Object.values(candidate.skills).filter(Boolean).map(skill => String(skill))
       : [];
       
   const score = candidate.score || 0;
@@ -104,7 +104,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ candidate, onView
           {skills.length > 0 ? (
             skills.slice(0, 3).map((skill, idx) => (
               <span key={idx} className="inline-block px-2 py-0.5 bg-navy/10 text-navy-dark text-xs rounded-full">
-                {skill}
+                {String(skill)}
               </span>
             ))
           ) : (
