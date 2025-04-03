@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Upload, Search, Filter, FileText, Eye, Download, 
@@ -16,6 +17,7 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import { formatDate } from '@/utils/dateFormatter';
 
 type Resume = ResumeData;
 
@@ -30,7 +32,11 @@ const Resumes = () => {
   const navigate = useNavigate();
   
   const loadResumes = async () => {
-    if (!user) return;
+    if (!user) {
+      setErrorMessage("Vous devez être connecté pour voir vos CV");
+      setIsLoading(false);
+      return;
+    }
     
     setIsLoading(true);
     setErrorMessage(null);
@@ -45,13 +51,14 @@ const Resumes = () => {
       } else {
         console.error('Expected array of resumes but got:', data);
         setResumes([]);
+        setErrorMessage('Format de données invalide reçu du serveur');
       }
     } catch (error: any) {
       console.error('Error loading resumes:', error);
       setErrorMessage(error?.message || 'Une erreur est survenue lors du chargement des CV');
       toast({
         title: "Erreur",
-        description: "Impossible de charger les CV",
+        description: "Impossible de charger les CV: " + (error?.message || 'Erreur inconnue'),
         variant: "destructive",
       });
     } finally {
@@ -171,11 +178,6 @@ const Resumes = () => {
     
     return matchesSearch && matchesStatus;
   });
-  
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
-  };
   
   return (
     <Layout className="py-8 bg-sand/30">

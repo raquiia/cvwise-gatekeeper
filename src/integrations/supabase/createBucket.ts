@@ -1,66 +1,45 @@
 
 import { supabase } from './client';
 
-// This function can be run once to ensure the resumes bucket exists
 export const ensureResumesBucketExists = async () => {
   try {
-    // Check if bucket exists first
-    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+    // Vérifier si le bucket existe déjà
+    const { data: buckets, error } = await supabase.storage.listBuckets();
     
-    if (listError) {
-      console.error('Error checking storage buckets:', listError);
-      return false;
+    if (error) {
+      console.error('Erreur lors de la vérification des buckets:', error);
+      throw error;
     }
     
-    const resumesBucket = buckets?.find(bucket => bucket.name === 'resumes');
+    const resumesBucketExists = buckets.some(bucket => bucket.name === 'resumes');
     
-    if (!resumesBucket) {
-      // Create the bucket if it doesn't exist
+    if (!resumesBucketExists) {
+      console.log('Le bucket "resumes" n\'existe pas, création en cours...');
+      
+      // Créer le bucket
       const { error: createError } = await supabase.storage.createBucket('resumes', {
         public: false,
-        fileSizeLimit: 50 * 1024 * 1024, // 50MB
-        allowedMimeTypes: [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        ]
+        fileSizeLimit: 10485760, // 10 MB
       });
       
       if (createError) {
-        console.error('Error creating resumes bucket:', createError);
-        return false;
+        console.error('Erreur lors de la création du bucket "resumes":', createError);
+        throw createError;
       }
       
-      console.log('Resumes bucket created successfully');
+      console.log('Bucket "resumes" créé avec succès');
       
-      // Note: createPolicy is not directly available in newer Supabase JS client
-      // Policies should be defined in migrations or via the Supabase dashboard
-      // This part is left as a comment for reference
-      /*
-      const { error: policyError } = await supabase.storage.from('resumes').createPolicy(
-        'authenticated-users-policy',
-        {
-          name: 'authenticated-users-policy',
-          definition: {
-            role: 'authenticated',
-            action: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
-            conditions: { "auth.uid": 'eq.user_id' }
-          }
-        }
-      );
+      // Ajouter des politiques de sécurité pour le bucket
+      // Permettre aux utilisateurs authentifiés de lire les fichiers
+      const { error: policyError } = await supabase.storage.from('resumes').setPublic(false);
       
       if (policyError) {
-        console.error('Error setting bucket policy:', policyError);
+        console.error('Erreur lors de la configuration des politiques du bucket:', policyError);
       }
-      */
-      
-      return true;
+    } else {
+      console.log('Le bucket "resumes" existe déjà');
     }
-    
-    console.log('Resumes bucket already exists');
-    return true;
   } catch (error) {
-    console.error('Error ensuring resumes bucket exists:', error);
-    return false;
+    console.error('Erreur lors de l\'initialisation du bucket:', error);
   }
 };

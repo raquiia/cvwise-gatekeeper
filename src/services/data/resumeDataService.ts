@@ -77,7 +77,7 @@ export const resumeDataService = {
     try {
       console.log('Fetching resumes for user:', userId);
       
-      // Utiliser la requête la plus simple possible pour éviter les problèmes de RLS
+      // Simplifier la requête pour éviter la récursion infinie
       const { data: resumes, error } = await supabase
         .from('resumes')
         .select('*')
@@ -85,7 +85,7 @@ export const resumeDataService = {
         .order('created_at', { ascending: false });
         
       if (error) {
-        console.error('Error fetching resumes:', error);
+        console.error('Error in getUserResumes:', error);
         throw error;
       }
       
@@ -119,7 +119,7 @@ export const resumeDataService = {
           try {
             const { data: candidates, error: candidateError } = await supabase
               .from('candidates')
-              .select('*')
+              .select('id, first_name, last_name, email, phone, position, years_experience, location, skills, score, status')
               .eq('resume_id', resume.id);
               
             if (candidateError) {
@@ -128,8 +128,8 @@ export const resumeDataService = {
               // Transformer les candidats pour s'assurer que les skills sont un tableau
               resumeData.candidates = candidates.map(candidate => ({
                 id: candidate.id,
-                resume_id: candidate.resume_id,
-                user_id: candidate.user_id,
+                resume_id: resume.id,
+                user_id: resume.user_id,
                 first_name: candidate.first_name,
                 last_name: candidate.last_name,
                 email: candidate.email,
