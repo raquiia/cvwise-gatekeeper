@@ -4,5 +4,5 @@ project_id = "xgsaazntnhtbrwchvnxl"
 [functions.list-users]
 verify_jwt = true
 
-[functions.list-users.secrets]
+[functions.list-users.environment]
 DEFAULT_ADMIN_EMAIL = "louis.lepotvin@migso-pcubed.com"
