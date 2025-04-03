@@ -81,24 +81,34 @@ const Resumes = () => {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [bucketInitialized, setBucketInitialized] = useState(false);
+  const [initializationAttempted, setInitializationAttempted] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   
   useEffect(() => {
     const initBucket = async () => {
-      if (!bucketInitialized && user) {
+      if (!bucketInitialized && !initializationAttempted && user) {
+        setInitializationAttempted(true);
         try {
-          await ensureResumesBucketExists();
+          const result = await ensureResumesBucketExists();
           setBucketInitialized(true);
-          console.log('Bucket initialized successfully');
+          console.log('Bucket initialization result:', result);
         } catch (error) {
           console.error('Failed to initialize bucket:', error);
+          setBucketInitialized(true);
+          
+          toast({
+            title: "Avertissement",
+            description: "Problème avec l'initialisation du stockage. Certaines fonctionnalités peuvent être limitées.",
+            variant: "destructive"
+          });
         }
       }
     };
+    
     initBucket();
-  }, [bucketInitialized, user]);
+  }, [user, bucketInitialized, initializationAttempted, toast]);
   
   const loadResumes = async () => {
     if (!user) {
@@ -112,30 +122,6 @@ const Resumes = () => {
     
     try {
       console.log('Loading resumes for user:', user.id);
-      
-      try {
-        console.log('Debug: Testing Supabase connection...');
-        const { data: testData, error: testError } = await supabase
-          .from('test_connection')
-          .select('*')
-          .limit(1);
-          
-        if (testError) {
-          console.log('Debug: Supabase connection test error (expected):', testError);
-        } else {
-          console.log('Debug: Supabase connection test result:', testData);
-        }
-      } catch (testError) {
-        console.log('Debug: Supabase connection test exception (expected):', testError);
-      }
-      
-      try {
-        console.log('Debug: Testing database access...');
-        const { data: bucketsData, error: bucketsError } = await supabase.storage.listBuckets();
-        console.log('Debug: Buckets:', bucketsData, bucketsError);
-      } catch (bucketsError) {
-        console.error('Debug: Error listing buckets:', bucketsError);
-      }
       
       const data = await getUserResumes(user.id);
       
@@ -161,9 +147,22 @@ const Resumes = () => {
   };
   
   useEffect(() => {
-    if (user && bucketInitialized) {
-      loadResumes();
+    let timeoutId: NodeJS.Timeout;
+    
+    if (user) {
+      if (bucketInitialized) {
+        loadResumes();
+      } else {
+        timeoutId = setTimeout(() => {
+          console.log('Timeout reached, loading resumes anyway');
+          setBucketInitialized(true);
+        }, 3000);
+      }
     }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [user, bucketInitialized]);
   
   const handleAnalyzeResume = async (resumeId: string) => {

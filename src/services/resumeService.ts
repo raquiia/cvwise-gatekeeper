@@ -1,10 +1,10 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { resumeStorageService } from './storage/resumeStorageService';
 import { resumeDataService } from './data/resumeDataService';
 import { candidateDataService } from './data/candidateDataService';
 import { resumeAnalysisService } from './analysis/resumeAnalysisService';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
 
 // Re-exporter les interfaces pour compatibilité
 import type { ResumeData, CandidateData } from './data/resumeDataService';
@@ -20,18 +20,10 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
     
     // Ensure the storage bucket exists
     try {
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const resumesBucket = buckets.find(bucket => bucket.name === 'resumes');
-      
-      if (!resumesBucket) {
-        console.log('Creating resumes bucket...');
-        await supabase.storage.createBucket('resumes', {
-          public: false,
-          fileSizeLimit: 10485760, // 10 MB
-        });
-      }
+      await ensureResumesBucketExists();
     } catch (bucketError) {
       console.error('Error checking/creating bucket:', bucketError);
+      // Continue anyway to prevent blocking the upload process
     }
     
     // Téléchargement du fichier
