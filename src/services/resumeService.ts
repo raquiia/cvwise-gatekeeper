@@ -94,16 +94,31 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
 // Fetch all resumes for a user
 export const getUserResumes = async (userId: string) => {
   try {
+    // Use a simpler query that doesn't cause recursion
     const { data, error } = await supabase
       .from('resumes')
-      .select(`
-        *,
-        candidates(*)
-      `)
-      .eq('user_id', userId);
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
       
     if (error) throw error;
-    return data;
+    
+    // Now, for each resume, get the candidates separately
+    const resumesWithCandidates = await Promise.all(data.map(async (resume) => {
+      const { data: candidates, error: candidateError } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('resume_id', resume.id);
+        
+      if (candidateError) {
+        console.error('Error fetching candidates for resume:', candidateError);
+        return { ...resume, candidates: [] };
+      }
+      
+      return { ...resume, candidates: candidates || [] };
+    }));
+    
+    return resumesWithCandidates;
   } catch (error) {
     console.error('Error fetching resumes:', error);
     return [];
