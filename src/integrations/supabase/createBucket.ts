@@ -27,7 +27,7 @@ export const ensureResumesBucketExists = async (): Promise<boolean> => {
     return true;
   } catch (error) {
     // En cas d'erreur, on log mais on ne bloque pas l'utilisateur
-    console.warn('Erreur lors de l'initialisation du bucket:', error);
+    console.warn('Erreur lors de l\'initialisation du bucket:', error);
     return true; // On retourne true pour ne pas bloquer l'utilisateur
   }
 };
