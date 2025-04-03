@@ -96,24 +96,30 @@ const Resumes = () => {
       setErrorMessage(null);
       
       try {
-        try {
-          await ensureResumesBucketExists();
-        } catch (bucketError) {
-          console.error('Failed to initialize bucket:', bucketError);
-        }
-        
-        const loadPromise = loadResumes();
+        const loadPromise = new Promise<void>(async (resolve, reject) => {
+          try {
+            await ensureResumesBucketExists().catch(err => console.warn('Bucket initialization warning:', err));
+            
+            const data = await getUserResumes(user.id);
+            setResumes(data || []);
+            resolve();
+          } catch (error: any) {
+            console.error('Error loading resumes:', error);
+            reject(new Error(error?.message || 'Une erreur est survenue lors du chargement des CV'));
+          }
+        });
         
         const timeoutPromise = new Promise<void>((_, reject) => {
           setTimeout(() => {
             reject(new Error("Timeout lors du chargement des CV"));
-          }, 5000);
+          }, 8000);
         });
         
         await Promise.race([loadPromise, timeoutPromise]);
       } catch (error: any) {
         console.error('Error during initialization or loading:', error);
         setErrorMessage(error.message || "Une erreur est survenue lors du chargement des CV");
+      } finally {
         setIsLoading(false);
       }
     };
@@ -124,43 +130,15 @@ const Resumes = () => {
   const loadResumes = async () => {
     if (!user) return;
     
+    setIsLoading(true);
+    setErrorMessage(null);
+    
     try {
       console.log('Loading resumes for user:', user.id);
-      
-      try {
-        const data = await getUserResumes(user.id);
-        
-        if (Array.isArray(data)) {
-          console.log('Successfully fetched resumes:', data);
-          setResumes(data);
-        } else {
-          console.error('Expected array of resumes but got:', data);
-          setResumes([]);
-          setErrorMessage('Format de données invalide reçu du serveur');
-        }
-      } catch (fetchError: any) {
-        console.error('Error loading resumes:', fetchError);
-        setErrorMessage(fetchError?.message || 'Une erreur est survenue lors du chargement des CV');
-        
-        try {
-          const { data, error } = await supabase
-            .from('resumes')
-            .select('*')
-            .eq('user_id', user.id);
-            
-          if (error) throw error;
-          
-          if (Array.isArray(data)) {
-            console.log('Successfully fetched resumes directly:', data);
-            setResumes(data as Resume[]);
-            setErrorMessage(null);
-          }
-        } catch (directError) {
-          console.error('Direct fetch also failed:', directError);
-        }
-      }
+      const data = await getUserResumes(user.id);
+      setResumes(data || []);
     } catch (error: any) {
-      console.error('Final error loading resumes:', error);
+      console.error('Error loading resumes:', error);
       setErrorMessage(error?.message || 'Une erreur est survenue lors du chargement des CV');
     } finally {
       setIsLoading(false);

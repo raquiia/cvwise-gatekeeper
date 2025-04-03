@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import { resumeStorageService } from './storage/resumeStorageService';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,9 +49,11 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
         return null;
       }
       
-      // Utiliser notre nouvelle fonction sécurisée pour récupérer l'enregistrement
-      const { data: resumeRecord, error: fetchError } = await supabase
-        .rpc('get_resume_by_id', { p_resume_id: resumeId })
+      // Récupérer directement les informations du CV depuis la base de données
+      const { data: resumeData, error: fetchError } = await supabase
+        .from('resumes')
+        .select('*')
+        .eq('id', resumeId)
         .single();
         
       if (fetchError) {
@@ -58,8 +61,8 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
         return null;
       }
       
-      console.log('Resume record created successfully:', resumeRecord);
-      return resumeRecord as ResumeData;
+      console.log('Resume record created successfully:', resumeData);
+      return resumeData as ResumeData;
     } catch (dbError) {
       console.error('Database operation failed:', dbError);
       // Nettoyer en cas d'erreur
@@ -79,8 +82,7 @@ export const getUserResumes = async (userId: string): Promise<ResumeData[]> => {
   try {
     console.log('Fetching resumes for user:', userId);
     
-    // Utiliser une requête directe vers la table resumes avec un filtre sur user_id
-    // Cela devrait fonctionner avec les politiques RLS correctement configurées
+    // Récupération directe depuis la table resumes avec les nouvelles politiques RLS
     const { data, error } = await supabase
       .from('resumes')
       .select('*')
@@ -89,13 +91,39 @@ export const getUserResumes = async (userId: string): Promise<ResumeData[]> => {
       
     if (error) {
       console.error('Error fetching resumes:', error.message);
-      return [];
+      throw error;
     }
     
-    console.log(`Found ${data?.length || 0} resumes`);
-    return data as ResumeData[];
+    console.log('Successfully fetched resumes:', data);
+    
+    // Pour chaque CV, récupérer les informations du candidat associé si le CV a été analysé
+    const resumesWithCandidates: ResumeData[] = [];
+    
+    for (const resume of data || []) {
+      const resumeData: ResumeData = { ...resume, candidates: [] };
+      
+      if (resume.parsed) {
+        try {
+          const { data: candidates, error: candidateError } = await supabase
+            .from('candidates')
+            .select('*')
+            .eq('resume_id', resume.id);
+            
+          if (!candidateError && candidates && candidates.length > 0) {
+            resumeData.candidates = candidates as CandidateData[];
+          }
+        } catch (candidateError) {
+          console.error(`Error processing candidates for resume ${resume.id}:`, candidateError);
+        }
+      }
+      
+      resumesWithCandidates.push(resumeData);
+    }
+    
+    return resumesWithCandidates;
   } catch (error) {
-    console.error('Exception fetching resumes:', error);
+    console.error('Error in getUserResumes:', error);
+    // En cas d'erreur, retourner un tableau vide mais ne pas bloquer l'interface
     return [];
   }
 };
