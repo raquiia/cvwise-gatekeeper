@@ -10,7 +10,7 @@ export const ensureResumesBucketExists = async () => {
     
     if (error) {
       console.error('Error checking buckets:', error);
-      throw error;
+      throw new Error(`Failed to check storage buckets: ${error.message}`);
     }
     
     console.log('Available buckets:', buckets);
@@ -29,50 +29,36 @@ export const ensureResumesBucketExists = async () => {
         
         if (createError) {
           console.error('Error creating "resumes" bucket:', createError);
-          throw createError;
+          throw new Error(`Failed to create storage bucket: ${createError.message}`);
         }
         
         console.log('The "resumes" bucket was created successfully:', data);
-        
-        // Set bucket policies to allow authenticated users to upload files
-        try {
-          const { error: policyError } = await supabase.storage.from('resumes').createPolicy(
-            'authenticated can upload',
-            {
-              name: 'authenticated can upload',
-              definition: {
-                role_id: 'authenticated',
-                operations: ['INSERT', 'SELECT', 'UPDATE', 'DELETE']
-              }
-            }
-          );
-          
-          if (policyError) {
-            console.error('Error creating bucket policy:', policyError);
-          } else {
-            console.log('Bucket policy created successfully');
-          }
-        } catch (policyError) {
-          console.error('Error creating bucket policy:', policyError);
-        }
-      } catch (createBucketError) {
+      } catch (createBucketError: any) {
         console.error('Failed to create bucket:', createBucketError);
+        
         // Check again if bucket exists (it might have been created in another session)
-        const { data: checkBuckets } = await supabase.storage.listBuckets();
+        const { data: checkBuckets, error: checkError } = await supabase.storage.listBuckets();
+        
+        if (checkError) {
+          throw new Error(`Failed to verify bucket creation: ${checkError.message}`);
+        }
+        
         if (checkBuckets.some(bucket => bucket.name === 'resumes')) {
           console.log('Bucket "resumes" actually exists despite creation error.');
           return;
         }
+        
         throw createBucketError;
       }
     } else {
       console.log('The "resumes" bucket already exists');
     }
     
-    // Test upload to verify bucket is working
+    // Test upload to verify bucket is working and policies are correctly set
     try {
+      console.log('Testing bucket access with a small file upload...');
       const testFile = new Blob(['test'], { type: 'text/plain' });
-      const testFilePath = 'test/test-file.txt';
+      const testFilePath = `test/test-file-${Date.now()}.txt`;
       
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('resumes')
@@ -80,6 +66,7 @@ export const ensureResumesBucketExists = async () => {
       
       if (uploadError) {
         console.error('Test upload failed:', uploadError);
+        throw new Error(`Storage access test failed: ${uploadError.message}`);
       } else {
         console.log('Test upload succeeded:', uploadData);
         
@@ -94,10 +81,15 @@ export const ensureResumesBucketExists = async () => {
           console.log('Test file cleaned up successfully');
         }
       }
-    } catch (testError) {
+    } catch (testError: any) {
       console.error('Error testing bucket access:', testError);
+      throw new Error(`Storage access test failed: ${testError.message}`);
     }
-  } catch (error) {
+    
+    console.log('Bucket initialization and testing completed successfully');
+    return true;
+  } catch (error: any) {
     console.error('Error initializing bucket:', error);
+    throw error;
   }
 };
