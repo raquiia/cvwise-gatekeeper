@@ -4,7 +4,7 @@ import { resumeStorageService } from '../storage/resumeStorageService';
 import { Json } from '@/integrations/supabase/types';
 
 export interface ResumeData {
-  id: string; // Make this required instead of optional
+  id: string; // Required field
   user_id: string;
   file_name: string;
   file_path: string;
@@ -77,8 +77,8 @@ export const resumeDataService = {
     try {
       console.log('Fetching resumes for user:', userId);
       
-      // Utiliser une requête simplifiée sans jointure complexe pour éviter les erreurs RLS
-      const { data, error } = await supabase
+      // Utiliser la requête la plus simple possible pour éviter les problèmes de RLS
+      const { data: resumes, error } = await supabase
         .from('resumes')
         .select('*')
         .eq('user_id', userId)
@@ -89,17 +89,20 @@ export const resumeDataService = {
         throw error;
       }
       
-      console.log(`Successfully fetched ${data?.length || 0} resumes:`, data);
-      
-      if (!data || data.length === 0) {
+      if (!resumes || resumes.length === 0) {
+        console.log('No resumes found for user:', userId);
         return [];
       }
       
+      console.log(`Successfully fetched ${resumes.length} resumes`);
+      
       // Transformer les données pour correspondre à notre type ResumeData
-      const resumesWithCandidates: ResumeData[] = await Promise.all(data.map(async (resume) => {
-        // S'assurer que chaque CV a un ID string
+      const resumesWithCandidates: ResumeData[] = [];
+      
+      for (const resume of resumes) {
+        // Créer l'objet resume de base
         const resumeData: ResumeData = {
-          id: resume.id as string,
+          id: resume.id,
           user_id: resume.user_id,
           file_name: resume.file_name,
           file_path: resume.file_path,
@@ -111,42 +114,41 @@ export const resumeDataService = {
           candidates: []
         };
         
-        try {
-          const { data: candidates, error: candidateError } = await supabase
-            .from('candidates')
-            .select('*')
-            .eq('resume_id', resume.id);
-            
-          if (candidateError) {
-            console.error(`Error fetching candidates for resume ${resume.id}:`, candidateError);
-            return resumeData;
+        // Seulement récupérer les candidats si le CV a été analysé
+        if (resume.parsed) {
+          try {
+            const { data: candidates, error: candidateError } = await supabase
+              .from('candidates')
+              .select('*')
+              .eq('resume_id', resume.id);
+              
+            if (candidateError) {
+              console.error(`Error fetching candidates for resume ${resume.id}:`, candidateError);
+            } else if (candidates && candidates.length > 0) {
+              // Transformer les candidats pour s'assurer que les skills sont un tableau
+              resumeData.candidates = candidates.map(candidate => ({
+                id: candidate.id,
+                resume_id: candidate.resume_id,
+                user_id: candidate.user_id,
+                first_name: candidate.first_name,
+                last_name: candidate.last_name,
+                email: candidate.email,
+                phone: candidate.phone,
+                position: candidate.position,
+                years_experience: candidate.years_experience,
+                location: candidate.location,
+                skills: Array.isArray(candidate.skills) ? candidate.skills : [],
+                score: candidate.score,
+                status: candidate.status
+              }));
+            }
+          } catch (error) {
+            console.error(`Error processing candidates for resume ${resume.id}:`, error);
           }
-          
-          // Transformer les candidats pour s'assurer que les skills sont un tableau
-          if (candidates && candidates.length > 0) {
-            resumeData.candidates = candidates.map(candidate => ({
-              id: candidate.id,
-              resume_id: candidate.resume_id,
-              user_id: candidate.user_id,
-              first_name: candidate.first_name,
-              last_name: candidate.last_name,
-              email: candidate.email,
-              phone: candidate.phone,
-              position: candidate.position,
-              years_experience: candidate.years_experience,
-              location: candidate.location,
-              skills: Array.isArray(candidate.skills) ? candidate.skills : [],
-              score: candidate.score,
-              status: candidate.status
-            }));
-          }
-          
-          return resumeData;
-        } catch (error) {
-          console.error(`Error processing candidates for resume ${resume.id}:`, error);
-          return resumeData;
         }
-      }));
+        
+        resumesWithCandidates.push(resumeData);
+      }
       
       return resumesWithCandidates;
     } catch (error) {
