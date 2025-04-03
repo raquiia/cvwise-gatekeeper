@@ -84,29 +84,25 @@ export const resumeDataService = {
     try {
       console.log('Fetching resumes for user:', userId);
       
-      // Simple query to get all resumes for the user
-      const { data: resumes, error } = await supabase
-        .from('resumes')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-        
+      // Use direct SQL function call to avoid RLS policy recursion
+      const { data, error } = await supabase.rpc('get_user_resumes', {
+        user_id_param: userId
+      });
+      
       if (error) {
         console.error('Error fetching resumes:', error);
         throw error;
       }
       
-      console.log('Fetched resumes:', resumes);
+      console.log('Fetched resumes:', data);
       
-      if (!resumes || resumes.length === 0) {
+      if (!data || data.length === 0) {
         console.log('No resumes found for user:', userId);
         return [];
       }
       
-      // For each resume, get the associated candidate if it has been parsed
-      const resumesWithCandidates: ResumeData[] = [];
-      
-      for (const resume of resumes) {
+      // Convert the data to the ResumeData format
+      const resumesWithCandidates: ResumeData[] = data.map((resume: any) => {
         const resumeData: ResumeData = {
           id: resume.id,
           user_id: resume.user_id,
@@ -120,25 +116,12 @@ export const resumeDataService = {
           candidates: []
         };
         
-        if (resume.parsed) {
-          try {
-            const { data: candidates, error: candidateError } = await supabase
-              .from('candidates')
-              .select('*')
-              .eq('resume_id', resume.id);
-              
-            if (candidateError) {
-              console.error(`Error fetching candidates for resume ${resume.id}:`, candidateError);
-            } else if (candidates && candidates.length > 0) {
-              resumeData.candidates = candidates as CandidateData[];
-            }
-          } catch (candidateError) {
-            console.error(`Error processing candidates for resume ${resume.id}:`, candidateError);
-          }
+        if (resume.candidates && resume.candidates.length > 0) {
+          resumeData.candidates = resume.candidates as CandidateData[];
         }
         
-        resumesWithCandidates.push(resumeData);
-      }
+        return resumeData;
+      });
       
       return resumesWithCandidates;
     } catch (error: any) {
