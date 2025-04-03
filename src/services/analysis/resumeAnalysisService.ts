@@ -55,11 +55,13 @@ export const resumeAnalysisService = {
         
         toast({
           title: "Texte brut extrait du CV",
-          description: "Visualisation du texte brut extrait du CV",
+          description: "Visualisation du texte brut extrait du CV disponible",
           duration: 30000, // 30 secondes d'affichage
         });
         
-        // Utiliser une approche alternative pour afficher le texte brut
+        // Affichage dans la console pour le débogage
+        console.log("Texte brut extrait:", data.rawText);
+        
         // Créer une modal ou dialogue temporaire
         const dialogContainer = document.createElement('div');
         dialogContainer.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
