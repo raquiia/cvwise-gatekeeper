@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
 import { candidateDataService } from '@/services/data/candidateDataService';
@@ -18,24 +19,35 @@ const Candidates = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Function to fetch candidates that we can call multiple times
+  const fetchCandidates = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoading(true);
+      console.log("Fetching candidates for user:", user.id);
+      const data = await candidateDataService.getUserCandidates(user.id);
+      console.log("Retrieved candidates:", data);
+      setCandidates(data);
+    } catch (error) {
+      console.error('Error fetching candidates:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de récupérer les candidats",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   
   useEffect(() => {
-    const fetchCandidates = async () => {
-      if (!user?.id) return;
-      
-      try {
-        setLoading(true);
-        const data = await candidateDataService.getUserCandidates(user.id);
-        setCandidates(data);
-      } catch (error) {
-        console.error('Error fetching candidates:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchCandidates();
-  }, [user]);
+    // This effect should run when the component mounts and when the location changes
+    // (which happens when navigating to this page)
+  }, [user, location.key]);
   
   // Filtrer les candidats en fonction des critères de recherche
   const filteredCandidates = candidates.filter(candidate => {

@@ -45,19 +45,15 @@ export const candidateDataService = {
    */
   getUserCandidates: async (userId: string): Promise<CandidateData[]> => {
     try {
-      const { data, error } = await supabase
-        .from('candidates')
-        .select('*')
-        .eq('user_id', userId);
+      // Using a stored procedure to avoid RLS recursion error
+      const { data, error } = await supabase.rpc('get_user_candidates', {
+        user_id_param: userId
+      });
         
       if (error) throw error;
       
-      // Transform the data to match our expected format
       if (data) {
-        return data.map(candidate => ({
-          ...candidate,
-          skills: Array.isArray(candidate.skills) ? candidate.skills : []
-        })) as CandidateData[];
+        return data as CandidateData[];
       }
       
       return [];
