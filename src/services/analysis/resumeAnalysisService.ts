@@ -15,7 +15,11 @@ export const resumeAnalysisService = {
       console.log(`Triggering analysis for resume ID: ${resumeId}`);
       
       const { data, error } = await supabase.functions.invoke('analyze-resume', {
-        body: { resumeId }
+        body: { 
+          resumeId,
+          extractDetails: true,  // Make sure to extract all details
+          fullExtraction: true   // Additional flag to enforce complete extraction
+        }
       });
       
       if (error) {

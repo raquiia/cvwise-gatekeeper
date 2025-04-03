@@ -8,10 +8,12 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
   try {
     console.log(`Triggering analysis for resume ID: ${resumeId}`);
     
+    // Call the Supabase function with the extractDetails flag explicitly set to true
     const { data, error } = await supabase.functions.invoke('analyze-resume', {
       body: { 
         resumeId,
-        extractDetails: true  // Signal to extract detailed information
+        extractDetails: true,  // Make sure we extract all possible details from the CV
+        fullExtraction: true   // Additional flag to enforce complete data extraction
       }
     });
     

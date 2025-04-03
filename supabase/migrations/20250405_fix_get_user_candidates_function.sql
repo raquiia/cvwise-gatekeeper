@@ -1,5 +1,5 @@
 
--- Modify function to get user candidates to make sure it works properly
+-- Modify function to get user candidates to make sure it works properly with all fields
 CREATE OR REPLACE FUNCTION public.get_user_candidates(user_id_param UUID)
 RETURNS TABLE (
   id UUID,

@@ -34,7 +34,14 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ candidate, onView
   const position = candidate.position || 'Non spécifié';
   const location = candidate.location || 'Non spécifié';
   const yearsExp = candidate.years_experience || 0;
-  const skills = Array.isArray(candidate.skills) ? candidate.skills : [];
+  
+  // Make sure skills is an array
+  const skills = Array.isArray(candidate.skills) 
+    ? candidate.skills 
+    : (typeof candidate.skills === 'object' && candidate.skills !== null)
+      ? Object.values(candidate.skills).filter(Boolean)
+      : [];
+      
   const score = candidate.score || 0;
   const status = candidate.status || 'qualification';
   const updatedAt = candidate.updated_at ? new Date(candidate.updated_at) : null;
