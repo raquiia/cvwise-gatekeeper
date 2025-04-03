@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Upload, Loader2, File, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<Record<number, 'idle' | 'uploading' | 'success' | 'error'>>({});
+  const [errorMessages, setErrorMessages] = useState<Record<number, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -120,6 +122,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
     
     setUploading(true);
     let successCount = 0;
+    let newErrorMessages = {};
     
     for (let i = 0; i < files.length; i++) {
       try {
@@ -135,13 +138,16 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
         } else {
           console.error(`Upload failed for ${files[i].name}`);
           setUploadStatus(prevStatus => ({...prevStatus, [i]: 'error'}));
+          newErrorMessages = {...newErrorMessages, [i]: "Échec du téléchargement"};
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error uploading ${files[i].name}:`, error);
         setUploadStatus(prevStatus => ({...prevStatus, [i]: 'error'}));
+        newErrorMessages = {...newErrorMessages, [i]: error.message || "Échec du téléchargement"};
       }
     }
     
+    setErrorMessages(newErrorMessages);
     setUploading(false);
     
     if (successCount > 0) {
@@ -217,6 +223,11 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
                   <p className="text-xs text-muted-foreground">
                     {(file.size / 1024 / 1024).toFixed(2)} MB
                   </p>
+                  {errorMessages[index] && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errorMessages[index]}
+                    </p>
+                  )}
                 </div>
                 
                 {uploadStatus[index] === 'success' && (

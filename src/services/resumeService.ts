@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { resumeStorageService } from './storage/resumeStorageService';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,11 +8,42 @@ import type { ResumeData, CandidateData } from './data/resumeDataService';
 export type { ResumeData, CandidateData };
 
 /**
+ * Vérifier si un fichier avec le même nom existe déjà pour cet utilisateur
+ */
+export const checkDuplicateResume = async (fileName: string, userId: string): Promise<boolean> => {
+  try {
+    console.log(`Checking if file ${fileName} already exists for user ${userId}`);
+    
+    const { data, error } = await supabase.rpc('check_duplicate_resume', {
+      p_file_name: fileName,
+      p_user_id: userId
+    });
+    
+    if (error) {
+      console.error('Error checking duplicate:', error.message);
+      return false; // En cas d'erreur, permettre l'upload
+    }
+    
+    return data === true;
+  } catch (error) {
+    console.error('Exception checking duplicate:', error);
+    return false; // En cas d'erreur, permettre l'upload
+  }
+};
+
+/**
  * Upload a resume file and create a database record
  */
 export const uploadResume = async (file: File, userId: string): Promise<ResumeData | null> => {
   try {
     console.log(`Starting upload for ${file.name} (${file.size} bytes)`);
+    
+    // Vérifier si le fichier est un doublon
+    const isDuplicate = await checkDuplicateResume(file.name, userId);
+    if (isDuplicate) {
+      console.log(`File ${file.name} is a duplicate for user ${userId}`);
+      throw new Error(`Le fichier "${file.name}" existe déjà dans votre bibliothèque`);
+    }
     
     // Ensure bucket exists first, but don't stop the flow if it already exists
     await ensureResumesBucketExists();
@@ -73,7 +103,7 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
     }
   } catch (error: any) {
     console.error('Exception during resume upload:', error.message);
-    return null;
+    throw error; // Remonter l'erreur pour pouvoir l'afficher dans l'interface
   }
 };
 
