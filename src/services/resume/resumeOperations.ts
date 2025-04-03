@@ -128,7 +128,8 @@ export const getUserResumes = async (userId: string): Promise<ResumeData[]> => {
       return [];
     }
     
-    return data as ResumeData[];
+    // Explicitly cast the data to ResumeData[] to resolve type error
+    return data as unknown as ResumeData[];
   } catch (error: any) {
     console.error('Error in getUserResumes:', error);
     // En cas d'erreur, retourner un tableau vide mais ne pas bloquer l'interface

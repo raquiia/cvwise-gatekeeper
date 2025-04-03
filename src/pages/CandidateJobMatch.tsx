@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -14,13 +13,17 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, ArrowLeft, Briefcase } from 'lucide-react';
 import JobMatchingView from '@/components/resume/JobMatchingView';
+import { Json } from '@/integrations/supabase/types';
 
 interface JobPosition {
   id: string;
   title: string;
   description?: string;
-  skills?: string[];
   requirements?: string;
+  skills?: string[] | Json;
+  created_at?: string;
+  updated_at?: string;
+  user_id: string;
 }
 
 const CandidateJobMatch = () => {
@@ -57,11 +60,19 @@ const CandidateJobMatch = () => {
           .select('*');
           
         if (jobsError) throw jobsError;
-        setJobPositions(jobs || []);
+        
+        // Convert to JobPosition type with proper type handling
+        const typedJobs: JobPosition[] = (jobs || []).map((job: any) => ({
+          ...job,
+          skills: Array.isArray(job.skills) ? job.skills : 
+                 (typeof job.skills === 'string' ? JSON.parse(job.skills) : [])
+        }));
+        
+        setJobPositions(typedJobs);
         
         // Set default selected job if any jobs exist
-        if (jobs && jobs.length > 0) {
-          setSelectedJobId(jobs[0].id);
+        if (typedJobs.length > 0) {
+          setSelectedJobId(typedJobs[0].id);
         }
       } catch (error: any) {
         console.error('Error loading data:', error);

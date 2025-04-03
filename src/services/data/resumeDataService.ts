@@ -30,6 +30,9 @@ export interface CandidateData {
   skills?: any[];
   score?: number;
   status?: string;
+  company?: string; // Add missing 'company' property
+  created_at?: string;
+  updated_at?: string; // Add missing 'updated_at' property
   experiences?: any[];
   education?: any[];
   certifications?: any[];
@@ -124,7 +127,8 @@ export const resumeDataService = {
         return [];
       }
       
-      return data as ResumeData[];
+      // Explicitly cast the data to ResumeData[] to resolve type error
+      return data as unknown as ResumeData[];
     } catch (error: any) {
       console.error('Error in getUserResumes:', error);
       return [];

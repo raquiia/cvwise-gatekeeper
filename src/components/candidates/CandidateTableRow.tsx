@@ -38,6 +38,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ candidate, onView
   const score = candidate.score || 0;
   const status = candidate.status || 'qualification';
   const updatedAt = candidate.updated_at ? new Date(candidate.updated_at) : null;
+  const company = candidate.company || 'Non spécifié';
   
   // Safe click handler
   const handleViewClick = () => {
@@ -78,7 +79,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ candidate, onView
         {position}
       </td>
       <td className="p-4 text-navy-dark">
-        {candidate.company || 'Non spécifié'}
+        {company}
       </td>
       <td className="p-4 text-muted-foreground hidden lg:table-cell">
         {location !== 'Non spécifié' ? (
