@@ -1,6 +1,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 /**
  * Analyse un CV pour extraire des informations et créer un candidat
@@ -19,7 +26,8 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
         resumeId,
         extractDetails: true,  // Extraction complète des détails du CV
         fullExtraction: true,  // Indicateur supplémentaire pour forcer l'extraction complète
-        forceCompletion: true  // Forcer la génération de données même si l'extraction échoue
+        forceCompletion: true, // Forcer la génération de données même si l'extraction échoue
+        includeRawText: true   // Récupérer le texte brut extrait
       }
     });
     
@@ -34,6 +42,20 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     }
     
     console.log('Réponse de l\'analyse:', data);
+    
+    // Afficher le texte brut extrait dans une popup temporaire
+    if (data.rawText) {
+      // Utilisation de l'API de toast pour un affichage plus long et avec plus de contenu
+      toast({
+        title: "Texte brut extrait du CV",
+        description: (
+          <div className="max-h-[300px] overflow-y-auto mt-2 p-2 border rounded bg-gray-50">
+            <pre className="whitespace-pre-wrap text-xs">{data.rawText}</pre>
+          </div>
+        ),
+        duration: 30000, // 30 secondes d'affichage
+      });
+    }
     
     if (data.success) {
       toast({

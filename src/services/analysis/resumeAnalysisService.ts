@@ -11,7 +11,7 @@ export const resumeAnalysisService = {
   /**
    * Déclenche l'analyse d'un CV
    */
-  analyzeResume: async (resumeId: string): Promise<{ success: boolean; message?: string; candidateId?: string }> => {
+  analyzeResume: async (resumeId: string): Promise<{ success: boolean; message?: string; candidateId?: string; rawText?: string }> => {
     try {
       console.log(`Démarrage de l'analyse pour le CV ID: ${resumeId}`);
       toast({
@@ -24,7 +24,8 @@ export const resumeAnalysisService = {
           resumeId,
           extractDetails: true,    // Extraction complète des détails
           fullExtraction: true,    // Force l'extraction complète
-          forceCompletion: true    // Génère des données même en cas d'échec partiel
+          forceCompletion: true,   // Génère des données même en cas d'échec partiel
+          includeRawText: true     // Demande d'inclure le texte brut extrait
         }
       });
       
@@ -48,7 +49,8 @@ export const resumeAnalysisService = {
         });
         return { 
           success: true, 
-          candidateId: data.candidate?.id 
+          candidateId: data.candidate?.id,
+          rawText: data.rawText
         };
       } else {
         toast({
@@ -58,7 +60,8 @@ export const resumeAnalysisService = {
         });
         return { 
           success: false, 
-          message: data.message || "Une erreur inconnue s'est produite" 
+          message: data.message || "Une erreur inconnue s'est produite",
+          rawText: data.rawText
         };
       }
     } catch (error: any) {

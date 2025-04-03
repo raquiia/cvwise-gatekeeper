@@ -731,8 +731,8 @@ serve(async (req) => {
   }
   
   try {
-    const { resumeId, extractDetails = true } = await req.json();
-    console.log(`Analyzing resume with ID: ${resumeId}, extractDetails: ${extractDetails}`);
+    const { resumeId, extractDetails = true, includeRawText = false } = await req.json();
+    console.log(`Analyzing resume with ID: ${resumeId}, extractDetails: ${extractDetails}, includeRawText: ${includeRawText}`);
     
     // Create a Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -820,12 +820,20 @@ serve(async (req) => {
     
     console.log("Resume analysis completed successfully");
     
+    // Préparer la réponse en incluant ou non le texte brut selon le paramètre includeRawText
+    const response = {
+      success: true,
+      message: "CV analysé avec succès",
+      candidate: candidateData,
+    };
+    
+    // Ajouter le texte brut seulement si demandé
+    if (includeRawText) {
+      Object.assign(response, { rawText: resumeText });
+    }
+    
     return new Response(
-      JSON.stringify({
-        success: true,
-        message: "CV analysé avec succès",
-        candidate: candidateData,
-      }),
+      JSON.stringify(response),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
