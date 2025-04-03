@@ -18,26 +18,64 @@ function handleCors(req: Request) {
   return null;
 }
 
-// Function to extract text from a PDF file - simplified version without external dependencies
+// Function to extract text from a PDF file - improved version
 async function extractTextFromPDF(pdfBytes: Uint8Array): Promise<string> {
   try {
-    console.log("PDF extraction: Using simplified extraction method");
+    console.log("PDF extraction: Using improved extraction method");
     
-    // Simple text extraction from binary data
-    // This is a basic approach without proper PDF parsing
+    // On va essayer d'extraire le texte de manière plus intelligente
     const decoder = new TextDecoder("utf-8");
-    let text = decoder.decode(pdfBytes);
+    let rawText = decoder.decode(pdfBytes);
     
-    // Clean up the text (remove non-printable characters)
-    text = text.replace(/[\x00-\x1F\x7F-\x9F]/g, " ")
-               .replace(/\s+/g, " ")
-               .trim();
+    // Filtrer les parties qui contiennent du texte lisible
+    // Rechercher des séquences de caractères alphanumériques
+    let extractedText = "";
     
-    console.log(`Successfully extracted ${text.length} characters of text`);
-    return text;
+    // Extraction de segments de texte potentiellement utiles
+    const textSegments = rawText.match(/[a-zA-Z0-9àáâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ,.;:'\- ]{4,}/g);
+    
+    if (textSegments && textSegments.length > 0) {
+      // Filtre pour enlever les segments qui sont probablement juste des métadonnées ou du bruit
+      const filteredSegments = textSegments.filter(segment => {
+        // Ignorer les segments qui contiennent beaucoup de caractères spéciaux
+        const specialCharsRatio = (segment.match(/[^a-zA-Z0-9àáâäãåèéêëìíîïłńòóôöõùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ,.:;'\- ]/g) || []).length / segment.length;
+        return specialCharsRatio < 0.3 && segment.length > 5;
+      });
+      
+      // Jointure des segments en un texte unique avec espacement
+      extractedText = filteredSegments.join("\n");
+    }
+    
+    // S'il n'y a pas assez de texte extrait, utiliser une approche plus simple
+    if (extractedText.length < 100) {
+      // Rechercher des patterns courants dans les CV
+      const namePattern = /([A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+\s+[A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+)/g;
+      const emailPattern = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+      const phonePattern = /(\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}|(\+\d{1,3}[\s.-]?)?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}/g;
+      
+      const names = rawText.match(namePattern);
+      const emails = rawText.match(emailPattern);
+      const phones = rawText.match(phonePattern);
+      
+      if (names || emails || phones) {
+        extractedText += "\nInformations extraites du CV:\n";
+        if (names) extractedText += "Noms potentiels: " + names.join(", ") + "\n";
+        if (emails) extractedText += "Emails: " + emails.join(", ") + "\n";
+        if (phones) extractedText += "Téléphones: " + phones.join(", ") + "\n";
+      }
+    }
+    
+    console.log(`Extraction améliorée: ${extractedText.length} caractères extraits`);
+    
+    // Si on n'a toujours pas assez de texte, utiliser un message d'erreur explicite
+    if (extractedText.length < 50) {
+      return "L'extraction du texte a échoué. Le PDF semble être protégé, scanné ou ne contient pas de texte sélectionnable. Essayez avec un autre document.";
+    }
+    
+    return extractedText;
   } catch (error) {
     console.error("Error extracting text from PDF:", error);
-    return "Erreur lors de l'extraction du texte du document PDF";
+    return "Erreur lors de l'extraction du texte du document PDF. Message: " + error.message;
   }
 }
 

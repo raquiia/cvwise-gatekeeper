@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { calculateOverallMatch, MatchResult } from './matchingUtils';
 import { toast } from '@/hooks/use-toast';
@@ -43,22 +42,6 @@ export const resumeAnalysisService = {
       
       // Afficher le texte brut extrait dans une popup temporaire
       if (data.rawText) {
-        // Créer un élément temporaire pour afficher le texte brut
-        const textDisplay = document.createElement('div');
-        textDisplay.className = 'max-h-[300px] overflow-y-auto mt-2 p-2 border rounded bg-gray-50';
-        
-        const preElement = document.createElement('pre');
-        preElement.className = 'whitespace-pre-wrap text-xs';
-        preElement.textContent = data.rawText;
-        
-        textDisplay.appendChild(preElement);
-        
-        toast({
-          title: "Texte brut extrait du CV",
-          description: "Visualisation du texte brut extrait du CV disponible",
-          duration: 30000, // 30 secondes d'affichage
-        });
-        
         // Affichage dans la console pour le débogage
         console.log("Texte brut extrait:", data.rawText);
         
@@ -75,7 +58,7 @@ export const resumeAnalysisService = {
         
         const dialogTitle = document.createElement('h3');
         dialogTitle.className = 'text-lg font-semibold';
-        dialogTitle.textContent = 'Texte brut extrait du CV';
+        dialogTitle.textContent = 'Texte extrait du CV';
         
         const closeButton = document.createElement('button');
         closeButton.className = 'text-gray-500 hover:text-gray-700';
@@ -88,21 +71,57 @@ export const resumeAnalysisService = {
         
         const dialogBody = document.createElement('div');
         dialogBody.className = 'overflow-y-auto flex-grow';
+        
+        // Créer un conteneur pour le texte brut
+        const textDisplay = document.createElement('div');
+        textDisplay.className = 'max-h-[60vh] overflow-y-auto mt-2 p-4 border rounded bg-gray-50';
+        
+        // Formater le texte pour une meilleure lisibilité
+        const formattedText = data.rawText.replace(/\n/g, '<br>');
+        textDisplay.innerHTML = `<div class="whitespace-pre-wrap text-sm font-mono">${formattedText}</div>`;
+        
         dialogBody.appendChild(textDisplay);
+        
+        // Ajouter un bouton pour copier le texte
+        const copyButton = document.createElement('button');
+        copyButton.className = 'mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600';
+        copyButton.textContent = 'Copier le texte';
+        copyButton.onclick = () => {
+          navigator.clipboard.writeText(data.rawText)
+            .then(() => {
+              const originalText = copyButton.textContent;
+              copyButton.textContent = 'Copié!';
+              setTimeout(() => {
+                copyButton.textContent = originalText;
+              }, 2000);
+            })
+            .catch(err => {
+              console.error('Erreur lors de la copie:', err);
+            });
+        };
+        
+        dialogBody.appendChild(copyButton);
         
         dialogContent.appendChild(dialogHeader);
         dialogContent.appendChild(dialogBody);
         dialogContainer.appendChild(dialogContent);
         
-        // Ajouter à la page (sera supprimé automatiquement après)
+        // Ajouter à la page
         document.body.appendChild(dialogContainer);
         
-        // Définir un timeout pour supprimer automatiquement après 30 secondes
+        // Notification toast pour informer l'utilisateur
+        toast({
+          title: "Texte extrait du CV",
+          description: "Une fenêtre avec le texte extrait du CV est maintenant disponible",
+          duration: 5000,
+        });
+        
+        // Définir un timeout pour supprimer automatiquement après 60 secondes
         setTimeout(() => {
           if (document.body.contains(dialogContainer)) {
             document.body.removeChild(dialogContainer);
           }
-        }, 30000);
+        }, 60000);
       }
       
       if (data.success) {
