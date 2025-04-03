@@ -33,7 +33,10 @@ export const ensureResumesBucketExists = async () => {
       
       console.log('Resumes bucket created successfully');
       
-      // Set bucket policy to allow authenticated users to upload and download
+      // Note: createPolicy is not directly available in newer Supabase JS client
+      // Policies should be defined in migrations or via the Supabase dashboard
+      // This part is left as a comment for reference
+      /*
       const { error: policyError } = await supabase.storage.from('resumes').createPolicy(
         'authenticated-users-policy',
         {
@@ -41,7 +44,7 @@ export const ensureResumesBucketExists = async () => {
           definition: {
             role: 'authenticated',
             action: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
-            conditions: { "auth.uid": 'eq.user_id' } // Fixed: Added quotes around the property name with a dot
+            conditions: { "auth.uid": 'eq.user_id' }
           }
         }
       );
@@ -49,6 +52,7 @@ export const ensureResumesBucketExists = async () => {
       if (policyError) {
         console.error('Error setting bucket policy:', policyError);
       }
+      */
       
       return true;
     }
