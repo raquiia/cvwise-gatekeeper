@@ -10,6 +10,8 @@ import Register from "./pages/Register";
 import RegistrationPending from "./pages/RegistrationPending";
 import Dashboard from "./pages/Dashboard";
 import Candidates from "./pages/Candidates";
+import CandidateDetail from "./pages/CandidateDetail";
+import CandidateJobMatch from "./pages/CandidateJobMatch";
 import Resumes from "./pages/Resumes";
 import ResumeUpload from "./pages/ResumeUpload";
 import Admin from "./pages/Admin";
@@ -48,6 +50,16 @@ const App = () => (
       <Route path="/candidates" element={
         <ProtectedRoute>
           <Candidates />
+        </ProtectedRoute>
+      } />
+      <Route path="/candidates/:candidateId" element={
+        <ProtectedRoute>
+          <CandidateDetail />
+        </ProtectedRoute>
+      } />
+      <Route path="/candidates/:candidateId/job-match" element={
+        <ProtectedRoute>
+          <CandidateJobMatch />
         </ProtectedRoute>
       } />
       <Route path="/resumes" element={
