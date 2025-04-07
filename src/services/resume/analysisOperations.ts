@@ -29,23 +29,51 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     const resume = resumeData[0];
     console.log('Resume found, proceeding with analysis');
     
-    // Try to analyze the resume without requiring the file download first
+    // Première tentative: utiliser la nouvelle edge function d'extraction
     try {
-      // Invoke edge function directly for analysis
+      toast({
+        title: "Extraction du texte",
+        description: "Extraction du texte du CV en cours...",
+        duration: 5000,
+      });
+      
+      const { data: extractionData, error: extractionError } = await supabase.functions.invoke('extract-cv-text', {
+        body: { resumeId }
+      });
+      
+      if (extractionError) {
+        console.error('Error in extract-cv-text function:', extractionError);
+        throw new Error(extractionError.message);
+      }
+      
+      if (!extractionData.success || !extractionData.data?.text) {
+        console.error('Text extraction failed:', extractionData.error || 'No text returned');
+        throw new Error(extractionData.error || 'Échec de l\'extraction du texte');
+      }
+      
+      console.log('Text extracted successfully using extract-cv-text function');
+      
+      // Procéder à l'analyse IA avec le texte extrait
+      toast({
+        title: "Analyse IA en cours",
+        description: "Traitement du contenu du CV par IA...",
+        duration: 5000,
+      });
+      
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('resume-ai-analysis', {
         body: { 
           resumeId,
-          extractText: true // Flag to indicate we need text extraction on server side
+          resumeText: extractionData.data.text
         }
       });
       
       if (analysisError) {
-        console.error('Error in server-side resume analysis:', analysisError);
+        console.error('Error in AI analysis:', analysisError);
         throw new Error(analysisError.message);
       }
       
       if (!analysisData.success) {
-        throw new Error(analysisData.message || 'Échec de l\'analyse du CV sur le serveur');
+        throw new Error(analysisData.message || 'Échec de l\'analyse du CV');
       }
       
       console.log('Resume analyzed successfully via server-side processing');
@@ -59,35 +87,67 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
         candidateId: analysisData.candidate?.id
       };
     } catch (serverError) {
-      console.warn('Server-side analysis failed, attempting client-side fallback:', serverError);
+      console.warn('Server-side extraction/analysis failed, attempting classic analysis:', serverError);
       
-      // Fallback: try downloading the file for client-side processing
+      // Seconde tentative: revenir à l'ancienne méthode edge function qui gère à la fois l'extraction et l'analyse
       try {
-        const pdfFile = await resumeStorageService.downloadResumeAsFile(resumeId);
-        if (!pdfFile) {
-          throw new Error("Impossible de télécharger le fichier du CV");
+        const { data: analysisData, error: analysisError } = await supabase.functions.invoke('resume-ai-analysis', {
+          body: { 
+            resumeId,
+            extractText: true // Flag to indicate we need text extraction on server side
+          }
+        });
+        
+        if (analysisError) {
+          console.error('Error in server-side resume analysis:', analysisError);
+          throw new Error(analysisError.message);
         }
         
-        // Use client-side analysis as a fallback
-        const analysisResult = await resumeAnalysisService.analyzeResume(resumeId, pdfFile);
-        
-        if (!analysisResult.success) {
-          throw new Error(analysisResult.message || 'Échec de l\'analyse du CV');
+        if (!analysisData.success) {
+          throw new Error(analysisData.message || 'Échec de l\'analyse du CV sur le serveur');
         }
         
-        console.log('Resume analyzed successfully via client-side fallback:', analysisResult);
+        console.log('Resume analyzed successfully via legacy server-side processing');
         
         // Mark the resume as analyzed
         await resumeDataService.markResumeAsParsed(resumeId);
         
         return { 
           success: true, 
-          message: 'Analyse terminée avec succès (traitement local)',
-          candidateId: analysisResult.candidateId
+          message: 'Analyse terminée avec succès',
+          candidateId: analysisData.candidate?.id
         };
-      } catch (clientError) {
-        console.error('Client-side fallback also failed:', clientError);
-        throw clientError;
+      } catch (legacyServerError) {
+        console.warn('Legacy server-side analysis also failed, attempting client-side fallback:', legacyServerError);
+        
+        // Dernière tentative: télécharger le fichier pour traitement côté client
+        try {
+          const pdfFile = await resumeStorageService.downloadResumeAsFile(resumeId);
+          if (!pdfFile) {
+            throw new Error("Impossible de télécharger le fichier du CV");
+          }
+          
+          // Use client-side analysis as a fallback
+          const analysisResult = await resumeAnalysisService.analyzeResume(resumeId, pdfFile);
+          
+          if (!analysisResult.success) {
+            throw new Error(analysisResult.message || 'Échec de l\'analyse du CV');
+          }
+          
+          console.log('Resume analyzed successfully via client-side fallback:', analysisResult);
+          
+          // Mark the resume as analyzed
+          await resumeDataService.markResumeAsParsed(resumeId);
+          
+          return { 
+            success: true, 
+            message: 'Analyse terminée avec succès (traitement local)',
+            candidateId: analysisResult.candidateId
+          };
+        } catch (clientError) {
+          console.error('All extraction and analysis methods failed:', clientError);
+          throw clientError;
+        }
       }
     }
   } catch (error: any) {
