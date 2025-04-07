@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Loader2 } from "lucide-react";
+import { Copy, Check, Loader2, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 
 interface ExtractedTextDialogProps {
@@ -28,6 +28,7 @@ const ExtractedTextDialog: React.FC<ExtractedTextDialogProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const isLoading = extractedText === "Extraction en cours...";
+  const hasError = extractedText.startsWith("Erreur:") || extractedText.includes("échoué") || extractedText.includes("erreur");
 
   const handleCopy = () => {
     navigator.clipboard.writeText(extractedText);
@@ -41,7 +42,9 @@ const ExtractedTextDialog: React.FC<ExtractedTextDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Texte extrait de {fileName}</DialogTitle>
           <DialogDescription>
-            Le texte brut a été extrait du CV sans aucune analyse.
+            {hasError ? 
+              "Une erreur s'est produite lors de l'extraction du texte." : 
+              "Le texte brut a été extrait du CV sans aucune analyse."}
           </DialogDescription>
         </DialogHeader>
         
@@ -51,6 +54,16 @@ const ExtractedTextDialog: React.FC<ExtractedTextDialogProps> = ({
               <Loader2 size={40} className="mx-auto mb-4 animate-spin text-primary" />
               <p className="text-muted-foreground">Extraction du texte en cours...</p>
               <p className="text-xs text-muted-foreground mt-2">Cette opération peut prendre plusieurs secondes pour les fichiers volumineux</p>
+            </div>
+          </div>
+        ) : hasError ? (
+          <div className="flex-grow flex items-center justify-center py-12">
+            <div className="text-center">
+              <AlertTriangle size={40} className="mx-auto mb-4 text-amber-500" />
+              <p className="text-muted-foreground mb-4">Impossible d'extraire le texte de ce document.</p>
+              <ScrollArea className="mt-4 p-4 border rounded-md bg-muted/30 text-sm font-mono max-h-[200px]">
+                <div className="whitespace-pre-wrap text-red-500">{extractedText}</div>
+              </ScrollArea>
             </div>
           </div>
         ) : (
@@ -64,7 +77,7 @@ const ExtractedTextDialog: React.FC<ExtractedTextDialogProps> = ({
             onClick={handleCopy}
             className="gap-2"
             variant={copied ? "outline" : "secondary"}
-            disabled={isLoading || !extractedText}
+            disabled={isLoading || !extractedText || hasError}
           >
             {copied ? (
               <>

@@ -71,12 +71,12 @@ export const extractResumeText = async (resumeId: string): Promise<{ success: bo
       
       if (extractionError) {
         console.error('Error in extract-cv-text function with URL:', extractionError);
-        throw new Error(extractionError.message || "Le serveur d'extraction n'a pas pu traiter le fichier");
+        throw new Error(`Erreur du serveur: ${extractionError.message || "Erreur inconnue"}`);
       }
       
       if (!extractionData || !extractionData.success) {
         const errorMsg = extractionData?.error || 'Échec de l\'extraction du texte';
-        throw new Error(errorMsg);
+        throw new Error(`Erreur: ${errorMsg}`);
       }
       
       console.log('Text extracted successfully via server processing');
@@ -139,8 +139,13 @@ export const extractResumeText = async (resumeId: string): Promise<{ success: bo
         };
       } catch (localError: any) {
         console.error('Local extraction also failed:', localError);
-        // Remonter l'erreur originale du serveur si les deux méthodes échouent
-        throw serverError;
+        // Créer un message d'erreur plus descriptif
+        const errorMessage = `Erreur: ${serverError.message || "Échec de l'extraction du texte"}\n\nDétails techniques: ${localError.message || "Erreur inconnue"}`;
+        return { 
+          success: false, 
+          message: errorMessage,
+          text: errorMessage
+        };
       }
     }
   } catch (error: any) {
@@ -154,9 +159,11 @@ export const extractResumeText = async (resumeId: string): Promise<{ success: bo
       duration: 5000,
     });
     
+    const errorMessage = `Erreur: ${error.message || "Une erreur est survenue lors de l'extraction du texte du CV"}`;
     return { 
       success: false, 
-      message: error.message || 'Une erreur est survenue lors de l\'extraction du texte du CV' 
+      message: errorMessage,
+      text: errorMessage
     };
   }
 };

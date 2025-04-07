@@ -33,6 +33,17 @@ serve(async (req) => {
     
     console.log("Démarrage de l'extraction de texte pour:", pdfUrl);
 
+    // Vérifier si l'URL est publique/accessible
+    try {
+      const checkResponse = await fetch(pdfUrl, { method: 'HEAD' });
+      if (!checkResponse.ok) {
+        throw new Error(`PDF non accessible, code: ${checkResponse.status}`);
+      }
+    } catch (urlError) {
+      console.error("Erreur lors de la vérification d'accessibilité:", urlError);
+      throw new Error(`URL inaccessible: ${urlError.message}`);
+    }
+
     // Récupérer le PDF avec une meilleure gestion des erreurs et retry
     let response = null;
     let retryCount = 0;
@@ -66,10 +77,16 @@ serve(async (req) => {
     }
     
     // Convertir en ArrayBuffer
-    const pdfData = await response.arrayBuffer();
+    let pdfData: ArrayBuffer;
+    try {
+      pdfData = await response.arrayBuffer();
+    } catch (convError) {
+      console.error("Erreur lors de la conversion en ArrayBuffer:", convError);
+      throw new Error("Impossible de lire les données du PDF");
+    }
     
-    if (pdfData.byteLength === 0) {
-      throw new Error("Le fichier PDF est vide");
+    if (!pdfData || pdfData.byteLength === 0) {
+      throw new Error("Le fichier PDF est vide ou corrompu");
     }
     
     console.log(`PDF téléchargé, taille: ${(pdfData.byteLength / 1024).toFixed(2)} KB`);
@@ -81,7 +98,21 @@ serve(async (req) => {
     }
     
     // Extraction du texte avec notre méthode simplifiée
-    const { extractedText, pageCount } = await extractTextFromPDF(pdfData);
+    let extractedText = "";
+    let pageCount = 0;
+    
+    try {
+      const result = await extractTextFromPDF(pdfData);
+      extractedText = result.extractedText;
+      pageCount = result.pageCount;
+    } catch (extractError) {
+      console.error("Erreur lors de l'extraction:", extractError);
+      throw new Error(`Erreur d'extraction: ${extractError.message}`);
+    }
+    
+    if (!extractedText || extractedText.trim().length < 10) {
+      throw new Error("Aucun texte n'a pu être extrait du PDF");
+    }
     
     console.log(`Extraction réussie, ${pageCount} page(s), longueur du texte: ${extractedText.length} caractères`);
     
