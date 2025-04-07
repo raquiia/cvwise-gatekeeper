@@ -265,6 +265,20 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_auth_user_profile: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          avatar_url: string | null
+          company: string | null
+          created_at: string | null
+          first_name: string | null
+          id: string
+          is_admin: boolean | null
+          last_name: string | null
+          title: string | null
+          updated_at: string | null
+        }[]
+      }
       get_candidate_by_id: {
         Args: { candidate_id_param: string }
         Returns: Json[]
