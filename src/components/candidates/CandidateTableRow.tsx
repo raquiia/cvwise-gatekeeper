@@ -107,6 +107,11 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     setDeleteError(null);
     
     try {
+      // Check if resume_id exists before deletion
+      if (!candidate.resume_id) {
+        console.warn('Candidate has no resume_id. Only candidate will be deleted:', candidate.id);
+      }
+      
       await candidateDataService.deleteCandidate(candidate.id);
       
       // Notify parent component to refresh the list

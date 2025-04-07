@@ -107,25 +107,34 @@ export const candidateDataService = {
       if (candidate && candidate.resume_id) {
         console.log(`Associated resume found: ${candidate.resume_id}, proceeding with resume deletion`);
         
-        // Récupérer le CV pour obtenir le file_path
-        const { data: resume, error: resumeError } = await supabase
-          .from('resumes')
-          .select('file_path')
-          .eq('id', candidate.resume_id)
-          .single();
-        
-        if (resumeError) {
-          console.error("Error fetching resume for deletion:", resumeError.message);
-          // Ne pas bloquer le processus si la récupération du CV échoue
+        try {
+          // Récupérer le CV pour obtenir le file_path
+          const { data: resume, error: resumeError } = await supabase
+            .from('resumes')
+            .select('file_path')
+            .eq('id', candidate.resume_id)
+            .single();
+          
+          if (resumeError) {
+            console.error("Error fetching resume for deletion:", resumeError.message);
+            // Ne pas bloquer le processus si la récupération du CV échoue
+            return true;
+          }
+          
+          if (resume && resume.file_path) {
+            // Utiliser la fonction de suppression de CV qui gère à la fois le fichier et l'enregistrement
+            const { deleteResume } = await import('../resume/fileOperations');
+            await deleteResume(candidate.resume_id, resume.file_path);
+            console.log(`Associated resume ${candidate.resume_id} deleted successfully`);
+          }
+        } catch (resumeDeleteError: any) {
+          console.error("Error while deleting associated resume:", resumeDeleteError);
+          // Le candidat a été supprimé avec succès, donc considérons l'opération comme réussie
+          // même si la suppression du CV associé a échoué
           return true;
         }
-        
-        if (resume && resume.file_path) {
-          // Utiliser la fonction de suppression de CV qui gère à la fois le fichier et l'enregistrement
-          const { deleteResume } = await import('../resume/fileOperations');
-          await deleteResume(candidate.resume_id, resume.file_path);
-          console.log(`Associated resume ${candidate.resume_id} deleted successfully`);
-        }
+      } else {
+        console.log(`No associated resume found for candidate ${candidateId}, skipping resume deletion`);
       }
       
       return true;

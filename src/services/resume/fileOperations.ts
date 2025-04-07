@@ -74,26 +74,36 @@ export const deleteResume = async (resumeId: string, filePath: string): Promise<
     console.log('Deleting resume record, associated candidates, and file:', { resumeId, filePath });
     
     // 1. Supprimer d'abord les candidats associés à ce CV
-    const { error: candidatesError } = await supabase
-      .from('candidates')
-      .delete()
-      .eq('resume_id', resumeId);
-    
-    if (candidatesError) {
-      console.error('Error deleting associated candidates:', candidatesError.message);
+    try {
+      const { error: candidatesError } = await supabase
+        .from('candidates')
+        .delete()
+        .eq('resume_id', resumeId);
+      
+      if (candidatesError) {
+        console.error('Error deleting associated candidates:', candidatesError.message);
+        // Continue despite errors with candidates deletion
+      } else {
+        console.log(`Successfully deleted candidates associated with resume ${resumeId}`);
+      }
+    } catch (candidateDeleteError) {
+      console.error('Exception when deleting associated candidates:', candidateDeleteError);
       // Continue despite errors with candidates deletion
-    } else {
-      console.log(`Successfully deleted candidates associated with resume ${resumeId}`);
     }
     
     // 2. Utiliser une procédure RPC sécurisée pour supprimer le CV
-    const { error } = await supabase.rpc('delete_resume_by_id', {
-      resume_id_param: resumeId
-    });
-    
-    if (error) {
-      console.error('Error deleting resume record:', error.message);
-      throw new Error(`Erreur lors de la suppression du CV: ${error.message}`);
+    try {
+      const { error } = await supabase.rpc('delete_resume_by_id', {
+        resume_id_param: resumeId
+      });
+      
+      if (error) {
+        console.error('Error deleting resume record:', error.message);
+        throw new Error(`Erreur lors de la suppression du CV: ${error.message}`);
+      }
+    } catch (resumeDeleteError) {
+      console.error('Exception when deleting resume record:', resumeDeleteError);
+      throw resumeDeleteError;
     }
     
     // 3. Supprimer le fichier de stockage
