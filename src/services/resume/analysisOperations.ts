@@ -29,28 +29,88 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     const resume = resumeData[0];
     console.log('Resume found, proceeding with analysis');
     
-    // Obtenir l'URL publique du fichier
-    const { data: urlData } = await supabase
-      .storage
-      .from('resumes')
-      .createSignedUrl(resume.file_path, 60 * 10);  // URL valide 10 minutes
+    // Utilisation de plusieurs méthodes pour obtenir l'URL du fichier
+    let fileUrl = null;
+    let fileError = null;
     
-    if (!urlData || !urlData.signedUrl) {
-      console.error('Failed to get file signed URL');
-      throw new Error('Impossible d\'obtenir l\'URL du fichier');
+    // Méthode 1: Création d'une URL signée avec timeout étendu
+    try {
+      const { data: urlData, error: signedUrlError } = await supabase
+        .storage
+        .from('resumes')
+        .createSignedUrl(resume.file_path, 60 * 15); // 15 minutes
+        
+      if (signedUrlError) {
+        console.warn('Could not create signed URL:', signedUrlError.message);
+        fileError = signedUrlError;
+      } else if (urlData && urlData.signedUrl) {
+        fileUrl = urlData.signedUrl;
+        console.log('Got signed URL for file extraction:', fileUrl.substring(0, 50) + '...');
+      }
+    } catch (e) {
+      console.warn('Exception creating signed URL:', e);
+      fileError = e;
     }
     
-    const fileUrl = urlData.signedUrl;
-    console.log('Got signed URL for file extraction');
+    // Méthode 2: Utiliser l'URL publique si la méthode 1 échoue
+    if (!fileUrl) {
+      try {
+        const publicUrl = await resumeStorageService.getFileUrl(resume.file_path);
+        
+        if (publicUrl) {
+          fileUrl = publicUrl;
+          console.log('Using public URL instead of signed URL:', publicUrl.substring(0, 50) + '...');
+        }
+      } catch (e) {
+        console.warn('Could not get public URL either:', e);
+      }
+    }
     
-    // Première tentative: utiliser la nouvelle edge function d'extraction
-    try {
+    // Méthode 3: Dernier recours - télécharger le fichier et l'analyser en local
+    if (!fileUrl) {
+      console.log('Could not get any URL for the file, will attempt local processing');
+      
       toast({
         title: "Extraction du texte",
-        description: "Extraction du texte du CV en cours...",
+        description: "Extraction locale du texte du CV en cours...",
         duration: 5000,
       });
       
+      // Récupérer le fichier directement
+      const file = await resumeStorageService.downloadResumeAsFile(resumeId);
+      
+      if (!file) {
+        throw new Error('Impossible de télécharger le fichier du CV');
+      }
+      
+      // Analyser directement avec le fichier
+      const analysisResult = await resumeAnalysisService.analyzeResume(resumeId, file);
+      
+      if (!analysisResult.success) {
+        throw new Error(analysisResult.message || 'Échec de l\'analyse du CV');
+      }
+      
+      console.log('Resume analyzed successfully via direct file processing');
+      
+      // Mark the resume as analyzed
+      await resumeDataService.markResumeAsParsed(resumeId);
+      
+      return { 
+        success: true, 
+        message: 'Analyse terminée avec succès (traitement local)',
+        candidateId: analysisResult.candidateId
+      };
+    }
+    
+    // Si on a l'URL, procéder à l'analyse via serveur
+    toast({
+      title: "Extraction du texte",
+      description: "Extraction du texte du CV en cours...",
+      duration: 5000,
+    });
+    
+    // Première tentative: utiliser la nouvelle edge function d'extraction
+    try {
       const { data: extractionData, error: extractionError } = await supabase.functions.invoke('extract-cv-text', {
         body: { pdfUrl: fileUrl }
       });
@@ -101,62 +161,29 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
         candidateId: analysisData.candidate?.id
       };
     } catch (serverError) {
-      console.warn('Server-side extraction/analysis failed, attempting classic analysis:', serverError);
+      console.warn('Server-side extraction/analysis failed, attempting client-side analysis:', serverError);
       
-      // Seconde tentative: revenir à l'ancienne méthode
+      // Tentative d'analyse côté client avec l'URL
       try {
-        const { data: analysisData, error: analysisError } = await supabase.functions.invoke('resume-ai-analysis', {
-          body: { 
-            resumeId,
-            pdfUrl: fileUrl  // On envoie l'URL directement pour extraction côté serveur
-          }
-        });
+        const analysisResult = await resumeAnalysisService.analyzeResumeWithUrl(resumeId, fileUrl);
         
-        if (analysisError) {
-          console.error('Error in server-side resume analysis:', analysisError);
-          throw new Error(analysisError.message);
+        if (!analysisResult.success) {
+          throw new Error(analysisResult.message || 'Échec de l\'analyse du CV');
         }
         
-        if (!analysisData.success) {
-          throw new Error(analysisData.message || 'Échec de l\'analyse du CV sur le serveur');
-        }
-        
-        console.log('Resume analyzed successfully via legacy server-side processing');
+        console.log('Resume analyzed successfully via client-side URL analysis');
         
         // Mark the resume as analyzed
         await resumeDataService.markResumeAsParsed(resumeId);
         
         return { 
           success: true, 
-          message: 'Analyse terminée avec succès',
-          candidateId: analysisData.candidate?.id
+          message: 'Analyse terminée avec succès (traitement local)',
+          candidateId: analysisResult.candidateId
         };
-      } catch (legacyServerError) {
-        console.warn('Legacy server-side analysis also failed, attempting client-side fallback:', legacyServerError);
-        
-        // Dernière tentative: télécharger le fichier pour traitement côté client
-        try {
-          // Plutôt que de télécharger le fichier, on va utiliser l'URL pour extraction
-          const analysisResult = await resumeAnalysisService.analyzeResumeWithUrl(resumeId, fileUrl);
-          
-          if (!analysisResult.success) {
-            throw new Error(analysisResult.message || 'Échec de l\'analyse du CV');
-          }
-          
-          console.log('Resume analyzed successfully via client-side fallback:', analysisResult);
-          
-          // Mark the resume as analyzed
-          await resumeDataService.markResumeAsParsed(resumeId);
-          
-          return { 
-            success: true, 
-            message: 'Analyse terminée avec succès (traitement local)',
-            candidateId: analysisResult.candidateId
-          };
-        } catch (clientError) {
-          console.error('All extraction and analysis methods failed:', clientError);
-          throw clientError;
-        }
+      } catch (clientError) {
+        console.error('All extraction and analysis methods failed:', clientError);
+        throw clientError;
       }
     }
   } catch (error: any) {

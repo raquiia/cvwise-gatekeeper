@@ -35,3 +35,4 @@ refresh_token_reuse_interval = 10
 verify_jwt = false
 [functions.resume-ai-analysis]
 verify_jwt = false
+

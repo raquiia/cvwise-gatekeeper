@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
@@ -95,11 +96,34 @@ export const resumeStorageService = {
   
   getFileUrl: async (filePath: string): Promise<string | null> => {
     try {
+      // Première méthode: URL publique standard
       const { data } = await supabase.storage
         .from('resumes')
         .getPublicUrl(filePath);
         
-      return data.publicUrl;
+      if (data && data.publicUrl) {
+        console.log('Got public URL successfully:', data.publicUrl.substring(0, 50) + '...');
+        return data.publicUrl;
+      }
+      
+      // Seconde méthode: URL signée (fallback)
+      console.log('Public URL not available, trying signed URL');
+      const { data: signedData, error: signedError } = await supabase.storage
+        .from('resumes')
+        .createSignedUrl(filePath, 60 * 15); // 15 minutes
+      
+      if (signedError) {
+        console.error('Error getting signed URL:', signedError);
+        return null;
+      }
+      
+      if (signedData && signedData.signedUrl) {
+        console.log('Got signed URL successfully:', signedData.signedUrl.substring(0, 50) + '...');
+        return signedData.signedUrl;
+      }
+      
+      console.error('Could not get any URL for file');
+      return null;
     } catch (error) {
       console.error('Error getting file URL:', error);
       return null;
@@ -116,56 +140,79 @@ export const resumeStorageService = {
         return { data: null, error: new Error('Failed to get public URL for the file') };
       }
       
-      console.log('Got public URL:', publicUrl);
+      console.log('Got URL for download:', publicUrl.substring(0, 50) + '...');
       
-      // Try to download directly using fetch
-      try {
-        const response = await fetch(publicUrl, {
-          method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          },
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        
-        const blob = await response.blob();
-        console.log('Successfully downloaded file via public URL, size:', blob.size);
-        return { data: blob, error: null };
-      } catch (fetchError) {
-        console.error('Error downloading via public URL:', fetchError);
-        
-        // Fallback to storage API
-        console.log('Falling back to storage API download...');
+      // Try to download directly using fetch with retries
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (attempts < maxAttempts) {
         try {
-          // Ensure bucket exists
-          await ensureResumesBucketExists();
+          attempts++;
+          console.log(`Download attempt ${attempts}/${maxAttempts}`);
           
-          const { data, error } = await supabase.storage
-            .from('resumes')
-            .download(filePath);
-            
-          if (error) {
-            console.error('Storage API download error:', error);
-            return { data: null, error: new Error(`Storage API download failed: ${JSON.stringify(error)}`) };
+          const response = await fetch(publicUrl, {
+            method: 'GET',
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            },
+          });
+          
+          if (!response.ok) {
+            console.warn(`HTTP error! Status: ${response.status}`);
+            if (attempts < maxAttempts) {
+              // Wait before retrying
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              continue;
+            }
+            throw new Error(`HTTP error! Status: ${response.status}`);
           }
           
-          if (!data) {
-            return { data: null, error: new Error('No data received from Storage API') };
+          const blob = await response.blob();
+          console.log('Successfully downloaded file via URL, size:', blob.size);
+          return { data: blob, error: null };
+        } catch (fetchError) {
+          console.error(`Error downloading via URL (attempt ${attempts}):`, fetchError);
+          
+          if (attempts < maxAttempts) {
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            continue;
           }
           
-          console.log('Successfully downloaded file via Storage API');
-          return { data, error: null };
-        } catch (storageError) {
-          console.error('Exception during Storage API download:', storageError);
-          return { 
-            data: null, 
-            error: new Error(`Storage API download exception: ${storageError instanceof Error ? storageError.message : String(storageError)}`) 
-          };
+          // Fallback to storage API after all attempts failed
+          break;
         }
+      }
+      
+      // Fallback to storage API
+      console.log('Falling back to storage API download...');
+      try {
+        // Ensure bucket exists
+        await ensureResumesBucketExists();
+        
+        const { data, error } = await supabase.storage
+          .from('resumes')
+          .download(filePath);
+          
+        if (error) {
+          console.error('Storage API download error:', error);
+          return { data: null, error: new Error(`Storage API download failed: ${error.message}`) };
+        }
+        
+        if (!data) {
+          return { data: null, error: new Error('No data received from Storage API') };
+        }
+        
+        console.log('Successfully downloaded file via Storage API');
+        return { data, error: null };
+      } catch (storageError) {
+        console.error('Exception during Storage API download:', storageError);
+        return { 
+          data: null, 
+          error: new Error(`Storage API download exception: ${storageError instanceof Error ? storageError.message : String(storageError)}`) 
+        };
       }
     } catch (error) {
       console.error('Top-level exception during download process:', error);
@@ -193,15 +240,56 @@ export const resumeStorageService = {
       }
       
       const resume = resumeData[0];
+      console.log('Found resume, downloading file:', resume.file_path);
       
-      // Télécharger le fichier depuis le stockage
+      // Essayer d'abord avec l'API fetch via l'URL publique
+      try {
+        const fileUrl = await resumeStorageService.getFileUrl(resume.file_path);
+        
+        if (fileUrl) {
+          console.log('Got URL for direct download:', fileUrl.substring(0, 50) + '...');
+          
+          const response = await fetch(fileUrl, {
+            method: 'GET',
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            },
+          });
+          
+          if (response.ok) {
+            const blob = await response.blob();
+            console.log('Direct download successful, size:', blob.size);
+            
+            const file = new File([blob], resume.file_name, { 
+              type: resume.file_type 
+            });
+            
+            return file;
+          } else {
+            console.warn('Direct download failed, status:', response.status);
+          }
+        }
+      } catch (urlError) {
+        console.warn('Error downloading via URL, falling back to storage API:', urlError);
+      }
+      
+      // Fallback à la méthode storage si l'URL échoue
+      console.log('Falling back to storage API for file download');
       const { data, error } = await supabase.storage
         .from('resumes')
         .download(resume.file_path);
         
       if (error) {
+        console.error('Storage API download error:', error);
         throw error;
       }
+      
+      if (!data) {
+        throw new Error('No data received from Storage API');
+      }
+      
+      console.log('Storage API download successful');
       
       // Convertir le blob en File
       const file = new File([data], resume.file_name, { 
