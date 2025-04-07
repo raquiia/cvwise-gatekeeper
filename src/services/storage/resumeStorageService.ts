@@ -1,8 +1,10 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
 
+/**
+ * Service pour gérer le stockage des CV
+ */
 export const resumeStorageService = {
   uploadFile: async (file: File, userId: string): Promise<string | null> => {
     try {
@@ -172,5 +174,44 @@ export const resumeStorageService = {
         error: new Error(`Download process failed: ${error instanceof Error ? error.message : String(error)}`) 
       };
     }
-  }
+  },
+  
+  /**
+   * Télécharge un CV depuis le stockage et le renvoie sous forme de fichier
+   * @param resumeId L'ID du CV à télécharger
+   * @returns Le fichier du CV ou null en cas d'erreur
+   */
+  downloadResumeAsFile: async (resumeId: string): Promise<File | null> => {
+    try {
+      // Récupérer les données du CV
+      const { data: resumeData, error: resumeError } = await supabase
+        .rpc('get_resume_by_id', { p_resume_id: resumeId });
+        
+      if (resumeError || !resumeData || resumeData.length === 0) {
+        console.error('Error fetching resume for file download:', resumeError);
+        throw new Error('CV introuvable');
+      }
+      
+      const resume = resumeData[0];
+      
+      // Télécharger le fichier depuis le stockage
+      const { data, error } = await supabase.storage
+        .from('resumes')
+        .download(resume.file_path);
+        
+      if (error) {
+        throw error;
+      }
+      
+      // Convertir le blob en File
+      const file = new File([data], resume.file_name, { 
+        type: resume.file_type 
+      });
+      
+      return file;
+    } catch (error) {
+      console.error('Error downloading resume as file:', error);
+      return null;
+    }
+  },
 };

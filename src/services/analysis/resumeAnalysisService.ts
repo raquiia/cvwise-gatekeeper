@@ -1,7 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { calculateOverallMatch, MatchResult } from './matchingUtils';
 import { toast } from '@/hooks/use-toast';
+import { extractTextFromPDF } from '@/utils/pdfUtils';
 
 /**
  * Service responsable de l'analyse des CV
@@ -11,7 +11,7 @@ export const resumeAnalysisService = {
   /**
    * Déclenche l'analyse d'un CV
    */
-  analyzeResume: async (resumeId: string): Promise<{ success: boolean; message?: string; candidateId?: string; rawText?: string }> => {
+  analyzeResume: async (resumeId: string, pdfFile?: File): Promise<{ success: boolean; message?: string; candidateId?: string; rawText?: string }> => {
     try {
       console.log(`Démarrage de l'analyse pour le CV ID: ${resumeId}`);
       toast({
@@ -19,124 +19,68 @@ export const resumeAnalysisService = {
         description: "L'extraction des informations du CV peut prendre jusqu'à 30 secondes...",
       });
       
-      // Première étape : extraction du texte brut avec la fonction existante
-      const { data: extractionData, error: extractionError } = await supabase.functions.invoke('analyze-resume', {
-        body: { 
-          resumeId,
-          extractDetails: false,    // Extraction du texte brut uniquement
-          fullExtraction: true,     // Force l'extraction complète
-          forceCompletion: true,    // Génère des données même en cas d'échec partiel
-          includeRawText: true      // Demande d'inclure le texte brut extrait
+      let extractedText = "";
+      
+      // Extraction du texte, priorité à l'extraction côté client si le fichier est fourni
+      if (pdfFile) {
+        try {
+          // Utiliser l'extraction côté client
+          console.log("Tentative d'extraction côté client...");
+          extractedText = await extractTextFromPDF(pdfFile);
+          console.log(`Extraction côté client réussie: ${extractedText.length} caractères`);
+        } catch (clientError) {
+          console.error("Échec de l'extraction côté client:", clientError);
+          toast({
+            title: "Extraction côté client échouée",
+            description: "Tentative d'extraction côté serveur...",
+            variant: "default",
+          });
+          
+          // Repli sur l'extraction côté serveur
+          const { data: extractionData, error: extractionError } = await supabase.functions.invoke('analyze-resume', {
+            body: { 
+              resumeId,
+              extractDetails: false,
+              includeRawText: true
+            }
+          });
+          
+          if (extractionError || !extractionData?.rawText) {
+            throw new Error("Échec de l'extraction du texte");
+          }
+          
+          extractedText = extractionData.rawText;
         }
-      });
-      
-      if (extractionError) {
-        console.error('Erreur lors de l\'extraction du texte du CV:', extractionError);
-        toast({
-          title: "Erreur d'extraction",
-          description: extractionError.message || "Une erreur s'est produite lors de l'extraction du texte du CV",
-          variant: "destructive",
+      } else {
+        // Pas de fichier fourni, utiliser l'extraction côté serveur
+        const { data: extractionData, error: extractionError } = await supabase.functions.invoke('analyze-resume', {
+          body: { 
+            resumeId,
+            extractDetails: false,
+            includeRawText: true
+          }
         });
-        throw extractionError;
+        
+        if (extractionError || !extractionData?.rawText) {
+          throw new Error("Échec de l'extraction du texte");
+        }
+        
+        extractedText = extractionData.rawText;
       }
       
-      if (!extractionData.rawText) {
-        console.error('Aucun texte extrait du CV');
-        toast({
-          title: "Extraction insuffisante",
-          description: "Impossible d'extraire suffisamment de texte du CV pour l'analyse",
-          variant: "destructive",
-        });
-        throw new Error("Impossible d'extraire le texte du CV");
+      if (!extractedText || extractedText.length < 50) {
+        console.error('Texte extrait insuffisant');
+        throw new Error("Impossible d'extraire suffisamment de texte du CV");
       }
       
-      // Afficher le texte brut extrait dans une popup temporaire
-      const cleanedText = cleanRawResumeText(extractionData.rawText);
+      // Nettoyer le texte extrait
+      const cleanedText = cleanRawResumeText(extractedText);
       console.log("Texte brut nettoyé:", cleanedText);
       
-      // Créer une modal ou dialogue temporaire avec une meilleure mise en forme
-      const dialogContainer = document.createElement('div');
-      dialogContainer.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-      dialogContainer.style.zIndex = '9999';
+      // Afficher une prévisualisation du texte extrait (optionnel)
+      displayExtractedTextPreview(cleanedText);
       
-      const dialogContent = document.createElement('div');
-      dialogContent.className = 'bg-white dark:bg-gray-800 rounded-lg p-6 max-w-3xl max-h-[80vh] overflow-hidden flex flex-col';
-      
-      const dialogHeader = document.createElement('div');
-      dialogHeader.className = 'flex justify-between items-center mb-4';
-      
-      const dialogTitle = document.createElement('h3');
-      dialogTitle.className = 'text-lg font-semibold dark:text-white';
-      dialogTitle.textContent = 'Texte extrait du CV';
-      
-      const closeButton = document.createElement('button');
-      closeButton.className = 'text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100';
-      closeButton.textContent = '×';
-      closeButton.style.fontSize = '24px';
-      closeButton.onclick = () => document.body.removeChild(dialogContainer);
-      
-      dialogHeader.appendChild(dialogTitle);
-      dialogHeader.appendChild(closeButton);
-      
-      const dialogBody = document.createElement('div');
-      dialogBody.className = 'overflow-y-auto flex-grow';
-      
-      // Créer un conteneur pour le texte brut avec une meilleure mise en forme
-      const textDisplay = document.createElement('div');
-      textDisplay.className = 'max-h-[60vh] overflow-y-auto mt-2 p-4 border rounded bg-gray-50 dark:bg-gray-700 dark:text-gray-200';
-      
-      // Formater le texte pour une meilleure lisibilité
-      textDisplay.innerHTML = `<div class="whitespace-pre-wrap text-sm font-mono">${formatResumeText(cleanedText)}</div>`;
-      
-      dialogBody.appendChild(textDisplay);
-      
-      // Ajouter un bouton pour copier le texte
-      const copyButton = document.createElement('button');
-      copyButton.className = 'mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700';
-      copyButton.textContent = 'Copier le texte';
-      copyButton.onclick = () => {
-        navigator.clipboard.writeText(cleanedText)
-          .then(() => {
-            const originalText = copyButton.textContent;
-            copyButton.textContent = 'Copié!';
-            setTimeout(() => {
-              copyButton.textContent = originalText;
-            }, 2000);
-          })
-          .catch(err => {
-            console.error('Erreur lors de la copie:', err);
-            toast({
-              title: "Erreur",
-              description: "Impossible de copier le texte. Veuillez réessayer.",
-              variant: "destructive",
-            });
-          });
-      };
-      
-      dialogBody.appendChild(copyButton);
-      
-      dialogContent.appendChild(dialogHeader);
-      dialogContent.appendChild(dialogBody);
-      dialogContainer.appendChild(dialogContent);
-      
-      // Ajouter à la page
-      document.body.appendChild(dialogContainer);
-      
-      // Notification toast pour informer l'utilisateur
-      toast({
-        title: "Texte extrait du CV",
-        description: "Analyse IA du CV en cours. Une fenêtre avec le texte extrait est disponible.",
-        duration: 5000,
-      });
-      
-      // Définir un timeout pour supprimer automatiquement après 2 minutes
-      setTimeout(() => {
-        if (document.body.contains(dialogContainer)) {
-          document.body.removeChild(dialogContainer);
-        }
-      }, 120000);
-      
-      // Deuxième étape : analyse IA du texte extrait
+      // Analyse IA du texte extrait
       toast({
         title: "Analyse IA en cours",
         description: "Traitement par intelligence artificielle du contenu du CV...",
@@ -346,89 +290,88 @@ function cleanRawResumeText(rawText: string): string {
     .split('\n')
     .filter(line => line.trim().length > 3)
     .join('\n');
-  
-  // Extraire les sections importantes et pertinentes avec une expression régulière plus flexible
-  const importantContent = [];
-  
-  // Extraire les coordonnées (email, téléphone)
-  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-  const emails = cleanedText.match(emailRegex) || [];
-  if (emails.length > 0) {
-    importantContent.push("Emails trouvés:", ...new Set(emails));
-  }
-  
-  const phoneRegex = /(\+\d{1,3}[\s.-]?)?\(?\d{2,4}\)?[\s.-]?\d{2,4}[\s.-]?\d{2,4}[\s.-]?\d{0,4}/g;
-  const phones = cleanedText.match(phoneRegex) || [];
-  if (phones.length > 0) {
-    importantContent.push("Téléphones trouvés:", ...new Set(phones));
-  }
-  
-  // Extraire les noms potentiels (séquences de mots capitalisés)
-  const nameRegex = /([A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+\s+[A-Z][a-zàáâäãåèéêëìíîïòóôöõùúûüÿýñç]+)/g;
-  const names = cleanedText.match(nameRegex) || [];
-  if (names.length > 0) {
-    importantContent.push("Noms potentiels:", ...new Set(names));
-  }
-  
-  // Extraire les compétences communes
-  const skills = [
-    "JavaScript", "React", "Vue", "Angular", "TypeScript", "Node.js", 
-    "Python", "Java", "C#", "C++", "PHP", "Ruby", "Go", "Rust",
-    "HTML", "CSS", "SASS", "LESS", "Bootstrap", "Tailwind",
-    "SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch",
-    "Git", "Docker", "Kubernetes", "AWS", "Azure", "GCP",
-    "DevOps", "CI/CD", "Jenkins", "GitHub Actions", "CircleCI",
-    "Agile", "Scrum", "Kanban", "Project Management", "Jira", "Confluence",
-    "Machine Learning", "AI", "Data Science", "Data Analysis", "BigData"
-  ];
-  
-  const foundSkills = skills.filter(skill => 
-    cleanedText.toLowerCase().includes(skill.toLowerCase())
-  );
-  
-  if (foundSkills.length > 0) {
-    importantContent.push("Compétences détectées:", foundSkills.join(", "));
-  }
-  
-  // Extraire les sections courantes d'un CV
-  const sections = [
-    "expérience", "experience", "éducation", "education", "formation",
-    "compétences", "competences", "skills", "langues", "languages",
-    "projets", "projects", "certifications", "intérêts", "interests"
-  ];
-  
-  sections.forEach(section => {
-    // Rechercher la section et le contenu qui suit
-    const sectionRegex = new RegExp(`(${section}s?)[:\\s]+([^\\n]*(?:\\n(?!${sections.join('|')})[^\\n]+){0,10})`, 'gi');
-    const matches = [...cleanedText.matchAll(sectionRegex)];
     
-    if (matches.length > 0) {
-      for (const match of matches) {
-        if (match[2] && match[2].trim().length > 10) {
-          importantContent.push(`Section "${match[1].trim()}" trouvée:`, match[2].trim());
-        }
-      }
+  return cleanedText;
+}
+
+/**
+ * Affiche une prévisualisation du texte extrait dans une fenêtre modale
+ */
+function displayExtractedTextPreview(text: string): void {
+  // Créer une modal temporaire avec une meilleure mise en forme
+  const dialogContainer = document.createElement('div');
+  dialogContainer.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  dialogContainer.style.zIndex = '9999';
+  
+  const dialogContent = document.createElement('div');
+  dialogContent.className = 'bg-white dark:bg-gray-800 rounded-lg p-6 max-w-3xl max-h-[80vh] overflow-hidden flex flex-col';
+  
+  const dialogHeader = document.createElement('div');
+  dialogHeader.className = 'flex justify-between items-center mb-4';
+  
+  const dialogTitle = document.createElement('h3');
+  dialogTitle.className = 'text-lg font-semibold dark:text-white';
+  dialogTitle.textContent = 'Texte extrait du CV';
+  
+  const closeButton = document.createElement('button');
+  closeButton.className = 'text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100';
+  closeButton.textContent = '×';
+  closeButton.style.fontSize = '24px';
+  closeButton.onclick = () => document.body.removeChild(dialogContainer);
+  
+  dialogHeader.appendChild(dialogTitle);
+  dialogHeader.appendChild(closeButton);
+  
+  const dialogBody = document.createElement('div');
+  dialogBody.className = 'overflow-y-auto flex-grow';
+  
+  // Créer un conteneur pour le texte brut avec une meilleure mise en forme
+  const textDisplay = document.createElement('div');
+  textDisplay.className = 'max-h-[60vh] overflow-y-auto mt-2 p-4 border rounded bg-gray-50 dark:bg-gray-700 dark:text-gray-200';
+  
+  // Formater le texte pour une meilleure lisibilité
+  textDisplay.innerHTML = `<div class="whitespace-pre-wrap text-sm font-mono">${formatResumeText(text)}</div>`;
+  
+  dialogBody.appendChild(textDisplay);
+  
+  // Ajouter un bouton pour copier le texte
+  const copyButton = document.createElement('button');
+  copyButton.className = 'mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700';
+  copyButton.textContent = 'Copier le texte';
+  copyButton.onclick = () => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        const originalText = copyButton.textContent;
+        copyButton.textContent = 'Copié!';
+        setTimeout(() => {
+          copyButton.textContent = originalText;
+        }, 2000);
+      })
+      .catch(err => {
+        console.error('Erreur lors de la copie:', err);
+        toast({
+          title: "Erreur",
+          description: "Impossible de copier le texte. Veuillez réessayer.",
+          variant: "destructive",
+        });
+      });
+  };
+  
+  dialogBody.appendChild(copyButton);
+  
+  dialogContent.appendChild(dialogHeader);
+  dialogContent.appendChild(dialogBody);
+  dialogContainer.appendChild(dialogContent);
+  
+  // Ajouter à la page
+  document.body.appendChild(dialogContainer);
+  
+  // Définir un timeout pour supprimer automatiquement après 2 minutes
+  setTimeout(() => {
+    if (document.body.contains(dialogContainer)) {
+      document.body.removeChild(dialogContainer);
     }
-  });
-  
-  // Si des sections importantes ont été trouvées, utiliser celles-ci
-  // Sinon, garder le texte nettoyé mais filtré
-  if (importantContent.length > 0) {
-    return importantContent.join('\n\n');
-  }
-  
-  // Si aucune section spécifique n'a été trouvée, filtrer davantage le texte brut
-  // pour ne garder que les lignes significatives
-  return cleanedText
-    .split('\n')
-    .filter(line => {
-      const trimmed = line.trim();
-      // Garder uniquement les lignes qui contiennent du texte significatif
-      return trimmed.length > 10 && 
-             /[a-zA-Z]{3,}/.test(trimmed) && // Au moins 3 lettres consécutives
-             !/^[\d\s.,;:()[\]{}]+$/.test(trimmed); // Pas seulement des caractères spéciaux
-    })
-    .join('\n');
+  }, 120000);
 }
 
 /**
@@ -442,7 +385,7 @@ function formatResumeText(text: string): string {
   return paragraphs.map(para => {
     if (para.trim() === '') return '';
     
-    // Déterminer si c'est un titre de section
+    // Détecter les sections à mettre en évidence
     if (para.includes('trouvés:') || 
         para.includes('trouvée:') || 
         para.includes('détectées:') ||
@@ -450,7 +393,7 @@ function formatResumeText(text: string): string {
       return `<h4 class="font-bold text-blue-600 dark:text-blue-400 mt-4 mb-2">${para}</h4>`;
     }
     
-    // Formater les listes (éléments commençant par - ou •)
+    // Formater les listes
     if (para.split('\n').some(line => /^[-•*]\s/.test(line.trim()))) {
       const listItems = para.split('\n')
         .map(line => {

@@ -31,9 +31,15 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     const resume = resumeData[0];
     console.log('Resume found, proceeding with analysis');
     
-    // Appeler directement le service d'analyse avec l'ID du CV
+    // Télécharger le fichier PDF pour extraction côté client
+    const pdfFile = await resumeStorageService.downloadResumeAsFile(resumeId);
+    if (!pdfFile) {
+      throw new Error("Impossible de télécharger le fichier du CV");
+    }
+    
+    // Appeler directement le service d'analyse avec l'ID du CV et le fichier PDF
     // Le service utilisera maintenant l'analyse améliorée par IA
-    const analysisResult = await resumeAnalysisService.analyzeResume(resumeId);
+    const analysisResult = await resumeAnalysisService.analyzeResume(resumeId, pdfFile);
     
     if (!analysisResult.success) {
       throw new Error(analysisResult.message || 'Échec de l\'analyse du CV');
