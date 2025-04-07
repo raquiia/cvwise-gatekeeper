@@ -35,6 +35,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
 }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const { toast } = useToast();
   
   if (!candidate || typeof candidate !== 'object') {
@@ -95,6 +96,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   
   // Delete candidate handler
   const handleDeleteClick = () => {
+    setDeleteError(null);
     setShowDeleteDialog(true);
   };
   
@@ -102,32 +104,33 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     if (!candidate.id) return;
     
     setIsDeleting(true);
+    setDeleteError(null);
+    
     try {
-      const success = await candidateDataService.deleteCandidate(candidate.id);
+      await candidateDataService.deleteCandidate(candidate.id);
       
-      if (success) {
-        toast({
-          title: "Candidat supprimé",
-          description: `${fullName} a été supprimé avec succès.`,
-        });
-        
-        // Notify parent component to refresh the list
-        if (onCandidateDeleted) {
-          onCandidateDeleted();
-        }
-      } else {
-        throw new Error("Échec de la suppression");
+      // Notify parent component to refresh the list
+      toast({
+        title: "Candidat supprimé",
+        description: `${fullName} a été supprimé avec succès.`,
+      });
+      
+      if (onCandidateDeleted) {
+        onCandidateDeleted();
       }
-    } catch (error) {
+      
+      setShowDeleteDialog(false);
+    } catch (error: any) {
       console.error('Error deleting candidate:', error);
+      setDeleteError(error.message || "Impossible de supprimer le candidat. Veuillez réessayer.");
+      
       toast({
         title: "Erreur",
-        description: "Impossible de supprimer le candidat. Veuillez réessayer.",
+        description: error.message || "Impossible de supprimer le candidat. Veuillez réessayer.",
         variant: "destructive",
       });
     } finally {
       setIsDeleting(false);
-      setShowDeleteDialog(false);
     }
   };
 
@@ -252,6 +255,11 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
             <AlertDialogDescription>
               Êtes-vous sûr de vouloir supprimer {fullName} ? Cette action est irréversible.
             </AlertDialogDescription>
+            {deleteError && (
+              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
+                {deleteError}
+              </div>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>

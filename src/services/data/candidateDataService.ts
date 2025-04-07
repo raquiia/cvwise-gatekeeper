@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from './resumeDataService';
 import { Json } from '@/integrations/supabase/types';
@@ -129,7 +130,26 @@ export const candidateDataService = {
    */
   deleteCandidate: async (candidateId: string): Promise<boolean> => {
     try {
-      console.log('Deleting candidate with ID:', candidateId);
+      console.log('Attempting to delete candidate with ID:', candidateId);
+      
+      // Vérifier que le candidat existe avant de le supprimer
+      const checkResult = await supabase
+        .from('candidates')
+        .select('id')
+        .eq('id', candidateId)
+        .maybeSingle();
+      
+      if (checkResult.error) {
+        console.error('Error checking candidate existence:', checkResult.error);
+        throw new Error(`Erreur lors de la vérification du candidat: ${checkResult.error.message}`);
+      }
+      
+      if (!checkResult.data) {
+        console.error('Candidate not found for deletion:', candidateId);
+        throw new Error('Candidat non trouvé');
+      }
+      
+      console.log('Candidate exists, proceeding with deletion');
       
       const { error } = await supabase
         .from('candidates')
@@ -138,13 +158,14 @@ export const candidateDataService = {
         
       if (error) {
         console.error('Error deleting candidate:', error);
-        throw error;
+        throw new Error(`Erreur lors de la suppression: ${error.message}`);
       }
       
+      console.log('Candidate successfully deleted');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in deleteCandidate:', error);
-      return false;
+      throw error; // Propager l'erreur pour une meilleure gestion au niveau UI
     }
   }
 };

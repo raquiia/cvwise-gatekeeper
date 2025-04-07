@@ -34,6 +34,13 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   const validCandidates = Array.isArray(candidates) ? candidates : [];
   const candidatesCount = validCandidates.length;
   
+  const handleCandidateDeleted = () => {
+    console.log('Candidate deleted, notifying parent component');
+    if (onCandidateDeleted) {
+      onCandidateDeleted();
+    }
+  };
+  
   return (
     <div className="glass rounded-xl overflow-hidden">
       {/* Table Header with Sort Controls */}
@@ -114,7 +121,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                   key={candidate.id || `temp-${Math.random()}`}
                   candidate={candidate}
                   onViewCandidate={onViewCandidate}
-                  onCandidateDeleted={onCandidateDeleted}
+                  onCandidateDeleted={handleCandidateDeleted}
                 />
               ))
             )}
