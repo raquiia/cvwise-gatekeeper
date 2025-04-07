@@ -24,14 +24,13 @@ serve(async (req) => {
   if (corsResponse) return corsResponse;
 
   try {
-    const { resumeId, resumeText } = await req.json();
+    const { resumeId, resumeText, extractText } = await req.json();
     
-    if (!resumeId || !resumeText) {
-      throw new Error("L'ID du CV et le texte extrait sont requis");
+    if (!resumeId) {
+      throw new Error("L'ID du CV est requis");
     }
     
     console.log("Démarrage de l'analyse AI pour le CV:", resumeId);
-    console.log("Texte extrait, longueur:", resumeText.length);
 
     // Créer un client Supabase avec la clé service
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -58,6 +57,39 @@ serve(async (req) => {
       .maybeSingle();
     
     console.log("Candidat existant:", existingCandidate);
+    
+    // Extraire le texte du CV si nécessaire (extractText is true)
+    let textToAnalyze = resumeText;
+    
+    if (extractText && !textToAnalyze) {
+      console.log("Extraction du texte côté serveur demandée");
+      
+      try {
+        // Télécharger le fichier du storage avec des privilèges élevés
+        const { data: fileData, error: fileError } = await supabase.storage
+          .from("resumes")
+          .download(resumeData.file_path);
+          
+        if (fileError || !fileData) {
+          console.error("Erreur lors du téléchargement du fichier:", fileError);
+          throw new Error("Impossible de télécharger le fichier du CV");
+        }
+        
+        // Convertir le blob en texte (cela dépend du format du fichier)
+        // Pour un PDF, il faudrait un parser PDF côté serveur
+        textToAnalyze = await fileData.text();
+        console.log("Texte extrait côté serveur, longueur:", textToAnalyze.length);
+      } catch (extractError) {
+        console.error("Erreur lors de l'extraction du texte:", extractError);
+        throw new Error("Échec de l'extraction du texte du CV");
+      }
+    }
+    
+    if (!textToAnalyze) {
+      throw new Error("Le texte du CV est requis pour l'analyse");
+    }
+    
+    console.log("Texte à analyser, longueur:", textToAnalyze.length);
     
     // Utiliser OpenAI pour analyser le CV
     const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
@@ -99,7 +131,7 @@ serve(async (req) => {
           },
           {
             role: "user",
-            content: `Voici le texte extrait d'un CV. Analyse-le et extrait les informations structurées demandées:\n\n${resumeText}`
+            content: `Voici le texte extrait d'un CV. Analyse-le et extrait les informations structurées demandées:\n\n${textToAnalyze}`
           }
         ],
         temperature: 0.3,

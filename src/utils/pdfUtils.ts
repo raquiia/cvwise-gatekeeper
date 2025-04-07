@@ -4,8 +4,8 @@
  */
 import * as pdfjs from 'pdfjs-dist';
 
-// Configure worker - use a different approach for setting the worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// Configure worker - use CDN for reliability
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 /**
  * Extrait le texte d'un fichier PDF
