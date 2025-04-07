@@ -4,9 +4,8 @@
  */
 import * as pdfjs from 'pdfjs-dist';
 
-// Configurer le worker pour PDF.js - Correct import statement to use namespace import
-import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
-pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+// Configure worker - use a different approach for setting the worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 /**
  * Extrait le texte d'un fichier PDF
