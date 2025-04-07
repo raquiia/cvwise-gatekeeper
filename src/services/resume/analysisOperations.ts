@@ -79,7 +79,9 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     
     // Method 1: Try to get a file URL from the public URL (most reliable for public buckets)
     try {
-      fileUrl = `${supabase.storage.url}/object/public/resumes/${resume.file_path}`;
+      // Fixed TS2445 error by using the from() method properly
+      const { data: { publicUrl } } = supabase.storage.from('resumes').getPublicUrl(resume.file_path);
+      fileUrl = publicUrl;
       console.log('Using constructed public URL:', fileUrl);
     } catch (e) {
       console.warn('Could not construct public URL:', e);

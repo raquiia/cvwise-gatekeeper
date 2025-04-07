@@ -1,3 +1,4 @@
+
 import { supabase } from './client';
 
 export const ensureResumesBucketExists = async (): Promise<void> => {
@@ -25,11 +26,9 @@ export const ensureResumesBucketExists = async (): Promise<void> => {
         return;
       }
       
-      // Set public policy for the bucket
-      const { error: policyError } = await supabase.storage.from('resumes').getPublicUrl('test');
-      if (policyError) {
-        console.error('Error setting public policy:', policyError);
-      }
+      // Just get the public URL without checking for error
+      // This avoids the TS2339 error
+      await supabase.storage.from('resumes').getPublicUrl('test');
       
       console.log('Resumes bucket created successfully');
     }

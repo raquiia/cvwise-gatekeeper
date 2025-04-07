@@ -1,3 +1,4 @@
+
 /**
  * Utilitaires pour l'extraction de texte des fichiers PDF côté client
  */
@@ -199,9 +200,8 @@ export const extractTextFromPdfUrl = async (pdfUrl: string): Promise<string> => 
     
     // Load the PDF.js library
     const pdfjsLib = await import('pdfjs-dist');
-    const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.mjs');
     
-    // Set the worker source path
+    // Use the same worker entry as the top-level import
     pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
     
     try {
