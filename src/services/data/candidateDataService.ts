@@ -1,219 +1,127 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { resumeDataService } from './resumeDataService';
 import { CandidateData } from './resumeDataService';
-import { Json } from '@/integrations/supabase/types';
-
-/**
- * Helper function to safely parse JSON data
- */
-const safelyParseJsonField = (field: Json | null): any[] => {
-  if (!field) return [];
-  
-  if (Array.isArray(field)) return field;
-  
-  if (typeof field === 'string') {
-    try {
-      const parsed = JSON.parse(field);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      return [];
-    }
-  }
-  
-  if (typeof field === 'object') {
-    return Object.values(field);
-  }
-  
-  return [];
-};
 
 /**
  * Service responsable de la gestion des données des candidats
- * Cette couche d'abstraction facilitera une migration future vers une API REST
  */
 export const candidateDataService = {
   /**
-   * Crée ou met à jour un candidat
-   */
-  saveCandidate: async (candidateData: CandidateData): Promise<CandidateData | null> => {
-    try {
-      // Ensure skills is an array
-      const dataToSave = {
-        ...candidateData,
-        skills: Array.isArray(candidateData.skills) ? candidateData.skills : []
-      };
-      
-      const { data, error } = await supabase
-        .from('candidates')
-        .upsert(dataToSave)
-        .select();
-        
-      if (error) throw error;
-      
-      // Transform the returned data to match our expected format
-      if (data && data[0]) {
-        return transformCandidateData(data[0]);
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error saving candidate:', error);
-      return null;
-    }
-  },
-  
-  /**
-   * Récupère tous les candidats d'un utilisateur
+   * Récupérer tous les candidats d'un utilisateur
    */
   getUserCandidates: async (userId: string): Promise<CandidateData[]> => {
     try {
-      console.log('Fetching candidates for user:', userId);
+      console.log("Fetching candidates for user:", userId);
       
-      // Utiliser directement RPC pour appeler la fonction SQL
       const { data, error } = await supabase.rpc('get_user_candidates', {
         user_id_param: userId
       });
-        
+      
       if (error) {
-        console.error('RPC error fetching candidates:', error);
-        throw error;
+        console.error("Error fetching candidates:", error.message);
+        throw new Error(`Erreur lors de la récupération des candidats: ${error.message}`);
       }
       
-      console.log('Candidates data from RPC:', data);
-      
-      if (!data || !Array.isArray(data)) {
-        console.log('No candidates returned or invalid data format');
+      if (!data) {
+        console.log("No candidates found for user:", userId);
         return [];
       }
       
-      // Transform each candidate data
-      return data.map(candidate => transformCandidateData(candidate));
-    } catch (error) {
-      console.error('Error fetching candidates:', error);
-      return [];
+      console.log(`Retrieved ${data.length} candidates`);
+      return data;
+    } catch (error: any) {
+      console.error("Exception in getUserCandidates:", error);
+      throw new Error(error.message || "Impossible de récupérer les candidats");
     }
   },
   
   /**
-   * Récupère un candidat par son ID
+   * Récupérer un candidat par son ID
    */
   getCandidateById: async (candidateId: string): Promise<CandidateData | null> => {
     try {
-      // Utiliser la fonction RPC sécurisée pour éviter la récursion infinie dans les policies
       const { data, error } = await supabase.rpc('get_candidate_by_id', {
         candidate_id_param: candidateId
       });
-        
+      
       if (error) {
-        console.error('RPC error fetching candidate by ID:', error);
-        throw error;
+        console.error("Error fetching candidate:", error.message);
+        throw new Error(`Erreur lors de la récupération du candidat: ${error.message}`);
       }
       
-      console.log('Candidate data from RPC:', data);
-      
-      // Check if we got any data back
-      if (!data || !Array.isArray(data) || data.length === 0) {
-        console.log('No candidate found with ID:', candidateId);
+      if (!data || data.length === 0) {
         return null;
       }
       
-      // Transform the candidate data
-      return transformCandidateData(data[0]);
-    } catch (error) {
-      console.error('Error fetching candidate:', error);
-      return null;
+      return data[0] as unknown as CandidateData;
+    } catch (error: any) {
+      console.error("Exception in getCandidateById:", error);
+      throw new Error(error.message || "Impossible de récupérer le candidat");
     }
   },
-
+  
   /**
-   * Supprime un candidat par son ID
+   * Supprimer un candidat par son ID et le CV associé
    */
   deleteCandidate: async (candidateId: string): Promise<boolean> => {
     try {
-      console.log('Attempting to delete candidate with ID:', candidateId);
+      console.log(`Starting deletion of candidate with ID: ${candidateId}`);
       
-      // Vérifier que le candidat existe avant de le supprimer
-      const checkResult = await supabase
+      // 1. Récupérer d'abord le candidat pour obtenir le resume_id
+      const { data: candidate, error: fetchError } = await supabase
         .from('candidates')
-        .select('id')
+        .select('resume_id')
         .eq('id', candidateId)
-        .maybeSingle();
+        .single();
       
-      if (checkResult.error) {
-        console.error('Error checking candidate existence:', checkResult.error);
-        throw new Error(`Erreur lors de la vérification du candidat: ${checkResult.error.message}`);
+      if (fetchError) {
+        console.error("Error fetching candidate for deletion:", fetchError.message);
+        throw new Error(`Erreur lors de la récupération du candidat: ${fetchError.message}`);
       }
       
-      if (!checkResult.data) {
-        console.error('Candidate not found for deletion:', candidateId);
-        throw new Error('Candidat non trouvé');
-      }
-      
-      console.log('Candidate exists, proceeding with deletion');
-      
-      const { error } = await supabase
+      // 2. Supprimer le candidat
+      const { error: deleteError } = await supabase
         .from('candidates')
         .delete()
         .eq('id', candidateId);
-        
-      if (error) {
-        console.error('Error deleting candidate:', error);
-        throw new Error(`Erreur lors de la suppression: ${error.message}`);
+      
+      if (deleteError) {
+        console.error("Error deleting candidate:", deleteError.message);
+        throw new Error(`Erreur lors de la suppression du candidat: ${deleteError.message}`);
       }
       
-      console.log('Candidate successfully deleted');
+      console.log(`Candidate ${candidateId} deleted successfully`);
+      
+      // 3. Si le candidat avait un resume_id, supprimer également le CV
+      if (candidate && candidate.resume_id) {
+        console.log(`Associated resume found: ${candidate.resume_id}, proceeding with resume deletion`);
+        
+        // Récupérer le CV pour obtenir le file_path
+        const { data: resume, error: resumeError } = await supabase
+          .from('resumes')
+          .select('file_path')
+          .eq('id', candidate.resume_id)
+          .single();
+        
+        if (resumeError) {
+          console.error("Error fetching resume for deletion:", resumeError.message);
+          // Ne pas bloquer le processus si la récupération du CV échoue
+          return true;
+        }
+        
+        if (resume && resume.file_path) {
+          // Utiliser la fonction de suppression de CV qui gère à la fois le fichier et l'enregistrement
+          const { deleteResume } = await import('../resume/fileOperations');
+          await deleteResume(candidate.resume_id, resume.file_path);
+          console.log(`Associated resume ${candidate.resume_id} deleted successfully`);
+        }
+      }
+      
       return true;
     } catch (error: any) {
-      console.error('Error in deleteCandidate:', error);
-      throw error; // Propager l'erreur pour une meilleure gestion au niveau UI
+      console.error("Exception in deleteCandidate:", error);
+      throw new Error(error.message || "Impossible de supprimer le candidat");
     }
   }
 };
-
-/**
- * Transform raw candidate data from the database to the CandidateData format
- */
-function transformCandidateData(candidate: any): CandidateData {
-  if (!candidate) return {} as CandidateData;
-  
-  return {
-    id: candidate.id,
-    user_id: candidate.user_id,
-    resume_id: candidate.resume_id,
-    first_name: candidate.first_name,
-    last_name: candidate.last_name,
-    email: candidate.email,
-    phone: candidate.phone,
-    position: candidate.position || candidate.job_position, // Handle both field names
-    years_experience: candidate.years_experience,
-    location: candidate.location,
-    skills: safelyParseJsonField(candidate.skills),
-    experiences: safelyParseJsonField(candidate.experiences),
-    education: safelyParseJsonField(candidate.education),
-    certifications: safelyParseJsonField(candidate.certifications),
-    languages: safelyParseJsonField(candidate.languages),
-    projects: safelyParseJsonField(candidate.projects),
-    industries: safelyParseJsonField(candidate.industries),
-    score: candidate.score,
-    status: candidate.status,
-    company: candidate.company || '',
-    created_at: candidate.created_at,
-    updated_at: candidate.updated_at,
-    interests: candidate.interests,
-    availability: candidate.availability,
-    salary_expectations: candidate.salary_expectations,
-    mobility: candidate.mobility,
-    contract_type: candidate.contract_type,
-    remote_preference: candidate.remote_preference,
-    travel_willingness: candidate.travel_willingness,
-    career_objectives: candidate.career_objectives,
-    professional_values: candidate.professional_values,
-    work_authorization: candidate.work_authorization,
-    profile_completeness: candidate.profile_completeness,
-    professional_references: safelyParseJsonField(candidate.professional_references),
-    professional_networks: safelyParseJsonField(candidate.professional_networks),
-    continuous_training: safelyParseJsonField(candidate.continuous_training),
-    publications: safelyParseJsonField(candidate.publications),
-    special_permits: safelyParseJsonField(candidate.special_permits)
-  };
-}

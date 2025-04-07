@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { CandidateData } from '@/services/data/resumeDataService';
 import CandidateTableRow from './CandidateTableRow';
+import { useToast } from '@/hooks/use-toast';
 
 interface CandidatesTableProps {
   candidates: CandidateData[];
@@ -27,6 +28,8 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   onViewCandidate,
   onCandidateDeleted
 }) => {
+  const { toast } = useToast();
+  
   // Debug: Log the candidates data being received
   console.log('CandidatesTable - received candidates:', candidates);
   
@@ -36,6 +39,11 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   
   const handleCandidateDeleted = () => {
     console.log('Candidate deleted, notifying parent component');
+    toast({
+      title: "Candidat supprimé",
+      description: "Le candidat et le CV associé ont été supprimés avec succès",
+    });
+    
     if (onCandidateDeleted) {
       onCandidateDeleted();
     }

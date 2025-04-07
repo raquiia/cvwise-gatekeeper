@@ -67,28 +67,47 @@ export const downloadResume = async (filePath: string, fileName: string): Promis
 };
 
 /**
- * Delete a resume and its file
+ * Delete a resume and its associated candidates
  */
 export const deleteResume = async (resumeId: string, filePath: string): Promise<boolean> => {
   try {
-    console.log('Deleting resume record and file:', { resumeId, filePath });
+    console.log('Deleting resume record, associated candidates, and file:', { resumeId, filePath });
     
-    // Utiliser une procédure RPC sécurisée au lieu d'une requête directe
-    // pour éviter les problèmes de récursion dans les politiques RLS
+    // 1. Supprimer d'abord les candidats associés à ce CV
+    const { error: candidatesError } = await supabase
+      .from('candidates')
+      .delete()
+      .eq('resume_id', resumeId);
+    
+    if (candidatesError) {
+      console.error('Error deleting associated candidates:', candidatesError.message);
+      // Continue despite errors with candidates deletion
+    } else {
+      console.log(`Successfully deleted candidates associated with resume ${resumeId}`);
+    }
+    
+    // 2. Utiliser une procédure RPC sécurisée pour supprimer le CV
     const { error } = await supabase.rpc('delete_resume_by_id', {
       resume_id_param: resumeId
     });
     
     if (error) {
       console.error('Error deleting resume record:', error.message);
-      return false;
+      throw new Error(`Erreur lors de la suppression du CV: ${error.message}`);
     }
     
-    // Puis supprimer le fichier
-    await resumeStorageService.deleteFile(filePath);
+    // 3. Supprimer le fichier de stockage
+    try {
+      await resumeStorageService.deleteFile(filePath);
+      console.log(`Successfully deleted resume file: ${filePath}`);
+    } catch (storageError: any) {
+      console.error('Error deleting resume file:', storageError);
+      // Continue despite errors with file deletion
+    }
+    
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Exception deleting resume:', error);
-    return false;
+    throw error;
   }
 };

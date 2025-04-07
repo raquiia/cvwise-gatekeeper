@@ -1,84 +1,99 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { resumeAnalysisService } from '../analysis/resumeAnalysisService';
+import { resumeDataService } from '../data/resumeDataService';
 
 /**
- * Analyse un CV pour extraire des informations et créer un candidat
+ * Analyze a resume by its ID
  */
-export const analyzeResume = async (resumeId: string): Promise<{ success: boolean; message?: string; candidateId?: string }> => {
+export const analyzeResume = async (resumeId: string): Promise<{ success: boolean; message: string; candidateId?: string }> => {
   try {
-    console.log(`Démarrage de l'analyse pour le CV ID: ${resumeId}`);
-    toast({
-      title: "Analyse en cours",
-      description: "L'extraction des informations du CV peut prendre jusqu'à 30 secondes...",
-    });
+    console.log('Starting resume analysis for ID:', resumeId);
     
-    // Call the Supabase function with the extractDetails flag explicitly set to true
-    const { data, error } = await supabase.functions.invoke('analyze-resume', {
-      body: { 
-        resumeId,
-        extractDetails: true,  // Extraction complète des détails du CV
-        fullExtraction: true,  // Indicateur supplémentaire pour forcer l'extraction complète
-        forceCompletion: true, // Forcer la génération de données même si l'extraction échoue
-        includeRawText: true   // Récupérer le texte brut extrait
-      }
-    });
+    // Récupérer les informations du CV
+    const { data: resume, error } = await supabase
+      .from('resumes')
+      .select('*')
+      .eq('id', resumeId)
+      .single();
     
     if (error) {
-      console.error('Erreur lors de l\'appel de la fonction analyze-resume:', error);
-      toast({
-        title: "Erreur d'analyse",
-        description: error.message || "Une erreur s'est produite lors de l'analyse du CV",
-        variant: "destructive",
-      });
-      throw error;
+      console.error('Error fetching resume details:', error);
+      throw new Error(error.message);
     }
     
-    console.log('Réponse de l\'analyse:', data);
-    
-    // Afficher le texte brut extrait dans une popup temporaire
-    if (data.rawText) {
-      toast({
-        title: "Texte brut extrait du CV",
-        description: "Texte brut extrait du CV disponible",
-        duration: 30000, // 30 secondes d'affichage
-      });
-      
-      // Affichage dans la console pour le débogage
-      console.log("Texte brut extrait:", data.rawText);
+    if (!resume) {
+      throw new Error('CV introuvable');
     }
     
-    if (data.success) {
-      toast({
-        title: "Analyse terminée",
-        description: "Le CV a été analysé avec succès",
-        variant: "default",
-      });
-      return { 
-        success: true, 
-        candidateId: data.candidate?.id 
-      };
-    } else {
-      toast({
-        title: "Analyse incomplète",
-        description: data.message || "L'analyse a rencontré des difficultés. Vérifiez le candidat créé.",
-        variant: "default",
-      });
-      return { 
-        success: false, 
-        message: data.message || "Une erreur inconnue s'est produite" 
-      };
+    console.log('Resume found, proceeding with analysis');
+    
+    // Récupérer le contenu du fichier
+    const { downloadFile } = resumeStorageService;
+    const { data: fileData, error: downloadError } = await downloadFile(resume.file_path);
+    
+    if (downloadError || !fileData) {
+      console.error('Error downloading file for analysis:', downloadError);
+      throw new Error(downloadError?.message || 'Impossible de télécharger le fichier pour analyse');
     }
+    
+    console.log('File downloaded, starting text extraction');
+    
+    // Extraire et analyser le texte du fichier
+    const resumeText = await resumeAnalysisService.extractTextFromFile(fileData, resume.file_type);
+    if (!resumeText) {
+      throw new Error('Impossible d\'extraire le texte du CV');
+    }
+    
+    console.log('Text extracted, analyzing content');
+    
+    // Analyser le contenu du CV
+    const analysis = await resumeAnalysisService.analyzeResume(resumeText);
+    if (!analysis) {
+      throw new Error('Échec de l\'analyse du CV');
+    }
+    
+    console.log('Resume analyzed, creating candidate profile');
+    
+    // Créer un candidat à partir de l'analyse
+    const candidateData = {
+      resume_id: resumeId,
+      user_id: resume.user_id,
+      ...analysis
+    };
+    
+    // Insérer le candidat dans la base de données
+    const { data: candidateResult, error: insertError } = await supabase
+      .from('candidates')
+      .insert(candidateData)
+      .select('id')
+      .single();
+    
+    if (insertError) {
+      console.error('Error creating candidate:', insertError);
+      throw new Error(insertError.message);
+    }
+    
+    console.log('Candidate created successfully, updating resume status');
+    
+    // Marquer le CV comme analysé
+    await resumeDataService.markResumeAsParsed(resumeId);
+    
+    console.log('Resume marked as parsed');
+    
+    return { 
+      success: true, 
+      message: 'Analyse terminée avec succès',
+      candidateId: candidateResult?.id
+    };
   } catch (error: any) {
-    console.error('Erreur lors de l\'analyse du CV:', error);
-    toast({
-      title: "Échec de l'analyse",
-      description: error.message || "Une erreur s'est produite lors de l'analyse du CV",
-      variant: "destructive",
-    });
+    console.error('Error in analyzeResume:', error);
     return { 
       success: false, 
-      message: error.message || "Une erreur s'est produite lors de l'analyse du CV" 
+      message: error.message || 'Une erreur est survenue lors de l\'analyse du CV' 
     };
   }
 };
+
+// Import manquant
+import { resumeStorageService } from '../storage/resumeStorageService';
