@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, AlertCircle, RefreshCw, Trash2, Eye } from 'lucide-react';
@@ -8,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { getUserResumes, deleteResume, downloadResume, analyzeResume, ResumeData } from '@/services/resumeService';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
+import { extractResumeText } from '@/services/resume/analysisOperations';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +27,7 @@ import ResumesGrid from '@/components/resume/ResumesGrid';
 import NoResumesState from '@/components/resume/NoResumesState';
 import ErrorState from '@/components/resume/ErrorState';
 import LoadingState from '@/components/resume/LoadingState';
+import ExtractedTextDialog from '@/components/resume/ExtractedTextDialog';
 
 const Resumes = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,6 +36,10 @@ const Resumes = () => {
   const [resumes, setResumes] = useState<ResumeData[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<Record<string, boolean>>({});
+  const [extractingText, setExtractingText] = useState(false);
+  const [extractedText, setExtractedText] = useState("");
+  const [selectedResumeForText, setSelectedResumeForText] = useState<ResumeData | null>(null);
+  const [showTextDialog, setShowTextDialog] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -135,6 +140,51 @@ const Resumes = () => {
       });
     } finally {
       setDownloading(prev => ({ ...prev, [resumeId]: false }));
+    }
+  };
+
+  const handleExtractText = async (resumeId: string) => {
+    try {
+      const resume = resumes.find(r => r.id === resumeId);
+      if (!resume) {
+        throw new Error("CV introuvable");
+      }
+      
+      setSelectedResumeForText(resume);
+      setExtractingText(true);
+      setExtractedText("");
+      setShowTextDialog(true);
+      
+      toast({
+        title: "Extraction en cours",
+        description: "L'extraction du texte a démarré...",
+        duration: 3000,
+      });
+      
+      const result = await extractResumeText(resumeId);
+      
+      setExtractingText(false);
+      
+      if (result.success && result.text) {
+        setExtractedText(result.text);
+        
+        toast({
+          title: "Extraction terminée",
+          description: "Le texte a été extrait avec succès",
+          duration: 3000,
+        });
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error: any) {
+      console.error('Error extracting text from resume:', error);
+      setExtractingText(false);
+      toast({
+        title: "Échec de l'extraction",
+        description: error.message || "Une erreur s'est produite lors de l'extraction du texte",
+        variant: "destructive",
+        duration: 5000,
+      });
     }
   };
 
@@ -319,6 +369,12 @@ const Resumes = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const closeTextDialog = () => {
+    setShowTextDialog(false);
+    setSelectedResumeForText(null);
+    setExtractedText("");
+  };
+
   return (
     <Layout className="py-8 bg-sand/30">
       <div className="container mx-auto px-4">
@@ -440,9 +496,17 @@ const Resumes = () => {
             onSelect={toggleResumeSelection}
             onDownload={handleDownloadResume}
             onAnalyze={handleAnalyzeResume}
+            onExtractText={handleExtractText}
             onDelete={handleDeleteResume}
           />
         )}
+        
+        <ExtractedTextDialog
+          isOpen={showTextDialog}
+          onClose={closeTextDialog}
+          fileName={selectedResumeForText?.file_name || ""}
+          extractedText={extractingText ? "Extraction en cours..." : extractedText}
+        />
       </div>
     </Layout>
   );

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, FileText, Download, Eye, Loader2, MoreHorizontal, Calendar } from 'lucide-react';
+import { Plus, FileText, Download, Eye, Loader2, MoreHorizontal, Calendar, FileSearch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ interface ResumesGridProps {
   onSelect: (resumeId: string) => void;
   onDownload: (filePath: string, fileName: string, resumeId: string) => void;
   onAnalyze: (resumeId: string) => void;
+  onExtractText: (resumeId: string) => void;
   onDelete: (resumeId: string, filePath: string) => void;
 }
 
@@ -33,6 +34,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
   onSelect,
   onDownload,
   onAnalyze,
+  onExtractText,
   onDelete
 }) => {
   const navigate = useNavigate();
@@ -81,6 +83,10 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                       )}
                       Télécharger
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onExtractText(resume.id)}>
+                      <FileSearch size={14} className="mr-2" />
+                      Extraire le texte
+                    </DropdownMenuItem>
                     {!resume.parsed && (
                       <DropdownMenuItem onClick={() => onAnalyze(resume.id)}>
                         <Eye size={14} className="mr-2" />
@@ -128,7 +134,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
           </div>
           
           {!selectionMode && (
-            <div className="border-t border-border/10 p-3 flex justify-between">
+            <div className="border-t border-border/10 p-3 flex gap-2 justify-between">
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -142,6 +148,19 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
               >
                 <Eye size={14} className="mr-1" />
                 {resume.parsed ? "Voir candidat" : "Analyser"}
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onExtractText(resume.id);
+                }}
+              >
+                <FileSearch size={14} className="mr-1" />
+                Extraire texte
               </Button>
               
               <Button 

@@ -5,6 +5,168 @@ import { resumeDataService } from '../data/resumeDataService';
 import { resumeStorageService } from '../storage/resumeStorageService';
 import { toast } from '@/hooks/use-toast';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
+import { extractTextFromPDF } from '@/utils/pdfUtils';
+
+/**
+ * Extraire uniquement le texte d'un CV sans faire d'analyse
+ */
+export const extractResumeText = async (resumeId: string): Promise<{ success: boolean; message: string; text?: string }> => {
+  try {
+    console.log('Starting text extraction for resume ID:', resumeId);
+    
+    // Ensure bucket exists first
+    await ensureResumesBucketExists().catch(err => {
+      console.warn('Bucket initialization warning (non-blocking):', err);
+    });
+    
+    // Get resume details using a stored procedure to avoid RLS recursion issues
+    const { data: resumeData, error: resumeError } = await supabase
+      .rpc('get_resume_by_id', { p_resume_id: resumeId });
+    
+    if (resumeError) {
+      console.error('Error fetching resume details:', resumeError);
+      throw new Error(resumeError.message);
+    }
+    
+    if (!resumeData || resumeData.length === 0) {
+      console.error('No resume found with ID:', resumeId);
+      throw new Error('CV introuvable');
+    }
+    
+    const resume = resumeData[0];
+    console.log('Resume found, proceeding with text extraction');
+    
+    // Afficher une notification de démarrage
+    toast({
+      title: "Extraction du texte",
+      description: "Démarrage de l'extraction, cela peut prendre quelques secondes...",
+      duration: 3000,
+    });
+    
+    // 1. MÉTHODE PRIMAIRE: Attempt to download the file for direct processing (most reliable method)
+    try {
+      // Récupérer le fichier directement
+      const file = await resumeStorageService.downloadResumeAsFile(resumeId);
+      
+      if (file) {
+        console.log('Successfully downloaded resume file for processing');
+        
+        // Extraire le texte du fichier sans analyse
+        const extractedText = await extractTextFromPDF(file);
+        
+        console.log('Text extracted successfully via direct file processing');
+        
+        return { 
+          success: true, 
+          message: 'Texte extrait avec succès',
+          text: extractedText
+        };
+      } else {
+        console.log('Could not download file directly, will try URL methods');
+      }
+    } catch (directProcessError) {
+      console.warn('Error during direct file processing:', directProcessError);
+      // Continue to URL-based methods
+    }
+    
+    // 2. MÉTHODE ALTERNATIVE: Try server-side extraction
+    toast({
+      title: "Extraction en cours",
+      description: "Extraction du texte côté serveur...",
+      duration: 3000,
+    });
+    
+    try {
+      console.log('Attempting server-side extraction with function');
+      
+      // Use the extraction edge function with resume ID only
+      const { data: extractionData, error: extractionError } = await supabase.functions.invoke('extract-cv-text', {
+        body: { 
+          resumeId,
+          pdfUrl: null  // Le serveur récupèrera l'URL
+        }
+      });
+      
+      if (extractionError) {
+        console.error('Error in extract-cv-text function:', extractionError);
+        throw new Error(extractionError.message);
+      }
+      
+      if (!extractionData.success) {
+        throw new Error(extractionData.error || 'Échec de l\'extraction du texte');
+      }
+      
+      console.log('Text extracted successfully via server-side processing');
+      
+      return { 
+        success: true, 
+        message: 'Texte extrait avec succès',
+        text: extractionData.data.text
+      };
+    } catch (serverError) {
+      console.error('Server-side extraction failed:', serverError);
+      console.log('Will try direct URL method as last resort');
+    }
+    
+    // 3. MÉTHODE DE DERNIER RECOURS: Try to get a URL for the file
+    try {
+      toast({
+        title: "Extraction en cours",
+        description: "Extraction du texte avec URL directe...",
+        duration: 3000,
+      });
+      
+      // Get a direct URL using the proper method
+      const { data: publicUrlData } = supabase.storage.from('resumes').getPublicUrl(resume.file_path);
+      const directUrl = publicUrlData.publicUrl;
+      
+      console.log('Using direct storage URL:', directUrl);
+      
+      // Use the extraction edge function with direct URL
+      const { data: extractionData, error: extractionError } = await supabase.functions.invoke('extract-cv-text', {
+        body: { 
+          resumeId,
+          pdfUrl: directUrl
+        }
+      });
+      
+      if (extractionError) {
+        console.error('Error in extract-cv-text function with URL:', extractionError);
+        throw new Error(extractionError.message);
+      }
+      
+      if (!extractionData.success) {
+        throw new Error(extractionData.error || 'Échec de l\'extraction du texte');
+      }
+      
+      console.log('Text extracted successfully via URL processing');
+      
+      return { 
+        success: true, 
+        message: 'Texte extrait avec succès',
+        text: extractionData.data.text
+      };
+    } catch (directUrlError) {
+      console.error('Direct URL extraction failed:', directUrlError);
+      
+      // Notification plus explicite pour l'utilisateur
+      toast({
+        title: "Extraction échouée",
+        description: "Le CV est peut-être trop volumineux. Veuillez réessayer avec un fichier plus petit.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      
+      throw new Error('Le CV est probablement trop volumineux pour être traité automatiquement. Veuillez réessayer avec un fichier PDF plus petit ou optimisé.');
+    }
+  } catch (error: any) {
+    console.error('Error in extractResumeText:', error);
+    return { 
+      success: false, 
+      message: error.message || 'Une erreur est survenue lors de l\'extraction du texte du CV' 
+    };
+  }
+};
 
 /**
  * Analyze a resume by its ID
@@ -174,3 +336,4 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     };
   }
 };
+
