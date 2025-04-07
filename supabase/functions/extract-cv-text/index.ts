@@ -33,16 +33,36 @@ serve(async (req) => {
     
     console.log("Démarrage de l'extraction de texte pour:", pdfUrl);
 
-    // Récupérer le PDF
-    const response = await fetch(pdfUrl, {
-      headers: {
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      },
-    });
+    // Récupérer le PDF avec une meilleure gestion des erreurs et retry
+    let response = null;
+    let retryCount = 0;
+    const maxRetries = 3;
     
-    if (!response.ok) {
-      throw new Error(`Échec du téléchargement du PDF: ${response.status} ${response.statusText}`);
+    while (retryCount < maxRetries) {
+      try {
+        response = await fetch(pdfUrl, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+        });
+        
+        if (response.ok) break;
+        
+        console.log(`Tentative ${retryCount + 1}/${maxRetries} a échoué avec le status ${response.status}. Réessai...`);
+        retryCount++;
+        
+        // Attendre un peu avant de réessayer
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (fetchError) {
+        console.error(`Erreur de fetch (tentative ${retryCount + 1}):`, fetchError);
+        retryCount++;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    if (!response || !response.ok) {
+      throw new Error(`Échec du téléchargement du PDF après ${maxRetries} tentatives: ${response?.status || 'Erreur réseau'}`);
     }
     
     // Convertir en ArrayBuffer
@@ -54,10 +74,16 @@ serve(async (req) => {
     
     console.log(`PDF téléchargé, taille: ${(pdfData.byteLength / 1024).toFixed(2)} KB`);
     
+    // Limiter la taille du PDF pour éviter les timeouts
+    const maxSizeKB = 10 * 1024; // 10 MB
+    if (pdfData.byteLength > maxSizeKB * 1024) {
+      console.log(`PDF trop volumineux (${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB), extraction limitée`);
+    }
+    
     // Extraction du texte avec notre méthode simplifiée
     const { extractedText, pageCount } = await extractTextFromPDF(pdfData);
     
-    console.log(`Extraction réussie, ${pageCount} page(s), texte: ${extractedText.substring(0, 100)}...`);
+    console.log(`Extraction réussie, ${pageCount} page(s), longueur du texte: ${extractedText.length} caractères`);
     
     return new Response(
       JSON.stringify({
@@ -65,7 +91,8 @@ serve(async (req) => {
         data: {
           text: extractedText,
           pageCount: pageCount,
-          resumeId: resumeId
+          resumeId: resumeId,
+          fileSize: pdfData.byteLength
         }
       }),
       {

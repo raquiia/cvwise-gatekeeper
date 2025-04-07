@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 interface ExtractedTextDialogProps {
@@ -27,6 +27,7 @@ const ExtractedTextDialog: React.FC<ExtractedTextDialogProps> = ({
   extractedText
 }) => {
   const [copied, setCopied] = useState(false);
+  const isLoading = extractedText === "Extraction en cours...";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(extractedText);
@@ -44,15 +45,26 @@ const ExtractedTextDialog: React.FC<ExtractedTextDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="flex-grow mt-4 mb-4 p-4 border rounded-md bg-muted/30 text-sm font-mono">
-          <div className="whitespace-pre-wrap">{extractedText || "Aucun texte n'a pu être extrait."}</div>
-        </ScrollArea>
+        {isLoading ? (
+          <div className="flex-grow flex items-center justify-center py-12">
+            <div className="text-center">
+              <Loader2 size={40} className="mx-auto mb-4 animate-spin text-primary" />
+              <p className="text-muted-foreground">Extraction du texte en cours...</p>
+              <p className="text-xs text-muted-foreground mt-2">Cette opération peut prendre plusieurs secondes pour les fichiers volumineux</p>
+            </div>
+          </div>
+        ) : (
+          <ScrollArea className="flex-grow mt-4 mb-4 p-4 border rounded-md bg-muted/30 text-sm font-mono">
+            <div className="whitespace-pre-wrap">{extractedText || "Aucun texte n'a pu être extrait."}</div>
+          </ScrollArea>
+        )}
         
         <DialogFooter>
           <Button
             onClick={handleCopy}
             className="gap-2"
             variant={copied ? "outline" : "secondary"}
+            disabled={isLoading || !extractedText}
           >
             {copied ? (
               <>

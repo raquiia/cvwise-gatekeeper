@@ -151,7 +151,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
               </Button>
               
               <Button 
-                variant="ghost" 
+                variant="secondary" 
                 size="sm" 
                 className="text-xs"
                 onClick={(e) => {

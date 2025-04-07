@@ -1,6 +1,5 @@
 
 // PDF Text extraction utility for Edge Function
-import { load as cheerioLoad } from "https://esm.sh/cheerio@1.0.0-rc.12";
 
 /**
  * Extract text from a PDF file using server-side techniques
@@ -21,6 +20,20 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
     
     console.log(`Extraction complete: ~${pageCount} pages, ${extractedText.length} chars`);
     
+    // Vérifier si le résultat est vide
+    if (!extractedText || extractedText.trim().length < 100) {
+      console.log("Résultat d'extraction insuffisant, utilisation de l'extraction de secours");
+      extractedText = fallbackExtraction(rawText);
+    }
+    
+    // Si l'extraction échoue complètement, retourner un message explicite
+    if (!extractedText || extractedText.trim().length < 50) {
+      return {
+        extractedText: "L'extraction du texte a échoué. Le PDF est peut-être protégé, scanné ou dans un format non pris en charge.",
+        pageCount: pageCount || 1
+      };
+    }
+    
     return {
       extractedText: extractedText || "PDF text extraction failed",
       pageCount: pageCount || 1
@@ -28,7 +41,7 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
   } catch (error) {
     console.error("Error extracting text from PDF:", error);
     return {
-      extractedText: "Error extracting text from PDF",
+      extractedText: "Error extracting text from PDF: " + (error instanceof Error ? error.message : String(error)),
       pageCount: 0
     };
   }
@@ -89,39 +102,65 @@ function extractBasicText(pdfText: string): string {
       .replace(/\s+/g, " ") // Normalize whitespace
       .trim();
     
-    return cleanedText || fallbackTextExtraction(pdfText);
+    return cleanedText || fallbackExtraction(pdfText);
   } catch (error) {
     console.error("Error in basic text extraction:", error);
-    return fallbackTextExtraction(pdfText);
+    return fallbackExtraction(pdfText);
   }
 }
 
 /**
- * Fallback text extraction using regex
+ * Fallback text extraction using regex - plus agressive
  */
-function fallbackTextExtraction(pdfText: string): string {
+function fallbackExtraction(pdfText: string): string {
   try {
     // Look for any readable text in the PDF
-    let text = "";
+    let extractedTexts: string[] = [];
     
-    // Extract text between parentheses that might be content
+    // Method 1: Extract text between parentheses that might be content
     const textRegex = /\(([^)]{3,})\)/g;
     let match;
     while ((match = textRegex.exec(pdfText)) !== null) {
       if (match[1] && /[a-zA-Z0-9]/.test(match[1])) {
-        text += match[1] + " ";
+        extractedTexts.push(match[1]);
       }
     }
     
-    // Clean up the text
-    return text
+    // Method 2: Extract ASCII text sections - useful for some PDF formats
+    const asciiTextChunks = pdfText.match(/[a-zA-Z0-9 .,;:'\-+()[\]{}?!@#$%^&*=\/\\|<>"]{5,}/g);
+    if (asciiTextChunks) {
+      extractedTexts = extractedTexts.concat(asciiTextChunks);
+    }
+    
+    // Method 3: Look for metadata in the PDF
+    const titleMatch = pdfText.match(/\/Title\s*\(([^)]+)\)/);
+    const authorMatch = pdfText.match(/\/Author\s*\(([^)]+)\)/);
+    const subjectMatch = pdfText.match(/\/Subject\s*\(([^)]+)\)/);
+    
+    if (titleMatch && titleMatch[1]) extractedTexts.push("Titre: " + titleMatch[1]);
+    if (authorMatch && authorMatch[1]) extractedTexts.push("Auteur: " + authorMatch[1]);
+    if (subjectMatch && subjectMatch[1]) extractedTexts.push("Sujet: " + subjectMatch[1]);
+    
+    // Combine and clean the extracted text
+    let combinedText = extractedTexts
+      .filter(text => text.length > 3) // Remove very short extractions
+      .join("\n")
       .replace(/\\([()])/g, "$1") // Handle escaped parentheses
       .replace(/\\n/g, "\n") // Handle newlines
       .replace(/\s+/g, " ") // Normalize whitespace
       .trim();
+      
+    // Apply additional cleaning - remove sequences that are likely not real text
+    combinedText = combinedText
+      .replace(/[^\w\s.,;:'\-+()[\]{}?!@#$%^&*=\/\\|<>"éèêëàâäôöûüùïîçÉÈÊËÀÂÄÔÖÛÜÙÏÎÇ]/g, ' ') // Keep only valid characters and French accents
+      .replace(/(\s{2,})/g, ' ') // Normalize spaces
+      .replace(/(.)\1{5,}/g, '$1$1$1') // Remove character repetitions (like "aaaaaaaa")
+      .trim();
+    
+    return combinedText || "Aucun texte n'a pu être extrait de ce document.";
   } catch (error) {
     console.error("Error in fallback text extraction:", error);
-    return "Text extraction failed";
+    return "L'extraction du texte a échoué. Le PDF est peut-être protégé ou dans un format non supporté.";
   }
 }
 
@@ -142,24 +181,17 @@ function countPages(pdfText: string): number {
       return parseInt(countMatch[1], 10);
     }
     
+    // Method 3: Count occurrences of "stream" and "endstream" pairs (rough approximation)
+    const streamMatches = pdfText.match(/stream[\s\S]*?endstream/g);
+    if (streamMatches && streamMatches.length > 0) {
+      // Divide by typical number of streams per page (rough estimate)
+      return Math.ceil(streamMatches.length / 4);
+    }
+    
     // Default to 1 if we can't determine
     return 1;
   } catch (error) {
     console.error("Error counting pages:", error);
     return 1;
-  }
-}
-
-/**
- * Extract text from HTML content
- * Used as a fallback for PDFs that are actually HTML
- */
-function extractTextFromHTML(htmlContent: string): string {
-  try {
-    const $ = cheerioLoad(htmlContent);
-    return $("body").text().replace(/\s+/g, " ").trim();
-  } catch (error) {
-    console.error("Error extracting text from HTML:", error);
-    return "";
   }
 }

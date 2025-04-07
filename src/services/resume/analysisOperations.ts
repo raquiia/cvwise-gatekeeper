@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { resumeAnalysisService } from '../analysis/resumeAnalysisService';
 import { resumeDataService } from '../data/resumeDataService';
@@ -43,76 +42,12 @@ export const extractResumeText = async (resumeId: string): Promise<{ success: bo
       duration: 3000,
     });
     
-    // 1. MÉTHODE PRIMAIRE: Attempt to download the file for direct processing (most reliable method)
-    try {
-      // Récupérer le fichier directement
-      const file = await resumeStorageService.downloadResumeAsFile(resumeId);
-      
-      if (file) {
-        console.log('Successfully downloaded resume file for processing');
-        
-        // Extraire le texte du fichier sans analyse
-        const extractedText = await extractTextFromPDF(file);
-        
-        console.log('Text extracted successfully via direct file processing');
-        
-        return { 
-          success: true, 
-          message: 'Texte extrait avec succès',
-          text: extractedText
-        };
-      } else {
-        console.log('Could not download file directly, will try URL methods');
-      }
-    } catch (directProcessError) {
-      console.warn('Error during direct file processing:', directProcessError);
-      // Continue to URL-based methods
-    }
-    
-    // 2. MÉTHODE ALTERNATIVE: Try server-side extraction
-    toast({
-      title: "Extraction en cours",
-      description: "Extraction du texte côté serveur...",
-      duration: 3000,
-    });
-    
-    try {
-      console.log('Attempting server-side extraction with function');
-      
-      // Use the extraction edge function with resume ID only
-      const { data: extractionData, error: extractionError } = await supabase.functions.invoke('extract-cv-text', {
-        body: { 
-          resumeId,
-          pdfUrl: null  // Le serveur récupèrera l'URL
-        }
-      });
-      
-      if (extractionError) {
-        console.error('Error in extract-cv-text function:', extractionError);
-        throw new Error(extractionError.message);
-      }
-      
-      if (!extractionData.success) {
-        throw new Error(extractionData.error || 'Échec de l\'extraction du texte');
-      }
-      
-      console.log('Text extracted successfully via server-side processing');
-      
-      return { 
-        success: true, 
-        message: 'Texte extrait avec succès',
-        text: extractionData.data.text
-      };
-    } catch (serverError) {
-      console.error('Server-side extraction failed:', serverError);
-      console.log('Will try direct URL method as last resort');
-    }
-    
-    // 3. MÉTHODE DE DERNIER RECOURS: Try to get a URL for the file
+    // Appel direct à la fonction Edge pour l'extraction
+    // Meilleure méthode pour les PDF volumineux
     try {
       toast({
         title: "Extraction en cours",
-        description: "Extraction du texte avec URL directe...",
+        description: "Traitement du fichier via le serveur...",
         duration: 3000,
       });
       
@@ -120,7 +55,11 @@ export const extractResumeText = async (resumeId: string): Promise<{ success: bo
       const { data: publicUrlData } = supabase.storage.from('resumes').getPublicUrl(resume.file_path);
       const directUrl = publicUrlData.publicUrl;
       
-      console.log('Using direct storage URL:', directUrl);
+      if (!directUrl) {
+        throw new Error("Impossible d'obtenir l'URL du fichier");
+      }
+      
+      console.log('Using direct storage URL for server extraction:', directUrl.substring(0, 50) + '...');
       
       // Use the extraction edge function with direct URL
       const { data: extractionData, error: extractionError } = await supabase.functions.invoke('extract-cv-text', {
@@ -132,35 +71,89 @@ export const extractResumeText = async (resumeId: string): Promise<{ success: bo
       
       if (extractionError) {
         console.error('Error in extract-cv-text function with URL:', extractionError);
-        throw new Error(extractionError.message);
+        throw new Error(extractionError.message || "Le serveur d'extraction n'a pas pu traiter le fichier");
       }
       
-      if (!extractionData.success) {
-        throw new Error(extractionData.error || 'Échec de l\'extraction du texte');
+      if (!extractionData || !extractionData.success) {
+        const errorMsg = extractionData?.error || 'Échec de l\'extraction du texte';
+        throw new Error(errorMsg);
       }
       
-      console.log('Text extracted successfully via URL processing');
+      console.log('Text extracted successfully via server processing');
+      
+      // Vérifier si le texte extrait est utilisable
+      const extractedText = extractionData.data.text;
+      if (!extractedText || extractedText.trim().length < 50) {
+        throw new Error("Le texte extrait est insuffisant. Le fichier est peut-être dans un format non supporté.");
+      }
+      
+      toast({
+        title: "Extraction réussie",
+        description: `Texte extrait: ${extractedText.length} caractères`,
+        duration: 3000,
+      });
       
       return { 
         success: true, 
         message: 'Texte extrait avec succès',
-        text: extractionData.data.text
+        text: extractedText
       };
-    } catch (directUrlError) {
-      console.error('Direct URL extraction failed:', directUrlError);
+    } catch (serverError: any) {
+      console.error('Server extraction failed:', serverError);
       
-      // Notification plus explicite pour l'utilisateur
+      // Si l'extraction côté serveur échoue, essayer l'extraction locale
       toast({
-        title: "Extraction échouée",
-        description: "Le CV est peut-être trop volumineux. Veuillez réessayer avec un fichier plus petit.",
-        variant: "destructive",
-        duration: 5000,
+        title: "Changement de méthode",
+        description: "Extraction côté serveur échouée, tentative d'extraction locale...",
+        duration: 3000,
       });
       
-      throw new Error('Le CV est probablement trop volumineux pour être traité automatiquement. Veuillez réessayer avec un fichier PDF plus petit ou optimisé.');
+      try {
+        // Tenter l'extraction locale si le fichier n'est pas trop gros
+        if (resume.file_size > 10 * 1024 * 1024) { // 10 MB
+          throw new Error("Le fichier est trop volumineux pour l'extraction locale");
+        }
+        
+        // Récupérer le fichier directement
+        const file = await resumeStorageService.downloadResumeAsFile(resumeId);
+        
+        if (!file) {
+          throw new Error("Impossible de télécharger le fichier localement");
+        }
+        
+        console.log('Successfully downloaded resume file for local processing');
+        
+        // Extraire le texte du fichier sans analyse
+        const extractedText = await extractTextFromPDF(file);
+        
+        if (!extractedText || extractedText.length < 50) {
+          throw new Error("Le texte extrait est insuffisant");
+        }
+        
+        console.log('Text extracted successfully via direct file processing');
+        
+        return { 
+          success: true, 
+          message: 'Texte extrait avec succès (méthode locale)',
+          text: extractedText
+        };
+      } catch (localError: any) {
+        console.error('Local extraction also failed:', localError);
+        // Remonter l'erreur originale du serveur si les deux méthodes échouent
+        throw serverError;
+      }
     }
   } catch (error: any) {
     console.error('Error in extractResumeText:', error);
+    
+    // Notification plus explicite pour l'utilisateur
+    toast({
+      title: "Extraction échouée",
+      description: error.message || "Impossible d'extraire le texte du CV",
+      variant: "destructive",
+      duration: 5000,
+    });
+    
     return { 
       success: false, 
       message: error.message || 'Une erreur est survenue lors de l\'extraction du texte du CV' 
@@ -336,4 +329,3 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     };
   }
 };
-
