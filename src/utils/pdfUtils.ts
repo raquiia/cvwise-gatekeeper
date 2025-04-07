@@ -8,6 +8,9 @@ import * as pdfjs from 'pdfjs-dist';
 const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
+// Maximum de texte à extraire (pour éviter les problèmes de limite de tokens)
+const MAX_EXTRACTED_TEXT_LENGTH = 50000;
+
 /**
  * Extrait le texte d'un fichier PDF
  * @param file Le fichier PDF à analyser
@@ -27,7 +30,7 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
     console.log(`Text extracted successfully: ${extractedText.length} characters from ${pageCount} pages`);
     
     return extractedText;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error extracting text from PDF:', error);
     throw new Error(`Échec de l'extraction du texte du PDF: ${error.message}`);
   }
@@ -46,11 +49,21 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
     
     console.log(`PDF loaded with ${numPages} pages`);
     
+    // Limiter le nombre de pages pour les PDF volumineux
+    const pagesToProcess = Math.min(numPages, 50); // Limiter à 50 pages maximum
+    
     // Extraire le texte de chaque page
     const textContent: string[] = [];
+    let totalExtractedLength = 0;
     
-    for (let i = 1; i <= numPages; i++) {
+    for (let i = 1; i <= pagesToProcess; i++) {
       try {
+        if (totalExtractedLength > MAX_EXTRACTED_TEXT_LENGTH) {
+          console.log(`Reached maximum text extraction limit (${MAX_EXTRACTED_TEXT_LENGTH} characters). Stopping.`);
+          textContent.push(`[EXTRACTION LIMITÉE - Pages ${i} à ${numPages} non extraites pour respecter les limites]`);
+          break;
+        }
+        
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
         const pageText = content.items
@@ -58,6 +71,7 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
           .join(' ');
         
         textContent.push(pageText);
+        totalExtractedLength += pageText.length;
       } catch (pageError) {
         console.warn(`Error extracting text from page ${i}:`, pageError);
         textContent.push(`[Échec d'extraction - page ${i}]`);
@@ -66,6 +80,13 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
     
     // Joindre toutes les pages avec des sauts de ligne
     let extractedText = textContent.join('\n\n');
+    
+    // Limiter la taille totale du texte extrait
+    if (extractedText.length > MAX_EXTRACTED_TEXT_LENGTH) {
+      console.log(`Truncating extracted text from ${extractedText.length} to ${MAX_EXTRACTED_TEXT_LENGTH} characters`);
+      extractedText = extractedText.substring(0, MAX_EXTRACTED_TEXT_LENGTH) + 
+        "\n\n[TEXTE TRONQUÉ - Le fichier est trop volumineux pour être analysé en entier]";
+    }
     
     // Nettoyer le texte extrait
     extractedText = cleanExtractedText(extractedText);
@@ -123,6 +144,12 @@ const fallbackExtraction = async (pdfData: Uint8Array, numPages: number): Promis
     }
     
     let extractedText = textBlocks.join('\n\n');
+    
+    // Limiter la taille du texte extrait
+    if (extractedText.length > MAX_EXTRACTED_TEXT_LENGTH) {
+      extractedText = extractedText.substring(0, MAX_EXTRACTED_TEXT_LENGTH) + 
+        "\n\n[TEXTE TRONQUÉ - Le fichier est trop volumineux pour être analysé en entier]";
+    }
     
     // Appliquer le nettoyage standard
     extractedText = cleanExtractedText(extractedText);
@@ -204,10 +231,35 @@ export const extractTextFromPdfUrl = async (pdfUrl: string): Promise<string> => 
     }
     
     try {
-      // Vérifier que le PDF est accessible en faisant une requête HEAD
-      const checkResponse = await fetch(pdfUrl, { method: 'HEAD' });
-      if (!checkResponse.ok) {
-        throw new Error(`Le PDF n'est pas accessible: ${checkResponse.status} ${checkResponse.statusText}`);
+      // Vérifier que le PDF est accessible en faisant une requête HEAD avec retry
+      let checkResponse = null;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          checkResponse = await fetch(pdfUrl, { 
+            method: 'HEAD',
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            },
+          });
+          
+          if (checkResponse.ok) break;
+          
+          console.log(`Attempt ${retryCount + 1}: HEAD request failed with status ${checkResponse.status}. Retrying...`);
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+        } catch (headError) {
+          console.warn(`HEAD request attempt ${retryCount + 1} failed:`, headError);
+          retryCount++;
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      if (!checkResponse || !checkResponse.ok) {
+        throw new Error(`Le PDF n'est pas accessible après ${maxRetries} tentatives: ${checkResponse?.status || 'Error'}`);
       }
       
       // Télécharger le PDF en mode blob pour le traiter localement

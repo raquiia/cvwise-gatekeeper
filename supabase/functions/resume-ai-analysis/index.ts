@@ -18,6 +18,59 @@ function handleCors(req: Request) {
   return null;
 }
 
+// Truncate text to avoid token limit issues with OpenAI
+function truncateText(text: string, maxLength = 30000): string {
+  if (!text || text.length <= maxLength) return text;
+  
+  console.log(`Truncating text from ${text.length} characters to ${maxLength} characters`);
+  
+  // Extract the first part for basic info
+  const firstPart = text.substring(0, maxLength * 0.3);
+  
+  // Try to find important sections like experience, education, skills
+  const experienceMatch = text.match(/expérience|experience|professional|professionnel/i);
+  const educationMatch = text.match(/education|formation|études|etudes/i);
+  const skillsMatch = text.match(/compétences|competences|skills|skillset/i);
+  
+  let experiencePart = "";
+  let educationPart = "";
+  let skillsPart = "";
+  
+  // Get experience section if found (up to 40% of max length)
+  if (experienceMatch && experienceMatch.index !== undefined) {
+    const start = experienceMatch.index;
+    const end = Math.min(start + (maxLength * 0.4), text.length);
+    experiencePart = text.substring(start, end);
+  }
+  
+  // Get education section if found (up to 15% of max length)
+  if (educationMatch && educationMatch.index !== undefined) {
+    const start = educationMatch.index;
+    const end = Math.min(start + (maxLength * 0.15), text.length);
+    educationPart = text.substring(start, end);
+  }
+  
+  // Get skills section if found (up to 15% of max length)
+  if (skillsMatch && skillsMatch.index !== undefined) {
+    const start = skillsMatch.index;
+    const end = Math.min(start + (maxLength * 0.15), text.length);
+    skillsPart = text.substring(start, end);
+  }
+  
+  // Combine parts with markers
+  return [
+    "--- DÉBUT DU CV (PREMIÈRES INFORMATIONS) ---",
+    firstPart,
+    "--- SECTION EXPÉRIENCE ---",
+    experiencePart,
+    "--- SECTION ÉDUCATION ---",
+    educationPart,
+    "--- SECTION COMPÉTENCES ---",
+    skillsPart,
+    "--- FIN DU CV (TRONQUÉ POUR L'ANALYSE) ---"
+  ].join("\n\n");
+}
+
 serve(async (req) => {
   // Handle CORS
   const corsResponse = handleCors(req);
@@ -122,6 +175,9 @@ serve(async (req) => {
     
     console.log("Texte à analyser, longueur:", textToAnalyze.length);
     
+    // IMPORTANT: Tronquer le texte pour respecter les limites de tokens d'OpenAI
+    const truncatedText = truncateText(textToAnalyze, 30000);
+    
     // Utiliser OpenAI pour analyser le CV
     const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openAIApiKey) {
@@ -137,7 +193,7 @@ serve(async (req) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-4o-mini", // Utiliser gpt-4o-mini qui est plus efficace avec les tokens
         messages: [
           {
             role: "system",
@@ -158,15 +214,17 @@ serve(async (req) => {
             
             Fournis ces informations sous forme d'un objet JSON valide et RIEN D'AUTRE, avec des propriétés en anglais.
             
-            Réponds UNIQUEMENT avec un objet JSON, sans explications ni texte additionnel.`
+            Réponds UNIQUEMENT avec un objet JSON, sans explications ni texte additionnel.
+            
+            Note importante: Ce texte a été tronqué pour l'analyse, utilise les informations disponibles au mieux.`
           },
           {
             role: "user",
-            content: `Voici le texte extrait d'un CV. Analyse-le et extrait les informations structurées demandées:\n\n${textToAnalyze}`
+            content: `Voici le texte extrait d'un CV. Analyse-le et extrait les informations structurées demandées:\n\n${truncatedText}`
           }
         ],
         temperature: 0.3,
-        max_tokens: 4000
+        max_tokens: 2000
       })
     });
     

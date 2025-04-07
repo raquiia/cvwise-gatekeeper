@@ -35,6 +35,13 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     const resume = resumeData[0];
     console.log('Resume found, proceeding with analysis');
     
+    // Afficher une notification de démarrage
+    toast({
+      title: "Analyse du CV",
+      description: "Démarrage de l'analyse, cela peut prendre jusqu'à 30 secondes...",
+      duration: 5000,
+    });
+    
     // 1. MÉTHODE PRIMAIRE: Attempt to download the file for direct processing (most reliable method)
     try {
       toast({
@@ -148,7 +155,16 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
       };
     } catch (directUrlError) {
       console.error('Direct URL analysis failed:', directUrlError);
-      throw new Error('Échec de l\'analyse malgré plusieurs tentatives. Veuillez réessayer plus tard.');
+      
+      // Notification plus explicite pour l'utilisateur
+      toast({
+        title: "Analyse échouée",
+        description: "Le CV est peut-être trop volumineux pour être analysé automatiquement. Veuillez réessayer avec un fichier plus petit.",
+        variant: "destructive",
+        duration: 7000,
+      });
+      
+      throw new Error('Le CV est probablement trop volumineux pour être analysé automatiquement. Veuillez réessayer avec un fichier PDF plus petit ou optimisé.');
     }
   } catch (error: any) {
     console.error('Error in analyzeResume:', error);
