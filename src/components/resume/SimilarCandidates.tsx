@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { MatchResult } from '@/services/analysis/matchingUtils';
 import { CandidateData } from '@/services/data/resumeDataService';
 import { Briefcase, MapPin, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,10 +15,15 @@ interface SimilarCandidatesProps {
   className?: string;
 }
 
-// Helper function to safely handle skills arrays
-const ensureArray = (skills: string[] | Json | undefined): string[] => {
+// Helper function to safely handle any JSON skills format
+const ensureStringArray = (skills: string[] | Json | undefined): string[] => {
   if (!skills) return [];
-  if (Array.isArray(skills)) return skills;
+  if (Array.isArray(skills)) {
+    // Ensure all items are strings
+    return skills.map(item => 
+      typeof item === 'string' ? item : String(item)
+    );
+  }
   if (typeof skills === 'string') return [skills];
   return [];
 };
@@ -71,7 +75,7 @@ const SimilarCandidates: React.FC<SimilarCandidatesProps> = ({
         <div className="space-y-4">
           {candidates.map((candidate) => {
             // Use the helper function to safely handle skills
-            const skills = ensureArray(candidate.skills);
+            const skills = ensureStringArray(candidate.skills);
             
             return (
               <div 

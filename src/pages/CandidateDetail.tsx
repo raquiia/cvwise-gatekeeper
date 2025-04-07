@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -11,13 +10,28 @@ import { CandidateData } from '@/services/data/resumeDataService';
 import { ArrowLeft, User, MapPin, Phone, Mail, Briefcase, Award, Calendar, FileText, Loader2, GraduationCap, Languages, Award as CertificateIcon, Book, Grid, Target, Briefcase as WorkIcon, Heart, Globe } from 'lucide-react';
 import { Json } from '@/integrations/supabase/types';
 
-// Helper function to ensure arrays are properly handled
-const ensureArray = <T extends unknown>(data: T[] | Json | undefined): T[] => {
+function ensureArray<T>(data: T[] | Json | undefined): T[] {
   if (!data) return [];
-  if (Array.isArray(data)) return data;
-  if (typeof data === 'string') return [data] as T[];
+  
+  if (Array.isArray(data)) {
+    return data.map(item => {
+      if (typeof item === 'object' && item !== null) {
+        return item as T;
+      }
+      return item as unknown as T;
+    });
+  }
+  
+  if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean') {
+    return [data as unknown as T];
+  }
+  
+  if (typeof data === 'object' && data !== null) {
+    return [data as unknown as T];
+  }
+  
   return [];
-};
+}
 
 const CandidateDetail = () => {
   const { candidateId } = useParams<{ candidateId: string }>();
@@ -88,21 +102,19 @@ const CandidateDetail = () => {
     );
   }
 
-  // Safely handle potentially Json types by ensuring they're arrays
-  const skills = ensureArray(candidate.skills);
-  const education = ensureArray(candidate.education);
-  const experiences = ensureArray(candidate.experiences);
-  const certifications = ensureArray(candidate.certifications);
-  const languages = ensureArray(candidate.languages);
-  const projects = ensureArray(candidate.projects);
-  const industries = ensureArray(candidate.industries);
-  const professional_references = ensureArray(candidate.professional_references);
-  const professional_networks = ensureArray(candidate.professional_networks);
+  const skills = ensureArray<string>(candidate.skills);
+  const education = ensureArray<any>(candidate.education);
+  const experiences = ensureArray<any>(candidate.experiences);
+  const certifications = ensureArray<any>(candidate.certifications);
+  const languages = ensureArray<any>(candidate.languages);
+  const projects = ensureArray<any>(candidate.projects);
+  const industries = ensureArray<any>(candidate.industries);
+  const professional_references = ensureArray<any>(candidate.professional_references);
+  const professional_networks = ensureArray<any>(candidate.professional_networks);
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        {/* Header & Navigation */}
         <div className="mb-6">
           <Button 
             variant="ghost" 
@@ -135,7 +147,6 @@ const CandidateDetail = () => {
           </div>
         </div>
         
-        {/* Tabs Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
           <TabsList className="w-full md:w-auto bg-navy/5 p-1 rounded-lg mb-6">
             <TabsTrigger value="profile" className="px-4 py-2 rounded">
@@ -152,10 +163,8 @@ const CandidateDetail = () => {
             </TabsTrigger>
           </TabsList>
           
-          {/* Tab Content: Profil */}
           <TabsContent value="profile" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Main Info */}
               <div className="md:col-span-2">
                 <Card>
                   <CardHeader>
@@ -283,7 +292,6 @@ const CandidateDetail = () => {
                 </Card>
               </div>
               
-              {/* Match Score */}
               <div>
                 <Card>
                   <CardHeader>
@@ -367,7 +375,6 @@ const CandidateDetail = () => {
             </div>
           </TabsContent>
           
-          {/* Tab Content: Expérience */}
           <TabsContent value="experience" className="space-y-6">
             <Card>
               <CardHeader>
@@ -433,7 +440,6 @@ const CandidateDetail = () => {
             )}
           </TabsContent>
           
-          {/* Tab Content: Education */}
           <TabsContent value="education" className="space-y-6">
             <Card>
               <CardHeader>
@@ -491,7 +497,6 @@ const CandidateDetail = () => {
             )}
           </TabsContent>
           
-          {/* Tab Content: Détails */}
           <TabsContent value="details" className="space-y-6">
             {languages.length > 0 && (
               <Card>
@@ -515,7 +520,6 @@ const CandidateDetail = () => {
             )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Première colonne */}
               <div className="space-y-6">
                 {candidate.professional_values && (
                   <Card>
@@ -540,7 +544,6 @@ const CandidateDetail = () => {
                 )}
               </div>
               
-              {/* Deuxième colonne */}
               <div className="space-y-6">
                 {professional_references.length > 0 && (
                   <Card>
