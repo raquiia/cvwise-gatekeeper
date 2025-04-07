@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
@@ -91,6 +90,24 @@ export const resumeStorageService = {
       console.error('Exception during file deletion:', error);
       // Ne pas bloquer le flux de l'application en cas d'échec de suppression
       return true;
+    }
+  },
+  
+  getPublicUrl: (filePath: string): string | null => {
+    try {
+      const { data } = supabase.storage
+        .from('resumes')
+        .getPublicUrl(filePath);
+        
+      if (data && data.publicUrl) {
+        console.log('Got public URL successfully:', data.publicUrl.substring(0, 50) + '...');
+        return data.publicUrl;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting public URL:', error);
+      return null;
     }
   },
   

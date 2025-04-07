@@ -54,7 +54,7 @@ serve(async (req) => {
     
     console.log(`PDF téléchargé, taille: ${(pdfData.byteLength / 1024).toFixed(2)} KB`);
     
-    // Extraction du texte
+    // Extraction du texte avec notre méthode simplifiée
     const { extractedText, pageCount } = await extractTextFromPDF(pdfData);
     
     console.log(`Extraction réussie, ${pageCount} page(s), texte: ${extractedText.substring(0, 100)}...`);

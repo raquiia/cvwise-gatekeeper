@@ -189,47 +189,47 @@ export const cleanResumeText = (rawText: string): string => {
 };
 
 /**
- * Extrait le texte d'un PDF à partir de son URL
+ * Extract text from a PDF URL
+ * @param pdfUrl The URL of the PDF to extract text from
+ * @returns The extracted text
  */
 export const extractTextFromPdfUrl = async (pdfUrl: string): Promise<string> => {
   try {
     console.log('Extracting text from PDF URL:', pdfUrl);
     
-    // Charger le PDF depuis l'URL
-    const loadingTask = pdfjs.getDocument(pdfUrl);
-    const pdf = await loadingTask.promise;
+    // Load the PDF.js library
+    const pdfjsLib = await import('pdfjs-dist');
+    const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.mjs');
     
-    const numPages = pdf.numPages;
-    console.log('PDF loaded, page count:', numPages);
+    // Set the worker source path
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
     
-    // Extraire le texte de chaque page
-    let fullText = '';
-    
-    for (let i = 1; i <= numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
+    try {
+      // Load the PDF document
+      const loadingTask = pdfjsLib.getDocument(pdfUrl);
+      const pdf = await loadingTask.promise;
       
-      const pageText = textContent.items
-        .filter((item: any) => item.str && item.str.trim().length > 0)
-        .map((item: any) => item.str)
-        .join(' ');
+      let textContent = '';
       
-      fullText += pageText + '\n\n';
+      // Extract text from each page
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const strings = content.items.map((item: any) => item.str);
+        textContent += strings.join(' ') + '\n';
+      }
+      
+      if (!textContent || textContent.trim().length < 50) {
+        throw new Error('PDF extraction produced insufficient text');
+      }
+      
+      return textContent;
+    } catch (pdfError: any) {
+      console.error('Error extracting text from PDF URL:', pdfError);
+      throw new Error(`Échec de l'extraction de texte: ${pdfError.message}`);
     }
-    
-    console.log('Extracted text length:', fullText.length);
-    
-    // Si l'extraction principale a échoué, essayer une méthode de secours
-    if (fullText.length < 100 && numPages > 0) {
-      console.log('Primary extraction yielded insufficient text, trying fallback...');
-      
-      // Implémenter ici une méthode de secours si nécessaire
-      // Cette partie pourrait être développée ultérieurement
-    }
-    
-    return cleanExtractedText(fullText);
-  } catch (error) {
-    console.error('Error extracting text from PDF URL:', error);
+  } catch (error: any) {
+    console.error('Error in extractTextFromPdfUrl:', error);
     throw new Error(`Échec de l'extraction de texte: ${error.message}`);
   }
 };
