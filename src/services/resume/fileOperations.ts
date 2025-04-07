@@ -99,7 +99,22 @@ export const deleteResume = async (resumeId: string, filePath: string): Promise<
       
       if (error) {
         console.error('Error deleting resume record:', error.message);
-        throw new Error(`Erreur lors de la suppression du CV: ${error.message}`);
+        
+        // Fallback to direct delete if RPC fails
+        if (error.message.includes('recursion') || error.message.includes('not found')) {
+          console.log('Falling back to direct resume deletion');
+          const { error: directDeleteError } = await supabase
+            .from('resumes')
+            .delete()
+            .eq('id', resumeId);
+            
+          if (directDeleteError) {
+            console.error('Error in direct resume deletion:', directDeleteError.message);
+            throw new Error(`Erreur lors de la suppression directe du CV: ${directDeleteError.message}`);
+          }
+        } else {
+          throw new Error(`Erreur lors de la suppression du CV: ${error.message}`);
+        }
       }
     } catch (resumeDeleteError) {
       console.error('Exception when deleting resume record:', resumeDeleteError);

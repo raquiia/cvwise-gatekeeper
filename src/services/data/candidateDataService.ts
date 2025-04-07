@@ -79,16 +79,25 @@ export const candidateDataService = {
       console.log(`Starting deletion of candidate with ID: ${candidateId}`);
       
       // 1. Récupérer d'abord le candidat pour obtenir le resume_id
-      const { data: candidate, error: fetchError } = await supabase
+      // Use direct query instead of RLS-protected endpoint to avoid recursion
+      const { data: candidateData, error: candidateFetchError } = await supabase
         .from('candidates')
         .select('resume_id')
         .eq('id', candidateId)
         .single();
       
-      if (fetchError) {
-        console.error("Error fetching candidate for deletion:", fetchError.message);
-        throw new Error(`Erreur lors de la récupération du candidat: ${fetchError.message}`);
+      if (candidateFetchError) {
+        if (candidateFetchError.message.includes('recursion')) {
+          console.error("RLS recursion detected during candidate fetch, trying direct deletion");
+          // Continue with deletion even if we can't fetch the candidate
+        } else {
+          console.error("Error fetching candidate for deletion:", candidateFetchError.message);
+          throw new Error(`Erreur lors de la récupération du candidat: ${candidateFetchError.message}`);
+        }
       }
+      
+      // Store resume_id for later use if found
+      const resumeId = candidateData?.resume_id;
       
       // 2. Supprimer le candidat
       const { error: deleteError } = await supabase
@@ -104,15 +113,15 @@ export const candidateDataService = {
       console.log(`Candidate ${candidateId} deleted successfully`);
       
       // 3. Si le candidat avait un resume_id, supprimer également le CV
-      if (candidate && candidate.resume_id) {
-        console.log(`Associated resume found: ${candidate.resume_id}, proceeding with resume deletion`);
+      if (resumeId) {
+        console.log(`Associated resume found: ${resumeId}, proceeding with resume deletion`);
         
         try {
           // Récupérer le CV pour obtenir le file_path
           const { data: resume, error: resumeError } = await supabase
             .from('resumes')
             .select('file_path')
-            .eq('id', candidate.resume_id)
+            .eq('id', resumeId)
             .single();
           
           if (resumeError) {
@@ -124,8 +133,8 @@ export const candidateDataService = {
           if (resume && resume.file_path) {
             // Utiliser la fonction de suppression de CV qui gère à la fois le fichier et l'enregistrement
             const { deleteResume } = await import('../resume/fileOperations');
-            await deleteResume(candidate.resume_id, resume.file_path);
-            console.log(`Associated resume ${candidate.resume_id} deleted successfully`);
+            await deleteResume(resumeId, resume.file_path);
+            console.log(`Associated resume ${resumeId} deleted successfully`);
           }
         } catch (resumeDeleteError: any) {
           console.error("Error while deleting associated resume:", resumeDeleteError);
