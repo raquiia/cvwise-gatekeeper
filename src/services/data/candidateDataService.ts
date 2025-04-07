@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from './resumeDataService';
 import { Json } from '@/integrations/supabase/types';
@@ -122,6 +121,30 @@ export const candidateDataService = {
     } catch (error) {
       console.error('Error fetching candidate:', error);
       return null;
+    }
+  },
+
+  /**
+   * Supprime un candidat par son ID
+   */
+  deleteCandidate: async (candidateId: string): Promise<boolean> => {
+    try {
+      console.log('Deleting candidate with ID:', candidateId);
+      
+      const { error } = await supabase
+        .from('candidates')
+        .delete()
+        .eq('id', candidateId);
+        
+      if (error) {
+        console.error('Error deleting candidate:', error);
+        throw error;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error in deleteCandidate:', error);
+      return false;
     }
   }
 };

@@ -17,13 +17,15 @@ interface CandidatesTableProps {
   selectedStatus: string | null;
   onStatusChange: (status: string | null) => void;
   onViewCandidate: (candidateId: string) => void;
+  onCandidateDeleted?: () => void;
 }
 
 const CandidatesTable: React.FC<CandidatesTableProps> = ({
   candidates,
   selectedStatus,
   onStatusChange,
-  onViewCandidate
+  onViewCandidate,
+  onCandidateDeleted
 }) => {
   // Debug: Log the candidates data being received
   console.log('CandidatesTable - received candidates:', candidates);
@@ -112,6 +114,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                   key={candidate.id || `temp-${Math.random()}`}
                   candidate={candidate}
                   onViewCandidate={onViewCandidate}
+                  onCandidateDeleted={onCandidateDeleted}
                 />
               ))
             )}

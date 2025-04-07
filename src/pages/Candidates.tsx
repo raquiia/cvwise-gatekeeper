@@ -105,6 +105,11 @@ const Candidates = () => {
     fetchCandidates();
   };
   
+  const handleCandidateDeleted = () => {
+    // Recharger la liste des candidats après suppression
+    fetchCandidates();
+  };
+  
   const toggleDebug = () => {
     setShowDebug(prev => !prev);
   };
@@ -190,6 +195,7 @@ const Candidates = () => {
                 selectedStatus={selectedStatus}
                 onStatusChange={setSelectedStatus}
                 onViewCandidate={handleViewCandidate}
+                onCandidateDeleted={handleCandidateDeleted}
               />
             )}
           </>
