@@ -12,22 +12,23 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
   try {
     console.log('Starting resume analysis for ID:', resumeId);
     
-    // Récupérer les informations du CV
-    const { data: resume, error } = await supabase
-      .from('resumes')
-      .select('*')
-      .eq('id', resumeId)
-      .single();
+    // Utiliser une approche qui évite la récursion infinie dans les RLS policies
+    // Au lieu d'utiliser directement supabase.from('resumes').select()...
+    const { data: resumeData, error: resumeError } = await supabase
+      .rpc('get_resume_by_id', { p_resume_id: resumeId });
     
-    if (error) {
-      console.error('Error fetching resume details:', error);
-      throw new Error(error.message);
+    if (resumeError) {
+      console.error('Error fetching resume details:', resumeError);
+      throw new Error(resumeError.message);
     }
     
-    if (!resume) {
+    // Vérifier si la requête a retourné des résultats
+    if (!resumeData || resumeData.length === 0) {
+      console.error('No resume found with ID:', resumeId);
       throw new Error('CV introuvable');
     }
     
+    const resume = resumeData[0];
     console.log('Resume found, proceeding with analysis');
     
     // Appeler directement le service d'analyse avec l'ID du CV

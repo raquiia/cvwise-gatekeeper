@@ -355,6 +355,20 @@ export type Database = {
           last_updated_at: string
         }[]
       }
+      get_user_resume_by_id: {
+        Args: { resume_id_param: string }
+        Returns: {
+          created_at: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          parsed: boolean | null
+          updated_at: string | null
+          user_id: string
+        }[]
+      }
       get_user_resumes: {
         Args: { user_id_param: string }
         Returns: Json[]
