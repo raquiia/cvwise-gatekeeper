@@ -4,8 +4,8 @@
  */
 import * as pdfjs from 'pdfjs-dist';
 
-// Configurer le worker pour PDF.js
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
+// Configurer le worker pour PDF.js - Correct import statement to use namespace import
+import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.entry';
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 /**
