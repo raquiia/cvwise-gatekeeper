@@ -32,7 +32,7 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     console.log('Resume found, proceeding with analysis');
     
     // Appeler directement le service d'analyse avec l'ID du CV
-    // Le Edge Function s'occupera de l'extraction et de l'analyse du contenu
+    // Le service utilisera maintenant l'analyse améliorée par IA
     const analysisResult = await resumeAnalysisService.analyzeResume(resumeId);
     
     if (!analysisResult.success) {

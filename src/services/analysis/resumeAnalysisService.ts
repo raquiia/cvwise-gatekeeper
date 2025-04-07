@@ -19,140 +19,170 @@ export const resumeAnalysisService = {
         description: "L'extraction des informations du CV peut prendre jusqu'à 30 secondes...",
       });
       
-      const { data, error } = await supabase.functions.invoke('analyze-resume', {
+      // Première étape : extraction du texte brut avec la fonction existante
+      const { data: extractionData, error: extractionError } = await supabase.functions.invoke('analyze-resume', {
         body: { 
           resumeId,
-          extractDetails: true,    // Extraction complète des détails
-          fullExtraction: true,    // Force l'extraction complète
-          forceCompletion: true,   // Génère des données même en cas d'échec partiel
-          includeRawText: true     // Demande d'inclure le texte brut extrait
+          extractDetails: false,    // Extraction du texte brut uniquement
+          fullExtraction: true,     // Force l'extraction complète
+          forceCompletion: true,    // Génère des données même en cas d'échec partiel
+          includeRawText: true      // Demande d'inclure le texte brut extrait
         }
       });
       
-      if (error) {
-        console.error('Erreur lors de l\'appel de la fonction analyze-resume:', error);
+      if (extractionError) {
+        console.error('Erreur lors de l\'extraction du texte du CV:', extractionError);
         toast({
-          title: "Erreur d'analyse",
-          description: error.message || "Une erreur s'est produite lors de l'analyse du CV",
+          title: "Erreur d'extraction",
+          description: extractionError.message || "Une erreur s'est produite lors de l'extraction du texte du CV",
           variant: "destructive",
         });
-        throw error;
+        throw extractionError;
       }
       
-      console.log('Réponse de l\'analyse:', data);
+      if (!extractionData.rawText) {
+        console.error('Aucun texte extrait du CV');
+        toast({
+          title: "Extraction insuffisante",
+          description: "Impossible d'extraire suffisamment de texte du CV pour l'analyse",
+          variant: "destructive",
+        });
+        throw new Error("Impossible d'extraire le texte du CV");
+      }
       
       // Afficher le texte brut extrait dans une popup temporaire
-      if (data.rawText) {
-        // Nettoyer et formater le texte brut avant affichage
-        const cleanedText = cleanRawResumeText(data.rawText);
-        
-        // Affichage dans la console pour le débogage
-        console.log("Texte brut nettoyé:", cleanedText);
-        
-        // Créer une modal ou dialogue temporaire avec une meilleure mise en forme
-        const dialogContainer = document.createElement('div');
-        dialogContainer.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-        dialogContainer.style.zIndex = '9999';
-        
-        const dialogContent = document.createElement('div');
-        dialogContent.className = 'bg-white dark:bg-gray-800 rounded-lg p-6 max-w-3xl max-h-[80vh] overflow-hidden flex flex-col';
-        
-        const dialogHeader = document.createElement('div');
-        dialogHeader.className = 'flex justify-between items-center mb-4';
-        
-        const dialogTitle = document.createElement('h3');
-        dialogTitle.className = 'text-lg font-semibold dark:text-white';
-        dialogTitle.textContent = 'Texte extrait du CV';
-        
-        const closeButton = document.createElement('button');
-        closeButton.className = 'text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100';
-        closeButton.textContent = '×';
-        closeButton.style.fontSize = '24px';
-        closeButton.onclick = () => document.body.removeChild(dialogContainer);
-        
-        dialogHeader.appendChild(dialogTitle);
-        dialogHeader.appendChild(closeButton);
-        
-        const dialogBody = document.createElement('div');
-        dialogBody.className = 'overflow-y-auto flex-grow';
-        
-        // Créer un conteneur pour le texte brut avec une meilleure mise en forme
-        const textDisplay = document.createElement('div');
-        textDisplay.className = 'max-h-[60vh] overflow-y-auto mt-2 p-4 border rounded bg-gray-50 dark:bg-gray-700 dark:text-gray-200';
-        
-        // Formater le texte pour une meilleure lisibilité
-        textDisplay.innerHTML = `<div class="whitespace-pre-wrap text-sm font-mono">${formatResumeText(cleanedText)}</div>`;
-        
-        dialogBody.appendChild(textDisplay);
-        
-        // Ajouter un bouton pour copier le texte
-        const copyButton = document.createElement('button');
-        copyButton.className = 'mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700';
-        copyButton.textContent = 'Copier le texte';
-        copyButton.onclick = () => {
-          navigator.clipboard.writeText(cleanedText)
-            .then(() => {
-              const originalText = copyButton.textContent;
-              copyButton.textContent = 'Copié!';
-              setTimeout(() => {
-                copyButton.textContent = originalText;
-              }, 2000);
-            })
-            .catch(err => {
-              console.error('Erreur lors de la copie:', err);
-              toast({
-                title: "Erreur",
-                description: "Impossible de copier le texte. Veuillez réessayer.",
-                variant: "destructive",
-              });
+      const cleanedText = cleanRawResumeText(extractionData.rawText);
+      console.log("Texte brut nettoyé:", cleanedText);
+      
+      // Créer une modal ou dialogue temporaire avec une meilleure mise en forme
+      const dialogContainer = document.createElement('div');
+      dialogContainer.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+      dialogContainer.style.zIndex = '9999';
+      
+      const dialogContent = document.createElement('div');
+      dialogContent.className = 'bg-white dark:bg-gray-800 rounded-lg p-6 max-w-3xl max-h-[80vh] overflow-hidden flex flex-col';
+      
+      const dialogHeader = document.createElement('div');
+      dialogHeader.className = 'flex justify-between items-center mb-4';
+      
+      const dialogTitle = document.createElement('h3');
+      dialogTitle.className = 'text-lg font-semibold dark:text-white';
+      dialogTitle.textContent = 'Texte extrait du CV';
+      
+      const closeButton = document.createElement('button');
+      closeButton.className = 'text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-gray-100';
+      closeButton.textContent = '×';
+      closeButton.style.fontSize = '24px';
+      closeButton.onclick = () => document.body.removeChild(dialogContainer);
+      
+      dialogHeader.appendChild(dialogTitle);
+      dialogHeader.appendChild(closeButton);
+      
+      const dialogBody = document.createElement('div');
+      dialogBody.className = 'overflow-y-auto flex-grow';
+      
+      // Créer un conteneur pour le texte brut avec une meilleure mise en forme
+      const textDisplay = document.createElement('div');
+      textDisplay.className = 'max-h-[60vh] overflow-y-auto mt-2 p-4 border rounded bg-gray-50 dark:bg-gray-700 dark:text-gray-200';
+      
+      // Formater le texte pour une meilleure lisibilité
+      textDisplay.innerHTML = `<div class="whitespace-pre-wrap text-sm font-mono">${formatResumeText(cleanedText)}</div>`;
+      
+      dialogBody.appendChild(textDisplay);
+      
+      // Ajouter un bouton pour copier le texte
+      const copyButton = document.createElement('button');
+      copyButton.className = 'mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700';
+      copyButton.textContent = 'Copier le texte';
+      copyButton.onclick = () => {
+        navigator.clipboard.writeText(cleanedText)
+          .then(() => {
+            const originalText = copyButton.textContent;
+            copyButton.textContent = 'Copié!';
+            setTimeout(() => {
+              copyButton.textContent = originalText;
+            }, 2000);
+          })
+          .catch(err => {
+            console.error('Erreur lors de la copie:', err);
+            toast({
+              title: "Erreur",
+              description: "Impossible de copier le texte. Veuillez réessayer.",
+              variant: "destructive",
             });
-        };
-        
-        dialogBody.appendChild(copyButton);
-        
-        dialogContent.appendChild(dialogHeader);
-        dialogContent.appendChild(dialogBody);
-        dialogContainer.appendChild(dialogContent);
-        
-        // Ajouter à la page
-        document.body.appendChild(dialogContainer);
-        
-        // Notification toast pour informer l'utilisateur
+          });
+      };
+      
+      dialogBody.appendChild(copyButton);
+      
+      dialogContent.appendChild(dialogHeader);
+      dialogContent.appendChild(dialogBody);
+      dialogContainer.appendChild(dialogContent);
+      
+      // Ajouter à la page
+      document.body.appendChild(dialogContainer);
+      
+      // Notification toast pour informer l'utilisateur
+      toast({
+        title: "Texte extrait du CV",
+        description: "Analyse IA du CV en cours. Une fenêtre avec le texte extrait est disponible.",
+        duration: 5000,
+      });
+      
+      // Définir un timeout pour supprimer automatiquement après 2 minutes
+      setTimeout(() => {
+        if (document.body.contains(dialogContainer)) {
+          document.body.removeChild(dialogContainer);
+        }
+      }, 120000);
+      
+      // Deuxième étape : analyse IA du texte extrait
+      toast({
+        title: "Analyse IA en cours",
+        description: "Traitement par intelligence artificielle du contenu du CV...",
+        duration: 5000,
+      });
+      
+      const { data: aiAnalysisData, error: aiAnalysisError } = await supabase.functions.invoke('resume-ai-analysis', {
+        body: { 
+          resumeId,
+          resumeText: cleanedText
+        }
+      });
+      
+      if (aiAnalysisError) {
+        console.error('Erreur lors de l\'analyse IA du CV:', aiAnalysisError);
         toast({
-          title: "Texte extrait du CV",
-          description: "Une fenêtre avec le texte extrait et nettoyé du CV est maintenant disponible",
-          duration: 5000,
+          title: "Erreur d'analyse IA",
+          description: aiAnalysisError.message || "Une erreur s'est produite lors de l'analyse IA du CV",
+          variant: "destructive",
         });
-        
-        // Définir un timeout pour supprimer automatiquement après 2 minutes
-        setTimeout(() => {
-          if (document.body.contains(dialogContainer)) {
-            document.body.removeChild(dialogContainer);
-          }
-        }, 120000);
+        throw aiAnalysisError;
       }
       
-      if (data.success) {
+      console.log('Réponse de l\'analyse IA:', aiAnalysisData);
+      
+      if (aiAnalysisData.success) {
         toast({
           title: "Analyse terminée",
-          description: "Le CV a été analysé avec succès",
+          description: "Le CV a été analysé avec succès par notre IA",
           variant: "default",
         });
         return { 
           success: true, 
-          candidateId: data.candidate?.id,
-          rawText: data.rawText ? cleanRawResumeText(data.rawText) : undefined
+          candidateId: aiAnalysisData.candidate?.id,
+          rawText: cleanedText
         };
       } else {
         toast({
           title: "Analyse incomplète",
-          description: data.message || "L'analyse a rencontré des difficultés. Vérifiez le candidat créé.",
+          description: aiAnalysisData.message || "L'analyse a rencontré des difficultés. Vérifiez le candidat créé.",
           variant: "default",
         });
         return { 
           success: false, 
-          message: data.message || "Une erreur inconnue s'est produite",
-          rawText: data.rawText ? cleanRawResumeText(data.rawText) : undefined
+          message: aiAnalysisData.message || "Une erreur inconnue s'est produite",
+          rawText: cleanedText
         };
       }
     } catch (error: any) {
