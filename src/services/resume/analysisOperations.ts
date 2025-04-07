@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { resumeAnalysisService } from '../analysis/resumeAnalysisService';
 import { resumeDataService } from '../data/resumeDataService';
 import { resumeStorageService } from '../storage/resumeStorageService';
+import { toast } from '@/hooks/use-toast';
 
 /**
  * Analyze a resume by its ID

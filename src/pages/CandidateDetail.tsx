@@ -9,6 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { candidateDataService } from '@/services/data/candidateDataService';
 import { CandidateData } from '@/services/data/resumeDataService';
 import { ArrowLeft, User, MapPin, Phone, Mail, Briefcase, Award, Calendar, FileText, Loader2, GraduationCap, Languages, Award as CertificateIcon, Book, Grid, Target, Briefcase as WorkIcon, Heart, Globe } from 'lucide-react';
+import { Json } from '@/integrations/supabase/types';
+
+// Helper function to ensure arrays are properly handled
+const ensureArray = <T extends unknown>(data: T[] | Json | undefined): T[] => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (typeof data === 'string') return [data] as T[];
+  return [];
+};
 
 const CandidateDetail = () => {
   const { candidateId } = useParams<{ candidateId: string }>();
@@ -79,13 +88,16 @@ const CandidateDetail = () => {
     );
   }
 
-  // Formatage des données
-  const education = Array.isArray(candidate.education) ? candidate.education : [];
-  const experiences = Array.isArray(candidate.experiences) ? candidate.experiences : [];
-  const certifications = Array.isArray(candidate.certifications) ? candidate.certifications : [];
-  const languages = Array.isArray(candidate.languages) ? candidate.languages : [];
-  const projects = Array.isArray(candidate.projects) ? candidate.projects : [];
-  const industries = Array.isArray(candidate.industries) ? candidate.industries : [];
+  // Safely handle potentially Json types by ensuring they're arrays
+  const skills = ensureArray(candidate.skills);
+  const education = ensureArray(candidate.education);
+  const experiences = ensureArray(candidate.experiences);
+  const certifications = ensureArray(candidate.certifications);
+  const languages = ensureArray(candidate.languages);
+  const projects = ensureArray(candidate.projects);
+  const industries = ensureArray(candidate.industries);
+  const professional_references = ensureArray(candidate.professional_references);
+  const professional_networks = ensureArray(candidate.professional_networks);
 
   return (
     <Layout>
@@ -214,8 +226,8 @@ const CandidateDetail = () => {
                     <div>
                       <h3 className="font-medium text-navy-dark mb-4">Compétences</h3>
                       <div className="flex flex-wrap gap-2">
-                        {candidate.skills && candidate.skills.length > 0 ? (
-                          candidate.skills.map((skill, idx) => (
+                        {skills.length > 0 ? (
+                          skills.map((skill, idx) => (
                             <div 
                               key={idx}
                               className="px-3 py-1.5 bg-navy/10 text-navy-dark text-sm rounded-full"
@@ -239,7 +251,7 @@ const CandidateDetail = () => {
                       </>
                     )}
                     
-                    {industries && industries.length > 0 && (
+                    {industries.length > 0 && (
                       <>
                         <Separator className="my-6" />
                         <div>
@@ -378,7 +390,7 @@ const CandidateDetail = () => {
                         {exp.description && (
                           <p className="mt-2 text-navy-dark">{exp.description}</p>
                         )}
-                        {exp.skills && exp.skills.length > 0 && (
+                        {exp.skills && Array.isArray(exp.skills) && exp.skills.length > 0 && (
                           <div className="mt-3 flex flex-wrap gap-2">
                             {exp.skills.map((skill: string, skillIdx: number) => (
                               <span key={skillIdx} className="px-2 py-1 text-xs bg-navy/10 text-navy-dark rounded-full">
@@ -396,7 +408,7 @@ const CandidateDetail = () => {
               </CardContent>
             </Card>
             
-            {projects && projects.length > 0 && (
+            {projects.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle>Projets</CardTitle>
@@ -454,7 +466,7 @@ const CandidateDetail = () => {
               </CardContent>
             </Card>
             
-            {certifications && certifications.length > 0 && (
+            {certifications.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle>Certifications</CardTitle>
@@ -481,7 +493,7 @@ const CandidateDetail = () => {
           
           {/* Tab Content: Détails */}
           <TabsContent value="details" className="space-y-6">
-            {languages && languages.length > 0 && (
+            {languages.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle>Langues</CardTitle>
@@ -530,14 +542,14 @@ const CandidateDetail = () => {
               
               {/* Deuxième colonne */}
               <div className="space-y-6">
-                {candidate.professional_references && Array.isArray(candidate.professional_references) && candidate.professional_references.length > 0 && (
+                {professional_references.length > 0 && (
                   <Card>
                     <CardHeader>
                       <CardTitle>Références professionnelles</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {candidate.professional_references.map((ref: any, idx: number) => (
+                        {professional_references.map((ref: any, idx: number) => (
                           <div key={idx} className="p-3 border border-border rounded-lg">
                             <h4 className="font-semibold">{ref.name}</h4>
                             {ref.position && <p className="text-sm text-navy">{ref.position}</p>}
@@ -550,14 +562,14 @@ const CandidateDetail = () => {
                   </Card>
                 )}
                 
-                {candidate.professional_networks && Array.isArray(candidate.professional_networks) && candidate.professional_networks.length > 0 && (
+                {professional_networks.length > 0 && (
                   <Card>
                     <CardHeader>
                       <CardTitle>Réseaux professionnels</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {candidate.professional_networks.map((network: any, idx: number) => (
+                        {professional_networks.map((network: any, idx: number) => (
                           <div key={idx} className="flex items-center">
                             <Globe className="h-4 w-4 mr-2 text-navy" />
                             <a 

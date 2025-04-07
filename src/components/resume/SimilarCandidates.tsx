@@ -9,11 +9,20 @@ import { CandidateData } from '@/services/data/resumeDataService';
 import { Briefcase, MapPin, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { Json } from '@/integrations/supabase/types';
 
 interface SimilarCandidatesProps {
   candidates: (CandidateData & { similarityScore: number })[];
   className?: string;
 }
+
+// Helper function to safely handle skills arrays
+const ensureArray = (skills: string[] | Json | undefined): string[] => {
+  if (!skills) return [];
+  if (Array.isArray(skills)) return skills;
+  if (typeof skills === 'string') return [skills];
+  return [];
+};
 
 const SimilarCandidates: React.FC<SimilarCandidatesProps> = ({ 
   candidates,
@@ -60,84 +69,89 @@ const SimilarCandidates: React.FC<SimilarCandidatesProps> = ({
       
       <CardContent className="pt-3">
         <div className="space-y-4">
-          {candidates.map((candidate) => (
-            <div 
-              key={candidate.id} 
-              className="p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-start gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-navy text-sand">
-                    {candidate.first_name?.[0]}{candidate.last_name?.[0]}
-                  </AvatarFallback>
-                </Avatar>
-                
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-medium">
-                      {candidate.first_name} {candidate.last_name}
-                    </h3>
-                    
-                    <Badge className={cn(
-                      "ml-2", 
-                      getScoreColor(candidate.similarityScore)
-                    )}>
-                      {candidate.similarityScore}% similaire
-                    </Badge>
-                  </div>
+          {candidates.map((candidate) => {
+            // Use the helper function to safely handle skills
+            const skills = ensureArray(candidate.skills);
+            
+            return (
+              <div 
+                key={candidate.id} 
+                className="p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-navy text-sand">
+                      {candidate.first_name?.[0]}{candidate.last_name?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
                   
-                  <div className="mt-1 flex flex-col space-y-1">
-                    {candidate.position && (
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Briefcase size={14} className="mr-1.5" />
-                        <span>{candidate.position}</span>
-                      </div>
-                    )}
-                    
-                    {candidate.location && (
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <MapPin size={14} className="mr-1.5" />
-                        <span>{candidate.location}</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {candidate.skills && candidate.skills.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {candidate.skills.slice(0, 3).map((skill, index) => (
-                        <Badge 
-                          key={`skill-${candidate.id}-${index}`}
-                          variant="outline"
-                          className="text-xs bg-background"
-                        >
-                          {skill}
-                        </Badge>
-                      ))}
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-medium">
+                        {candidate.first_name} {candidate.last_name}
+                      </h3>
                       
-                      {candidate.skills.length > 3 && (
-                        <Badge 
-                          variant="outline"
-                          className="text-xs bg-background"
-                        >
-                          +{candidate.skills.length - 3}
-                        </Badge>
+                      <Badge className={cn(
+                        "ml-2", 
+                        getScoreColor(candidate.similarityScore)
+                      )}>
+                        {candidate.similarityScore}% similaire
+                      </Badge>
+                    </div>
+                    
+                    <div className="mt-1 flex flex-col space-y-1">
+                      {candidate.position && (
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Briefcase size={14} className="mr-1.5" />
+                          <span>{candidate.position}</span>
+                        </div>
+                      )}
+                      
+                      {candidate.location && (
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <MapPin size={14} className="mr-1.5" />
+                          <span>{candidate.location}</span>
+                        </div>
                       )}
                     </div>
-                  )}
+                    
+                    {skills.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {skills.slice(0, 3).map((skill, index) => (
+                          <Badge 
+                            key={`skill-${candidate.id}-${index}`}
+                            variant="outline"
+                            className="text-xs bg-background"
+                          >
+                            {skill}
+                          </Badge>
+                        ))}
+                        
+                        {skills.length > 3 && (
+                          <Badge 
+                            variant="outline"
+                            className="text-xs bg-background"
+                          >
+                            +{skills.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/candidates/${candidate.id}`)}
+                  >
+                    Voir le profil
+                  </Button>
                 </div>
               </div>
-              
-              <div className="mt-3 flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/candidates/${candidate.id}`)}
-                >
-                  Voir le profil
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>
