@@ -124,8 +124,10 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
         duration: 5000,
       });
       
-      // Construire une URL directe pour éviter les problèmes de redirection
-      const directUrl = `${supabase.storage.url}/object/public/resumes/${resume.file_path}`;
+      // Get a direct URL using the proper method without accessing protected properties
+      const { data: publicUrlData } = supabase.storage.from('resumes').getPublicUrl(resume.file_path);
+      const directUrl = publicUrlData.publicUrl;
+      
       console.log('Using direct storage URL:', directUrl);
       
       const analysisResult = await resumeAnalysisService.analyzeResumeWithUrl(resumeId, directUrl);

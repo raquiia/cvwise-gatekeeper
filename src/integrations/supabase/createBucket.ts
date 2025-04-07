@@ -26,12 +26,10 @@ export const ensureResumesBucketExists = async (): Promise<void> => {
         return;
       }
       
-      // Set bucket to public
-      const { error: policiesError } = await supabase.storage.from('resumes').getPublicUrl('test');
-      
-      if (policiesError) {
-        console.error('Warning: Could not set public URL policies for bucket:', policiesError);
-      }
+      // Verify bucket is public - note that getPublicUrl doesn't return an error property
+      // so we'll just log it without checking for an error
+      console.log('Setting bucket to public');
+      await supabase.storage.from('resumes').getPublicUrl('test');
       
       console.log('Resumes bucket created successfully');
     } else {
