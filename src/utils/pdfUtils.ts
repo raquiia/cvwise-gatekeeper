@@ -227,7 +227,7 @@ export const extractTextFromPdfUrl = async (pdfUrl: string): Promise<string> => 
       // Cette partie pourrait être développée ultérieurement
     }
     
-    return fullText;
+    return cleanExtractedText(fullText);
   } catch (error) {
     console.error('Error extracting text from PDF URL:', error);
     throw new Error(`Échec de l'extraction de texte: ${error.message}`);

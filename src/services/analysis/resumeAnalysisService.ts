@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { calculateOverallMatch, MatchResult } from './matchingUtils';
 import { toast } from '@/hooks/use-toast';
-import { extractTextFromPDF } from '@/utils/pdfUtils';
+import { extractTextFromPDF, extractTextFromPdfUrl } from '@/utils/pdfUtils';
 
 /**
  * Service responsable de l'analyse des CV
