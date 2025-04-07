@@ -26,11 +26,16 @@ export const ensureResumesBucketExists = async (): Promise<void> => {
         return;
       }
       
-      // Just get the public URL without checking for error
-      // This avoids the TS2339 error
-      await supabase.storage.from('resumes').getPublicUrl('test');
+      // Set bucket to public
+      const { error: policiesError } = await supabase.storage.from('resumes').getPublicUrl('test');
+      
+      if (policiesError) {
+        console.error('Warning: Could not set public URL policies for bucket:', policiesError);
+      }
       
       console.log('Resumes bucket created successfully');
+    } else {
+      console.log('Resumes bucket already exists');
     }
   } catch (error) {
     console.error('Exception during bucket creation:', error);

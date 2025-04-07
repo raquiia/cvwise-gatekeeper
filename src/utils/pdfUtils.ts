@@ -1,3 +1,4 @@
+
 /**
  * Utilitaires pour l'extraction de texte des fichiers PDF côté client
  */
@@ -189,39 +190,61 @@ export const cleanResumeText = (rawText: string): string => {
 };
 
 /**
- * Extract text from a PDF URL
+ * Extract text from a PDF URL with better error handling
  * @param pdfUrl The URL of the PDF to extract text from
  * @returns The extracted text
  */
-export const extractTextFromPdfUrl = async (pdfUrl) => {
+export const extractTextFromPdfUrl = async (pdfUrl: string): Promise<string> => {
   try {
     console.log('Extracting text from PDF URL:', pdfUrl);
     
-    // No need to reimport PDF.js library as we already imported it at the top level
+    // Vérifier que l'URL est valide
+    if (!pdfUrl || typeof pdfUrl !== 'string' || !pdfUrl.startsWith('http')) {
+      throw new Error('URL PDF invalide ou non fournie');
+    }
+    
     try {
-      // Load the PDF document using the already configured pdfjs
-      const loadingTask = pdfjs.getDocument(pdfUrl);
-      const pdf = await loadingTask.promise;
-      let textContent = '';
-      
-      // Extract text from each page
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        const strings = content.items.map(item => 'str' in item ? item.str : '');
-        textContent += strings.join(' ') + '\n';
+      // Vérifier que le PDF est accessible en faisant une requête HEAD
+      const checkResponse = await fetch(pdfUrl, { method: 'HEAD' });
+      if (!checkResponse.ok) {
+        throw new Error(`Le PDF n'est pas accessible: ${checkResponse.status} ${checkResponse.statusText}`);
       }
       
-      if (!textContent || textContent.trim().length < 50) {
-        throw new Error('PDF extraction produced insufficient text');
+      // Télécharger le PDF en mode blob pour le traiter localement
+      const response = await fetch(pdfUrl, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Échec du téléchargement: ${response.status} ${response.statusText}`);
       }
       
-      return textContent;
-    } catch (pdfError) {
+      // Convertir le blob en ArrayBuffer
+      const pdfBlob = await response.blob();
+      const arrayBuffer = await pdfBlob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      
+      console.log(`PDF downloaded, size: ${Math.round(uint8Array.length / 1024)} KB`);
+      
+      // Utiliser notre extracteur existant avec le buffer
+      const { extractedText } = await extractTextFromPDFBuffer(uint8Array);
+      
+      console.log(`Text extracted successfully from URL, length: ${extractedText.length}`);
+      
+      if (!extractedText || extractedText.trim().length < 50) {
+        throw new Error('Extraction a produit un texte insuffisant');
+      }
+      
+      return extractedText;
+    } catch (pdfError: any) {
       console.error('Error extracting text from PDF URL:', pdfError);
       throw new Error(`Échec de l'extraction de texte: ${pdfError.message}`);
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in extractTextFromPdfUrl:', error);
     throw new Error(`Échec de l'extraction de texte: ${error.message}`);
   }
