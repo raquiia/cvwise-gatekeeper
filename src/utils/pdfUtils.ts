@@ -1,4 +1,3 @@
-
 /**
  * Utilitaires pour l'extraction de texte des fichiers PDF côté client
  */
@@ -194,28 +193,22 @@ export const cleanResumeText = (rawText: string): string => {
  * @param pdfUrl The URL of the PDF to extract text from
  * @returns The extracted text
  */
-export const extractTextFromPdfUrl = async (pdfUrl: string): Promise<string> => {
+export const extractTextFromPdfUrl = async (pdfUrl) => {
   try {
     console.log('Extracting text from PDF URL:', pdfUrl);
     
-    // Load the PDF.js library
-    const pdfjsLib = await import('pdfjs-dist');
-    
-    // Use the same worker entry as the top-level import
-    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-    
+    // No need to reimport PDF.js library as we already imported it at the top level
     try {
-      // Load the PDF document
-      const loadingTask = pdfjsLib.getDocument(pdfUrl);
+      // Load the PDF document using the already configured pdfjs
+      const loadingTask = pdfjs.getDocument(pdfUrl);
       const pdf = await loadingTask.promise;
-      
       let textContent = '';
       
       // Extract text from each page
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        const strings = content.items.map((item: any) => item.str);
+        const strings = content.items.map(item => 'str' in item ? item.str : '');
         textContent += strings.join(' ') + '\n';
       }
       
@@ -224,11 +217,11 @@ export const extractTextFromPdfUrl = async (pdfUrl: string): Promise<string> => 
       }
       
       return textContent;
-    } catch (pdfError: any) {
+    } catch (pdfError) {
       console.error('Error extracting text from PDF URL:', pdfError);
       throw new Error(`Échec de l'extraction de texte: ${pdfError.message}`);
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in extractTextFromPdfUrl:', error);
     throw new Error(`Échec de l'extraction de texte: ${error.message}`);
   }
