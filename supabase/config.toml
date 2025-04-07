@@ -33,3 +33,5 @@ refresh_token_reuse_interval = 10
 [functions]
 [functions.extract-cv-text]
 verify_jwt = false
+[functions.resume-ai-analysis]
+verify_jwt = false

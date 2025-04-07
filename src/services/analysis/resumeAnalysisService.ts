@@ -144,6 +144,55 @@ export const resumeAnalysisService = {
   },
   
   /**
+   * Analyze a resume using its URL rather than downloading it
+   */
+  analyzeResumeWithUrl: async (resumeId: string, fileUrl: string): Promise<{ success: boolean; message: string; candidateId?: string }> => {
+    try {
+      console.log('Starting client-side analysis with URL:', resumeId);
+      
+      // Extract text from PDF URL using client-side pdfjs
+      const extractedText = await extractTextFromPdfUrl(fileUrl);
+      
+      if (!extractedText || extractedText.length < 50) {
+        throw new Error('Impossible d\'extraire suffisamment de texte du CV');
+      }
+      
+      console.log('Text extracted successfully on client-side, length:', extractedText.length);
+      
+      // Send text to OpenAI for analysis via the edge function
+      const { data: analysisData, error: analysisError } = await supabase
+        .functions
+        .invoke('resume-ai-analysis', {
+          body: {
+            resumeId,
+            resumeText: extractedText
+          }
+        });
+        
+      if (analysisError) {
+        console.error('Error in AI analysis on client-side:', analysisError);
+        throw new Error(analysisError.message);
+      }
+      
+      if (!analysisData.success) {
+        throw new Error(analysisData.message || 'Échec de l\'analyse du CV');
+      }
+      
+      return {
+        success: true,
+        message: 'Analyse réussie (extraction côté client)',
+        candidateId: analysisData.candidate?.id
+      };
+    } catch (error: any) {
+      console.error('Error in client-side analysis:', error);
+      return {
+        success: false, 
+        message: error.message || 'Échec de l\'analyse du CV côté client'
+      };
+    }
+  },
+  
+  /**
    * Nettoie le texte brut extrait d'un CV
    */
   cleanRawResumeText,

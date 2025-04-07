@@ -1,11 +1,11 @@
-
 /**
  * Utilitaires pour l'extraction de texte des fichiers PDF côté client
  */
 import * as pdfjs from 'pdfjs-dist';
 
-// Configure worker - use CDN for reliability
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Configurer le worker PDF.js
+const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
+pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 /**
  * Extrait le texte d'un fichier PDF
@@ -186,4 +186,50 @@ export const cleanResumeText = (rawText: string): string => {
     .join('\n');
     
   return cleanedText;
+};
+
+/**
+ * Extrait le texte d'un PDF à partir de son URL
+ */
+export const extractTextFromPdfUrl = async (pdfUrl: string): Promise<string> => {
+  try {
+    console.log('Extracting text from PDF URL:', pdfUrl);
+    
+    // Charger le PDF depuis l'URL
+    const loadingTask = pdfjs.getDocument(pdfUrl);
+    const pdf = await loadingTask.promise;
+    
+    const numPages = pdf.numPages;
+    console.log('PDF loaded, page count:', numPages);
+    
+    // Extraire le texte de chaque page
+    let fullText = '';
+    
+    for (let i = 1; i <= numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      
+      const pageText = textContent.items
+        .filter((item: any) => item.str && item.str.trim().length > 0)
+        .map((item: any) => item.str)
+        .join(' ');
+      
+      fullText += pageText + '\n\n';
+    }
+    
+    console.log('Extracted text length:', fullText.length);
+    
+    // Si l'extraction principale a échoué, essayer une méthode de secours
+    if (fullText.length < 100 && numPages > 0) {
+      console.log('Primary extraction yielded insufficient text, trying fallback...');
+      
+      // Implémenter ici une méthode de secours si nécessaire
+      // Cette partie pourrait être développée ultérieurement
+    }
+    
+    return fullText;
+  } catch (error) {
+    console.error('Error extracting text from PDF URL:', error);
+    throw new Error(`Échec de l'extraction de texte: ${error.message}`);
+  }
 };

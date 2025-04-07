@@ -29,6 +29,20 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     const resume = resumeData[0];
     console.log('Resume found, proceeding with analysis');
     
+    // Obtenir l'URL publique du fichier
+    const { data: urlData } = await supabase
+      .storage
+      .from('resumes')
+      .createSignedUrl(resume.file_path, 60 * 10);  // URL valide 10 minutes
+    
+    if (!urlData || !urlData.signedUrl) {
+      console.error('Failed to get file signed URL');
+      throw new Error('Impossible d\'obtenir l\'URL du fichier');
+    }
+    
+    const fileUrl = urlData.signedUrl;
+    console.log('Got signed URL for file extraction');
+    
     // Première tentative: utiliser la nouvelle edge function d'extraction
     try {
       toast({
@@ -38,7 +52,7 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
       });
       
       const { data: extractionData, error: extractionError } = await supabase.functions.invoke('extract-cv-text', {
-        body: { resumeId }
+        body: { pdfUrl: fileUrl }
       });
       
       if (extractionError) {
@@ -89,12 +103,12 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     } catch (serverError) {
       console.warn('Server-side extraction/analysis failed, attempting classic analysis:', serverError);
       
-      // Seconde tentative: revenir à l'ancienne méthode edge function qui gère à la fois l'extraction et l'analyse
+      // Seconde tentative: revenir à l'ancienne méthode
       try {
         const { data: analysisData, error: analysisError } = await supabase.functions.invoke('resume-ai-analysis', {
           body: { 
             resumeId,
-            extractText: true // Flag to indicate we need text extraction on server side
+            pdfUrl: fileUrl  // On envoie l'URL directement pour extraction côté serveur
           }
         });
         
@@ -122,13 +136,8 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
         
         // Dernière tentative: télécharger le fichier pour traitement côté client
         try {
-          const pdfFile = await resumeStorageService.downloadResumeAsFile(resumeId);
-          if (!pdfFile) {
-            throw new Error("Impossible de télécharger le fichier du CV");
-          }
-          
-          // Use client-side analysis as a fallback
-          const analysisResult = await resumeAnalysisService.analyzeResume(resumeId, pdfFile);
+          // Plutôt que de télécharger le fichier, on va utiliser l'URL pour extraction
+          const analysisResult = await resumeAnalysisService.analyzeResumeWithUrl(resumeId, fileUrl);
           
           if (!analysisResult.success) {
             throw new Error(analysisResult.message || 'Échec de l\'analyse du CV');

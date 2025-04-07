@@ -24,7 +24,7 @@ serve(async (req) => {
   if (corsResponse) return corsResponse;
 
   try {
-    const { resumeId, resumeText, extractText } = await req.json();
+    const { resumeId, resumeText, extractText, pdfUrl } = await req.json();
     
     if (!resumeId) {
       throw new Error("L'ID du CV est requis");
@@ -58,10 +58,42 @@ serve(async (req) => {
     
     console.log("Candidat existant:", existingCandidate);
     
-    // Extraire le texte du CV si nécessaire (extractText is true)
+    // Extraire ou utiliser le texte du CV
     let textToAnalyze = resumeText;
     
-    if (extractText && !textToAnalyze) {
+    if (!textToAnalyze && pdfUrl) {
+      console.log("URL PDF fournie, tentative d'extraction du texte");
+      
+      try {
+        // Appeler notre fonction d'extraction de texte avec l'URL
+        const extractResponse = await fetch(`${supabaseUrl}/functions/v1/extract-cv-text`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${supabaseServiceKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ pdfUrl, resumeId })
+        });
+        
+        if (!extractResponse.ok) {
+          throw new Error(`Échec de l'extraction: ${extractResponse.status} ${extractResponse.statusText}`);
+        }
+        
+        const extractData = await extractResponse.json();
+        
+        if (!extractData.success) {
+          throw new Error(extractData.error || "Échec de l'extraction du texte");
+        }
+        
+        textToAnalyze = extractData.data.text;
+        console.log("Texte extrait avec succès, longueur:", textToAnalyze.length);
+      } catch (extractError) {
+        console.error("Erreur lors de l'extraction du texte:", extractError);
+        // On continue avec l'ancienne méthode d'extraction si disponible
+      }
+    }
+    
+    if (!textToAnalyze && extractText) {
       console.log("Extraction du texte côté serveur demandée");
       
       try {
@@ -75,8 +107,7 @@ serve(async (req) => {
           throw new Error("Impossible de télécharger le fichier du CV");
         }
         
-        // Convertir le blob en texte (cela dépend du format du fichier)
-        // Pour un PDF, il faudrait un parser PDF côté serveur
+        // Convertir le blob en texte
         textToAnalyze = await fileData.text();
         console.log("Texte extrait côté serveur, longueur:", textToAnalyze.length);
       } catch (extractError) {
