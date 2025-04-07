@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { resumeDataService } from './resumeDataService';
 import { CandidateData } from './resumeDataService';
+import { Json } from '@/integrations/supabase/types';
 
 /**
  * Service responsable de la gestion des données des candidats
@@ -29,7 +30,16 @@ export const candidateDataService = {
       }
       
       console.log(`Retrieved ${data.length} candidates`);
-      return data;
+      
+      // Transform the skills field from Json to string[] to match the CandidateData interface
+      const transformedData = data.map(candidate => ({
+        ...candidate,
+        // Convert skills from Json to string[]
+        skills: Array.isArray(candidate.skills) ? candidate.skills : 
+                (typeof candidate.skills === 'string' ? [candidate.skills] : [])
+      })) as CandidateData[];
+      
+      return transformedData;
     } catch (error: any) {
       console.error("Exception in getUserCandidates:", error);
       throw new Error(error.message || "Impossible de récupérer les candidats");

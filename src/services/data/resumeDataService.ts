@@ -27,7 +27,7 @@ export interface CandidateData {
   position?: string;
   years_experience?: number;
   location?: string;
-  skills?: string[];
+  skills?: string[] | Json; // Updated to accept both string[] and Json
   score?: number;
   status?: string;
   company?: string;
@@ -40,31 +40,31 @@ export interface CandidateData {
     company?: string;
     dates?: string;
     description?: string;
-  }[];
+  }[] | Json;
   
   education?: {
     degree?: string;
     institution?: string;
     year?: string;
     description?: string;
-  }[];
+  }[] | Json;
   
   certifications?: {
     name?: string;
     issuer?: string;
     date?: string;
-  }[];
+  }[] | Json;
   
   languages?: {
     language?: string;
     level?: string;
-  }[];
+  }[] | Json;
   
   publications?: {
     title?: string;
     publisher?: string;
     year?: string;
-  }[];
+  }[] | Json;
   
   interests?: string;
   
@@ -73,7 +73,7 @@ export interface CandidateData {
     position?: string;
     company?: string;
     contact?: string;
-  }[];
+  }[] | Json;
   
   availability?: string;
   salary_expectations?: string;
@@ -85,27 +85,27 @@ export interface CandidateData {
   professional_networks?: {
     platform?: string;
     url?: string;
-  }[];
+  }[] | Json;
   
   continuous_training?: {
     course?: string;
     provider?: string;
     year?: string;
-  }[];
+  }[] | Json;
   
   career_objectives?: string;
   professional_values?: string;
   work_authorization?: string;
   
-  special_permits?: string[];
-  industries?: string[];
+  special_permits?: string[] | Json;
+  industries?: string[] | Json;
   projects?: {
     name?: string;
     description?: string;
     technologies?: string[];
     role?: string;
     year?: string;
-  }[];
+  }[] | Json;
   
   profile_completeness?: number;
   last_updated_at?: string;

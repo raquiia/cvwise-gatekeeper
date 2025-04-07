@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { resumeAnalysisService } from '../analysis/resumeAnalysisService';
 import { resumeDataService } from '../data/resumeDataService';
+import { resumeStorageService } from '../storage/resumeStorageService';
 
 /**
  * Analyze a resume by its ID
@@ -28,53 +29,15 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     
     console.log('Resume found, proceeding with analysis');
     
-    // Récupérer le contenu du fichier
-    const { downloadFile } = resumeStorageService;
-    const { data: fileData, error: downloadError } = await downloadFile(resume.file_path);
+    // Appeler directement le service d'analyse avec l'ID du CV
+    // Le Edge Function s'occupera de l'extraction et de l'analyse du contenu
+    const analysisResult = await resumeAnalysisService.analyzeResume(resumeId);
     
-    if (downloadError || !fileData) {
-      console.error('Error downloading file for analysis:', downloadError);
-      throw new Error(downloadError?.message || 'Impossible de télécharger le fichier pour analyse');
+    if (!analysisResult.success) {
+      throw new Error(analysisResult.message || 'Échec de l\'analyse du CV');
     }
     
-    console.log('File downloaded, starting text extraction');
-    
-    // Extraire et analyser le texte du fichier
-    const resumeText = await resumeAnalysisService.extractTextFromFile(fileData, resume.file_type);
-    if (!resumeText) {
-      throw new Error('Impossible d\'extraire le texte du CV');
-    }
-    
-    console.log('Text extracted, analyzing content');
-    
-    // Analyser le contenu du CV
-    const analysis = await resumeAnalysisService.analyzeResume(resumeText);
-    if (!analysis) {
-      throw new Error('Échec de l\'analyse du CV');
-    }
-    
-    console.log('Resume analyzed, creating candidate profile');
-    
-    // Créer un candidat à partir de l'analyse
-    const candidateData = {
-      resume_id: resumeId,
-      user_id: resume.user_id,
-      ...analysis
-    };
-    
-    // Insérer le candidat dans la base de données
-    const { data: candidateResult, error: insertError } = await supabase
-      .from('candidates')
-      .insert(candidateData)
-      .select('id')
-      .single();
-    
-    if (insertError) {
-      console.error('Error creating candidate:', insertError);
-      throw new Error(insertError.message);
-    }
-    
-    console.log('Candidate created successfully, updating resume status');
+    console.log('Resume analyzed successfully:', analysisResult);
     
     // Marquer le CV comme analysé
     await resumeDataService.markResumeAsParsed(resumeId);
@@ -84,7 +47,7 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     return { 
       success: true, 
       message: 'Analyse terminée avec succès',
-      candidateId: candidateResult?.id
+      candidateId: analysisResult.candidateId
     };
   } catch (error: any) {
     console.error('Error in analyzeResume:', error);
@@ -94,6 +57,3 @@ export const analyzeResume = async (resumeId: string): Promise<{ success: boolea
     };
   }
 };
-
-// Import manquant
-import { resumeStorageService } from '../storage/resumeStorageService';
