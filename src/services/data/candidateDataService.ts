@@ -15,6 +15,7 @@ export const candidateDataService = {
     try {
       console.log("Fetching candidates for user:", userId);
       
+      // Using the secure RPC function to get all candidates
       const { data, error } = await supabase.rpc('get_user_candidates', {
         user_id_param: userId
       });
@@ -53,7 +54,8 @@ export const candidateDataService = {
     try {
       console.log("Fetching candidate with ID:", candidateId);
       
-      // Utiliser une requête directe avec maybeSingle pour éviter les problèmes de récursion
+      // Use our select policy directly without trying to use RPC
+      // This approach is safer as it completely avoids RLS recursion issues
       const { data, error } = await supabase
         .from('candidates')
         .select('*')
@@ -72,7 +74,7 @@ export const candidateDataService = {
       
       console.log("Successfully retrieved candidate data:", data);
       
-      // Le typage est correct car data provient directement de la table candidates
+      // Type assertion is safe here since the data comes directly from candidates table
       return data as CandidateData;
     } catch (error: any) {
       console.error("Exception in getCandidateById:", error);
@@ -88,7 +90,6 @@ export const candidateDataService = {
       console.log(`Starting deletion of candidate with ID: ${candidateId}`);
       
       // 1. Récupérer d'abord le candidat pour obtenir le resume_id
-      // Use direct query instead of RLS-protected endpoint to avoid recursion
       const { data: candidateData, error: candidateFetchError } = await supabase
         .from('candidates')
         .select('resume_id')
@@ -96,13 +97,8 @@ export const candidateDataService = {
         .maybeSingle();
       
       if (candidateFetchError) {
-        if (candidateFetchError.message.includes('recursion')) {
-          console.error("RLS recursion detected during candidate fetch, trying direct deletion");
-          // Continue with deletion even if we can't fetch the candidate
-        } else {
-          console.error("Error fetching candidate for deletion:", candidateFetchError.message);
-          throw new Error(`Erreur lors de la récupération du candidat: ${candidateFetchError.message}`);
-        }
+        console.error("Error fetching candidate for deletion:", candidateFetchError.message);
+        throw new Error(`Erreur lors de la récupération du candidat: ${candidateFetchError.message}`);
       }
       
       // Store resume_id for later use if found
