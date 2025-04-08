@@ -1,41 +1,46 @@
 
 import { supabase } from './client';
 
+/**
+ * Ensures that the 'resumes' bucket exists in Supabase storage
+ */
 export const ensureResumesBucketExists = async (): Promise<void> => {
   try {
-    // Check if the bucket already exists
-    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+    console.log('Creating resumes bucket...');
     
-    if (bucketsError) {
-      console.error('Error checking buckets:', bucketsError);
-      return;
-    }
+    // Try to create the bucket (will fail silently if it already exists)
+    const { error } = await supabase.storage.createBucket('resumes', {
+      public: true,
+      fileSizeLimit: 52428800, // 50MB
+      allowedMimeTypes: [
+        'application/pdf', 
+        'application/msword', 
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain'
+      ]
+    });
     
-    // If the bucket doesn't exist, create it
-    const bucketExists = buckets.some(bucket => bucket.name === 'resumes');
-    
-    if (!bucketExists) {
-      console.log('Creating resumes bucket...');
-      const { error } = await supabase.storage.createBucket('resumes', {
-        public: true,
-        fileSizeLimit: 52428800 // 50MB
-      });
-      
-      if (error) {
-        console.error('Error creating resumes bucket:', error);
+    if (error) {
+      if (error.message.includes('already exists')) {
+        console.log('Resumes bucket already exists');
+        
+        // Make sure bucket is public
+        await supabase.storage.updateBucket('resumes', {
+          public: true
+        }).catch(err => {
+          console.warn('Failed to update bucket visibility:', err);
+        });
+        
         return;
       }
       
-      // Verify bucket is public - note that getPublicUrl doesn't return an error property
-      // so we'll just log it without checking for an error
-      console.log('Setting bucket to public');
-      await supabase.storage.from('resumes').getPublicUrl('test');
-      
-      console.log('Resumes bucket created successfully');
-    } else {
-      console.log('Resumes bucket already exists');
+      console.error('Error creating resumes bucket:', error);
+      throw error;
     }
+    
+    console.log('Resumes bucket created successfully');
   } catch (error) {
-    console.error('Exception during bucket creation:', error);
+    console.error('Error creating resumes bucket:', error);
+    // Don't throw - we want the application to continue even if bucket creation fails
   }
 };

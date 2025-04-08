@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Upload, Loader2 } from 'lucide-react';
@@ -6,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { uploadResume } from '@/services/resumeService';
+import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
 
 interface DebugUploadButtonProps {
   userId: string;
@@ -22,6 +22,9 @@ const DebugUploadButton = ({ userId }: DebugUploadButtonProps) => {
   const handleTestUpload = async () => {
     setUploading(true);
     try {
+      // Ensure bucket exists before uploading
+      await ensureResumesBucketExists();
+      
       const testContent = "This is a test CV file";
       const testBlob = new Blob([testContent], { type: 'text/plain' });
       const testFile = new File([testBlob], 'test-cv.txt', { type: 'text/plain' });

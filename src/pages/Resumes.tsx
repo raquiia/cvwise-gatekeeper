@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, Loader2, AlertCircle, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -54,10 +53,7 @@ const Resumes = () => {
       setErrorMessage(null);
       
       try {
-        // Ensure bucket exists (non-blocking)
-        ensureResumesBucketExists().catch(err => {
-          console.warn('Bucket initialization warning:', err);
-        });
+        await ensureResumesBucketExists();
         
         const data = await getUserResumes(user.id);
         setResumes(data || []);

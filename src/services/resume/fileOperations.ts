@@ -9,57 +9,104 @@ export const downloadResume = async (filePath: string, fileName: string): Promis
   try {
     console.log('Starting file download for:', filePath);
     
-    // Attempt to get a public URL first
-    const { data: publicUrlData, error: publicUrlError } = await supabase
-      .storage
-      .from('resumes')
-      .createSignedUrl(filePath, 60);
+    // Force bucket creation to ensure it exists
+    await supabase.storage.createBucket('resumes', {
+      public: true,
+      fileSizeLimit: 52428800,
+      allowedMimeTypes: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
+    }).catch(err => {
+      // Ignore "bucket already exists" errors
+      if (!err.message?.includes('already exists')) {
+        console.warn('Bucket creation warning:', err.message);
+      }
+    });
     
-    if (!publicUrlError && publicUrlData && publicUrlData.signedUrl) {
-      console.log('Got signed URL:', publicUrlData.signedUrl);
-      
-      // Use the signed URL to download the file
-      const response = await fetch(publicUrlData.signedUrl);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+    // Try to get the file directly from public URL first
+    try {
+      const { data } = supabase.storage
+        .from('resumes')
+        .getPublicUrl(filePath);
+        
+      if (data && data.publicUrl) {
+        console.log('Using public URL download path');
+        const response = await fetch(data.publicUrl);
+        
+        if (!response.ok) {
+          console.warn(`Public URL fetch failed with status: ${response.status}`);
+          throw new Error('Public URL fetch failed');
+        }
+        
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        console.log('File downloaded successfully using public URL');
+        return true;
       }
-      
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      console.log('File downloaded successfully using signed URL');
-      return true;
-    } else {
-      console.warn('Could not get signed URL, falling back to direct download:', publicUrlError);
-      
-      // Fallback to direct download if signed URL fails
-      const { data, error } = await resumeStorageService.downloadFile(filePath);
-      
-      if (error || !data) {
-        console.error('Download error:', error);
-        throw new Error(error?.message || 'Failed to download file');
-      }
-      
-      const url = URL.createObjectURL(data);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      console.log('File downloaded successfully using direct download');
-      return true;
+    } catch (publicUrlError) {
+      console.warn('Public URL method failed, trying signed URL approach:', publicUrlError);
     }
+    
+    // Try signed URL approach
+    try {
+      const { data: signedData, error: signedError } = await supabase.storage
+        .from('resumes')
+        .createSignedUrl(filePath, 60);
+      
+      if (!signedError && signedData && signedData.signedUrl) {
+        console.log('Using signed URL download path');
+        const response = await fetch(signedData.signedUrl);
+        
+        if (!response.ok) {
+          console.warn(`Signed URL fetch failed with status: ${response.status}`);
+          throw new Error(`Signed URL fetch failed: ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        console.log('File downloaded successfully using signed URL');
+        return true;
+      }
+    } catch (signedUrlError) {
+      console.warn('Signed URL method failed, trying direct download:', signedUrlError);
+    }
+    
+    // Last resort: try direct download
+    console.log('Attempting direct storage download as last resort');
+    const { data, error } = await supabase.storage
+      .from('resumes')
+      .download(filePath);
+      
+    if (error || !data) {
+      console.error('All download methods failed. Final error:', error);
+      throw new Error(error?.message || 'Failed to download file after all attempts');
+    }
+    
+    const url = URL.createObjectURL(data);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    console.log('File downloaded successfully using direct download');
+    return true;
   } catch (error: any) {
     console.error('Error downloading resume:', error);
     throw error;
