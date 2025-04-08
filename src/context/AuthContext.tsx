@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,7 +23,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Auth state changed:', event);
@@ -36,16 +34,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             title: "Connexion réussie",
             description: "Bienvenue sur CVwise",
           });
+          navigate('/dashboard');
         } else if (event === 'SIGNED_OUT') {
           toast({
             title: "Déconnexion réussie",
             description: "À bientôt !",
           });
+          navigate('/');
         }
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -53,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => subscription.unsubscribe();
-  }, [toast]);
+  }, [toast, navigate]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -67,8 +66,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         throw error;
       }
-      
-      navigate('/dashboard');
     } catch (error: any) {
       console.error('Error signing in:', error);
     }
@@ -111,7 +108,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
-      navigate('/login');
     } catch (error: any) {
       console.error('Error signing out:', error);
       toast({
