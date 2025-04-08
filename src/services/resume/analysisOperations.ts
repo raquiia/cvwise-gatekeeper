@@ -244,7 +244,8 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
   try {
     console.log('Fetching complete data for candidate:', candidateId);
     
-    // Récupérer directement toutes les données du candidat depuis la base de données
+    // Utiliser une requête directe à la table au lieu d'une fonction RPC pour éviter
+    // les problèmes de récursion infinie dans les politiques RLS
     const { data, error } = await supabase
       .from('candidates')
       .select('*')
