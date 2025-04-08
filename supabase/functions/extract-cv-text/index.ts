@@ -55,7 +55,7 @@ serve(async (req) => {
       
       // Download the PDF with a timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
       try {
         // Download the PDF
