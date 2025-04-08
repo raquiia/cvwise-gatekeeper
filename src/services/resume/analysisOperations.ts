@@ -141,10 +141,106 @@ export const analyzeResume = async (resumeId: string, resumeText: string): Promi
   }
 };
 
+// Define type interfaces for candidate data
+export interface CandidateExperience {
+  title?: string;
+  company?: string;
+  start_date?: string;
+  end_date?: string;
+  location?: string;
+  description?: string;
+  skills?: string[];
+}
+
+export interface CandidateEducation {
+  degree?: string;
+  institution?: string;
+  school?: string;
+  start_date?: string;
+  end_date?: string;
+  year?: string;
+  location?: string;
+  description?: string;
+}
+
+export interface CandidateCertification {
+  name?: string;
+  title?: string;
+  issuer?: string;
+  date?: string;
+  description?: string;
+}
+
+export interface CandidateLanguage {
+  language?: string;
+  level?: string;
+}
+
+export interface CandidateProject {
+  name?: string;
+  title?: string;
+  description?: string;
+  technologies?: string;
+  date?: string;
+  role?: string;
+  url?: string;
+}
+
+export interface CandidateReference {
+  name?: string;
+  position?: string;
+  company?: string;
+  contact?: string;
+}
+
+export interface CandidateNetwork {
+  platform?: string;
+  name?: string;
+  url?: string;
+}
+
+export interface CandidateData {
+  id: string;
+  resume_id?: string;
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  position?: string;
+  company?: string;
+  years_experience?: number;
+  location?: string;
+  interests?: string;
+  availability?: string;
+  salary_expectations?: string;
+  mobility?: string;
+  contract_type?: string;
+  remote_preference?: string;
+  travel_willingness?: string;
+  career_objectives?: string;
+  professional_values?: string;
+  work_authorization?: string;
+  status?: string;
+  score?: number;
+  profile_completeness?: number;
+  created_at?: string;
+  updated_at?: string;
+  skills: string[];
+  experiences: CandidateExperience[];
+  education: CandidateEducation[];
+  certifications: CandidateCertification[];
+  languages: CandidateLanguage[];
+  projects: CandidateProject[];
+  professional_references: CandidateReference[];
+  professional_networks: CandidateNetwork[];
+  industries: string[];
+}
+
 /**
  * Récupérer les données complètes d'un candidat
  */
-export const getCompleteCandidateData = async (candidateId: string): Promise<any> => {
+export const getCompleteCandidateData = async (candidateId: string): Promise<CandidateData> => {
   try {
     console.log('Fetching complete data for candidate:', candidateId);
     
@@ -164,18 +260,18 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<any
       throw new Error('Candidat non trouvé');
     }
     
-    // Vérifier et transformer les données au format attendu
-    const formattedData = {
+    // Formater les données au format CandidateData
+    const formattedData: CandidateData = {
       ...data,
-      experiences: ensureArray(data.experiences),
-      education: ensureArray(data.education),
-      skills: ensureArray(data.skills),
-      languages: ensureArray(data.languages),
-      certifications: ensureArray(data.certifications),
-      projects: ensureArray(data.projects),
-      professional_references: ensureArray(data.professional_references),
-      professional_networks: ensureArray(data.professional_networks),
-      industries: ensureArray(data.industries)
+      experiences: ensureArrayWithType<CandidateExperience>(data.experiences),
+      education: ensureArrayWithType<CandidateEducation>(data.education),
+      skills: ensureArrayWithType<string>(data.skills),
+      languages: ensureArrayWithType<CandidateLanguage>(data.languages),
+      certifications: ensureArrayWithType<CandidateCertification>(data.certifications),
+      projects: ensureArrayWithType<CandidateProject>(data.projects),
+      professional_references: ensureArrayWithType<CandidateReference>(data.professional_references),
+      professional_networks: ensureArrayWithType<CandidateNetwork>(data.professional_networks),
+      industries: ensureArrayWithType<string>(data.industries)
     };
     
     console.log('Formatted candidate data:', {
@@ -197,9 +293,9 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<any
 };
 
 /**
- * Assure qu'un champ possiblement JSON, array ou string est transformé en tableau
+ * Assure qu'un champ possiblement JSON, array ou string est transformé en tableau du type spécifié
  */
-function ensureArray<T>(data: unknown): T[] {
+function ensureArrayWithType<T>(data: unknown): T[] {
   if (!data) return [];
   
   // Si c'est déjà un tableau, le retourner
@@ -211,10 +307,10 @@ function ensureArray<T>(data: unknown): T[] {
   if (typeof data === 'string') {
     try {
       const parsed = JSON.parse(data);
-      return Array.isArray(parsed) ? parsed as T[] : [data as T];
+      return Array.isArray(parsed) ? parsed as T[] : [data as unknown as T];
     } catch (e) {
       // Si le parsing échoue, retourner la string comme élément unique du tableau
-      return [data as T];
+      return [data as unknown as T];
     }
   }
   
@@ -224,5 +320,12 @@ function ensureArray<T>(data: unknown): T[] {
   }
   
   // Pour les valeurs primitives (number, boolean), les retourner comme élément unique
-  return [data as T];
+  return [data as unknown as T];
+}
+
+/**
+ * Version simplifiée sans type générique pour la compatibilité avec le code existant
+ */
+function ensureArray(data: unknown): any[] {
+  return ensureArrayWithType<any>(data);
 }

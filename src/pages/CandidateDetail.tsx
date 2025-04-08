@@ -6,8 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { candidateDataService } from '@/services/data/candidateDataService';
-import { CandidateData } from '@/services/data/resumeDataService';
-import { getCompleteCandidateData } from '@/services/resume/analysisOperations';
+import { 
+  getCompleteCandidateData, 
+  CandidateData, 
+  CandidateExperience, 
+  CandidateEducation,
+  CandidateLanguage,
+  CandidateCertification,
+  CandidateProject,
+  CandidateReference,
+  CandidateNetwork
+} from '@/services/resume/analysisOperations';
 import { 
   ArrowLeft, User, MapPin, Phone, Mail, Briefcase, Award, Calendar, 
   FileText, Loader2, GraduationCap, Languages, Award as CertificateIcon, 
@@ -91,6 +100,7 @@ const CandidateDetail = () => {
     );
   }
 
+  // Nous sommes sûrs que ces propriétés sont des tableaux grâce à notre fonction ensureArrayWithType
   const skills = candidate.skills || [];
   const education = candidate.education || [];
   const experiences = candidate.experiences || [];
@@ -258,12 +268,12 @@ const CandidateDetail = () => {
                         <div>
                           <h3 className="font-medium text-navy-dark mb-4">Industries</h3>
                           <div className="flex flex-wrap gap-2">
-                            {industries.map((industry: any, idx: number) => (
+                            {industries.map((industry, idx) => (
                               <div 
                                 key={idx}
                                 className="px-3 py-1.5 bg-navy/5 text-navy-dark text-sm rounded-full"
                               >
-                                {typeof industry === 'string' ? industry : industry.name || ''}
+                                {typeof industry === 'string' ? industry : industry}
                               </div>
                             ))}
                           </div>
@@ -375,19 +385,19 @@ const CandidateDetail = () => {
               <CardContent>
                 {experiences.length > 0 ? (
                   <div className="space-y-6">
-                    {experiences.map((exp: any, idx: number) => (
+                    {experiences.map((exp: CandidateExperience, idx: number) => (
                       <div key={idx} className="relative pl-6 pb-6 border-l-2 border-navy/20 last:border-0 last:pb-0">
                         <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-navy"></div>
                         <div className="mb-1">
-                          <h3 className="text-lg font-semibold text-navy-dark">{exp.title || exp.position}</h3>
+                          <h3 className="text-lg font-semibold text-navy-dark">{exp.title || exp.title}</h3>
                           <div className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
                             <span className="font-medium text-navy">{exp.company}</span>
                             {exp.location && <span>• {exp.location}</span>}
-                            {(exp.startDate || exp.start_date) && (
+                            {(exp.start_date) && (
                               <span>
-                                • {exp.startDate || exp.start_date} 
-                                {(exp.endDate || exp.end_date) ? 
-                                  ` - ${exp.endDate || exp.end_date}` : 
+                                • {exp.start_date} 
+                                {(exp.end_date) ? 
+                                  ` - ${exp.end_date}` : 
                                   " - Présent"}
                               </span>
                             )}
@@ -427,7 +437,7 @@ const CandidateDetail = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {projects.map((project: any, idx: number) => (
+                    {projects.map((project: CandidateProject, idx: number) => (
                       <div key={idx} className="p-4 border border-border rounded-lg">
                         <h3 className="text-lg font-semibold text-navy-dark mb-1">
                           {typeof project === 'string' ? 
@@ -475,23 +485,23 @@ const CandidateDetail = () => {
               <CardContent>
                 {education.length > 0 ? (
                   <div className="space-y-6">
-                    {education.map((edu: any, idx: number) => (
+                    {education.map((edu: CandidateEducation, idx: number) => (
                       <div key={idx} className="relative pl-6 pb-6 border-l-2 border-navy/20 last:border-0 last:pb-0">
                         <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-navy"></div>
                         <div className="mb-1">
-                          <h3 className="text-lg font-semibold text-navy-dark">{edu.degree || edu.diploma}</h3>
+                          <h3 className="text-lg font-semibold text-navy-dark">{edu.degree || edu.degree}</h3>
                           <div className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
                             <span className="font-medium text-navy">{edu.institution || edu.school}</span>
                             {edu.location && <span>• {edu.location}</span>}
-                            {(edu.start_date || edu.startDate) && (
+                            {(edu.start_date) && (
                               <span>
-                                • {edu.start_date || edu.startDate} 
-                                {(edu.end_date || edu.endDate) ? 
-                                  ` - ${edu.end_date || edu.endDate}` : 
+                                • {edu.start_date} 
+                                {(edu.end_date) ? 
+                                  ` - ${edu.end_date}` : 
                                   ""}
                               </span>
                             )}
-                            {!edu.start_date && !edu.startDate && edu.year && <span>• {edu.year}</span>}
+                            {!edu.start_date && edu.year && <span>• {edu.year}</span>}
                           </div>
                         </div>
                         {edu.description && (
@@ -519,7 +529,7 @@ const CandidateDetail = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {certifications.map((cert: any, idx: number) => (
+                    {certifications.map((cert: CandidateCertification, idx: number) => (
                       <div key={idx} className="p-4 border border-border rounded-lg">
                         <div className="flex items-start">
                           <CertificateIcon className="mr-3 text-navy h-5 w-5 mt-1" />
@@ -550,7 +560,7 @@ const CandidateDetail = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {languages.map((lang: any, idx: number) => (
+                    {languages.map((lang: CandidateLanguage, idx: number) => (
                       <div key={idx} className="flex items-center p-3 border border-border rounded-lg">
                         <Languages className="h-5 w-5 mr-3 text-navy" />
                         <div>
@@ -601,7 +611,7 @@ const CandidateDetail = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {professional_references.map((ref: any, idx: number) => (
+                        {professional_references.map((ref: CandidateReference, idx: number) => (
                           <div key={idx} className="p-3 border border-border rounded-lg">
                             <h4 className="font-semibold">{ref.name}</h4>
                             {ref.position && <p className="text-sm text-navy">{ref.position}</p>}
@@ -621,7 +631,7 @@ const CandidateDetail = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {professional_networks.map((network: any, idx: number) => (
+                        {professional_networks.map((network: CandidateNetwork, idx: number) => (
                           <div key={idx} className="flex items-center">
                             <Globe className="h-4 w-4 mr-2 text-navy" />
                             <a 
