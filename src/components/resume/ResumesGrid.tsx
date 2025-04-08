@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, FileText, Download, Loader2, MoreHorizontal, Calendar, Trash2, Brain } from 'lucide-react';
+import { Plus, FileText, Download, Loader2, MoreHorizontal, Calendar, Trash2, Brain, FileCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -64,6 +64,26 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
     return resumesWithExtractedText && typeof resumesWithExtractedText[resumeId] === 'string' && resumesWithExtractedText[resumeId].length > 0;
   };
   
+  // Fonction pour déterminer si un CV a été analysé (a un candidat associé)
+  const isResumeAnalyzed = (resume: ResumeData): boolean => {
+    return resume.parsed || (resume.candidates && resume.candidates.length > 0);
+  };
+  
+  // Fonction pour obtenir la classe CSS de la carte en fonction de l'état d'analyse
+  const getCardClassName = (resume: ResumeData): string => {
+    if (selectionMode) return 'card-hover-disabled glass flex flex-col';
+    
+    if (isResumeAnalyzed(resume)) {
+      return 'card-hover glass flex flex-col border-l-4 border-green-500 bg-green-50';
+    }
+    
+    if (hasExtractedText(resume.id)) {
+      return 'card-hover glass flex flex-col border-l-4 border-blue-500 bg-blue-50';
+    }
+    
+    return 'card-hover glass flex flex-col';
+  };
+  
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -82,12 +102,16 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
             key={resume.id}
             selected={selectedResumes.includes(resume.id)}
             onSelect={() => onSelect(resume.id)}
-            className={`${selectionMode ? 'card-hover-disabled' : 'card-hover'} glass flex flex-col`}
+            className={getCardClassName(resume)}
           >
             <div className="p-4 flex-grow">
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 rounded-full bg-navy flex items-center justify-center text-sand">
-                  <FileText size={18} />
+                  {isResumeAnalyzed(resume) ? (
+                    <FileCheck size={18} className="text-green-500" />
+                  ) : (
+                    <FileText size={18} />
+                  )}
                 </div>
                 
                 {!selectionMode && (
@@ -170,6 +194,24 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
               <div className="text-xs text-muted-foreground mt-1">
                 Taille: {(resume.file_size / 1024 / 1024).toFixed(2)} MB
               </div>
+              
+              {isResumeAnalyzed(resume) && (
+                <div className="mt-2">
+                  <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
+                    <FileCheck size={12} className="mr-1" />
+                    Analysé
+                  </span>
+                </div>
+              )}
+              
+              {!isResumeAnalyzed(resume) && hasExtractedText(resume.id) && (
+                <div className="mt-2">
+                  <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800">
+                    <FileText size={12} className="mr-1" />
+                    Texte extrait
+                  </span>
+                </div>
+              )}
             </div>
             
             {!selectionMode && (
@@ -212,9 +254,9 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                 
                 {hasExtractedText(resume.id) && (
                   <Button 
-                    variant="outline" 
+                    variant={isResumeAnalyzed(resume) ? "outline" : "default"}
                     size="sm"
-                    className="text-xs flex-1 bg-green-50 border-green-200 hover:bg-green-100"
+                    className={`text-xs flex-1 ${isResumeAnalyzed(resume) ? "bg-green-50 border-green-200 hover:bg-green-100" : "bg-blue-500 hover:bg-blue-600"}`}
                     onClick={(e) => {
                       e.preventDefault();
                       onAnalyzeResume(resume.id, resumesWithExtractedText[resume.id]);

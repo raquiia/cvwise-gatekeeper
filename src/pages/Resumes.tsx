@@ -72,6 +72,16 @@ const Resumes = () => {
         
         const data = await getUserResumes(user.id);
         setResumes(data || []);
+        
+        // Restaurer les textes extraits à partir du localStorage
+        try {
+          const savedExtractedTexts = localStorage.getItem('resumesWithExtractedText');
+          if (savedExtractedTexts) {
+            setResumesWithExtractedText(JSON.parse(savedExtractedTexts));
+          }
+        } catch (error) {
+          console.error('Error loading extracted texts from localStorage:', error);
+        }
       } catch (error: any) {
         console.error('Error loading resumes:', error);
         setErrorMessage(error?.message || 'Une erreur est survenue lors du chargement des CV');
@@ -147,11 +157,12 @@ const Resumes = () => {
         
         // Supprimer également le texte extrait s'il existe
         if (resumesWithExtractedText[resumeId]) {
-          setResumesWithExtractedText(prev => {
-            const newState = { ...prev };
-            delete newState[resumeId];
-            return newState;
-          });
+          const newExtractedTexts = { ...resumesWithExtractedText };
+          delete newExtractedTexts[resumeId];
+          setResumesWithExtractedText(newExtractedTexts);
+          
+          // Mettre à jour le localStorage
+          localStorage.setItem('resumesWithExtractedText', JSON.stringify(newExtractedTexts));
         }
       } else {
         throw new Error("Échec de la suppression du CV");
@@ -183,10 +194,14 @@ const Resumes = () => {
         setIsTextDialogOpen(true);
         
         // Stocker le texte extrait pour l'utiliser plus tard
-        setResumesWithExtractedText(prev => ({
-          ...prev,
+        const newExtractedTexts = {
+          ...resumesWithExtractedText,
           [resumeId]: result.text || ''
-        }));
+        };
+        setResumesWithExtractedText(newExtractedTexts);
+        
+        // Sauvegarder dans le localStorage pour persistance
+        localStorage.setItem('resumesWithExtractedText', JSON.stringify(newExtractedTexts));
         
         toast({
           title: "Extraction réussie",
@@ -224,6 +239,13 @@ const Resumes = () => {
           title: "Analyse réussie",
           description: "Le CV a été analysé avec succès et un candidat a été créé"
         });
+        
+        // Mettre à jour le statut parsed du CV localement
+        setResumes(prev => 
+          prev.map(resume => 
+            resume.id === resumeId ? { ...resume, parsed: true } : resume
+          )
+        );
         
         // Recharger les CV pour afficher le candidat associé
         await loadResumes();
