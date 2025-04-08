@@ -42,73 +42,140 @@ serve(async (req) => {
     
     console.log("Démarrage de l'extraction de texte pour:", pdfUrl);
 
-    // Ensure URL is correctly formed for the Supabase Storage
-    const correctedUrl = ensureValidUrl(pdfUrl);
-    console.log("URL corrigée pour extraction:", correctedUrl);
+    // Get service role key for authenticated access
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    
+    if (!serviceKey || !supabaseUrl) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Configuration du serveur incomplète (variables d'environnement manquantes)"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500
+        }
+      );
+    }
 
-    // Check if the URL is accessible
+    // Extract user_id and file path from the URL pattern
+    const filePathMatch = pdfUrl.match(/\/([^\/]+)\/([^\/]+\.[^\/]+)$/);
+    let filePath = '';
+    
+    if (filePathMatch && filePathMatch.length >= 3) {
+      // Use the extracted path from URL
+      filePath = `${filePathMatch[1]}/${filePathMatch[2]}`;
+    } else {
+      // Try to extract from the Supabase storage URL pattern
+      const storageMatch = pdfUrl.match(/\/storage\/v\d\/object\/(?:public\/)?([^?]+)/);
+      if (storageMatch && storageMatch.length >= 2) {
+        filePath = decodeURIComponent(storageMatch[1]);
+      } else {
+        // Last attempt - check if it's already a path
+        if (pdfUrl.includes('/')) {
+          const parts = pdfUrl.split('/');
+          filePath = parts.slice(-2).join('/');
+        }
+      }
+    }
+    
+    if (!filePath) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Impossible d'extraire le chemin du fichier depuis l'URL"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400
+        }
+      );
+    }
+    
+    console.log("Chemin du fichier extrait:", filePath);
+    
+    // Try direct storage API access using admin privileges
+    const storageFileUrl = `${supabaseUrl}/storage/v1/object/resumes/${filePath}`;
+    console.log("Tentative d'accès au fichier via URL admin:", storageFileUrl);
+    
+    // Set up retry mechanism
     let response = null;
     let retryCount = 0;
     const maxRetries = 3;
     
     while (retryCount < maxRetries) {
       try {
-        response = await fetch(correctedUrl, {
-          method: 'HEAD',
+        response = await fetch(storageFileUrl, {
           headers: {
+            'Authorization': `Bearer ${serviceKey}`,
             'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
+            'apikey': serviceKey
           }
         });
         
         if (response.ok) break;
         
-        console.log(`URL check attempt ${retryCount + 1}/${maxRetries} failed with status ${response.status}. Retrying...`);
+        console.log(`Tentative ${retryCount + 1}/${maxRetries} échouée avec statut ${response.status}. Nouvelle tentative...`);
         retryCount++;
         
         // Wait a bit before retrying
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (urlError) {
-        console.error(`URL check error (attempt ${retryCount + 1}):`, urlError);
+        console.error(`Erreur lors de la tentative ${retryCount + 1}:`, urlError);
         retryCount++;
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     
     if (!response || !response.ok) {
-      console.error(`URL check failed after ${maxRetries} attempts:`, response?.status || 'Network error');
+      console.error(`Échec d'accès au fichier après ${maxRetries} tentatives:`, response?.status || 'Erreur réseau');
       
-      // Try getting a different URL format for storage access
+      // Try getting a public URL as fallback
       try {
-        const projectUrl = Deno.env.get('SUPABASE_URL') || '';
-        const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-        const storagePath = pdfUrl.includes('/object/public/') 
-          ? pdfUrl.split('/object/public/')[1] 
-          : pdfUrl.includes('/object/') 
-            ? pdfUrl.split('/object/')[1]
-            : pdfUrl;
-            
-        // Try with direct storage API access using service role
-        const alternativeUrl = `${projectUrl}/storage/v1/object/resumes/${storagePath}`;
+        // Use rest API to get file data directly
+        const restUrl = `${supabaseUrl}/rest/v1/resumes?id=eq.${resumeId}&select=file_path`;
+        console.log("Tentative de récupération des informations du fichier via API REST:", restUrl);
         
-        console.log("Trying alternative URL format:", alternativeUrl);
-        
-        response = await fetch(alternativeUrl, {
+        const restResponse = await fetch(restUrl, {
           headers: {
             'Authorization': `Bearer ${serviceKey}`,
-            'Cache-Control': 'no-cache'
+            'apikey': serviceKey
+          }
+        });
+        
+        if (!restResponse.ok) {
+          throw new Error(`Échec de récupération des informations: ${restResponse.status}`);
+        }
+        
+        const resumeInfo = await restResponse.json();
+        if (!resumeInfo || resumeInfo.length === 0) {
+          throw new Error("Aucune information trouvée pour ce CV");
+        }
+        
+        filePath = resumeInfo[0].file_path;
+        console.log("Chemin de fichier obtenu via API REST:", filePath);
+        
+        // Try one last time with the new path
+        const finalStorageUrl = `${supabaseUrl}/storage/v1/object/resumes/${filePath}`;
+        console.log("Dernière tentative avec l'URL:", finalStorageUrl);
+        
+        response = await fetch(finalStorageUrl, {
+          headers: {
+            'Authorization': `Bearer ${serviceKey}`,
+            'apikey': serviceKey
           }
         });
         
         if (!response.ok) {
-          throw new Error(`Failed with status: ${response.status}`);
+          throw new Error(`Échec avec statut: ${response.status}`);
         }
-      } catch (altUrlError) {
-        console.error("Alternative URL access failed:", altUrlError);
+      } catch (fallbackError) {
+        console.error("Toutes les tentatives d'accès au fichier ont échoué:", fallbackError);
         return new Response(
           JSON.stringify({
             success: false,
-            error: `PDF inaccessible après plusieurs tentatives: Vérifiez que le bucket 'resumes' existe et que le fichier est accessible.`
+            error: `Impossible d'accéder au fichier PDF: Vérifiez que le bucket 'resumes' existe et que le fichier est accessible.`
           }),
           {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -118,44 +185,8 @@ serve(async (req) => {
       }
     }
     
-    // Download the PDF with better error handling and retry
-    retryCount = 0;
-    
-    while (retryCount < maxRetries) {
-      try {
-        response = await fetch(correctedUrl, {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          },
-        });
-        
-        if (response.ok) break;
-        
-        console.log(`Download attempt ${retryCount + 1}/${maxRetries} failed with status ${response.status}. Retrying...`);
-        retryCount++;
-        
-        // Wait a bit before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } catch (fetchError) {
-        console.error(`Fetch error (attempt ${retryCount + 1}):`, fetchError);
-        retryCount++;
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    if (!response || !response.ok) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: `Échec du téléchargement du PDF après ${maxRetries} tentatives: ${response?.status || 'Erreur réseau'}`
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500
-        }
-      );
-    }
+    // Download the PDF
+    console.log("Accès au fichier réussi, téléchargement en cours...");
     
     // Convert to ArrayBuffer
     let pdfData: ArrayBuffer;
@@ -188,12 +219,12 @@ serve(async (req) => {
       );
     }
     
-    console.log(`PDF downloaded, size: ${(pdfData.byteLength / 1024).toFixed(2)} KB`);
+    console.log(`PDF téléchargé, taille: ${(pdfData.byteLength / 1024).toFixed(2)} KB`);
     
     // Limit PDF size to avoid timeouts
     const maxSizeKB = 10 * 1024; // 10 MB
     if (pdfData.byteLength > maxSizeKB * 1024) {
-      console.log(`PDF too large (${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB), extraction limited`);
+      console.log(`PDF trop volumineux (${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB), extraction limitée`);
     }
     
     // Extract text with our simplified method
@@ -231,7 +262,7 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Extraction successful, ${pageCount} page(s), text length: ${extractedText.length} characters`);
+    console.log(`Extraction réussie, ${pageCount} page(s), texte de longueur: ${extractedText.length} caractères`);
     
     return new Response(
       JSON.stringify({
@@ -263,30 +294,3 @@ serve(async (req) => {
     );
   }
 });
-
-/**
- * Ensures the URL is valid for Supabase storage
- * Handles cases where the URL might be missing parts or using incorrect format
- */
-function ensureValidUrl(url: string): string {
-  // If the URL is already fully qualified, return it
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-  
-  // If it's a relative path, convert to absolute
-  if (url.startsWith('/')) {
-    // Get the Supabase URL from the request origin or environment
-    const projectRef = Deno.env.get('SUPABASE_URL') || '';
-    return projectRef + url;
-  }
-  
-  // Handle storage URLs without http prefix
-  if (url.includes('storage/v1/object')) {
-    const projectRef = Deno.env.get('SUPABASE_URL') || '';
-    return projectRef + '/' + url;
-  }
-  
-  // Default case, just return the original
-  return url;
-}

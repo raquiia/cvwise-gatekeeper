@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { resumeAnalysisService } from '../analysis/resumeAnalysisService';
 import { resumeDataService } from '../data/resumeDataService';
@@ -109,35 +110,73 @@ export const extractResumeText = async (resumeId: string): Promise<{ success: bo
           duration: 3000,
         });
         
-        // Télécharger le fichier dans le navigateur
-        const file = await resumeStorageService.downloadResumeAsFile(resumeId);
-        
-        if (!file) {
-          throw new Error("Impossible de télécharger le fichier localement");
+        // Try using a direct signed URL approach
+        try {
+          const { data: signedUrlData, error: signedUrlError } = await supabase
+            .storage
+            .from('resumes')
+            .createSignedUrl(resume.file_path, 60);
+            
+          if (signedUrlError || !signedUrlData || !signedUrlData.signedUrl) {
+            console.error('Error creating signed URL:', signedUrlError);
+            throw new Error("Impossible de créer une URL signée pour le fichier");
+          }
+          
+          console.log('Got signed URL for direct extraction:', signedUrlData.signedUrl.substring(0, 50) + '...');
+          
+          // Use client-side utility to extract text from URL
+          const extractedText = await extractTextFromPDF(new File([await (await fetch(signedUrlData.signedUrl)).blob()], resume.file_name));
+          
+          if (!extractedText || extractedText.length < 50) {
+            throw new Error("Le texte extrait est insuffisant");
+          }
+          
+          console.log('Text extracted successfully via direct signed URL method');
+          
+          toast({
+            title: "Extraction réussie (URL signée)",
+            description: `Texte extrait: ${extractedText.length} caractères`,
+            duration: 3000,
+          });
+          
+          return { 
+            success: true, 
+            message: 'Texte extrait avec succès (URL signée)',
+            text: extractedText
+          };
+        } catch (signedUrlError) {
+          console.error('Signed URL approach failed:', signedUrlError);
+          
+          // Télécharger le fichier dans le navigateur (fallback final)
+          const file = await resumeStorageService.downloadResumeAsFile(resumeId);
+          
+          if (!file) {
+            throw new Error("Impossible de télécharger le fichier localement");
+          }
+          
+          console.log('Successfully downloaded resume file for local processing');
+          
+          // Extraire le texte du fichier sans analyse (méthode client-side)
+          const extractedText = await extractTextFromPDF(file);
+          
+          if (!extractedText || extractedText.length < 50) {
+            throw new Error("Le texte extrait est insuffisant");
+          }
+          
+          console.log('Text extracted successfully via direct file processing (client-side)');
+          
+          toast({
+            title: "Extraction réussie (méthode locale)",
+            description: `Texte extrait: ${extractedText.length} caractères`,
+            duration: 3000,
+          });
+          
+          return { 
+            success: true, 
+            message: 'Texte extrait avec succès (méthode locale)',
+            text: extractedText
+          };
         }
-        
-        console.log('Successfully downloaded resume file for local processing');
-        
-        // Extraire le texte du fichier sans analyse (méthode client-side)
-        const extractedText = await extractTextFromPDF(file);
-        
-        if (!extractedText || extractedText.length < 50) {
-          throw new Error("Le texte extrait est insuffisant");
-        }
-        
-        console.log('Text extracted successfully via direct file processing (client-side)');
-        
-        toast({
-          title: "Extraction réussie (méthode locale)",
-          description: `Texte extrait: ${extractedText.length} caractères`,
-          duration: 3000,
-        });
-        
-        return { 
-          success: true, 
-          message: 'Texte extrait avec succès (méthode locale)',
-          text: extractedText
-        };
       } catch (localError: any) {
         console.error('Client-side extraction also failed:', localError);
         
