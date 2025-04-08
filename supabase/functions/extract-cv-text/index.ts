@@ -53,58 +53,74 @@ serve(async (req) => {
       
       console.log(`Fetching PDF from: ${urlWithCache.toString()}`);
       
-      // Download the PDF
-      const response = await fetch(urlWithCache.toString(), {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
+      // Download the PDF with a timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+      
+      try {
+        // Download the PDF
+        const response = await fetch(urlWithCache.toString(), {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          console.error(`Failed to download PDF: ${response.status} ${response.statusText}`);
+          throw new Error(`Impossible de télécharger le PDF: ${response.status} ${response.statusText}`);
         }
-      });
-      
-      if (!response.ok) {
-        console.error(`Failed to download PDF: ${response.status} ${response.statusText}`);
-        throw new Error(`Impossible de télécharger le PDF: ${response.status} ${response.statusText}`);
-      }
-      
-      // Convert to ArrayBuffer
-      const pdfData = await response.arrayBuffer();
-      
-      if (!pdfData || pdfData.byteLength === 0) {
-        console.error("PDF data is empty");
-        throw new Error("Le fichier PDF est vide");
-      }
-      
-      console.log(`PDF downloaded, size: ${(pdfData.byteLength / 1024).toFixed(2)} KB`);
-      
-      // Extract text with our improved method
-      const result = await extractTextFromPDF(pdfData);
-      const extractedText = result.extractedText;
-      const pageCount = result.pageCount;
-      
-      console.log(`Extraction complete: ${pageCount} pages, text length: ${extractedText.length} chars`);
-      
-      if (!extractedText || extractedText.trim().length < 10) {
-        console.error("Extracted text is too short or empty");
-        throw new Error("Aucun texte n'a pu être extrait du PDF");
-      }
-      
-      // Return successful response with extracted text
-      return new Response(
-        JSON.stringify({
-          success: true,
-          data: {
-            text: extractedText,
-            pageCount: pageCount,
-            resumeId: resumeId,
-            fileSize: pdfData.byteLength
+        
+        // Convert to ArrayBuffer
+        const pdfData = await response.arrayBuffer();
+        
+        if (!pdfData || pdfData.byteLength === 0) {
+          console.error("PDF data is empty");
+          throw new Error("Le fichier PDF est vide");
+        }
+        
+        console.log(`PDF downloaded, size: ${(pdfData.byteLength / 1024).toFixed(2)} KB`);
+        
+        // Extract text with our improved methods
+        const result = await extractTextFromPDF(pdfData);
+        const extractedText = result.extractedText;
+        const pageCount = result.pageCount;
+        
+        console.log(`Extraction complete: ${pageCount} pages, text length: ${extractedText.length} chars`);
+        
+        // Check if we got any meaningful text 
+        if (!extractedText || extractedText.trim().length < 10) {
+          console.error("Extracted text is too short or empty");
+          throw new Error("Aucun texte n'a pu être extrait du PDF");
+        }
+        
+        // Return successful response with extracted text
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              text: extractedText,
+              pageCount: pageCount,
+              resumeId: resumeId,
+              fileSize: pdfData.byteLength
+            }
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200
           }
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200
+        );
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          throw new Error("Le téléchargement du PDF a dépassé le délai d'attente");
         }
-      );
+        throw fetchError;
+      }
     } catch (extractionError: any) {
       console.error("Error during extraction process:", extractionError);
       
