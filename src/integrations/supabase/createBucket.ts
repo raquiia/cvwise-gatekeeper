@@ -38,6 +38,12 @@ export const ensureResumesBucketExists = async (): Promise<void> => {
     });
     
     if (error) {
+      // Check if the error is because the bucket already exists
+      if (error.message.includes('already exists')) {
+        console.log('Bucket already exists (concurrent creation)');
+        return;
+      }
+      
       console.error('Error creating resumes bucket:', error);
       throw error;
     }
