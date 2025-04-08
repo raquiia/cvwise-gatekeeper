@@ -51,20 +51,23 @@ export const candidateDataService = {
    */
   getCandidateById: async (candidateId: string): Promise<CandidateData | null> => {
     try {
-      const { data, error } = await supabase.rpc('get_candidate_by_id', {
-        candidate_id_param: candidateId
-      });
+      // Utiliser directement la requête Supabase plutôt qu'un appel RPC pour éviter la récursion RLS
+      const { data, error } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('id', candidateId)
+        .single();
       
       if (error) {
         console.error("Error fetching candidate:", error.message);
         throw new Error(`Erreur lors de la récupération du candidat: ${error.message}`);
       }
       
-      if (!data || data.length === 0) {
+      if (!data) {
         return null;
       }
       
-      return data[0] as unknown as CandidateData;
+      return data as CandidateData;
     } catch (error: any) {
       console.error("Exception in getCandidateById:", error);
       throw new Error(error.message || "Impossible de récupérer le candidat");
