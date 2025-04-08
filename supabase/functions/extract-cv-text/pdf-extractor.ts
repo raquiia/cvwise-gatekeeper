@@ -1,16 +1,12 @@
 
 // A simplified PDF text extractor for Supabase Edge Functions
-// Uses the pdf.js library with Deno-compatible imports
+// Properly imports PDF.js library for Deno environment
 
-import * as pdfjs from "npm:pdfjs-dist@3.11.174/legacy/build/pdf.js";
+import * as pdfjsLib from "npm:pdfjs-dist@3.11.174/build/pdf.js";
 
 // Configure PDF.js for Deno environment
 const CMAP_URL = "npm:pdfjs-dist@3.11.174/cmaps/";
 const CMAP_PACKED = true;
-
-// In Deno environment, we don't need a worker
-// Just need to make sure we don't try to access GlobalWorkerOptions
-// We'll use getDocument directly without worker configuration
 
 /**
  * Extract text from a PDF file
@@ -21,8 +17,8 @@ export async function extractTextFromPDF(pdfData: ArrayBuffer): Promise<{ extrac
   console.log("Starting PDF extraction process");
   
   try {
-    // Load the PDF document without worker configuration
-    const loadingTask = pdfjs.getDocument({
+    // Load the PDF document - using the library correctly for Deno environment
+    const loadingTask = pdfjsLib.getDocument({
       data: pdfData,
       cMapUrl: CMAP_URL,
       cMapPacked: CMAP_PACKED,
@@ -106,7 +102,7 @@ export async function extractTextFromPDF(pdfData: ArrayBuffer): Promise<{ extrac
     // Try a simpler fallback method if the main extraction fails
     try {
       console.log("Attempting fallback extraction method");
-      const loadingTask = pdfjs.getDocument({
+      const loadingTask = pdfjsLib.getDocument({
         data: pdfData,
         disableFontFace: true,
       });
