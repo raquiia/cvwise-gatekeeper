@@ -227,7 +227,7 @@ serve(async (req) => {
       console.log(`PDF trop volumineux (${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB), extraction limitée`);
     }
     
-    // Extract text with our simplified method
+    // Extract text with our improved method
     let extractedText = "";
     let pageCount = 0;
     

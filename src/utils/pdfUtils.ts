@@ -143,6 +143,32 @@ const fallbackExtraction = async (pdfData: Uint8Array, numPages: number): Promis
       }
     }
     
+    // Extraire le texte des balises ()Tj qui peuvent contenir du texte
+    const tjRegex = /\(([^)]{3,})\)\s*Tj/g;
+    let tjMatch;
+    
+    while ((tjMatch = tjRegex.exec(pdfString)) !== null) {
+      if (tjMatch[1] && /[a-zA-Z0-9]/.test(tjMatch[1])) {
+        // Decode escaped chars
+        const text = tjMatch[1]
+          .replace(/\\(\d{3})/g, (m, p) => String.fromCharCode(parseInt(p, 8)))
+          .replace(/\\n/g, "\n")
+          .replace(/\\r/g, "\r")
+          .replace(/\\t/g, "\t")
+          .replace(/\\(.)/g, "$1");
+        
+        textBlocks.push(text);
+      }
+    }
+    
+    // Extraire les potentielles sections de texte "pur" dans le PDF
+    const textRegex = /[a-zA-Z0-9 .,;:'\-+()[\]{}?!@#$%^&*=\/\\|<>"éèêëàâäôöûüùïîçÉÈÊËÀÂÄÔÖÛÜÙÏÎÇ]{10,}/g;
+    const textMatches = pdfString.match(textRegex);
+    
+    if (textMatches) {
+      textBlocks.push(...textMatches);
+    }
+    
     let extractedText = textBlocks.join('\n\n');
     
     // Limiter la taille du texte extrait
@@ -168,28 +194,7 @@ const cleanExtractedText = (text: string): string => {
   if (!text) return '';
   
   return text
-    // Normaliser les espaces et sauts de ligne
-    .replace(/\s+/g, ' ')
-    .replace(/(\n\s*){3,}/g, '\n\n')
-    // Supprimer les caractères non imprimables
-    .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
-    // Nettoyer les artefacts PDF courants
-    .replace(/[^\w\s.,;:'\-+()[\]{}?!@#$%^&*=\/\\|<>"éèêëàâäôöûüùïîçÉÈÊËÀÂÄÔÖÛÜÙÏÎÇ]/g, '')
-    .trim();
-};
-
-/**
- * Nettoie le texte brut extrait d'un CV pour le rendre plus lisible
- * Version améliorée pour les CV spécifiquement
- */
-export const cleanResumeText = (rawText: string): string => {
-  if (!rawText || typeof rawText !== 'string') {
-    return "Aucun texte disponible";
-  }
-  
-  // Supprimer les balises PDF et autres métadonnées inutiles
-  let cleanedText = rawText
-    // Supprimer les marqueurs de début/fin de fichier PDF
+    // Supprimer les balises PDF et autres métadonnées inutiles
     .replace(/%PDF-[0-9.]+[\s\S]*?obj/gi, '')
     .replace(/endobj/gi, '')
     .replace(/startxref[\s\S]*?%%EOF/gi, '')
@@ -202,18 +207,94 @@ export const cleanResumeText = (rawText: string): string => {
     .replace(/\/Type\s*\/[A-Za-z]+/g, '')
     .replace(/\/MediaBox\s*\[[^\]]+\]/g, '')
     .replace(/\/Contents\s*[0-9]+\s*[0-9]+\s*R/g, '')
-    .replace(/\/Parent\s*[0-9]+\s*[0-9]+\s*R/g, '')
+    
+    // Normaliser les espaces et sauts de ligne
+    .replace(/\s+/g, ' ')
+    .replace(/(\n\s*){3,}/g, '\n\n')
+    
+    // Supprimer les caractères non imprimables
+    .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+    
+    // Nettoyer les artefacts PDF courants
+    .replace(/[^\w\s.,;:'\-+()[\]{}?!@#$%^&*=\/\\|<>"éèêëàâäôöûüùïîçÉÈÊËÀÂÄÔÖÛÜÙÏÎÇ]/g, '')
+    
+    // Remplacer les répétitions de caractères (comme "AAAAAAAA")
+    .replace(/(.)\1{5,}/g, '$1$1$1')
+    .trim();
+};
+
+/**
+ * Nettoie le texte brut extrait d'un CV pour le rendre plus lisible
+ * Version améliorée pour les CV spécifiquement
+ */
+export const cleanResumeText = (rawText: string): string => {
+  if (!rawText || typeof rawText !== 'string') {
+    return "Aucun texte disponible";
+  }
+  
+  // Version améliorée du nettoyage spécifiquement pour les CV
+  let cleanedText = rawText
+    // Supprimer les balises PDF et autres métadonnées inutiles
+    .replace(/%PDF-[0-9.]+[\s\S]*?obj/gi, '')
+    .replace(/endobj/gi, '')
+    .replace(/startxref[\s\S]*?%%EOF/gi, '')
+    
+    // Supprimer codes hexadécimaux et nombres non pertinents
+    .replace(/[0-9a-f]{6,}/gi, '')
+    
+    // Supprimer métadonnées et références
+    .replace(/\/Type\s*\/[A-Za-z]+/g, '')
+    .replace(/\/MediaBox\s*\[[^\]]+\]/g, '')
+    .replace(/\/Contents\s*[0-9]+\s*[0-9]+\s*R/g, '')
     .replace(/\/Resources[\s\S]*?>>/g, '')
     
     // Supprimer caractères spéciaux et non-imprimables
     .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F\uFEFF\uFFFE\uFFFF]/g, '')
     
-    // Supprimer lignes courtes (souvent du bruit)
+    // Nettoyer les lignes courtes (souvent du bruit)
     .split('\n')
     .filter(line => line.trim().length > 3)
     .join('\n');
     
-  return cleanedText;
+  // Détecter et conserver les sections importantes (expérience, formation, etc.)
+  const experienceRegex = /exp[ée]rience|travail|emploi|professionnel/i;
+  const educationRegex = /[ée]ducation|formation|[ée]tudes|dipl[ôo]me/i;
+  const skillsRegex = /comp[ée]tences|savoir|connaissance|technique/i;
+  
+  // Segmenter le texte pour mieux gérer les sections
+  const lines = cleanedText.split('\n');
+  const sections: string[] = [];
+  let currentSection = '';
+  
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    
+    // Nouveau titre de section potentiel (ligne courte en majuscules ou avec certains mots-clés)
+    if ((trimmedLine.length < 30 && trimmedLine.toUpperCase() === trimmedLine && trimmedLine.length > 3) || 
+        experienceRegex.test(trimmedLine) || 
+        educationRegex.test(trimmedLine) || 
+        skillsRegex.test(trimmedLine)) {
+      
+      if (currentSection) {
+        sections.push(currentSection);
+      }
+      currentSection = trimmedLine + '\n';
+    } else if (trimmedLine) {
+      currentSection += trimmedLine + '\n';
+    }
+  }
+  
+  if (currentSection) {
+    sections.push(currentSection);
+  }
+  
+  // Recombiner les sections avec une séparation claire
+  return sections.join('\n\n')
+    // Nettoyage final
+    .replace(/\s+/g, ' ')
+    .replace(/(\n\s*){3,}/g, '\n\n')
+    .replace(/[^\w\s.,;:'\-+()[\]{}?!@#$%^&*=\/\\|<>"éèêëàâäôöûüùïîçÉÈÊËÀÂÄÔÖÛÜÙÏÎÇ]/g, '')
+    .trim();
 };
 
 /**

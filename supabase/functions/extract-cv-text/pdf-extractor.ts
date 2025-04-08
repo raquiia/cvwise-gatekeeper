@@ -34,6 +34,9 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
       };
     }
     
+    // Nettoyer le texte final pour améliorer la lisibilité
+    extractedText = cleanExtractedText(extractedText);
+    
     return {
       extractedText: extractedText || "PDF text extraction failed",
       pageCount: pageCount || 1
@@ -45,6 +48,31 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
       pageCount: 0
     };
   }
+}
+
+/**
+ * Clean the extracted text to make it more readable
+ */
+function cleanExtractedText(text: string): string {
+  if (!text) return "";
+  
+  return text
+    // Remove non-printable characters
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // Remove PDF specific artifacts
+    .replace(/(obj|endobj|stream|endstream|xref|trailer|startxref)/g, ' ')
+    // Remove strange character sequences that are likely PDF encoding
+    .replace(/\\(\d{3}|n|r|t|f|\\|\(|\))/g, ' ')
+    // Remove font specifications
+    .replace(/\/[FT][0-9]+(\s+\d+(\s+\d+)?)?/g, ' ')
+    // Remove image data or raw binary data patterns
+    .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F\uFEFF\uFFFE\uFFFF]/g, ' ')
+    .replace(/[^\w\s.,;:'\-+()[\]{}?!@#$%^&*=\/\\|<>"éèêëàâäôöûüùïîçÉÈÊËÀÂÄÔÖÛÜÙÏÎÇ]/g, ' ')
+    // Normalize whitespace
+    .replace(/\s+/g, ' ')
+    // Remove repetitive character sequences (like "AAAAAAAA")
+    .replace(/(.)\1{5,}/g, '$1$1$1')
+    .trim();
 }
 
 /**
@@ -122,12 +150,20 @@ function fallbackExtraction(pdfText: string): string {
     let match;
     while ((match = textRegex.exec(pdfText)) !== null) {
       if (match[1] && /[a-zA-Z0-9]/.test(match[1])) {
-        extractedTexts.push(match[1]);
+        // Decode escaped chars and clean the text
+        const text = match[1]
+          .replace(/\\(\d{3})/g, (m, p) => String.fromCharCode(parseInt(p, 8)))
+          .replace(/\\n/g, "\n")
+          .replace(/\\r/g, "\r")
+          .replace(/\\t/g, "\t")
+          .replace(/\\(.)/g, "$1");
+        
+        extractedTexts.push(text);
       }
     }
     
     // Method 2: Extract ASCII text sections - useful for some PDF formats
-    const asciiTextChunks = pdfText.match(/[a-zA-Z0-9 .,;:'\-+()[\]{}?!@#$%^&*=\/\\|<>"]{5,}/g);
+    const asciiTextChunks = pdfText.match(/[a-zA-Z0-9 .,;:'\-+()[\]{}?!@#$%^&*=\/\\|<>"éèêëàâäôöûüùïîçÉÈÊËÀÂÄÔÖÛÜÙÏÎÇ]{5,}/g);
     if (asciiTextChunks) {
       extractedTexts = extractedTexts.concat(asciiTextChunks);
     }
@@ -140,6 +176,31 @@ function fallbackExtraction(pdfText: string): string {
     if (titleMatch && titleMatch[1]) extractedTexts.push("Titre: " + titleMatch[1]);
     if (authorMatch && authorMatch[1]) extractedTexts.push("Auteur: " + authorMatch[1]);
     if (subjectMatch && subjectMatch[1]) extractedTexts.push("Sujet: " + subjectMatch[1]);
+    
+    // Method 4: Look for text blocks inside PDF operators (more aggressive)
+    const textOperators = pdfText.match(/BT\s*(.*?)\s*ET/gs);
+    if (textOperators) {
+      for (const operator of textOperators) {
+        // Extract text fragments
+        const fragments = operator.match(/\((.*?)\)/gs);
+        if (fragments) {
+          for (const fragment of fragments) {
+            // Clean fragment and extract content
+            const content = fragment
+              .replace(/^\(|\)$/g, '')
+              .replace(/\\(\d{3})/g, (m, p) => String.fromCharCode(parseInt(p, 8)))
+              .replace(/\\n/g, "\n")
+              .replace(/\\r/g, "\r")
+              .replace(/\\t/g, "\t")
+              .replace(/\\(.)/g, "$1");
+            
+            if (content.length > 2 && /[a-zA-Z0-9]/.test(content)) {
+              extractedTexts.push(content);
+            }
+          }
+        }
+      }
+    }
     
     // Combine and clean the extracted text
     let combinedText = extractedTexts

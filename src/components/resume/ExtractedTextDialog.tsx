@@ -34,7 +34,8 @@ const ExtractedTextDialog: React.FC<ExtractedTextDialogProps> = ({
   const hasError = extractedText.startsWith("Erreur:") || 
                    extractedText.includes("échoué") || 
                    extractedText.includes("erreur") ||
-                   extractedText.includes("Impossible");
+                   extractedText.includes("Impossible") ||
+                   extractedText.includes("illisible");
 
   const handleCopy = () => {
     navigator.clipboard.writeText(extractedText);
