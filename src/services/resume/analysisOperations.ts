@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { resumeAnalysisService } from '../analysis/resumeAnalysisService';
 import { resumeDataService } from '../data/resumeDataService';
@@ -43,32 +42,49 @@ export const extractResumeText = async (resumeId: string): Promise<{ success: bo
       duration: 3000,
     });
     
-    // PRIORITÉ 1: Méthode locale en premier (client-side)
-    // Cette méthode est plus fiable pour la plupart des PDF
+    // PRIORITÉ SERVEUR: Try the server-side extraction first (more reliable for this application)
     try {
       toast({
         title: "Extraction en cours",
-        description: "Extraction locale du texte...",
+        description: "Extraction côté serveur en cours...",
         duration: 3000,
       });
       
-      // Télécharger le fichier dans le navigateur
-      const file = await resumeStorageService.downloadResumeAsFile(resumeId);
+      // Get a direct URL for the PDF file
+      const { data: publicUrlData } = supabase.storage.from('resumes').getPublicUrl(resume.file_path);
+      const directUrl = publicUrlData.publicUrl;
       
-      if (!file) {
-        throw new Error("Impossible de télécharger le fichier localement");
+      if (!directUrl) {
+        throw new Error("Impossible d'obtenir l'URL du fichier");
       }
       
-      console.log('Successfully downloaded resume file for local processing');
+      console.log('Using direct storage URL for server extraction:', directUrl.substring(0, 50) + '...');
       
-      // Extraire le texte du fichier sans analyse (méthode client-side)
-      const extractedText = await extractTextFromPDF(file);
+      // Use the extraction edge function with direct URL
+      const { data: extractionData, error: extractionError } = await supabase.functions.invoke('extract-cv-text', {
+        body: { 
+          resumeId,
+          pdfUrl: directUrl
+        }
+      });
       
-      if (!extractedText || extractedText.length < 50) {
-        throw new Error("Le texte extrait est insuffisant");
+      if (extractionError) {
+        console.error('Error in extract-cv-text function with URL:', extractionError);
+        throw new Error(`Erreur du serveur: ${extractionError.message || "Erreur inconnue"}`);
       }
       
-      console.log('Text extracted successfully via direct file processing (client-side)');
+      if (!extractionData || !extractionData.success) {
+        const errorMsg = extractionData?.error || 'Échec de l\'extraction du texte';
+        throw new Error(`Erreur: ${errorMsg}`);
+      }
+      
+      console.log('Text extracted successfully via server processing');
+      
+      // Vérifier si le texte extrait est utilisable
+      const extractedText = extractionData.data.text;
+      if (!extractedText || extractedText.trim().length < 50) {
+        throw new Error("Le texte extrait est insuffisant. Le fichier est peut-être dans un format non supporté.");
+      }
       
       toast({
         title: "Extraction réussie",
@@ -78,77 +94,59 @@ export const extractResumeText = async (resumeId: string): Promise<{ success: bo
       
       return { 
         success: true, 
-        message: 'Texte extrait avec succès (méthode locale)',
+        message: 'Texte extrait avec succès',
         text: extractedText
       };
-    } catch (localError: any) {
-      console.warn('Local client-side extraction failed:', localError);
-      console.log('Attempting server-side extraction as fallback...');
+    } catch (serverError: any) {
+      console.error('Server-side extraction failed:', serverError);
+      console.log('Attempting local client-side extraction as fallback...');
       
-      // PRIORITÉ 2: Essayer l'extraction côté serveur si locale échoue
+      // PRIORITÉ CLIENT: Si l'extraction côté serveur échoue, essayer l'extraction côté client
       try {
         toast({
           title: "Changement de méthode",
-          description: "Extraction côté serveur en cours...",
+          description: "Extraction locale en cours...",
           duration: 3000,
         });
         
-        // Get a direct URL using the proper method
-        const { data: publicUrlData } = supabase.storage.from('resumes').getPublicUrl(resume.file_path);
-        const directUrl = publicUrlData.publicUrl;
+        // Télécharger le fichier dans le navigateur
+        const file = await resumeStorageService.downloadResumeAsFile(resumeId);
         
-        if (!directUrl) {
-          throw new Error("Impossible d'obtenir l'URL du fichier");
+        if (!file) {
+          throw new Error("Impossible de télécharger le fichier localement");
         }
         
-        console.log('Using direct storage URL for server extraction:', directUrl.substring(0, 50) + '...');
+        console.log('Successfully downloaded resume file for local processing');
         
-        // Use the extraction edge function with direct URL
-        const { data: extractionData, error: extractionError } = await supabase.functions.invoke('extract-cv-text', {
-          body: { 
-            resumeId,
-            pdfUrl: directUrl
-          }
-        });
+        // Extraire le texte du fichier sans analyse (méthode client-side)
+        const extractedText = await extractTextFromPDF(file);
         
-        if (extractionError) {
-          console.error('Error in extract-cv-text function with URL:', extractionError);
-          throw new Error(`Erreur du serveur: ${extractionError.message || "Erreur inconnue"}`);
+        if (!extractedText || extractedText.length < 50) {
+          throw new Error("Le texte extrait est insuffisant");
         }
         
-        if (!extractionData || !extractionData.success) {
-          const errorMsg = extractionData?.error || 'Échec de l\'extraction du texte';
-          throw new Error(`Erreur: ${errorMsg}`);
-        }
-        
-        console.log('Text extracted successfully via server processing');
-        
-        // Vérifier si le texte extrait est utilisable
-        const extractedText = extractionData.data.text;
-        if (!extractedText || extractedText.trim().length < 50) {
-          throw new Error("Le texte extrait est insuffisant. Le fichier est peut-être dans un format non supporté.");
-        }
+        console.log('Text extracted successfully via direct file processing (client-side)');
         
         toast({
-          title: "Extraction réussie (côté serveur)",
+          title: "Extraction réussie (méthode locale)",
           description: `Texte extrait: ${extractedText.length} caractères`,
           duration: 3000,
         });
         
         return { 
           success: true, 
-          message: 'Texte extrait avec succès',
+          message: 'Texte extrait avec succès (méthode locale)',
           text: extractedText
         };
-      } catch (serverError: any) {
-        console.error('Server extraction also failed:', serverError);
+      } catch (localError: any) {
+        console.error('Client-side extraction also failed:', localError);
         
         // Créer un message d'erreur plus descriptif combinant les deux tentatives
-        const errorMessage = `Erreur d'extraction: l'extraction locale et l'extraction côté serveur ont échoué.\n\nDétails locaux: ${localError.message || "Erreur inconnue"}\n\nDétails serveur: ${serverError.message || "Erreur inconnue"}`;
+        const errorMessage = `Erreur d'extraction: l'extraction côté serveur et l'extraction locale ont échoué.\n\nDétails serveur: ${serverError.message || "Erreur inconnue"}\n\nDétails locaux: ${localError.message || "Erreur inconnue"}`;
         
         toast({
           title: "Extraction échouée",
-          description: "Les deux méthodes d'extraction ont échoué. Vérifiez le format du fichier.",
+          description: "Les deux méthodes d'extraction ont échoué. Vérifiez que le bucket 'resumes' existe et que vous avez les autorisations nécessaires.",
           variant: "destructive",
           duration: 5000,
         });

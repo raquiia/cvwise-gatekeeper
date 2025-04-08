@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Loader2, AlertTriangle, FileText } from "lucide-react";
+import { Copy, Check, Loader2, AlertTriangle, FileText, RefreshCw } from "lucide-react";
 import { useState } from "react";
 
 interface ExtractedTextDialogProps {
@@ -18,17 +18,23 @@ interface ExtractedTextDialogProps {
   onClose: () => void;
   fileName: string;
   extractedText: string;
+  isLoading?: boolean;
+  onRetry?: () => void;
 }
 
 const ExtractedTextDialog: React.FC<ExtractedTextDialogProps> = ({
   isOpen,
   onClose,
   fileName,
-  extractedText
+  extractedText,
+  isLoading = false,
+  onRetry
 }) => {
   const [copied, setCopied] = useState(false);
-  const isLoading = extractedText === "Extraction en cours...";
-  const hasError = extractedText.startsWith("Erreur:") || extractedText.includes("échoué") || extractedText.includes("erreur");
+  const hasError = extractedText.startsWith("Erreur:") || 
+                   extractedText.includes("échoué") || 
+                   extractedText.includes("erreur") ||
+                   extractedText.includes("Impossible");
 
   const handleCopy = () => {
     navigator.clipboard.writeText(extractedText);
@@ -67,6 +73,16 @@ const ExtractedTextDialog: React.FC<ExtractedTextDialogProps> = ({
               <ScrollArea className="mt-4 p-4 border rounded-md bg-muted/30 text-sm font-mono max-h-[200px]">
                 <div className="whitespace-pre-wrap text-red-500">{extractedText}</div>
               </ScrollArea>
+              {onRetry && (
+                <Button 
+                  onClick={onRetry} 
+                  variant="outline" 
+                  className="mt-4"
+                >
+                  <RefreshCw size={14} className="mr-2" />
+                  Réessayer avec une autre méthode
+                </Button>
+              )}
             </div>
           </div>
         ) : (

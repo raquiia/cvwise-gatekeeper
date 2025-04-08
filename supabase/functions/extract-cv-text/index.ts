@@ -28,20 +28,49 @@ serve(async (req) => {
     const { pdfUrl, resumeId } = requestData;
     
     if (!pdfUrl) {
-      throw new Error("L'URL du PDF est requise");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "L'URL du PDF est requise"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400
+        }
+      );
     }
     
     console.log("Démarrage de l'extraction de texte pour:", pdfUrl);
 
+    // Ensure URL is correctly formed for the Supabase Storage
+    const correctedUrl = ensureValidUrl(pdfUrl);
+    console.log("URL corrigée pour extraction:", correctedUrl);
+
     // Vérifier si l'URL est publique/accessible
     try {
-      const checkResponse = await fetch(pdfUrl, { method: 'HEAD' });
+      const checkResponse = await fetch(correctedUrl, { 
+        method: 'HEAD',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
       if (!checkResponse.ok) {
         throw new Error(`PDF non accessible, code: ${checkResponse.status}`);
       }
     } catch (urlError) {
       console.error("Erreur lors de la vérification d'accessibilité:", urlError);
-      throw new Error(`URL inaccessible: ${urlError.message}`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `URL inaccessible: ${urlError.message}`
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400
+        }
+      );
     }
 
     // Récupérer le PDF avec une meilleure gestion des erreurs et retry
@@ -51,7 +80,7 @@ serve(async (req) => {
     
     while (retryCount < maxRetries) {
       try {
-        response = await fetch(pdfUrl, {
+        response = await fetch(correctedUrl, {
           headers: {
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache'
@@ -73,7 +102,16 @@ serve(async (req) => {
     }
     
     if (!response || !response.ok) {
-      throw new Error(`Échec du téléchargement du PDF après ${maxRetries} tentatives: ${response?.status || 'Erreur réseau'}`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Échec du téléchargement du PDF après ${maxRetries} tentatives: ${response?.status || 'Erreur réseau'}`
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500
+        }
+      );
     }
     
     // Convertir en ArrayBuffer
@@ -82,11 +120,29 @@ serve(async (req) => {
       pdfData = await response.arrayBuffer();
     } catch (convError) {
       console.error("Erreur lors de la conversion en ArrayBuffer:", convError);
-      throw new Error("Impossible de lire les données du PDF");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Impossible de lire les données du PDF"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500
+        }
+      );
     }
     
     if (!pdfData || pdfData.byteLength === 0) {
-      throw new Error("Le fichier PDF est vide ou corrompu");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Le fichier PDF est vide ou corrompu"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400
+        }
+      );
     }
     
     console.log(`PDF téléchargé, taille: ${(pdfData.byteLength / 1024).toFixed(2)} KB`);
@@ -107,11 +163,29 @@ serve(async (req) => {
       pageCount = result.pageCount;
     } catch (extractError) {
       console.error("Erreur lors de l'extraction:", extractError);
-      throw new Error(`Erreur d'extraction: ${extractError.message}`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Erreur d'extraction: ${extractError.message}`
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500
+        }
+      );
     }
     
     if (!extractedText || extractedText.trim().length < 10) {
-      throw new Error("Aucun texte n'a pu être extrait du PDF");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Aucun texte n'a pu être extrait du PDF"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400
+        }
+      );
     }
     
     console.log(`Extraction réussie, ${pageCount} page(s), longueur du texte: ${extractedText.length} caractères`);
@@ -146,3 +220,30 @@ serve(async (req) => {
     );
   }
 });
+
+/**
+ * Ensures the URL is valid for Supabase storage
+ * Handles cases where the URL might be missing parts or using incorrect format
+ */
+function ensureValidUrl(url: string): string {
+  // If the URL is already fully qualified, return it
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  
+  // If it's a relative path, convert to absolute
+  if (url.startsWith('/')) {
+    // Get the Supabase URL from the request origin or environment
+    const projectRef = Deno.env.get('SUPABASE_URL') || '';
+    return projectRef + url;
+  }
+  
+  // Handle storage URLs without http prefix
+  if (url.includes('storage/v1/object')) {
+    const projectRef = Deno.env.get('SUPABASE_URL') || '';
+    return projectRef + '/' + url;
+  }
+  
+  // Default case, just return the original
+  return url;
+}

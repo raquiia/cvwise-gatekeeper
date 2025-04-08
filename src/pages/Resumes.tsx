@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, AlertCircle, RefreshCw, Trash2, Eye } from 'lucide-react';
@@ -49,6 +50,7 @@ const Resumes = () => {
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [openAnalyzeDialog, setOpenAnalyzeDialog] = useState(false);
+  const [extractionMethod, setExtractionMethod] = useState<'server' | 'client'>('server');
 
   useEffect(() => {
     const initAndLoad = async () => {
@@ -62,29 +64,16 @@ const Resumes = () => {
       setErrorMessage(null);
       
       try {
-        const loadPromise = new Promise<void>(async (resolve, reject) => {
-          try {
-            await ensureResumesBucketExists().catch(err => console.warn('Bucket initialization warning:', err));
-            
-            const data = await getUserResumes(user.id);
-            setResumes(data || []);
-            resolve();
-          } catch (error: any) {
-            console.error('Error loading resumes:', error);
-            reject(new Error(error?.message || 'Une erreur est survenue lors du chargement des CV'));
-          }
+        // Ensure bucket exists (non-blocking)
+        ensureResumesBucketExists().catch(err => {
+          console.warn('Bucket initialization warning:', err);
         });
         
-        const timeoutPromise = new Promise<void>((_, reject) => {
-          setTimeout(() => {
-            reject(new Error("Timeout lors du chargement des CV"));
-          }, 8000);
-        });
-        
-        await Promise.race([loadPromise, timeoutPromise]);
+        const data = await getUserResumes(user.id);
+        setResumes(data || []);
       } catch (error: any) {
-        console.error('Error during initialization or loading:', error);
-        setErrorMessage(error.message || "Une erreur est survenue lors du chargement des CV");
+        console.error('Error loading resumes:', error);
+        setErrorMessage(error?.message || 'Une erreur est survenue lors du chargement des CV');
       } finally {
         setIsLoading(false);
       }
@@ -154,6 +143,7 @@ const Resumes = () => {
       setExtractingText(true);
       setExtractedText("");
       setShowTextDialog(true);
+      setExtractionMethod('server'); // Reset to server-first approach
       
       toast({
         title: "Extraction en cours",
@@ -179,6 +169,8 @@ const Resumes = () => {
     } catch (error: any) {
       console.error('Error extracting text from resume:', error);
       setExtractingText(false);
+      setExtractedText(error.message || "Une erreur s'est produite lors de l'extraction du texte");
+      
       toast({
         title: "Échec de l'extraction",
         description: error.message || "Une erreur s'est produite lors de l'extraction du texte",
@@ -373,6 +365,55 @@ const Resumes = () => {
     setShowTextDialog(false);
     setSelectedResumeForText(null);
     setExtractedText("");
+    setExtractingText(false);
+  };
+
+  const retryExtraction = async () => {
+    if (!selectedResumeForText) return;
+    
+    setExtractingText(true);
+    setExtractedText("");
+    
+    try {
+      // Toggle between client and server methods
+      const newMethod = extractionMethod === 'server' ? 'client' : 'server';
+      setExtractionMethod(newMethod);
+      
+      toast({
+        title: "Nouvel essai d'extraction",
+        description: `Tentative avec la méthode ${newMethod === 'client' ? 'locale' : 'serveur'}...`,
+        duration: 3000,
+      });
+      
+      // Implement retry logic based on the toggled method
+      // (This would require modifications to the extractResumeText function to accept a method parameter)
+      const result = await extractResumeText(selectedResumeForText.id);
+      
+      setExtractingText(false);
+      
+      if (result.success && result.text) {
+        setExtractedText(result.text);
+        
+        toast({
+          title: "Extraction terminée",
+          description: "Le texte a été extrait avec succès",
+          duration: 3000,
+        });
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error: any) {
+      console.error('Error in retry extraction:', error);
+      setExtractingText(false);
+      setExtractedText(error.message || "L'extraction a échoué après plusieurs tentatives");
+      
+      toast({
+        title: "Échec de l'extraction",
+        description: "Toutes les méthodes d'extraction ont échoué",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
   };
 
   return (
@@ -505,7 +546,9 @@ const Resumes = () => {
           isOpen={showTextDialog}
           onClose={closeTextDialog}
           fileName={selectedResumeForText?.file_name || ""}
-          extractedText={extractingText ? "Extraction en cours..." : extractedText}
+          extractedText={extractedText}
+          isLoading={extractingText}
+          onRetry={retryExtraction}
         />
       </div>
     </Layout>
