@@ -70,6 +70,9 @@ export const analyzeResume = async (resumeId: string, resumeText: string): Promi
       throw new Error('Le texte du CV est vide ou non défini');
     }
     
+    console.log(`Text length being sent to OpenAI: ${resumeText.length} characters`);
+    console.log('Sample of the text being sent:', resumeText.substring(0, 200) + '...');
+    
     // Appel à l'edge function d'analyse de CV
     const { data, error } = await supabase.functions.invoke('resume-ai-analysis', {
       body: { 
@@ -89,6 +92,7 @@ export const analyzeResume = async (resumeId: string, resumeText: string): Promi
     }
     
     console.log('AI analysis successful, candidate created:', data.candidate?.id);
+    console.log('Parsed data from OpenAI:', data.parsed_data);
     
     toast({
       title: "Analyse terminée",

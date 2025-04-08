@@ -104,6 +104,8 @@ serve(async (req) => {
     }
     
     console.log("Démarrage de l'analyse AI pour le CV:", resumeId);
+    console.log("Taille du texte reçu:", resumeText?.length || 0, "caractères");
+    console.log("Échantillon du texte:", resumeText?.substring(0, 200) + "...");
 
     // Créer un client Supabase avec la clé service
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -232,6 +234,41 @@ serve(async (req) => {
             - Centres d'intérêt
             - Industries pertinentes
             
+            Fournis ces informations sous forme d'un objet JSON avec les propriétés suivantes:
+            {
+              "firstName": "...",
+              "lastName": "...",
+              "email": "...",
+              "phone": "...",
+              "position": "...",
+              "yearsExperience": number,
+              "location": "...",
+              "skills": ["skill1", "skill2", ...],
+              "company": "...",
+              "experiences": [{
+                "title": "...",
+                "company": "...",
+                "startDate": "...",
+                "endDate": "...",
+                "description": "..."
+              }],
+              "education": [{
+                "degree": "...",
+                "institution": "...",
+                "year": "..."
+              }],
+              "certifications": ["..."],
+              "languages": [{
+                "language": "...",
+                "level": "..."
+              }],
+              "projects": ["..."],
+              "interests": "...",
+              "industries": ["..."]
+            }
+            
+            IMPORTANT: Ne laisse aucun champ vide. Si tu ne trouves pas l'information, fais une supposition raisonnable ou mets une valeur par défaut. Pour les tableaux, inclus au moins un élément.
+            
             Fournis ces informations sous forme d'un objet JSON valide SANS utiliser de bloc de code markdown. Retourne UNIQUEMENT l'objet JSON brut, sans aucun formatage markdown ni autre texte.
             
             Note importante: Ce texte a été tronqué pour l'analyse, utilise les informations disponibles au mieux.`
@@ -265,7 +302,7 @@ serve(async (req) => {
       console.log("Contenu nettoyé:", cleanedContent.substring(0, 200) + "...");
       
       parsedData = JSON.parse(cleanedContent);
-      console.log("Données structurées extraites avec succès");
+      console.log("Données structurées extraites avec succès:", parsedData);
     } catch (error) {
       console.error("Erreur lors du parsing de la réponse OpenAI:", error);
       throw new Error("Impossible de traiter la réponse de l'IA");
@@ -282,7 +319,7 @@ serve(async (req) => {
       position: parsedData.position || parsedData.title || parsedData.currentPosition || "",
       years_experience: parsedData.yearsExperience || parsedData.years_experience || 0,
       location: parsedData.location || "",
-      skills: parsedData.skills || [],
+      skills: Array.isArray(parsedData.skills) ? parsedData.skills : [parsedData.skills],
       company: parsedData.company || parsedData.currentCompany || "",
       experiences: parsedData.experiences || parsedData.professionalExperiences || [],
       education: parsedData.education || [],
@@ -293,17 +330,19 @@ serve(async (req) => {
       industries: parsedData.industries || [],
       // Calcul du score basé sur la complétude et la qualité des données
       score: Math.min(95, 50 + 
-        (parsedData.skills?.length || 0) * 3 + 
-        (parsedData.experiences?.length || 0) * 5 +
-        (parsedData.education?.length || 0) * 3),
+        (Array.isArray(parsedData.skills) ? parsedData.skills.length * 3 : 0) + 
+        (Array.isArray(parsedData.experiences) ? parsedData.experiences.length * 5 : 0) +
+        (Array.isArray(parsedData.education) ? parsedData.education.length * 3 : 0)),
       status: "qualification",
       profile_completeness: Math.min(95, 30 + 
-        (parsedData.skills?.length || 0) * 3 + 
-        (parsedData.experiences?.length || 0) * 5 +
-        (parsedData.education?.length || 0) * 3 +
-        (parsedData.languages?.length || 0) * 2 +
-        (parsedData.certifications?.length || 0) * 2)
+        (Array.isArray(parsedData.skills) ? parsedData.skills.length * 3 : 0) + 
+        (Array.isArray(parsedData.experiences) ? parsedData.experiences.length * 5 : 0) +
+        (Array.isArray(parsedData.education) ? parsedData.education.length * 3 : 0) +
+        (Array.isArray(parsedData.languages) ? parsedData.languages.length * 2 : 0) +
+        (Array.isArray(parsedData.certifications) ? parsedData.certifications.length * 2 : 0))
     };
+    
+    console.log("Données du candidat préparées:", candidateData);
     
     // Upsert du candidat dans la base de données
     console.log("Enregistrement du candidat dans la base de données");
