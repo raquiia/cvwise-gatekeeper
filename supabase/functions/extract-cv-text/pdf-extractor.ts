@@ -1,9 +1,9 @@
 
 // PDF Text extraction utility for Edge Function
-import * as pdfjs from "pdfjs-dist";
+import * as pdfjs from "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js";
 
-// Handle the worker configuration - NOTE: Different approach for Deno/Edge runtime
-const pdfjsWorker = await import("pdfjs-dist/build/pdf.worker.mjs");
+// Configure for Deno environment (no workers in Edge Functions)
+const pdfjsWorker = await import("https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js");
 
 // Configure using proper Deno syntax for edge functions
 if (typeof globalThis !== 'undefined') {
