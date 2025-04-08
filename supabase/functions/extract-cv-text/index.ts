@@ -59,7 +59,7 @@ serve(async (req) => {
       );
     }
 
-    // Extract user_id and file path from the URL pattern
+    // Extract file path from the URL pattern
     const filePathMatch = pdfUrl.match(/\/([^\/]+)\/([^\/]+\.[^\/]+)$/);
     let filePath = '';
     
@@ -96,7 +96,9 @@ serve(async (req) => {
     console.log("Chemin du fichier extrait:", filePath);
     
     // Try direct storage API access using admin privileges
-    const storageFileUrl = `${supabaseUrl}/storage/v1/object/resumes/${filePath}`;
+    // Ajouter un paramètre de cache-busting pour éviter les problèmes de cache
+    const timestamp = Date.now();
+    const storageFileUrl = `${supabaseUrl}/storage/v1/object/resumes/${filePath}?_=${timestamp}`;
     console.log("Tentative d'accès au fichier via URL admin:", storageFileUrl);
     
     // Set up retry mechanism
@@ -109,7 +111,9 @@ serve(async (req) => {
         response = await fetch(storageFileUrl, {
           headers: {
             'Authorization': `Bearer ${serviceKey}`,
-            'Cache-Control': 'no-cache',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
             'apikey': serviceKey
           }
         });
@@ -156,19 +160,58 @@ serve(async (req) => {
         filePath = resumeInfo[0].file_path;
         console.log("Chemin de fichier obtenu via API REST:", filePath);
         
-        // Try one last time with the new path
-        const finalStorageUrl = `${supabaseUrl}/storage/v1/object/resumes/${filePath}`;
-        console.log("Dernière tentative avec l'URL:", finalStorageUrl);
+        // Try creating a public URL
+        const publicUrlObj = new URL(`${supabaseUrl}/storage/v1/object/public/resumes/${filePath}`);
+        publicUrlObj.searchParams.append('_', Date.now().toString()); // cache busting
+        const publicUrl = publicUrlObj.toString();
         
-        response = await fetch(finalStorageUrl, {
+        console.log("Tentative avec URL publique:", publicUrl);
+        
+        response = await fetch(publicUrl, {
           headers: {
-            'Authorization': `Bearer ${serviceKey}`,
-            'apikey': serviceKey
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
           }
         });
         
         if (!response.ok) {
-          throw new Error(`Échec avec statut: ${response.status}`);
+          // Try one last time with a signed URL
+          const signedUrlEndpoint = `${supabaseUrl}/storage/v1/object/sign/resumes/${filePath}?expiresIn=60`;
+          console.log("Tentative de création d'URL signée:", signedUrlEndpoint);
+          
+          const signResponse = await fetch(signedUrlEndpoint, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${serviceKey}`,
+              'apikey': serviceKey,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (!signResponse.ok) {
+            throw new Error(`Échec de création d'URL signée: ${signResponse.status}`);
+          }
+          
+          const signData = await signResponse.json();
+          if (!signData || !signData.signedURL) {
+            throw new Error("URL signée invalide");
+          }
+          
+          // Add cache busting
+          const signedUrl = new URL(signData.signedURL);
+          signedUrl.searchParams.append('_', Date.now().toString());
+          console.log("Utilisation d'URL signée:", signedUrl.toString());
+          
+          response = await fetch(signedUrl.toString(), {
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Échec avec URL signée: ${response.status}`);
+          }
         }
       } catch (fallbackError) {
         console.error("Toutes les tentatives d'accès au fichier ont échoué:", fallbackError);
@@ -221,12 +264,6 @@ serve(async (req) => {
     
     console.log(`PDF téléchargé, taille: ${(pdfData.byteLength / 1024).toFixed(2)} KB`);
     
-    // Limit PDF size to avoid timeouts
-    const maxSizeKB = 10 * 1024; // 10 MB
-    if (pdfData.byteLength > maxSizeKB * 1024) {
-      console.log(`PDF trop volumineux (${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB), extraction limitée`);
-    }
-    
     // Extract text with our improved method
     let extractedText = "";
     let pageCount = 0;
@@ -235,6 +272,8 @@ serve(async (req) => {
       const result = await extractTextFromPDF(pdfData);
       extractedText = result.extractedText;
       pageCount = result.pageCount;
+      
+      console.log(`Nombre de pages: ${pageCount}, longueur du texte extrait: ${extractedText.length} caractères`);
     } catch (extractError) {
       console.error("Extraction error:", extractError);
       return new Response(

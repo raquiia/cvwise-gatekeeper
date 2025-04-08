@@ -1,3 +1,4 @@
+
 /**
  * Utilitaires pour l'extraction de texte des fichiers PDF côté client
  */
@@ -8,7 +9,7 @@ const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 // Maximum de texte à extraire (pour éviter les problèmes de limite de tokens)
-const MAX_EXTRACTED_TEXT_LENGTH = 50000;
+const MAX_EXTRACTED_TEXT_LENGTH = 100000;
 
 /**
  * Extrait le texte d'un fichier PDF
@@ -17,11 +18,13 @@ const MAX_EXTRACTED_TEXT_LENGTH = 50000;
  */
 export const extractTextFromPDF = async (file: File): Promise<string> => {
   try {
-    console.log('Starting client-side PDF text extraction');
+    console.log('Starting client-side PDF text extraction for file:', file.name);
     
     // Convertir le fichier en ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
+    
+    console.log(`File loaded, size: ${Math.round(uint8Array.length / 1024)} KB`);
     
     // Extraire le texte avec la méthode principale
     const { extractedText, pageCount } = await extractTextFromPDFBuffer(uint8Array);
@@ -41,21 +44,20 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
  */
 export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ extractedText: string, pageCount: number }> => {
   try {
+    console.log('PDF.js loading document...');
+    
     // Charger le document PDF avec PDF.js
     const loadingTask = pdfjs.getDocument({ data: pdfData });
     const pdf = await loadingTask.promise;
     const numPages = pdf.numPages;
     
-    console.log(`PDF loaded with ${numPages} pages`);
-    
-    // Limiter le nombre de pages pour les PDF volumineux
-    const pagesToProcess = Math.min(numPages, 50); // Limiter à 50 pages maximum
+    console.log(`PDF loaded successfully. Number of pages: ${numPages}`);
     
     // Extraire le texte de chaque page
     const textContent: string[] = [];
     let totalExtractedLength = 0;
     
-    for (let i = 1; i <= pagesToProcess; i++) {
+    for (let i = 1; i <= numPages; i++) {
       try {
         if (totalExtractedLength > MAX_EXTRACTED_TEXT_LENGTH) {
           console.log(`Reached maximum text extraction limit (${MAX_EXTRACTED_TEXT_LENGTH} characters). Stopping.`);
@@ -63,21 +65,29 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
           break;
         }
         
+        console.log(`Processing page ${i}/${numPages}`);
+        
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
         
         // Récupérer le texte avec sa position pour une meilleure mise en forme
         const textItems = content.items
+          .filter((item: any) => 'str' in item && item.str.trim().length > 0)
           .map((item: any) => ({
-            text: 'str' in item ? item.str : '',
+            text: item.str,
             x: item.transform ? item.transform[4] : 0,
             y: item.transform ? item.transform[5] : 0,
+            height: item.height || 0,
             fontName: item.fontName || ''
-          }))
-          .filter(item => item.text.trim().length > 0);
+          }));
           
-        // Trier les éléments pour les afficher dans l'ordre naturel de lecture
-        // (du haut vers le bas, puis de gauche à droite)
+        if (textItems.length === 0) {
+          console.log(`No text items found on page ${i}`);
+          continue;
+        }
+        
+        // Trier les éléments par position pour conserver la structure du document
+        // D'abord regrouper par lignes (éléments ayant à peu près la même coordonnée y)
         const lineHeight = estimateLineHeight(textItems);
         const lines: { [key: number]: any[] } = {};
         
@@ -108,6 +118,8 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
           }
         });
         
+        console.log(`Extracted ${pageText.length} chars from page ${i}`);
+        
         textContent.push(pageText);
         totalExtractedLength += pageText.length;
       } catch (pageError) {
@@ -118,6 +130,8 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
     
     // Joindre toutes les pages avec des sauts de ligne
     let extractedText = textContent.join('\n');
+    
+    console.log(`PDF.js extraction complete. Total text length: ${extractedText.length} chars`);
     
     // Limiter la taille totale du texte extrait
     if (extractedText.length > MAX_EXTRACTED_TEXT_LENGTH) {
@@ -148,6 +162,8 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
     
     // Améliorer la structure du texte pour le rendre plus lisible
     extractedText = improveTextStructure(extractedText);
+    
+    console.log(`PDF.js succeeded with ${extractedText.length} characters`);
     
     return { extractedText, pageCount: numPages };
   } catch (error) {
@@ -191,66 +207,60 @@ function estimateLineHeight(textItems: any[]): number {
  */
 const fallbackExtraction = async (pdfData: Uint8Array, numPages: number): Promise<string> => {
   try {
-    // Convertir Uint8Array en string pour l'analyse
-    const pdfString = new TextDecoder().decode(pdfData);
+    console.log('Attempting fallback extraction for PDF');
     
-    // Utiliser regex pour extraire le texte entre les balises stream et endstream
-    const textBlocks: string[] = [];
-    const streamRegex = /stream([\s\S]*?)endstream/g;
-    let match;
+    // Essayer d'extraire avec une méthode simplifiée de PDF.js
+    const loadingTask = pdfjs.getDocument({ data: pdfData });
+    const pdf = await loadingTask.promise;
     
-    while ((match = streamRegex.exec(pdfString)) !== null) {
-      if (match[1] && match[1].length > 10) {
-        // Nettoyer les caractères non imprimables
-        const cleanedText = match[1]
-          .replace(/[^\x20-\x7E\r\n]/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-          
-        if (cleanedText.length > 20) {
-          textBlocks.push(cleanedText);
-        }
-      }
-    }
+    // Limiter le nombre de pages pour les PDF volumineux
+    const pagesToProcess = Math.min(numPages, 50);
+    let combinedText = '';
     
-    // Extraire le texte des balises ()Tj qui peuvent contenir du texte
-    const tjRegex = /\(([^)]{3,})\)\s*Tj/g;
-    let tjMatch;
-    
-    while ((tjMatch = tjRegex.exec(pdfString)) !== null) {
-      if (tjMatch[1] && /[a-zA-Z0-9]/.test(tjMatch[1])) {
-        // Decode escaped chars
-        const text = tjMatch[1]
-          .replace(/\\(\d{3})/g, (m, p) => String.fromCharCode(parseInt(p, 8)))
-          .replace(/\\n/g, "\n")
-          .replace(/\\r/g, "\r")
-          .replace(/\\t/g, "\t")
-          .replace(/\\(.)/g, "$1");
+    for (let i = 1; i <= pagesToProcess; i++) {
+      try {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
         
-        textBlocks.push(text);
+        // Extraire simplement le texte brut
+        const pageText = textContent.items
+          .filter((item: any) => 'str' in item)
+          .map((item: any) => item.str)
+          .join(' ');
+          
+        combinedText += pageText + '\n\n';
+      } catch (e) {
+        console.warn(`Fallback error on page ${i}:`, e);
       }
     }
     
-    // Extraire les potentielles sections de texte "pur" dans le PDF
-    const textRegex = /[a-zA-Z0-9 .,;:'\-+()[\]{}?!@#$%^&*=\/\\|<>"éèêëàâäôöûüùïîçÉÈÊËÀÂÄÔÖÛÜÙÏÎÇ]{10,}/g;
-    const textMatches = pdfString.match(textRegex);
-    
-    if (textMatches) {
-      textBlocks.push(...textMatches);
+    if (combinedText.trim().length > 100) {
+      console.log(`Fallback extracted ${combinedText.length} characters`);
+      return combinedText;
     }
     
-    let extractedText = textBlocks.join('\n\n');
-    
-    // Limiter la taille du texte extrait
-    if (extractedText.length > MAX_EXTRACTED_TEXT_LENGTH) {
-      extractedText = extractedText.substring(0, MAX_EXTRACTED_TEXT_LENGTH) + 
-        "\n\n[TEXTE TRONQUÉ - Le fichier est trop volumineux pour être analysé en entier]";
+    // Si le PDF est toujours illisible, essayer d'extraire du texte des métadonnées
+    try {
+      const metadata = await pdf.getMetadata();
+      let metaText = '';
+      
+      if (metadata && metadata.info) {
+        const info = metadata.info;
+        if (info.Title) metaText += `Titre: ${info.Title}\n`;
+        if (info.Author) metaText += `Auteur: ${info.Author}\n`;
+        if (info.Subject) metaText += `Sujet: ${info.Subject}\n`;
+        if (info.Keywords) metaText += `Mots-clés: ${info.Keywords}\n`;
+      }
+      
+      if (metaText) {
+        console.log(`Extracted metadata: ${metaText.length} characters`);
+        combinedText = metaText + '\n\n' + combinedText;
+      }
+    } catch (metaError) {
+      console.warn('Metadata extraction failed:', metaError);
     }
     
-    // Appliquer le nettoyage standard
-    extractedText = cleanExtractedText(extractedText);
-    
-    return extractedText || "[Aucun texte extrait via la méthode de secours]";
+    return combinedText || "[Extraction de texte difficile sur ce document]";
   } catch (error) {
     console.error('Fallback extraction failed:', error);
     return "[Échec de l'extraction du texte par la méthode de secours]";
@@ -264,39 +274,14 @@ const cleanExtractedText = (text: string): string => {
   if (!text) return '';
   
   return text
-    // Supprimer les balises PDF et autres métadonnées inutiles
-    .replace(/%PDF-[0-9.]+[\s\S]*?obj/gi, '')
-    .replace(/endobj/gi, '')
-    .replace(/startxref[\s\S]*?%%EOF/gi, '')
-    
-    // Supprimer codes hexadécimaux et nombres non pertinents
-    .replace(/[0-9a-f]{6,}/gi, '')
-    .replace(/\b[0-9]{4,}\b/g, '')
-    
-    // Supprimer métadonnées et références
-    .replace(/\/Type\s*\/[A-Za-z]+/g, '')
-    .replace(/\/MediaBox\s*\[[^\]]+\]/g, '')
-    .replace(/\/Contents\s*[0-9]+\s*[0-9]+\s*R/g, '')
-    
-    // Normaliser les espaces et sauts de ligne
-    .replace(/\s+/g, ' ')
-    .replace(/(\n\s*){3,}/g, '\n\n')
-    
     // Supprimer les caractères non imprimables
-    .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
-    
-    // Nettoyer les artefacts PDF courants
-    .replace(/[^\w\s.,;:'\-+()[\]{}?!@#$%^&*=\/\\|<>"éèêëàâäôöûüùïîçÉÈÊËÀÂÄÔÖÛÜÙÏÎÇ]/g, '')
-    
-    // Remplacer les répétitions de caractères (comme "AAAAAAAA")
-    .replace(/(.)\1{5,}/g, '$1$1$1')
-    
-    // Supprimer les lignes qui semblent être des numéros de page isolés
-    .replace(/^\s*\d+\s*$/mg, '')
-    
-    // Supprimer les lignes trop courtes qui sont probablement du bruit
-    .replace(/^.{1,3}$/mg, '')
-    
+    .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // Supprimer séquences répétitives qui ressemblent à des artefacts
+    .replace(/(.)\1{10,}/g, '$1$1$1')
+    // Normaliser les espaces
+    .replace(/\s+/g, ' ')
+    // Normaliser les sauts de ligne
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 };
 
@@ -310,8 +295,6 @@ function improveTextStructure(text: string): string {
   let improved = text
     // Supprimer les lignes qui semblent être des en-têtes PDF
     .replace(/^.*PDF.*$/mg, '')
-    // Supprimer les lignes qui contiennent majoritairement des symboles
-    .replace(/^[^a-zA-Z0-9àéèêëîïôùûç]{5,}$/mg, '')
     // Supprimer les lignes qui semblent être des numéros de page isolés
     .replace(/^\s*\d+\s*$/mg, '')
     // Nettoyer les séquences d'espaces multiples
@@ -337,85 +320,8 @@ function improveTextStructure(text: string): string {
   // Supprimer les lignes vides consécutives
   improved = improved.replace(/\n{3,}/g, '\n\n');
   
-  // Ajuster la structure des listes
-  improved = improved.replace(/([.,:;])\s*\n/g, '$1\n');
-  
   return improved.trim();
 }
-
-/**
- * Nettoie le texte brut extrait d'un CV pour le rendre plus lisible
- * Version améliorée pour les CV spécifiquement
- */
-export const cleanResumeText = (rawText: string): string => {
-  if (!rawText || typeof rawText !== 'string') {
-    return "Aucun texte disponible";
-  }
-  
-  // Version améliorée du nettoyage spécifiquement pour les CV
-  let cleanedText = rawText
-    // Supprimer les balises PDF et autres métadonnées inutiles
-    .replace(/%PDF-[0-9.]+[\s\S]*?obj/gi, '')
-    .replace(/endobj/gi, '')
-    .replace(/startxref[\s\S]*?%%EOF/gi, '')
-    
-    // Supprimer codes hexadécimaux et nombres non pertinents
-    .replace(/[0-9a-f]{6,}/gi, '')
-    
-    // Supprimer métadonnées et références
-    .replace(/\/Type\s*\/[A-Za-z]+/g, '')
-    .replace(/\/MediaBox\s*\[[^\]]+\]/g, '')
-    .replace(/\/Contents\s*[0-9]+\s*[0-9]+\s*R/g, '')
-    .replace(/\/Resources[\s\S]*?>>/g, '')
-    
-    // Supprimer caractères spéciaux et non-imprimables
-    .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F\uFEFF\uFFFE\uFFFF]/g, '')
-    
-    // Nettoyer les lignes courtes (souvent du bruit)
-    .split('\n')
-    .filter(line => line.trim().length > 3)
-    .join('\n');
-    
-  // Détecter et conserver les sections importantes (expérience, formation, etc.)
-  const experienceRegex = /exp[ée]rience|travail|emploi|professionnel/i;
-  const educationRegex = /[ée]ducation|formation|[ée]tudes|dipl[ôo]me/i;
-  const skillsRegex = /comp[ée]tences|savoir|connaissance|technique/i;
-  
-  // Segmenter le texte pour mieux gérer les sections
-  const lines = cleanedText.split('\n');
-  const sections: string[] = [];
-  let currentSection = '';
-  
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-    
-    // Nouveau titre de section potentiel (ligne courte en majuscules ou avec certains mots-clés)
-    if ((trimmedLine.length < 30 && trimmedLine.toUpperCase() === trimmedLine && trimmedLine.length > 3) || 
-        experienceRegex.test(trimmedLine) || 
-        educationRegex.test(trimmedLine) || 
-        skillsRegex.test(trimmedLine)) {
-      
-      if (currentSection) {
-        sections.push(currentSection);
-      }
-      currentSection = trimmedLine + '\n';
-    } else if (trimmedLine) {
-      currentSection += trimmedLine + '\n';
-    }
-  }
-  
-  if (currentSection) {
-    sections.push(currentSection);
-  }
-  
-  // Recombiner les sections avec une séparation claire
-  return sections.join('\n\n')
-    // Nettoyage final
-    .replace(/\s+/g, ' ')
-    .replace(/(\n\s*){3,}/g, '\n\n')
-    .replace(/[^\w\s.,;:'\-+()[\]{}?!@#$%^&*=\/\\|<>"éèêëàâäôöûüùïîçÉÈÊËÀÂÄÔÖÛÜÙÏÎÇ]/g, '')
-    .trim();
-};
 
 /**
  * Extract text from a PDF URL with better error handling
@@ -426,79 +332,47 @@ export const extractTextFromPdfUrl = async (pdfUrl: string): Promise<string> => 
   try {
     console.log('Extracting text from PDF URL:', pdfUrl);
     
-    // Vérifier que l'URL est valide
-    if (!pdfUrl || typeof pdfUrl !== 'string' || !pdfUrl.startsWith('http')) {
-      throw new Error('URL PDF invalide ou non fournie');
+    // Ajouter un paramètre de cache-busting pour éviter les problèmes de cache
+    const cacheBustedUrl = new URL(pdfUrl);
+    cacheBustedUrl.searchParams.append('_', Date.now().toString());
+    
+    console.log('Using cache-busted URL:', cacheBustedUrl.toString());
+    
+    // Télécharger le PDF en mode blob pour le traiter localement
+    const response = await fetch(cacheBustedUrl.toString(), {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Échec du téléchargement: ${response.status} ${response.statusText}`);
     }
     
-    try {
-      // Vérifier que le PDF est accessible en faisant une requête HEAD avec retry
-      let checkResponse = null;
-      let retryCount = 0;
-      const maxRetries = 3;
-      
-      while (retryCount < maxRetries) {
-        try {
-          checkResponse = await fetch(pdfUrl, { 
-            method: 'HEAD',
-            headers: {
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache'
-            },
-          });
-          
-          if (checkResponse.ok) break;
-          
-          console.log(`Attempt ${retryCount + 1}: HEAD request failed with status ${checkResponse.status}. Retrying...`);
-          retryCount++;
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
-        } catch (headError) {
-          console.warn(`HEAD request attempt ${retryCount + 1} failed:`, headError);
-          retryCount++;
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-      
-      if (!checkResponse || !checkResponse.ok) {
-        throw new Error(`Le PDF n'est pas accessible après ${maxRetries} tentatives: ${checkResponse?.status || 'Error'}`);
-      }
-      
-      // Télécharger le PDF en mode blob pour le traiter localement
-      const response = await fetch(pdfUrl, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Échec du téléchargement: ${response.status} ${response.statusText}`);
-      }
-      
-      // Convertir le blob en ArrayBuffer
-      const pdfBlob = await response.blob();
-      const arrayBuffer = await pdfBlob.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      
-      console.log(`PDF downloaded, size: ${Math.round(uint8Array.length / 1024)} KB`);
-      
-      // Utiliser notre extracteur existant avec le buffer
-      const { extractedText } = await extractTextFromPDFBuffer(uint8Array);
-      
-      console.log(`Text extracted successfully from URL, length: ${extractedText.length}`);
-      
-      if (!extractedText || extractedText.trim().length < 50) {
-        throw new Error('Extraction a produit un texte insuffisant');
-      }
-      
-      return extractedText;
-    } catch (pdfError: any) {
-      console.error('Error extracting text from PDF URL:', pdfError);
-      throw new Error(`Échec de l'extraction de texte: ${pdfError.message}`);
-    }
+    // Convertir le blob en ArrayBuffer
+    const pdfBlob = await response.blob();
+    const arrayBuffer = await pdfBlob.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    console.log(`PDF downloaded, size: ${Math.round(uint8Array.length / 1024)} KB`);
+    
+    // Utiliser notre extracteur existant avec le buffer
+    const { extractedText } = await extractTextFromPDFBuffer(uint8Array);
+    
+    return extractedText;
   } catch (error: any) {
     console.error('Error in extractTextFromPdfUrl:', error);
     throw new Error(`Échec de l'extraction de texte: ${error.message}`);
   }
+};
+
+// Fonction simplifiée qui maintient la compatibilité avec l'ancienne API
+export const cleanResumeText = (rawText: string): string => {
+  if (!rawText || typeof rawText !== 'string') {
+    return "Aucun texte disponible";
+  }
+  
+  return cleanExtractedText(rawText);
 };

@@ -1,18 +1,17 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { resumeAnalysisService } from '../analysis/resumeAnalysisService';
 import { resumeDataService } from '../data/resumeDataService';
 import { resumeStorageService } from '../storage/resumeStorageService';
 import { toast } from '@/hooks/use-toast';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
-import { extractTextFromPDF } from '@/utils/pdfUtils';
+import { extractTextFromPDF, extractTextFromPdfUrl } from '@/utils/pdfUtils';
 
 /**
  * Extraire uniquement le texte d'un CV sans faire d'analyse
  */
 export const extractResumeText = async (resumeId: string): Promise<{ success: boolean; message: string; text?: string }> => {
   try {
-    console.log('Starting text extraction for resume ID:', resumeId);
+    console.log('Starting text extraction process for CV ID:', resumeId);
     
     // Ensure bucket exists first
     await ensureResumesBucketExists().catch(err => {
@@ -43,17 +42,88 @@ export const extractResumeText = async (resumeId: string): Promise<{ success: bo
       duration: 3000,
     });
     
-    // PRIORITÉ SERVEUR: Try the server-side extraction first (more reliable for this application)
+    // PRIORITÉ PDF.JS: Essayer d'extraire avec PDF.js directement
     try {
       toast({
         title: "Extraction en cours",
+        description: "Extraction avec PDF.js en cours...",
+        duration: 3000,
+      });
+      
+      // Obtenir l'URL du fichier
+      let fileUrl = null;
+      
+      // Méthode 1: URL publique
+      const { data: publicUrlData } = supabase.storage.from('resumes').getPublicUrl(resume.file_path);
+      if (publicUrlData && publicUrlData.publicUrl) {
+        fileUrl = publicUrlData.publicUrl;
+        console.log('File URL available: Yes');
+        console.log('Public URL available: Yes');
+      } else {
+        console.log('Public URL not available, trying signed URL');
+      }
+      
+      // Méthode 2: URL signée si pas d'URL publique
+      if (!fileUrl) {
+        const { data: signedUrlData, error: signedUrlError } = await supabase
+          .storage
+          .from('resumes')
+          .createSignedUrl(resume.file_path, 60);
+          
+        if (!signedUrlError && signedUrlData && signedUrlData.signedUrl) {
+          fileUrl = signedUrlData.signedUrl;
+          console.log('Signed URL available: Yes');
+        } else {
+          console.log('Signed URL not available:', signedUrlError);
+        }
+      }
+      
+      // Si on a réussi à obtenir une URL, tenter l'extraction avec PDF.js
+      if (fileUrl) {
+        console.log('Trying extraction method: PDF.js');
+        console.log('Extracting text with PDF.js from:', fileUrl.substring(0, 50) + '...');
+        
+        // Ajouter un paramètre pour éviter le cache
+        const cacheBustUrl = new URL(fileUrl);
+        cacheBustUrl.searchParams.append('_', Date.now().toString());
+        console.log('Using cache-busted URL:', cacheBustUrl.toString().substring(0, 50) + '...');
+        
+        try {
+          const extractedText = await extractTextFromPdfUrl(cacheBustUrl.toString());
+          
+          if (extractedText && extractedText.length > 100) {
+            console.log('PDF.js succeeded with', extractedText.length, 'characters');
+            
+            toast({
+              title: "Extraction réussie",
+              description: `Texte extrait: ${extractedText.length} caractères`,
+              duration: 3000,
+            });
+            
+            return { 
+              success: true, 
+              message: 'Texte extrait avec succès (PDF.js)',
+              text: extractedText
+            };
+          } else {
+            console.log('PDF.js extraction yielded insufficient text, trying server method');
+          }
+        } catch (pdfJsError) {
+          console.error('PDF.js extraction failed:', pdfJsError);
+          // Continue to server method
+        }
+      }
+      
+      // PRIORITÉ SERVEUR: Utiliser l'edge function pour l'extraction côté serveur
+      toast({
+        title: "Changement de méthode",
         description: "Extraction côté serveur en cours...",
         duration: 3000,
       });
       
-      // Get a direct URL for the PDF file
-      const { data: publicUrlData } = supabase.storage.from('resumes').getPublicUrl(resume.file_path);
-      const directUrl = publicUrlData.publicUrl;
+      // Get a direct URL for the PDF file (try again to ensure we have it)
+      const { data: publicUrlData2 } = supabase.storage.from('resumes').getPublicUrl(resume.file_path);
+      const directUrl = publicUrlData2.publicUrl;
       
       if (!directUrl) {
         throw new Error("Impossible d'obtenir l'URL du fichier");
@@ -125,7 +195,7 @@ export const extractResumeText = async (resumeId: string): Promise<{ success: bo
           console.log('Got signed URL for direct extraction:', signedUrlData.signedUrl.substring(0, 50) + '...');
           
           // Use client-side utility to extract text from URL
-          const extractedText = await extractTextFromPDF(new File([await (await fetch(signedUrlData.signedUrl)).blob()], resume.file_name));
+          const extractedText = await extractTextFromPdfUrl(signedUrlData.signedUrl);
           
           if (!extractedText || extractedText.length < 50) {
             throw new Error("Le texte extrait est insuffisant");

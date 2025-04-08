@@ -1,4 +1,10 @@
+
 // PDF Text extraction utility for Edge Function
+import * as pdfjs from "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/+esm";
+
+// Configure the worker
+const pdfjsWorker = { url: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js" };
+pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker.url;
 
 /**
  * Extract text from a PDF file using server-side techniques
@@ -7,11 +13,22 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
   try {
     console.log("Starting text extraction from PDF buffer");
     
-    // Convert the ArrayBuffer to a string (works for text-based PDFs)
+    // Essayer d'abord l'extraction avec PDF.js (méthode la plus fiable)
+    try {
+      const result = await extractWithPDFJS(pdfBuffer);
+      if (result.extractedText.length > 100) {
+        return result;
+      }
+      console.log("PDF.js extraction yielded insufficient text, trying fallback methods");
+    } catch (pdfJsError) {
+      console.warn("PDF.js extraction failed:", pdfJsError);
+    }
+    
+    // Convertir l'ArrayBuffer en string (fonctionne pour les PDF basés sur du texte)
     const decoder = new TextDecoder("utf-8");
     let rawText = decoder.decode(pdfBuffer);
     
-    // Determine if PDF might be scanned or image-based
+    // Déterminer si le PDF est scanné ou basé sur des images
     const isLikelyScannedPDF = detectScannedPDF(rawText);
     if (isLikelyScannedPDF) {
       console.log("PDF appears to be scanned or image-based, using specialized extraction");
@@ -60,6 +77,117 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
       pageCount: 0
     };
   }
+}
+
+/**
+ * Extraction PDF.js complète - méthode principale
+ */
+async function extractWithPDFJS(pdfBuffer: ArrayBuffer): Promise<{ extractedText: string; pageCount: number }> {
+  console.log("PDF.js loading document...");
+  
+  // Load the PDF with PDF.js
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(pdfBuffer) }).promise;
+  const numPages = pdf.numPages;
+  
+  console.log(`PDF loaded successfully. Number of pages: ${numPages}`);
+  
+  // Process each page
+  const textContent: string[] = [];
+  const maxPages = Math.min(numPages, 50); // Limit to 50 pages for performance
+  
+  for (let i = 1; i <= maxPages; i++) {
+    try {
+      console.log(`Processing page ${i}/${numPages}`);
+      
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      
+      // Group items by lines for better formatting
+      const textItems = content.items
+        .filter((item: any) => 'str' in item && item.str.trim().length > 0)
+        .map((item: any) => ({
+          text: item.str,
+          x: item.transform ? item.transform[4] : 0,
+          y: item.transform ? item.transform[5] : 0,
+          height: item.height || 0,
+          fontName: item.fontName || ''
+        }));
+        
+      if (textItems.length === 0) {
+        console.log(`No text items found on page ${i}`);
+        continue;
+      }
+      
+      // Group by lines based on Y coordinate
+      const lineHeight = estimateLineHeight(textItems);
+      const lines: { [key: number]: any[] } = {};
+      
+      textItems.forEach(item => {
+        const lineY = Math.round(item.y / lineHeight) * lineHeight;
+        if (!lines[lineY]) lines[lineY] = [];
+        lines[lineY].push(item);
+      });
+      
+      // Sort lines top to bottom (reversed Y as PDF origin is bottom-left)
+      const sortedLineKeys = Object.keys(lines).map(Number).sort((a, b) => b - a);
+      
+      // Build page text with proper order
+      let pageText = '';
+      
+      sortedLineKeys.forEach(lineY => {
+        // Sort items within line from left to right
+        const sortedItems = lines[lineY].sort((a: any, b: any) => a.x - b.x);
+        const lineText = sortedItems.map((item: any) => item.text).join(' ');
+        
+        if (lineText.trim()) {
+          pageText += lineText + '\n';
+        }
+      });
+      
+      const pageChars = pageText.length;
+      console.log(`Extracted ${pageChars} chars from page ${i}`);
+      textContent.push(pageText);
+      
+    } catch (pageError) {
+      console.warn(`Error extracting text from page ${i}:`, pageError);
+      textContent.push(`[Échec d'extraction - page ${i}]`);
+    }
+  }
+  
+  // Combine all pages with line breaks
+  let extractedText = textContent.join('\n');
+  console.log(`PDF.js extraction complete. Total text length: ${extractedText.length} chars`);
+  
+  // Clean up the extracted text
+  extractedText = cleanExtractedText(extractedText);
+  extractedText = improveTextStructure(extractedText);
+  
+  console.log(`PDF.js succeeded with ${extractedText.length} characters`);
+  
+  return { extractedText, pageCount: numPages };
+}
+
+/**
+ * Estimate average line height from text items
+ */
+function estimateLineHeight(textItems: any[]): number {
+  if (textItems.length < 5) return 12;
+  
+  const yPositions = textItems.map(item => item.y);
+  yPositions.sort((a, b) => b - a);
+  
+  const differences: number[] = [];
+  for (let i = 0; i < yPositions.length - 1; i++) {
+    const diff = yPositions[i] - yPositions[i + 1];
+    if (diff > 0 && diff < 100) { // Ignore large gaps
+      differences.push(diff);
+    }
+  }
+  
+  if (differences.length === 0) return 12;
+  
+  const sum = differences.reduce((acc, val) => acc + val, 0);
+  return Math.max(1, Math.round(sum / differences.length));
 }
 
 /**
