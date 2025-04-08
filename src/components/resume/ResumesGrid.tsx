@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, FileText, Download, Loader2, MoreHorizontal, Calendar, Trash2 } from 'lucide-react';
+import { Plus, FileText, Download, Loader2, MoreHorizontal, Calendar, Trash2, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -28,13 +28,16 @@ interface ResumesGridProps {
   selectionMode: boolean;
   downloading: Record<string, boolean>;
   extracting: Record<string, boolean>;
+  analyzing: Record<string, boolean>;
   extractedText: string | null;
   isTextDialogOpen: boolean;
   onSelect: (resumeId: string) => void;
   onDownload: (filePath: string, fileName: string, resumeId: string) => void;
   onDelete: (resumeId: string, filePath: string) => void;
   onExtractText: (resumeId: string, filePath: string) => void;
+  onAnalyzeResume: (resumeId: string, resumeText: string) => void;
   onCloseTextDialog: () => void;
+  resumesWithExtractedText: Record<string, string>;
 }
 
 const ResumesGrid: React.FC<ResumesGridProps> = ({
@@ -43,13 +46,16 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
   selectionMode,
   downloading,
   extracting,
+  analyzing,
   extractedText,
   isTextDialogOpen,
   onSelect,
   onDownload,
   onDelete,
   onExtractText,
-  onCloseTextDialog
+  onAnalyzeResume,
+  onCloseTextDialog,
+  resumesWithExtractedText
 }) => {
   const { toast } = useToast();
   
@@ -109,6 +115,19 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                         )}
                         Extraire le texte
                       </DropdownMenuItem>
+                      {resumesWithExtractedText[resume.id] && (
+                        <DropdownMenuItem 
+                          onClick={() => onAnalyzeResume(resume.id, resumesWithExtractedText[resume.id])}
+                          disabled={analyzing[resume.id] || !resumesWithExtractedText[resume.id]}
+                        >
+                          {analyzing[resume.id] ? (
+                            <Loader2 size={14} className="mr-2 animate-spin" />
+                          ) : (
+                            <Brain size={14} className="mr-2" />
+                          )}
+                          Analyser avec IA
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem 
                         className="text-red-600"
                         onClick={() => onDelete(resume.id, resume.file_path)}
@@ -126,7 +145,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
               </h3>
               
               {resume.candidates && resume.candidates.length > 0 ? (
-                <p className="text-sm text-muted-foreground mb-3">
+                <p className="text-sm text-navy mb-3">
                   Candidat: {resume.candidates[0].first_name} {resume.candidates[0].last_name}
                 </p>
               ) : (
@@ -149,7 +168,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
             </div>
             
             {!selectionMode && (
-              <div className="border-t border-border/10 p-3 flex gap-2 justify-between">
+              <div className="border-t border-border/10 p-3 flex flex-wrap gap-2 justify-between">
                 <Button 
                   variant="default" 
                   size="sm" 
@@ -185,6 +204,26 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                   )}
                   Extraire texte
                 </Button>
+                
+                {resumesWithExtractedText[resume.id] && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-xs flex-1 bg-green-50 border-green-200 hover:bg-green-100"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onAnalyzeResume(resume.id, resumesWithExtractedText[resume.id]);
+                    }}
+                    disabled={analyzing[resume.id]}
+                  >
+                    {analyzing[resume.id] ? (
+                      <Loader2 size={14} className="mr-1 animate-spin" />
+                    ) : (
+                      <Brain size={14} className="mr-1" />
+                    )}
+                    Analyser IA
+                  </Button>
+                )}
                 
                 <Button 
                   variant="outline" 

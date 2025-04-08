@@ -1,4 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, AlertCircle, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
@@ -8,7 +10,8 @@ import {
   getUserResumes, 
   deleteResume, 
   downloadResume, 
-  extractResumeText, 
+  extractResumeText,
+  analyzeResume,
   ResumeData 
 } from '@/services/resumeService';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
@@ -40,10 +43,13 @@ const Resumes = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<Record<string, boolean>>({});
   const [extracting, setExtracting] = useState<Record<string, boolean>>({});
+  const [analyzing, setAnalyzing] = useState<Record<string, boolean>>({});
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [isTextDialogOpen, setIsTextDialogOpen] = useState(false);
+  const [resumesWithExtractedText, setResumesWithExtractedText] = useState<Record<string, string>>({});
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const [selectedResumes, setSelectedResumes] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
@@ -138,6 +144,15 @@ const Resumes = () => {
         });
         
         setResumes(prev => prev.filter(resume => resume.id !== resumeId));
+        
+        // Supprimer également le texte extrait s'il existe
+        if (resumesWithExtractedText[resumeId]) {
+          setResumesWithExtractedText(prev => {
+            const newState = { ...prev };
+            delete newState[resumeId];
+            return newState;
+          });
+        }
       } else {
         throw new Error("Échec de la suppression du CV");
       }
@@ -167,9 +182,15 @@ const Resumes = () => {
         setExtractedText(result.text);
         setIsTextDialogOpen(true);
         
+        // Stocker le texte extrait pour l'utiliser plus tard
+        setResumesWithExtractedText(prev => ({
+          ...prev,
+          [resumeId]: result.text || ''
+        }));
+        
         toast({
           title: "Extraction réussie",
-          description: "Le texte a été extrait avec succès",
+          description: "Le texte a été extrait avec succès. Vous pouvez maintenant analyser ce CV avec l'IA.",
         });
       } else {
         throw new Error(result.message || "Erreur lors de l'extraction du texte");
@@ -183,6 +204,46 @@ const Resumes = () => {
       });
     } finally {
       setExtracting(prev => ({ ...prev, [resumeId]: false }));
+    }
+  };
+  
+  const handleAnalyzeResume = async (resumeId: string, resumeText: string) => {
+    try {
+      console.log('Analyzing resume with AI:', resumeId);
+      setAnalyzing(prev => ({ ...prev, [resumeId]: true }));
+      
+      toast({
+        title: "Analyse en cours",
+        description: "Veuillez patienter pendant l'analyse du CV avec l'IA..."
+      });
+      
+      const result = await analyzeResume(resumeId, resumeText);
+      
+      if (result.success) {
+        toast({
+          title: "Analyse réussie",
+          description: "Le CV a été analysé avec succès et un candidat a été créé"
+        });
+        
+        // Recharger les CV pour afficher le candidat associé
+        await loadResumes();
+        
+        // Rediriger vers la page du candidat si un ID est retourné
+        if (result.candidateId) {
+          navigate(`/candidates/${result.candidateId}`);
+        }
+      } else {
+        throw new Error(result.message || "Erreur lors de l'analyse du CV");
+      }
+    } catch (error: any) {
+      console.error('Error analyzing resume:', error);
+      toast({
+        title: "Échec de l'analyse",
+        description: error.message || "Une erreur s'est produite lors de l'analyse du CV",
+        variant: "destructive",
+      });
+    } finally {
+      setAnalyzing(prev => ({ ...prev, [resumeId]: false }));
     }
   };
 
@@ -357,13 +418,16 @@ const Resumes = () => {
             selectionMode={selectionMode}
             downloading={downloading}
             extracting={extracting}
+            analyzing={analyzing}
             extractedText={extractedText}
             isTextDialogOpen={isTextDialogOpen}
             onSelect={toggleResumeSelection}
             onDownload={handleDownloadResume}
             onDelete={handleDeleteResume}
             onExtractText={handleExtractText}
+            onAnalyzeResume={handleAnalyzeResume}
             onCloseTextDialog={() => setIsTextDialogOpen(false)}
+            resumesWithExtractedText={resumesWithExtractedText}
           />
         )}
       </div>
