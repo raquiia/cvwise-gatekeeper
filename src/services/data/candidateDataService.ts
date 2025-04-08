@@ -53,12 +53,12 @@ export const candidateDataService = {
     try {
       console.log("Fetching candidate with ID:", candidateId);
       
-      // Use a direct query instead of RPC to avoid recursion issues
+      // Utiliser une requête directe pour éviter les problèmes de récursion RLS
       const { data, error } = await supabase
         .from('candidates')
         .select('*')
         .eq('id', candidateId)
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error("Error fetching candidate:", error.message);
@@ -92,7 +92,7 @@ export const candidateDataService = {
         .from('candidates')
         .select('resume_id')
         .eq('id', candidateId)
-        .single();
+        .maybeSingle();
       
       if (candidateFetchError) {
         if (candidateFetchError.message.includes('recursion')) {
@@ -130,7 +130,7 @@ export const candidateDataService = {
             .from('resumes')
             .select('file_path')
             .eq('id', resumeId)
-            .single();
+            .maybeSingle();
           
           if (resumeError) {
             console.error("Error fetching resume for deletion:", resumeError.message);
