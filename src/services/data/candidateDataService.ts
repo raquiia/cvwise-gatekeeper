@@ -51,12 +51,14 @@ export const candidateDataService = {
    */
   getCandidateById: async (candidateId: string): Promise<CandidateData | null> => {
     try {
-      // Utiliser directement la requête Supabase plutôt qu'un appel RPC pour éviter la récursion RLS
+      console.log("Fetching candidate with ID:", candidateId);
+      
+      // Use direct query instead of RPC to avoid recursion issues with RLS
       const { data, error } = await supabase
         .from('candidates')
         .select('*')
         .eq('id', candidateId)
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error("Error fetching candidate:", error.message);
@@ -64,8 +66,11 @@ export const candidateDataService = {
       }
       
       if (!data) {
+        console.log("No candidate found with ID:", candidateId);
         return null;
       }
+      
+      console.log("Successfully retrieved candidate data");
       
       return data as CandidateData;
     } catch (error: any) {

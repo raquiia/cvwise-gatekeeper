@@ -56,6 +56,11 @@ const App = () => (
           <CandidateDetail />
         </ProtectedRoute>
       } />
+      <Route path="/candidates/:candidateId/job-match" element={
+        <ProtectedRoute>
+          <CandidateDetail />
+        </ProtectedRoute>
+      } />
       <Route path="/resumes" element={
         <ProtectedRoute>
           <Resumes />

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -54,16 +55,18 @@ const CandidateDetail = () => {
 
       try {
         setLoading(true);
+        console.log("Fetching candidate with ID:", candidateId);
         const data = await candidateDataService.getCandidateById(candidateId);
         
         if (!data) {
+          console.log("Candidate not found:", candidateId);
           setError("Candidat non trouvé");
         } else {
-          console.log("Données du candidat:", data);
+          console.log("Candidate data retrieved successfully");
           setCandidate(data);
         }
-      } catch (err) {
-        console.error("Erreur lors du chargement du candidat:", err);
+      } catch (err: any) {
+        console.error("Error loading candidate:", err);
         setError("Une erreur s'est produite lors du chargement des données");
       } finally {
         setLoading(false);
