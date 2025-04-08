@@ -1,11 +1,7 @@
 
 // PDF Text extraction utility for Edge Function
-import pdfjs from "npm:pdfjs-dist@3.11.174";
-import { TextItem } from "npm:pdfjs-dist@3.11.174/types/src/display/api";
-
-// Configure PDF.js for server environment
-const pdfjsVersion = '3.11.174';
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.js`;
+// Using PDF.js compatible with Deno environment
+import * as pdfjs from "pdfjs-dist";
 
 /**
  * Extract text from a PDF file using server-side techniques
@@ -14,11 +10,17 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
   try {
     console.log("Starting text extraction from PDF buffer");
     
+    // Configure PDF.js to use no worker - important for Deno environment
+    const pdfjsLib = pdfjs;
+    pdfjsLib.GlobalWorkerOptions.workerPort = null;
+    
     // Load the PDF document with PDF.js
-    const loadingTask = pdfjs.getDocument({
+    const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(pdfBuffer),
-      disableWorker: true,
+      useWorkerFetch: false,
       isEvalSupported: false,
+      useSystemFonts: true,
+      disableFontFace: true
     });
     
     const pdf = await loadingTask.promise;
@@ -39,8 +41,8 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
         
         // Extract and concatenate text from the page with better structure
         const pageText = content.items
-          .filter((item: TextItem) => 'str' in item && item.str.trim().length > 0)
-          .map((item: TextItem) => item.str)
+          .filter((item: any) => 'str' in item && item.str.trim().length > 0)
+          .map((item: any) => item.str)
           .join(' ');
           
         const pageChars = pageText.length;
@@ -59,25 +61,14 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
     
     // Clean up the extracted text
     extractedText = cleanExtractedText(extractedText);
-    extractedText = improveTextStructure(extractedText);
     
     console.log(`Text cleaning complete. Final text length: ${extractedText.length} chars`);
     
     return { extractedText, pageCount: numPages };
   } catch (error) {
     console.error("Error in extractTextFromPDF:", error);
-    
-    // Try simplified approach
-    try {
-      console.log("Attempting simplified extraction approach");
-      return await simplifiedExtraction(pdfBuffer);
-    } catch (fallbackError) {
-      console.error("Simplified extraction also failed:", fallbackError);
-      return {
-        extractedText: "Failed to extract text from PDF. Error: " + (error instanceof Error ? error.message : String(error)),
-        pageCount: 0
-      };
-    }
+    // Try with PDF TextExtractor module
+    return await extractWithTextExtractor(pdfBuffer);
   }
 }
 
@@ -87,7 +78,8 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
 function cleanExtractedText(text: string): string {
   if (!text) return "";
   
-  return text
+  // Basic cleaning
+  let cleaned = text
     // Remove non-printable characters
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     // Remove PDF specific artifacts
@@ -97,27 +89,13 @@ function cleanExtractedText(text: string): string {
     // Remove repetitive character sequences
     .replace(/(.)\1{5,}/g, '$1$1$1')
     .trim();
-}
-
-/**
- * Améliore la structure du texte pour le rendre plus lisible
- */
-function improveTextStructure(text: string): string {
-  // Supprimer les séquences de caractères qui ressemblent à des métadonnées PDF
-  let improved = text
-    // Supprimer les lignes qui semblent être des en-têtes PDF
-    .replace(/^.*PDF.*$/mg, '')
-    // Supprimer les lignes qui contiennent majoritairement des symboles
-    .replace(/^[^a-zA-Z0-9àéèêëîïôùûç]{5,}$/mg, '')
-    // Supprimer les lignes qui semblent être des numéros de page isolés
-    .replace(/^\s*\d+\s*$/mg, '')
-    // Nettoyer les séquences d'espaces multiples
-    .replace(/\s{3,}/g, '\n')
-    // Remplacer les tirets isolés en début de ligne par des puces
-    .replace(/^\s*-\s+/mg, '• ');
+    
+  // Improve structure with line breaks
+  // Add line breaks at potential section boundaries
+  cleaned = cleaned.replace(/([.!?]) ([A-Z])/g, '$1\n\n$2');
   
-  // Détecter et améliorer la mise en forme des sections courantes de CV
-  const sections = [
+  // Identify common CV section headers and add formatting
+  const sectionHeaders = [
     "EXPÉRIENCE", "EXPERIENCE", "PROFESSIONAL EXPERIENCE", "EXPÉRIENCE PROFESSIONNELLE",
     "ÉDUCATION", "EDUCATION", "FORMATION", "ÉTUDES", "ETUDES",
     "COMPÉTENCES", "COMPETENCES", "SKILLS", "SAVOIR-FAIRE",
@@ -125,59 +103,57 @@ function improveTextStructure(text: string): string {
     "CENTRES D'INTÉRÊT", "INTERESTS", "HOBBIES", "LOISIRS"
   ];
   
-  // Mettre en évidence les sections
-  sections.forEach(section => {
-    const regex = new RegExp(`(\\b${section}\\b)`, 'gi');
-    improved = improved.replace(regex, '\n\n$1\n');
-  });
+  // Improve section headers visibility
+  for (const header of sectionHeaders) {
+    const regex = new RegExp(`\\b${header}\\b`, 'gi');
+    cleaned = cleaned.replace(regex, match => `\n\n${match.toUpperCase()}\n`);
+  }
   
-  // Supprimer les lignes vides consécutives
-  improved = improved.replace(/\n{3,}/g, '\n\n');
+  // Format bullet points
+  cleaned = cleaned.replace(/[•●⟐◦⦾◆■▪︎]( +)/g, '\n• ');
   
-  return improved.trim();
+  // Remove excessive line breaks
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  
+  return cleaned;
 }
 
 /**
- * Approche simplifiée d'extraction pour les cas où l'extraction principale échoue
+ * Fallback extraction method using text extraction approach
  */
-async function simplifiedExtraction(pdfBuffer: ArrayBuffer): Promise<{ extractedText: string; pageCount: number }> {
+async function extractWithTextExtractor(pdfBuffer: ArrayBuffer): Promise<{ extractedText: string; pageCount: number }> {
   try {
-    console.log("Using simplified extraction method");
+    console.log("Using fallback text extraction method");
     
-    // Charger le PDF avec des options minimales
-    const loadingTask = pdfjs.getDocument({
-      data: new Uint8Array(pdfBuffer),
-      disableWorker: true,
-    });
+    // Basic text extraction - get the text representation from PDF bytes
+    const text = new TextDecoder().decode(pdfBuffer);
     
-    const pdf = await loadingTask.promise;
-    const numPages = pdf.numPages;
-    const pagesToProcess = Math.min(numPages, 20);
-    const textContents: string[] = [];
+    // Try to extract readable text using simple patterns
+    let extractedText = '';
     
-    for (let i = 1; i <= pagesToProcess; i++) {
-      try {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        
-        const pageText = content.items
-          .map((item: any) => 'str' in item ? item.str : '')
-          .join(' ');
-          
-        textContents.push(pageText);
-      } catch (e) {
-        console.warn(`Simplified extraction error on page ${i}:`, e);
+    // Look for text between common PDF text markers
+    const textMatches = text.match(/BT\s+(.*?)\s+ET/gs);
+    if (textMatches && textMatches.length > 0) {
+      extractedText = textMatches.join(' ');
+    } else {
+      // Try to extract readable text chunks
+      const chunks = text.match(/[A-Za-z0-9àáâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ]{2,}[\s.,;:!?-]*/g);
+      if (chunks && chunks.length > 0) {
+        extractedText = chunks.join(' ');
+      } else {
+        extractedText = "Impossible d'extraire du texte lisible de ce PDF.";
       }
     }
     
-    const extractedText = textContents.join('\n\n');
+    // Clean the extracted text
+    extractedText = cleanExtractedText(extractedText);
     
     return {
-      extractedText: cleanExtractedText(extractedText) || "Aucun texte extrait (méthode simplifiée)",
-      pageCount: numPages
+      extractedText: extractedText || "Texte extrait par méthode de secours - qualité réduite",
+      pageCount: 0 // Cannot determine page count in this method
     };
   } catch (error) {
-    console.error("Simplified extraction failed:", error);
+    console.error("Fallback extraction failed:", error);
     return {
       extractedText: "L'extraction de texte a échoué avec toutes les méthodes disponibles.",
       pageCount: 0
