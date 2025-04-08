@@ -54,27 +54,26 @@ export const candidateDataService = {
     try {
       console.log("Fetching candidate with ID:", candidateId);
       
-      // Instead of using RPC, use a direct query with maybeSingle to avoid RLS recursion
-      const { data, error } = await supabase
-        .from('candidates')
-        .select('*')
-        .eq('id', candidateId)
-        .maybeSingle();
-      
-      if (error) {
-        console.error("Error fetching candidate:", error.message);
-        throw new Error(`Erreur lors de la récupération du candidat: ${error.message}`);
+      // Get the current user's ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Non authentifié");
       }
       
-      if (!data) {
+      // Fetch all candidates and find the matching one
+      const candidates = await candidateDataService.getUserCandidates(user.id);
+      
+      // Find the candidate with the matching ID
+      const candidate = candidates.find(c => c.id === candidateId);
+      
+      if (!candidate) {
         console.log("No candidate found with ID:", candidateId);
         return null;
       }
       
-      console.log("Successfully retrieved candidate data:", data);
+      console.log("Successfully retrieved candidate data:", candidate);
       
-      // Type assertion is safe here since the data comes directly from candidates table
-      return data as CandidateData;
+      return candidate;
     } catch (error: any) {
       console.error("Exception in getCandidateById:", error);
       throw new Error(error.message || "Impossible de récupérer le candidat");
