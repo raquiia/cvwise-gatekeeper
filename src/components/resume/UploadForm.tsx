@@ -4,7 +4,6 @@ import { Upload, Loader2, File, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { uploadResume } from '@/services/resumeService';
-import UploadDropZone from './UploadDropZone';
 
 interface UploadFormProps {
   userId: string | undefined;
@@ -16,26 +15,69 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<Record<number, 'idle' | 'uploading' | 'success' | 'error'>>({});
   const [errorMessages, setErrorMessages] = useState<Record<number, string>>({});
-  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
-  const handleFileSelect = (newFiles: File[]) => {
-    const currentFilesLength = files.length;
-    setFiles(prevFiles => [...prevFiles, ...newFiles]);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files);
+      const currentFilesLength = files.length;
+      setFiles(prevFiles => [...prevFiles, ...newFiles]);
+      
+      // Initialize status for new files
+      const newStatus: Record<number, 'idle' | 'uploading' | 'success' | 'error'> = {};
+      newFiles.forEach((_, index) => {
+        newStatus[currentFilesLength + index] = 'idle';
+      });
+      
+      setUploadStatus(prevStatus => ({...prevStatus, ...newStatus}));
+    }
+  };
+  
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     
-    // Initialize status for new files
-    const newStatus: Record<number, 'idle' | 'uploading' | 'success' | 'error'> = {};
-    newFiles.forEach((_, index) => {
-      newStatus[currentFilesLength + index] = 'idle';
-    });
+    if (uploading) return;
     
-    setUploadStatus(prevStatus => ({...prevStatus, ...newStatus}));
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const newFiles = Array.from(e.dataTransfer.files).filter(
+        file => file.type === 'application/pdf' || 
+               file.type === 'application/msword' || 
+               file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+               file.type === 'text/plain'
+      );
+      
+      if (newFiles.length === 0) {
+        toast({
+          title: "Format non supporté",
+          description: "Veuillez déposer des fichiers au format PDF, DOC, DOCX ou TXT.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setFiles(prev => [...prev, ...newFiles]);
+      
+      // Initialize status for new files
+      const newStatus: Record<number, 'idle' | 'uploading' | 'success' | 'error'> = {};
+      newFiles.forEach((_, index) => {
+        newStatus[files.length + index] = 'idle';
+      });
+      
+      setUploadStatus(prev => ({...prev, ...newStatus}));
+    }
   };
   
   const clearFiles = () => {
     setFiles([]);
     setUploadStatus({});
-    setErrorMessages({});
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
   
   const removeFile = (index: number) => {
@@ -57,11 +99,6 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
     });
     
     setUploadStatus(updatedStatus);
-    
-    // Update error messages
-    const newErrorMessages = {...errorMessages};
-    delete newErrorMessages[index];
-    setErrorMessages(newErrorMessages);
   };
   
   const handleUpload = async () => {
@@ -95,15 +132,9 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
         const result = await uploadResume(files[i], userId);
         
         if (result) {
-          console.log(`Upload succeeded for ${files[i].name}, resumeId: ${result.id}`);
+          console.log(`Upload succeeded for ${files[i].name}`);
           setUploadStatus(prevStatus => ({...prevStatus, [i]: 'success'}));
           successCount++;
-          
-          // Notification pour l'utilisateur
-          toast({
-            title: "CV téléchargé",
-            description: `${files[i].name} a été téléchargé avec succès et est en cours d'analyse.`,
-          });
         } else {
           console.error(`Upload failed for ${files[i].name}`);
           setUploadStatus(prevStatus => ({...prevStatus, [i]: 'error'}));
@@ -122,7 +153,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
     if (successCount > 0) {
       toast({
         title: "Téléchargement terminé",
-        description: `${successCount} sur ${files.length} fichiers téléchargés avec succès. Les candidats seront disponibles après analyse.`
+        description: `${successCount} sur ${files.length} fichiers téléchargés avec succès`
       });
       setTimeout(() => onUploadComplete(successCount), 1000);
     } else {
@@ -144,12 +175,34 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
       </div>
       
       {/* Zone de dépôt */}
-      <UploadDropZone 
-        onFileSelect={handleFileSelect}
-        uploading={uploading}
-        dragging={dragging}
-        setDragging={setDragging}
-      />
+      <div 
+        className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center mb-6 hover:border-navy/50 hover:bg-navy/5 transition-colors"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          onChange={handleFileSelect}
+          accept=".pdf,.doc,.docx,.txt"
+          multiple
+        />
+        
+        <Button 
+          onClick={() => fileInputRef.current?.click()}
+          variant="outline"
+          className="mb-3"
+          disabled={uploading}
+        >
+          <Upload size={18} className="mr-2" />
+          Sélectionner des fichiers
+        </Button>
+        
+        <p className="text-sm text-muted-foreground">
+          Formats acceptés: PDF, DOC, DOCX, TXT
+        </p>
+      </div>
       
       {/* Liste de fichiers */}
       {files.length > 0 && (

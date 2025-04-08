@@ -4,7 +4,6 @@ import { resumeStorageService } from '../storage/resumeStorageService';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
 import type { ResumeData } from '../data/resumeDataService';
-import { extractResumeText } from './analysisOperations';
 
 /**
  * Vérifier si un fichier avec le même nom existe déjà pour cet utilisateur
@@ -93,28 +92,6 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
       };
       
       console.log('Resume record created successfully:', resumeData);
-      
-      // Obtenir l'URL signée pour le fichier
-      const { data: signedUrl } = await supabase.storage
-        .from('resumes')
-        .createSignedUrl(filePath, 3600); // URL valide 1 heure
-      
-      // Lancer l'extraction et l'analyse en arrière-plan
-      if (signedUrl?.signedUrl) {
-        console.log('Starting automatic text extraction and analysis in background');
-        setTimeout(async () => {
-          try {
-            // Extraire le texte et déclencher l'analyse automatiquement
-            await extractResumeText(resumeData.id, signedUrl.signedUrl);
-            console.log('Background text extraction and analysis completed');
-          } catch (analysisError) {
-            console.error('Error in background analysis:', analysisError);
-          }
-        }, 100);
-      } else {
-        console.warn('Could not create signed URL for background analysis');
-      }
-      
       return resumeData;
     } catch (dbError) {
       console.error('Database operation failed:', dbError);
