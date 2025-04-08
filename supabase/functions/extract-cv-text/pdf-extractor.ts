@@ -28,47 +28,69 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
     
     console.log(`PDF loaded successfully. Number of pages: ${numPages}`);
     
-    // Process each page
+    // Process each page to extract human-readable text
     const textContent: string[] = [];
     const maxPages = Math.min(numPages, 50); // Limit to 50 pages for performance
     
     for (let i = 1; i <= maxPages; i++) {
       try {
-        console.log(`Processing page ${i}/${numPages}`);
+        console.log(`Processing page ${i}/${maxPages}`);
         
         const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
+        const content = await page.getTextContent({ normalizeWhitespace: true });
         
-        // Extract and concatenate text from the page with better structure
-        const pageText = content.items
-          .filter((item: any) => 'str' in item && item.str.trim().length > 0)
-          .map((item: any) => item.str)
-          .join(' ');
+        // Get text items and respect their positioning
+        let lastY = null;
+        let text = "";
+        
+        for (const item of content.items) {
+          if (!('str' in item) || item.str.trim().length === 0) continue;
           
-        const pageChars = pageText.length;
-        console.log(`Extracted ${pageChars} chars from page ${i}`);
-        textContent.push(pageText);
+          // Add line breaks when Y position changes significantly
+          if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
+            text += "\n";
+            // Add an extra line break for larger gaps (likely new sections)
+            if (Math.abs(item.transform[5] - lastY) > 15) {
+              text += "\n";
+            }
+          }
+          
+          text += item.str + " ";
+          lastY = item.transform[5];
+        }
+        
+        console.log(`Extracted text from page ${i}, length: ${text.length} chars`);
+        textContent.push(text);
         
       } catch (pageError) {
-        console.warn(`Error extracting text from page ${i}:`, pageError);
+        console.error(`Error extracting text from page ${i}:`, pageError);
         textContent.push(`[Échec d'extraction - page ${i}]`);
       }
     }
     
-    // Combine all pages with line breaks
+    // Combine all pages with proper formatting
     let extractedText = textContent.join('\n\n');
     console.log(`PDF.js extraction complete. Total text length: ${extractedText.length} chars`);
     
     // Clean up the extracted text
     extractedText = cleanExtractedText(extractedText);
     
-    console.log(`Text cleaning complete. Final text length: ${extractedText.length} chars`);
-    
     return { extractedText, pageCount: numPages };
   } catch (error) {
     console.error("Error in extractTextFromPDF:", error);
-    // Try with PDF TextExtractor module
-    return await extractWithTextExtractor(pdfBuffer);
+    
+    // Try with simplified extractor as fallback
+    try {
+      console.log("Trying simplified extraction method");
+      const result = await extractWithTextExtractor(pdfBuffer);
+      return result;
+    } catch (fallbackError) {
+      console.error("Simplified extraction failed:", fallbackError);
+      return { 
+        extractedText: "L'extraction du texte a échoué. Le PDF pourrait être protégé ou ne contenir que des images.", 
+        pageCount: 0 
+      };
+    }
   }
 }
 
@@ -84,73 +106,64 @@ function cleanExtractedText(text: string): string {
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     // Remove PDF specific artifacts
     .replace(/(obj|endobj|stream|endstream|xref|trailer|startxref)/g, ' ')
-    // Normalize whitespace
+    // Fix spacing around punctuation
+    .replace(/\s+([.,;:!?])/g, '$1')
+    // Normalize spaces
     .replace(/\s+/g, ' ')
-    // Remove repetitive character sequences
-    .replace(/(.)\1{5,}/g, '$1$1$1')
+    // Fix space after period
+    .replace(/\.(\w)/g, '. $1')
     .trim();
-    
-  // Improve structure with line breaks
-  // Add line breaks at potential section boundaries
-  cleaned = cleaned.replace(/([.!?]) ([A-Z])/g, '$1\n\n$2');
   
-  // Identify common CV section headers and add formatting
-  const sectionHeaders = [
-    "EXPÉRIENCE", "EXPERIENCE", "PROFESSIONAL EXPERIENCE", "EXPÉRIENCE PROFESSIONNELLE",
-    "ÉDUCATION", "EDUCATION", "FORMATION", "ÉTUDES", "ETUDES",
-    "COMPÉTENCES", "COMPETENCES", "SKILLS", "SAVOIR-FAIRE",
-    "LANGUES", "LANGUAGES", "CERTIFICATIONS", "PROJETS", "PROJECTS",
-    "CENTRES D'INTÉRÊT", "INTERESTS", "HOBBIES", "LOISIRS"
-  ];
+  // Improve readability with proper line breaks
+  cleaned = cleaned
+    // Add line breaks at periods followed by uppercase letters (likely new sentences)
+    .replace(/\.\s+([A-Z])/g, '.\n$1')
+    // Add line breaks at common section headers
+    .replace(/\b(EXPÉRIENCE|EXPERIENCE|EDUCATION|ÉDUCATION|FORMATION|COMPÉTENCES|COMPETENCES|SKILLS)\b/gi, 
+             match => `\n\n${match.toUpperCase()}\n`)
+    // Preserve bullet points with line breaks
+    .replace(/•\s+/g, '\n• ')
+    // Remove excessive whitespace
+    .replace(/\n{3,}/g, '\n\n');
   
-  // Improve section headers visibility
-  for (const header of sectionHeaders) {
-    const regex = new RegExp(`\\b${header}\\b`, 'gi');
-    cleaned = cleaned.replace(regex, match => `\n\n${match.toUpperCase()}\n`);
-  }
-  
-  // Format bullet points
-  cleaned = cleaned.replace(/[•●⟐◦⦾◆■▪︎]( +)/g, '\n• ');
-  
-  // Remove excessive line breaks
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  // Final cleanup
+  cleaned = cleaned
+    // Restore natural paragraph breaks
+    .replace(/([a-z])\n([a-z])/g, '$1 $2')
+    // Restore bullet point formatting
+    .replace(/([.:;])\n•/g, '$1\n\n•')
+    // Fix common PDF extraction artifacts
+    .replace(/([A-Z])\s+([a-z])/g, (_, p1, p2) => {
+      // Don't join if it's likely a new line
+      return /[.!?]/.test(p1) ? p1 + '\n' + p2 : p1 + ' ' + p2;
+    });
   
   return cleaned;
 }
 
 /**
- * Fallback extraction method using text extraction approach
+ * Fallback extraction method
  */
 async function extractWithTextExtractor(pdfBuffer: ArrayBuffer): Promise<{ extractedText: string; pageCount: number }> {
   try {
     console.log("Using fallback text extraction method");
     
-    // Basic text extraction - get the text representation from PDF bytes
+    // Convert PDF buffer to string and try to extract text
     const text = new TextDecoder().decode(pdfBuffer);
     
-    // Try to extract readable text using simple patterns
-    let extractedText = '';
+    // Try to extract text using regex patterns for text content
+    const textRegex = /\(([\w\s.,;:!?&'"-]+)\)/g;
+    const matches = Array.from(text.matchAll(textRegex))
+      .map(match => match[1])
+      .filter(match => match.length > 3) // Filter out very short matches
+      .join(' ');
     
-    // Look for text between common PDF text markers
-    const textMatches = text.match(/BT\s+(.*?)\s+ET/gs);
-    if (textMatches && textMatches.length > 0) {
-      extractedText = textMatches.join(' ');
-    } else {
-      // Try to extract readable text chunks
-      const chunks = text.match(/[A-Za-z0-9àáâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ]{2,}[\s.,;:!?-]*/g);
-      if (chunks && chunks.length > 0) {
-        extractedText = chunks.join(' ');
-      } else {
-        extractedText = "Impossible d'extraire du texte lisible de ce PDF.";
-      }
-    }
-    
-    // Clean the extracted text
+    let extractedText = matches || "Extraction de texte limitée - méthode de secours";
     extractedText = cleanExtractedText(extractedText);
     
     return {
-      extractedText: extractedText || "Texte extrait par méthode de secours - qualité réduite",
-      pageCount: 0 // Cannot determine page count in this method
+      extractedText, 
+      pageCount: 0
     };
   } catch (error) {
     console.error("Fallback extraction failed:", error);

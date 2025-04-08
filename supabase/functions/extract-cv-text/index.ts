@@ -43,7 +43,7 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Starting text extraction for PDF: ${resumeId}`);
+    console.log(`Starting text extraction for PDF: ${resumeId || 'unknown'}`);
     
     try {
       // Get file directly from the URL with cache busting
