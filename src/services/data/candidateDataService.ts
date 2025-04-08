@@ -53,7 +53,7 @@ export const candidateDataService = {
     try {
       console.log("Fetching candidate with ID:", candidateId);
       
-      // Instead of using RPC, use a direct query with security definer
+      // Use a direct query instead of RPC to avoid recursion issues
       const { data, error } = await supabase
         .from('candidates')
         .select('*')
