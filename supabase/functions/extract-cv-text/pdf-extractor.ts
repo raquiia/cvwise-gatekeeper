@@ -8,8 +8,16 @@ import * as pdfjs from "npm:pdfjs-dist@3.11.174/legacy/build/pdf.js";
 const CMAP_URL = "npm:pdfjs-dist@3.11.174/cmaps/";
 const CMAP_PACKED = true;
 
-// The worker is not available in Deno environment, so disable it
-pdfjs.GlobalWorkerOptions.workerSrc = '';
+// Create a dummy global worker to avoid errors
+// PDF.js expects a browser environment, but we're in Deno
+const GlobalWorkerOptions = {
+  workerSrc: ''
+};
+
+// Assign our dummy worker options to the library
+if (!pdfjs.GlobalWorkerOptions) {
+  pdfjs.GlobalWorkerOptions = GlobalWorkerOptions;
+}
 
 /**
  * Extract text from a PDF file
