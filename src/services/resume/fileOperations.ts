@@ -1,4 +1,3 @@
-
 import { resumeStorageService } from '../storage/resumeStorageService';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -9,31 +8,18 @@ export const downloadResume = async (filePath: string, fileName: string): Promis
   try {
     console.log('Starting file download for:', filePath);
     
-    // Force bucket creation to ensure it exists
-    await supabase.storage.createBucket('resumes', {
-      public: true,
-      fileSizeLimit: 52428800,
-      allowedMimeTypes: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
-    }).catch(err => {
-      // Ignore "bucket already exists" errors
-      if (!err.message?.includes('already exists')) {
-        console.warn('Bucket creation warning:', err.message);
-      }
-    });
-    
-    // Try to get the file directly from public URL first
-    try {
-      const { data } = supabase.storage
-        .from('resumes')
-        .getPublicUrl(filePath);
-        
-      if (data && data.publicUrl) {
-        console.log('Using public URL download path');
+    // Get the public URL
+    const { data } = supabase.storage
+      .from('resumes')
+      .getPublicUrl(filePath);
+      
+    if (data && data.publicUrl) {
+      try {
+        console.log('Using public URL for download:', data.publicUrl);
         const response = await fetch(data.publicUrl);
         
         if (!response.ok) {
-          console.warn(`Public URL fetch failed with status: ${response.status}`);
-          throw new Error('Public URL fetch failed');
+          throw new Error(`Failed to fetch file: ${response.status}`);
         }
         
         const blob = await response.blob();
@@ -48,55 +34,25 @@ export const downloadResume = async (filePath: string, fileName: string): Promis
         
         console.log('File downloaded successfully using public URL');
         return true;
+      } catch (error) {
+        console.error('Error downloading file via public URL:', error);
       }
-    } catch (publicUrlError) {
-      console.warn('Public URL method failed, trying signed URL approach:', publicUrlError);
     }
     
-    // Try signed URL approach
-    try {
-      const { data: signedData, error: signedError } = await supabase.storage
-        .from('resumes')
-        .createSignedUrl(filePath, 60);
-      
-      if (!signedError && signedData && signedData.signedUrl) {
-        console.log('Using signed URL download path');
-        const response = await fetch(signedData.signedUrl);
-        
-        if (!response.ok) {
-          console.warn(`Signed URL fetch failed with status: ${response.status}`);
-          throw new Error(`Signed URL fetch failed: ${response.status}`);
-        }
-        
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        
-        console.log('File downloaded successfully using signed URL');
-        return true;
-      }
-    } catch (signedUrlError) {
-      console.warn('Signed URL method failed, trying direct download:', signedUrlError);
-    }
+    // Fallback to direct download if public URL failed
+    console.log('Falling back to direct download method');
     
-    // Last resort: try direct download
-    console.log('Attempting direct storage download as last resort');
-    const { data, error } = await supabase.storage
+    const { data: downloadData, error: downloadError } = await supabase.storage
       .from('resumes')
       .download(filePath);
       
-    if (error || !data) {
-      console.error('All download methods failed. Final error:', error);
-      throw new Error(error?.message || 'Failed to download file after all attempts');
+    if (downloadError || !downloadData) {
+      console.error('Direct download failed:', downloadError);
+      throw new Error(downloadError?.message || 'Failed to download file');
     }
     
-    const url = URL.createObjectURL(data);
+    // Create a download link
+    const url = URL.createObjectURL(downloadData);
     const link = document.createElement('a');
     link.href = url;
     link.download = fileName;

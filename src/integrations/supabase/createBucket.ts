@@ -6,9 +6,26 @@ import { supabase } from './client';
  */
 export const ensureResumesBucketExists = async (): Promise<void> => {
   try {
+    console.log('Checking if resumes bucket exists...');
+    
+    // Check if bucket already exists
+    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+    
+    if (listError) {
+      console.error('Error checking buckets:', listError);
+      return;
+    }
+    
+    const bucketExists = buckets?.some(bucket => bucket.name === 'resumes');
+    
+    if (bucketExists) {
+      console.log('Resumes bucket already exists');
+      return;
+    }
+    
     console.log('Creating resumes bucket...');
     
-    // Try to create the bucket (will fail silently if it already exists)
+    // Create the bucket since it does not exist
     const { error } = await supabase.storage.createBucket('resumes', {
       public: true,
       fileSizeLimit: 52428800, // 50MB
@@ -21,26 +38,13 @@ export const ensureResumesBucketExists = async (): Promise<void> => {
     });
     
     if (error) {
-      if (error.message.includes('already exists')) {
-        console.log('Resumes bucket already exists');
-        
-        // Make sure bucket is public
-        await supabase.storage.updateBucket('resumes', {
-          public: true
-        }).catch(err => {
-          console.warn('Failed to update bucket visibility:', err);
-        });
-        
-        return;
-      }
-      
       console.error('Error creating resumes bucket:', error);
       throw error;
     }
     
     console.log('Resumes bucket created successfully');
   } catch (error) {
-    console.error('Error creating resumes bucket:', error);
+    console.error('Error in ensureResumesBucketExists:', error);
     // Don't throw - we want the application to continue even if bucket creation fails
   }
 };

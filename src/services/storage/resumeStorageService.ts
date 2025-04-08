@@ -18,56 +18,21 @@ export const resumeStorageService = {
       
       console.log(`Uploading file to ${filePath}`);
       
-      // Essayer de télécharger le fichier avec retry
-      let retryCount = 0;
-      const maxRetries = 3;
-      
-      while (retryCount < maxRetries) {
-        try {
-          const { error } = await supabase.storage
-            .from('resumes')
-            .upload(filePath, file, {
-              cacheControl: '3600',
-              upsert: false
-            });
-            
-          if (error) {
-            // Vérifier si l'erreur est due au fait que le bucket n'existe pas
-            if (error.message.includes('bucket') && retryCount === 0) {
-              console.log('Bucket might not exist yet, continuing attempt...');
-              retryCount++;
-              // Attendre un court instant avant de réessayer
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              continue;
-            }
-            
-            if (retryCount === maxRetries - 1) {
-              console.error('Upload error after retries:', error.message);
-              return null;
-            }
-            
-            console.log(`Retry ${retryCount + 1}/${maxRetries} due to error: ${error.message}`);
-            retryCount++;
-            // Attendre un court instant avant de réessayer
-            await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount)));
-            continue;
-          }
-          
-          console.log('File uploaded successfully');
-          return filePath;
-        } catch (e) {
-          console.error('Exception during upload attempt:', e);
-          retryCount++;
-          
-          if (retryCount === maxRetries) {
-            return null;
-          }
-          
-          await new Promise(resolve => setTimeout(resolve, 2000 * (retryCount)));
-        }
+      // Upload the file
+      const { error } = await supabase.storage
+        .from('resumes')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+        
+      if (error) {
+        console.error('File upload error:', error.message);
+        return null;
       }
       
-      return null;
+      console.log('File uploaded successfully');
+      return filePath;
     } catch (error) {
       console.error('Exception during upload:', error);
       return null;
@@ -88,8 +53,7 @@ export const resumeStorageService = {
       return true;
     } catch (error) {
       console.error('Exception during file deletion:', error);
-      // Ne pas bloquer le flux de l'application en cas d'échec de suppression
-      return true;
+      return false;
     }
   },
   
@@ -100,7 +64,6 @@ export const resumeStorageService = {
         .getPublicUrl(filePath);
         
       if (data && data.publicUrl) {
-        console.log('Got public URL successfully:', data.publicUrl.substring(0, 50) + '...');
         return data.publicUrl;
       }
       
