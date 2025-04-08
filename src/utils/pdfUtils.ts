@@ -26,28 +26,9 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
     
     console.log(`File loaded, size: ${Math.round(uint8Array.length / 1024)} KB`);
     
-    // Extraire le texte avec la méthode principale
-    const { extractedText, pageCount } = await extractTextFromPDFBuffer(uint8Array);
-    
-    console.log(`Text extracted successfully: ${extractedText.length} characters from ${pageCount} pages`);
-    
-    return extractedText;
-  } catch (error: any) {
-    console.error('Error extracting text from PDF:', error);
-    throw new Error(`Échec de l'extraction du texte du PDF: ${error.message}`);
-  }
-};
-
-/**
- * Extrait le texte d'un PDF à partir d'un ArrayBuffer
- * Utilisé à la fois côté client et dans l'edge function
- */
-export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ extractedText: string, pageCount: number }> => {
-  try {
-    console.log('PDF.js loading document...');
-    
     // Charger le document PDF avec PDF.js
-    const loadingTask = pdfjs.getDocument({ data: pdfData });
+    console.log('PDF.js loading document...');
+    const loadingTask = pdfjs.getDocument({ data: uint8Array });
     const pdf = await loadingTask.promise;
     const numPages = pdf.numPages;
     
@@ -70,58 +51,17 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
         
-        // Récupérer le texte avec sa position pour une meilleure mise en forme
-        const textItems = content.items
+        // Extraire et concaténer le texte de la page
+        const pageText = content.items
           .filter((item: any) => 'str' in item && item.str.trim().length > 0)
-          .map((item: any) => ({
-            text: item.str,
-            x: item.transform ? item.transform[4] : 0,
-            y: item.transform ? item.transform[5] : 0,
-            height: item.height || 0,
-            fontName: item.fontName || ''
-          }));
-          
-        if (textItems.length === 0) {
-          console.log(`No text items found on page ${i}`);
-          continue;
-        }
+          .map((item: any) => item.str)
+          .join(' ');
         
-        // Trier les éléments par position pour conserver la structure du document
-        // D'abord regrouper par lignes (éléments ayant à peu près la même coordonnée y)
-        const lineHeight = estimateLineHeight(textItems);
-        const lines: { [key: number]: any[] } = {};
-        
-        // Regrouper les items par ligne
-        textItems.forEach(item => {
-          // Arrondir la position y pour regrouper les éléments sur la même ligne
-          const lineY = Math.round(item.y / lineHeight) * lineHeight;
-          if (!lines[lineY]) lines[lineY] = [];
-          lines[lineY].push(item);
-        });
-        
-        // Trier les lignes de haut en bas (y décroissant car l'origine est en bas dans PDF.js)
-        const sortedLineKeys = Object.keys(lines).map(Number).sort((a, b) => b - a);
-        
-        // Construire le texte de la page
-        let pageText = '';
-        
-        sortedLineKeys.forEach(lineY => {
-          // Trier les éléments de la ligne de gauche à droite
-          const sortedItems = lines[lineY].sort((a: any, b: any) => a.x - b.x);
-          
-          // Convertir les éléments en texte
-          const lineText = sortedItems.map((item: any) => item.text).join(' ');
-          
-          // Ajouter le texte de la ligne au texte de la page
-          if (lineText.trim()) {
-            pageText += lineText + '\n';
-          }
-        });
-        
-        console.log(`Extracted ${pageText.length} chars from page ${i}`);
+        const pageChars = pageText.length;
+        console.log(`Extracted ${pageChars} chars from page ${i}`);
         
         textContent.push(pageText);
-        totalExtractedLength += pageText.length;
+        totalExtractedLength += pageChars;
       } catch (pageError) {
         console.warn(`Error extracting text from page ${i}:`, pageError);
         textContent.push(`[Échec d'extraction - page ${i}]`);
@@ -129,7 +69,7 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
     }
     
     // Joindre toutes les pages avec des sauts de ligne
-    let extractedText = textContent.join('\n');
+    let extractedText = textContent.join('\n\n');
     
     console.log(`PDF.js extraction complete. Total text length: ${extractedText.length} chars`);
     
@@ -147,7 +87,7 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
     if (extractedText.trim().length < 100 && numPages > 0) {
       console.log('Primary extraction yielded insufficient text, trying fallback method');
       try {
-        const fallbackResult = await fallbackExtraction(pdfData, numPages);
+        const fallbackResult = await fallbackExtraction(uint8Array, numPages);
         
         // Si la méthode de secours donne un meilleur résultat, l'utiliser
         if (fallbackResult.length > extractedText.length) {
@@ -165,118 +105,10 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
     
     console.log(`PDF.js succeeded with ${extractedText.length} characters`);
     
-    return { extractedText, pageCount: numPages };
-  } catch (error) {
-    console.error('Error in extractTextFromPDFBuffer:', error);
-    throw error;
-  }
-};
-
-/**
- * Estime la hauteur de ligne moyenne
- */
-function estimateLineHeight(textItems: any[]): number {
-  // Utiliser une hauteur par défaut pour les PDF avec peu d'éléments
-  if (textItems.length < 5) return 12;
-  
-  // Récupérer toutes les positions verticales
-  const yPositions = textItems.map(item => item.y);
-  
-  // Trier les positions en ordre décroissant
-  yPositions.sort((a, b) => b - a);
-  
-  // Calculer les différences entre positions adjacentes
-  const differences: number[] = [];
-  for (let i = 0; i < yPositions.length - 1; i++) {
-    const diff = yPositions[i] - yPositions[i + 1];
-    if (diff > 0 && diff < 100) { // Ignorer les écarts trop grands
-      differences.push(diff);
-    }
-  }
-  
-  // Calculer la moyenne des différences
-  if (differences.length === 0) return 12;
-  
-  const sum = differences.reduce((acc, val) => acc + val, 0);
-  return Math.max(1, Math.round(sum / differences.length));
-}
-
-/**
- * Type pour les métadonnées PDF (correction des erreurs TypeScript)
- */
-interface PDFMetadataInfo {
-  Title?: string;
-  Author?: string;
-  Subject?: string;
-  Keywords?: string;
-  [key: string]: any;
-}
-
-/**
- * Méthode d'extraction de secours pour les PDFs problématiques
- * Tente d'extraire le texte en analysant directement les données brutes du PDF
- */
-const fallbackExtraction = async (pdfData: Uint8Array, numPages: number): Promise<string> => {
-  try {
-    console.log('Attempting fallback extraction for PDF');
-    
-    // Essayer d'extraire avec une méthode simplifiée de PDF.js
-    const loadingTask = pdfjs.getDocument({ data: pdfData });
-    const pdf = await loadingTask.promise;
-    
-    // Limiter le nombre de pages pour les PDF volumineux
-    const pagesToProcess = Math.min(numPages, 50);
-    let combinedText = '';
-    
-    for (let i = 1; i <= pagesToProcess; i++) {
-      try {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        
-        // Extraire simplement le texte brut
-        const pageText = textContent.items
-          .filter((item: any) => 'str' in item)
-          .map((item: any) => item.str)
-          .join(' ');
-          
-        combinedText += pageText + '\n\n';
-      } catch (e) {
-        console.warn(`Fallback error on page ${i}:`, e);
-      }
-    }
-    
-    if (combinedText.trim().length > 100) {
-      console.log(`Fallback extracted ${combinedText.length} characters`);
-      return combinedText;
-    }
-    
-    // Si le PDF est toujours illisible, essayer d'extraire du texte des métadonnées
-    try {
-      const metadata = await pdf.getMetadata();
-      let metaText = '';
-      
-      if (metadata && metadata.info) {
-        // Typer correctement les métadonnées pour éviter les erreurs TypeScript
-        const info = metadata.info as PDFMetadataInfo;
-        
-        if (info.Title) metaText += `Titre: ${info.Title}\n`;
-        if (info.Author) metaText += `Auteur: ${info.Author}\n`;
-        if (info.Subject) metaText += `Sujet: ${info.Subject}\n`;
-        if (info.Keywords) metaText += `Mots-clés: ${info.Keywords}\n`;
-      }
-      
-      if (metaText) {
-        console.log(`Extracted metadata: ${metaText.length} characters`);
-        combinedText = metaText + '\n\n' + combinedText;
-      }
-    } catch (metaError) {
-      console.warn('Metadata extraction failed:', metaError);
-    }
-    
-    return combinedText || "[Extraction de texte difficile sur ce document]";
-  } catch (error) {
-    console.error('Fallback extraction failed:', error);
-    return "[Échec de l'extraction du texte par la méthode de secours]";
+    return extractedText;
+  } catch (error: any) {
+    console.error('Error extracting text from PDF:', error);
+    throw new Error(`Échec de l'extraction du texte du PDF: ${error.message}`);
   }
 };
 
@@ -337,6 +169,83 @@ function improveTextStructure(text: string): string {
 }
 
 /**
+ * Type pour les métadonnées PDF
+ */
+interface PDFMetadataInfo {
+  Title?: string;
+  Author?: string;
+  Subject?: string;
+  Keywords?: string;
+  [key: string]: any;
+}
+
+/**
+ * Méthode d'extraction de secours pour les PDFs problématiques
+ */
+const fallbackExtraction = async (pdfData: Uint8Array, numPages: number): Promise<string> => {
+  try {
+    console.log('Attempting fallback extraction for PDF');
+    
+    // Essayer d'extraire avec une méthode simplifiée de PDF.js
+    const loadingTask = pdfjs.getDocument({ data: pdfData });
+    const pdf = await loadingTask.promise;
+    
+    // Limiter le nombre de pages pour les PDF volumineux
+    const pagesToProcess = Math.min(numPages, 50);
+    let combinedText = '';
+    
+    for (let i = 1; i <= pagesToProcess; i++) {
+      try {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        
+        // Extraire simplement le texte brut
+        const pageText = textContent.items
+          .filter((item: any) => 'str' in item)
+          .map((item: any) => item.str)
+          .join(' ');
+          
+        combinedText += pageText + '\n\n';
+      } catch (e) {
+        console.warn(`Fallback error on page ${i}:`, e);
+      }
+    }
+    
+    if (combinedText.trim().length > 100) {
+      console.log(`Fallback extracted ${combinedText.length} characters`);
+      return combinedText;
+    }
+    
+    // Si le PDF est toujours illisible, essayer d'extraire du texte des métadonnées
+    try {
+      const metadata = await pdf.getMetadata();
+      let metaText = '';
+      
+      if (metadata && metadata.info) {
+        const info = metadata.info as PDFMetadataInfo;
+        
+        if (info.Title) metaText += `Titre: ${info.Title}\n`;
+        if (info.Author) metaText += `Auteur: ${info.Author}\n`;
+        if (info.Subject) metaText += `Sujet: ${info.Subject}\n`;
+        if (info.Keywords) metaText += `Mots-clés: ${info.Keywords}\n`;
+      }
+      
+      if (metaText) {
+        console.log(`Extracted metadata: ${metaText.length} characters`);
+        combinedText = metaText + '\n\n' + combinedText;
+      }
+    } catch (metaError) {
+      console.warn('Metadata extraction failed:', metaError);
+    }
+    
+    return combinedText || "[Extraction de texte difficile sur ce document]";
+  } catch (error) {
+    console.error('Fallback extraction failed:', error);
+    return "[Échec de l'extraction du texte par la méthode de secours]";
+  }
+};
+
+/**
  * Extract text from a PDF URL with better error handling
  * @param pdfUrl The URL of the PDF to extract text from
  * @returns The extracted text
@@ -351,7 +260,7 @@ export const extractTextFromPdfUrl = async (pdfUrl: string): Promise<string> => 
     
     console.log('Using cache-busted URL:', cacheBustedUrl.toString());
     
-    // Télécharger le PDF en mode blob pour le traiter localement
+    // Télécharger le PDF
     const response = await fetch(cacheBustedUrl.toString(), {
       cache: 'no-store',
       headers: {
@@ -371,8 +280,45 @@ export const extractTextFromPdfUrl = async (pdfUrl: string): Promise<string> => 
     
     console.log(`PDF downloaded, size: ${Math.round(uint8Array.length / 1024)} KB`);
     
-    // Utiliser notre extracteur existant avec le buffer
-    const { extractedText } = await extractTextFromPDFBuffer(uint8Array);
+    // Charger le document PDF avec PDF.js
+    console.log('PDF.js loading document...');
+    const loadingTask = pdfjs.getDocument({ data: uint8Array });
+    const pdf = await loadingTask.promise;
+    const numPages = pdf.numPages;
+    
+    console.log(`PDF loaded successfully. Number of pages: ${numPages}`);
+    
+    // Extraire le texte de chaque page
+    const textContent: string[] = [];
+    
+    for (let i = 1; i <= numPages; i++) {
+      try {
+        console.log(`Processing page ${i}/${numPages}`);
+        
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        
+        // Extraire et concaténer le texte de la page
+        const pageText = content.items
+          .filter((item: any) => 'str' in item && item.str.trim().length > 0)
+          .map((item: any) => item.str)
+          .join(' ');
+        
+        console.log(`Extracted ${pageText.length} chars from page ${i}`);
+        textContent.push(pageText);
+      } catch (pageError) {
+        console.warn(`Error extracting text from page ${i}:`, pageError);
+      }
+    }
+    
+    // Joindre toutes les pages avec des sauts de ligne
+    let extractedText = textContent.join('\n\n');
+    
+    console.log(`PDF.js extraction complete. Total text length: ${extractedText.length} chars`);
+    
+    // Nettoyer et améliorer le texte extrait
+    extractedText = cleanExtractedText(extractedText);
+    extractedText = improveTextStructure(extractedText);
     
     return extractedText;
   } catch (error: any) {
