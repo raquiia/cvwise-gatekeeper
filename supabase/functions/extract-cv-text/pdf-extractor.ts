@@ -1,15 +1,11 @@
 
 // PDF Text extraction utility for Edge Function
-import * as pdfjs from "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js";
+import pdfjs from "npm:pdfjs-dist@3.11.174";
+import { TextItem } from "npm:pdfjs-dist@3.11.174/types/src/display/api";
 
-// Configure for Deno environment (no workers in Edge Functions)
-const pdfjsWorker = await import("https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js");
-
-// Configure using proper Deno syntax for edge functions
-if (typeof globalThis !== 'undefined') {
-  // @ts-ignore - The types may not match exactly but this works in Deno
-  globalThis.pdfjsWorker = pdfjsWorker;
-}
+// Configure PDF.js for server environment
+const pdfjsVersion = '3.11.174';
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.js`;
 
 /**
  * Extract text from a PDF file using server-side techniques
@@ -19,13 +15,10 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
     console.log("Starting text extraction from PDF buffer");
     
     // Load the PDF document with PDF.js
-    const loadingTask = pdfjs.getDocument({ 
+    const loadingTask = pdfjs.getDocument({
       data: new Uint8Array(pdfBuffer),
-      // Don't use worker in edge functions
       disableWorker: true,
-      // Enable more tolerant parsing
       isEvalSupported: false,
-      isLegacyWorker: false
     });
     
     const pdf = await loadingTask.promise;
@@ -44,10 +37,10 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
         
-        // Extract and concatenate text from the page
+        // Extract and concatenate text from the page with better structure
         const pageText = content.items
-          .filter((item: any) => 'str' in item && item.str.trim().length > 0)
-          .map((item: any) => item.str)
+          .filter((item: TextItem) => 'str' in item && item.str.trim().length > 0)
+          .map((item: TextItem) => item.str)
           .join(' ');
           
         const pageChars = pageText.length;
@@ -68,20 +61,20 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
     extractedText = cleanExtractedText(extractedText);
     extractedText = improveTextStructure(extractedText);
     
-    console.log(`PDF.js succeeded with ${extractedText.length} characters`);
+    console.log(`Text cleaning complete. Final text length: ${extractedText.length} chars`);
     
     return { extractedText, pageCount: numPages };
   } catch (error) {
     console.error("Error in extractTextFromPDF:", error);
     
-    // Try fallback method
+    // Try simplified approach
     try {
-      console.log("Attempting fallback extraction approach");
-      return await fallbackExtraction(pdfBuffer);
+      console.log("Attempting simplified extraction approach");
+      return await simplifiedExtraction(pdfBuffer);
     } catch (fallbackError) {
-      console.error("Fallback extraction also failed:", fallbackError);
+      console.error("Simplified extraction also failed:", fallbackError);
       return {
-        extractedText: "Error extracting text from PDF: " + (error instanceof Error ? error.message : String(error)),
+        extractedText: "Failed to extract text from PDF. Error: " + (error instanceof Error ? error.message : String(error)),
         pageCount: 0
       };
     }
@@ -99,11 +92,9 @@ function cleanExtractedText(text: string): string {
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     // Remove PDF specific artifacts
     .replace(/(obj|endobj|stream|endstream|xref|trailer|startxref)/g, ' ')
-    // Remove strange character sequences that are likely PDF encoding
-    .replace(/\\(\d{3}|n|r|t|f|\\|\(|\))/g, ' ')
     // Normalize whitespace
     .replace(/\s+/g, ' ')
-    // Remove repetitive character sequences (like "AAAAAAAA")
+    // Remove repetitive character sequences
     .replace(/(.)\1{5,}/g, '$1$1$1')
     .trim();
 }
@@ -147,18 +138,16 @@ function improveTextStructure(text: string): string {
 }
 
 /**
- * Fallback extraction method - simpler approach without workers
+ * Approche simplifiée d'extraction pour les cas où l'extraction principale échoue
  */
-async function fallbackExtraction(pdfBuffer: ArrayBuffer): Promise<{ extractedText: string; pageCount: number }> {
+async function simplifiedExtraction(pdfBuffer: ArrayBuffer): Promise<{ extractedText: string; pageCount: number }> {
   try {
-    console.log("Using fallback extraction method");
+    console.log("Using simplified extraction method");
     
-    // Try a simple approach with fewer options
-    const loadingTask = pdfjs.getDocument({ 
+    // Charger le PDF avec des options minimales
+    const loadingTask = pdfjs.getDocument({
       data: new Uint8Array(pdfBuffer),
       disableWorker: true,
-      isEvalSupported: false,
-      isLegacyWorker: false
     });
     
     const pdf = await loadingTask.promise;
@@ -177,20 +166,20 @@ async function fallbackExtraction(pdfBuffer: ArrayBuffer): Promise<{ extractedTe
           
         textContents.push(pageText);
       } catch (e) {
-        console.warn(`Fallback error on page ${i}:`, e);
+        console.warn(`Simplified extraction error on page ${i}:`, e);
       }
     }
     
     const extractedText = textContents.join('\n\n');
     
     return {
-      extractedText: extractedText || "Failed to extract text with fallback method",
+      extractedText: cleanExtractedText(extractedText) || "Aucun texte extrait (méthode simplifiée)",
       pageCount: numPages
     };
   } catch (error) {
-    console.error("Fallback extraction failed:", error);
+    console.error("Simplified extraction failed:", error);
     return {
-      extractedText: "Failed to extract text from PDF",
+      extractedText: "L'extraction de texte a échoué avec toutes les méthodes disponibles.",
       pageCount: 0
     };
   }

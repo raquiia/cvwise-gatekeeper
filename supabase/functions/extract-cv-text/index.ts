@@ -43,14 +43,14 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Starting text extraction for: ${pdfUrl.substring(0, 50)}...`);
+    console.log(`Starting text extraction for PDF: ${resumeId}`);
 
     // Get file directly from the URL with cache busting
     const timestamp = Date.now();
     const urlWithCache = new URL(pdfUrl);
     urlWithCache.searchParams.append('_', timestamp.toString());
     
-    console.log(`Fetching PDF with cache busting: ${urlWithCache.toString().substring(0, 50)}...`);
+    console.log(`Fetching PDF with cache busting`);
     
     // Download the PDF
     const response = await fetch(urlWithCache.toString(), {

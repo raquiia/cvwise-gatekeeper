@@ -1,0 +1,9 @@
+
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-env index.ts"
+  },
+  "imports": {
+    "pdfjs-dist": "npm:pdfjs-dist@3.11.174"
+  }
+}
