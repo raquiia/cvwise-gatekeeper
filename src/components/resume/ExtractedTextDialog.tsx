@@ -87,8 +87,8 @@ const ExtractedTextDialog: React.FC<ExtractedTextDialogProps> = ({
             </div>
           </div>
         ) : (
-          <ScrollArea className="flex-grow mt-4 mb-4 p-4 border rounded-md bg-muted/30 text-sm font-mono">
-            <div className="whitespace-pre-wrap">{extractedText || "Aucun texte n'a pu être extrait."}</div>
+          <ScrollArea className="flex-grow mt-4 mb-4 p-6 border rounded-md bg-muted/30 text-sm font-mono">
+            <div className="whitespace-pre-wrap leading-relaxed">{extractedText || "Aucun texte n'a pu être extrait."}</div>
           </ScrollArea>
         )}
         

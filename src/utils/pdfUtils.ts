@@ -1,4 +1,3 @@
-
 /**
  * Utilitaires pour l'extraction de texte des fichiers PDF côté client
  */
@@ -66,9 +65,48 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
         
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        const pageText = content.items
-          .map((item: any) => 'str' in item ? item.str : '')
-          .join(' ');
+        
+        // Récupérer le texte avec sa position pour une meilleure mise en forme
+        const textItems = content.items
+          .map((item: any) => ({
+            text: 'str' in item ? item.str : '',
+            x: item.transform ? item.transform[4] : 0,
+            y: item.transform ? item.transform[5] : 0,
+            fontName: item.fontName || ''
+          }))
+          .filter(item => item.text.trim().length > 0);
+          
+        // Trier les éléments pour les afficher dans l'ordre naturel de lecture
+        // (du haut vers le bas, puis de gauche à droite)
+        const lineHeight = estimateLineHeight(textItems);
+        const lines: { [key: number]: any[] } = {};
+        
+        // Regrouper les items par ligne
+        textItems.forEach(item => {
+          // Arrondir la position y pour regrouper les éléments sur la même ligne
+          const lineY = Math.round(item.y / lineHeight) * lineHeight;
+          if (!lines[lineY]) lines[lineY] = [];
+          lines[lineY].push(item);
+        });
+        
+        // Trier les lignes de haut en bas (y décroissant car l'origine est en bas dans PDF.js)
+        const sortedLineKeys = Object.keys(lines).map(Number).sort((a, b) => b - a);
+        
+        // Construire le texte de la page
+        let pageText = '';
+        
+        sortedLineKeys.forEach(lineY => {
+          // Trier les éléments de la ligne de gauche à droite
+          const sortedItems = lines[lineY].sort((a: any, b: any) => a.x - b.x);
+          
+          // Convertir les éléments en texte
+          const lineText = sortedItems.map((item: any) => item.text).join(' ');
+          
+          // Ajouter le texte de la ligne au texte de la page
+          if (lineText.trim()) {
+            pageText += lineText + '\n';
+          }
+        });
         
         textContent.push(pageText);
         totalExtractedLength += pageText.length;
@@ -79,7 +117,7 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
     }
     
     // Joindre toutes les pages avec des sauts de ligne
-    let extractedText = textContent.join('\n\n');
+    let extractedText = textContent.join('\n');
     
     // Limiter la taille totale du texte extrait
     if (extractedText.length > MAX_EXTRACTED_TEXT_LENGTH) {
@@ -108,12 +146,44 @@ export const extractTextFromPDFBuffer = async (pdfData: Uint8Array): Promise<{ e
       }
     }
     
+    // Améliorer la structure du texte pour le rendre plus lisible
+    extractedText = improveTextStructure(extractedText);
+    
     return { extractedText, pageCount: numPages };
   } catch (error) {
     console.error('Error in extractTextFromPDFBuffer:', error);
     throw error;
   }
 };
+
+/**
+ * Estime la hauteur de ligne moyenne
+ */
+function estimateLineHeight(textItems: any[]): number {
+  // Utiliser une hauteur par défaut pour les PDF avec peu d'éléments
+  if (textItems.length < 5) return 12;
+  
+  // Récupérer toutes les positions verticales
+  const yPositions = textItems.map(item => item.y);
+  
+  // Trier les positions en ordre décroissant
+  yPositions.sort((a, b) => b - a);
+  
+  // Calculer les différences entre positions adjacentes
+  const differences: number[] = [];
+  for (let i = 0; i < yPositions.length - 1; i++) {
+    const diff = yPositions[i] - yPositions[i + 1];
+    if (diff > 0 && diff < 100) { // Ignorer les écarts trop grands
+      differences.push(diff);
+    }
+  }
+  
+  // Calculer la moyenne des différences
+  if (differences.length === 0) return 12;
+  
+  const sum = differences.reduce((acc, val) => acc + val, 0);
+  return Math.max(1, Math.round(sum / differences.length));
+}
 
 /**
  * Méthode d'extraction de secours pour les PDFs problématiques
@@ -220,8 +290,58 @@ const cleanExtractedText = (text: string): string => {
     
     // Remplacer les répétitions de caractères (comme "AAAAAAAA")
     .replace(/(.)\1{5,}/g, '$1$1$1')
+    
+    // Supprimer les lignes qui semblent être des numéros de page isolés
+    .replace(/^\s*\d+\s*$/mg, '')
+    
+    // Supprimer les lignes trop courtes qui sont probablement du bruit
+    .replace(/^.{1,3}$/mg, '')
+    
     .trim();
 };
+
+/**
+ * Améliore la structure du texte pour le rendre plus lisible
+ */
+function improveTextStructure(text: string): string {
+  if (!text) return '';
+  
+  // Supprimer les séquences de caractères qui ressemblent à des métadonnées PDF
+  let improved = text
+    // Supprimer les lignes qui semblent être des en-têtes PDF
+    .replace(/^.*PDF.*$/mg, '')
+    // Supprimer les lignes qui contiennent majoritairement des symboles
+    .replace(/^[^a-zA-Z0-9àéèêëîïôùûç]{5,}$/mg, '')
+    // Supprimer les lignes qui semblent être des numéros de page isolés
+    .replace(/^\s*\d+\s*$/mg, '')
+    // Nettoyer les séquences d'espaces multiples
+    .replace(/\s{3,}/g, '\n')
+    // Remplacer les tirets isolés en début de ligne par des puces
+    .replace(/^\s*-\s+/mg, '• ');
+  
+  // Détecter et améliorer la mise en forme des sections courantes de CV
+  const sections = [
+    "EXPÉRIENCE", "EXPERIENCE", "PROFESSIONAL EXPERIENCE", "EXPÉRIENCE PROFESSIONNELLE",
+    "ÉDUCATION", "EDUCATION", "FORMATION", "ÉTUDES", "ETUDES",
+    "COMPÉTENCES", "COMPETENCES", "SKILLS", "SAVOIR-FAIRE",
+    "LANGUES", "LANGUAGES", "CERTIFICATIONS", "PROJETS", "PROJECTS",
+    "CENTRES D'INTÉRÊT", "INTERESTS", "HOBBIES", "LOISIRS"
+  ];
+  
+  // Mettre en évidence les sections
+  sections.forEach(section => {
+    const regex = new RegExp(`(\\b${section}\\b)`, 'gi');
+    improved = improved.replace(regex, '\n\n$1\n');
+  });
+  
+  // Supprimer les lignes vides consécutives
+  improved = improved.replace(/\n{3,}/g, '\n\n');
+  
+  // Ajuster la structure des listes
+  improved = improved.replace(/([.,:;])\s*\n/g, '$1\n');
+  
+  return improved.trim();
+}
 
 /**
  * Nettoie le texte brut extrait d'un CV pour le rendre plus lisible

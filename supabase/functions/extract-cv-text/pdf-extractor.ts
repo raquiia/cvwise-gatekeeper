@@ -1,4 +1,3 @@
-
 // PDF Text extraction utility for Edge Function
 
 /**
@@ -11,6 +10,16 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
     // Convert the ArrayBuffer to a string (works for text-based PDFs)
     const decoder = new TextDecoder("utf-8");
     let rawText = decoder.decode(pdfBuffer);
+    
+    // Determine if PDF might be scanned or image-based
+    const isLikelyScannedPDF = detectScannedPDF(rawText);
+    if (isLikelyScannedPDF) {
+      console.log("PDF appears to be scanned or image-based, using specialized extraction");
+      return {
+        extractedText: "Ce PDF semble être une image scannée, l'extraction de texte n'est pas possible sans OCR. Veuillez utiliser un outil d'OCR ou un service en ligne pour l'extraire.",
+        pageCount: countPages(rawText) || 1
+      };
+    }
     
     // Basic PDF text extraction (for simple PDFs)
     let extractedText = extractBasicText(rawText);
@@ -37,6 +46,9 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
     // Nettoyer le texte final pour améliorer la lisibilité
     extractedText = cleanExtractedText(extractedText);
     
+    // Traitement avancé pour extraire du texte bien structuré
+    extractedText = improveTextStructure(extractedText);
+    
     return {
       extractedText: extractedText || "PDF text extraction failed",
       pageCount: pageCount || 1
@@ -48,6 +60,26 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
       pageCount: 0
     };
   }
+}
+
+/**
+ * Détecte si un PDF est probablement scanné ou basé sur des images
+ */
+function detectScannedPDF(pdfText: string): boolean {
+  // Vérifier les marqueurs courants des PDFs scannés
+  const hasTextMarkers = pdfText.includes("BT") && pdfText.includes("ET") && 
+                         (pdfText.includes("Tj") || pdfText.includes("TJ"));
+  
+  // Vérifier la densité de texte exploitable
+  const textDensity = pdfText.match(/[a-zA-Z0-9àéèêëîïôùûç.,;:!?()[\]{}'" ]{5,}/g);
+  const lowTextDensity = !textDensity || textDensity.length < 20;
+  
+  // Vérifier les marqueurs d'images
+  const hasImageMarkers = pdfText.includes("/Image") && 
+                         (pdfText.includes("/DCTDecode") || pdfText.includes("/FlateDecode"));
+                         
+  // Un PDF est probablement scanné s'il a peu de marqueurs de texte mais beaucoup d'images
+  return (lowTextDensity && hasImageMarkers) || (!hasTextMarkers && hasImageMarkers);
 }
 
 /**
@@ -67,12 +99,58 @@ function cleanExtractedText(text: string): string {
     .replace(/\/[FT][0-9]+(\s+\d+(\s+\d+)?)?/g, ' ')
     // Remove image data or raw binary data patterns
     .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F\uFEFF\uFFFE\uFFFF]/g, ' ')
+    // Keep only printable characters and French accents
     .replace(/[^\w\s.,;:'\-+()[\]{}?!@#$%^&*=\/\\|<>"éèêëàâäôöûüùïîçÉÈÊËÀÂÄÔÖÛÜÙÏÎÇ]/g, ' ')
     // Normalize whitespace
     .replace(/\s+/g, ' ')
     // Remove repetitive character sequences (like "AAAAAAAA")
     .replace(/(.)\1{5,}/g, '$1$1$1')
+    // Remove garbage text patterns (like random alphanumeric strings)
+    .replace(/\b[A-Z0-9]{10,}\b/g, '')
+    // Remove lone symbols
+    .replace(/\s[^a-zA-Z0-9àéèêëîïôùûç]{1,3}\s/g, ' ')
     .trim();
+}
+
+/**
+ * Améliore la structure du texte pour le rendre plus lisible
+ */
+function improveTextStructure(text: string): string {
+  // Supprimer les séquences de caractères qui ressemblent à des métadonnées PDF
+  let improved = text
+    // Supprimer les lignes qui semblent être des en-têtes PDF
+    .replace(/^.*PDF.*$/mg, '')
+    // Supprimer les lignes qui contiennent majoritairement des symboles
+    .replace(/^[^a-zA-Z0-9àéèêëîïôùûç]{5,}$/mg, '')
+    // Supprimer les lignes qui semblent être des numéros de page isolés
+    .replace(/^\s*\d+\s*$/mg, '')
+    // Nettoyer les séquences d'espaces multiples
+    .replace(/\s{3,}/g, '\n')
+    // Remplacer les tirets isolés en début de ligne par des puces
+    .replace(/^\s*-\s+/mg, '• ');
+  
+  // Détecter et améliorer la mise en forme des sections courantes de CV
+  const sections = [
+    "EXPÉRIENCE", "EXPERIENCE", "PROFESSIONAL EXPERIENCE", "EXPÉRIENCE PROFESSIONNELLE",
+    "ÉDUCATION", "EDUCATION", "FORMATION", "ÉTUDES", "ETUDES",
+    "COMPÉTENCES", "COMPETENCES", "SKILLS", "SAVOIR-FAIRE",
+    "LANGUES", "LANGUAGES", "CERTIFICATIONS", "PROJETS", "PROJECTS",
+    "CENTRES D'INTÉRÊT", "INTERESTS", "HOBBIES", "LOISIRS"
+  ];
+  
+  // Mettre en évidence les sections
+  sections.forEach(section => {
+    const regex = new RegExp(`(\\b${section}\\b)`, 'gi');
+    improved = improved.replace(regex, '\n\n$1\n');
+  });
+  
+  // Supprimer les lignes vides consécutives
+  improved = improved.replace(/\n{3,}/g, '\n\n');
+  
+  // Ajuster la structure des listes
+  improved = improved.replace(/([.,:;])\s*\n/g, '$1\n');
+  
+  return improved.trim();
 }
 
 /**
