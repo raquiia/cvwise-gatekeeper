@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -9,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { candidateDataService } from '@/services/data/candidateDataService';
 import { CandidateData } from '@/services/data/resumeDataService';
 import { ArrowLeft, User, MapPin, Phone, Mail, Briefcase, Award, Calendar, FileText, Loader2, GraduationCap, Languages, Award as CertificateIcon, Book, Grid, Target, Briefcase as WorkIcon, Heart, Globe } from 'lucide-react';
-import { Json } from '@/integrations/supabase/types';
 
 /**
  * Assure qu'un champ possiblement JSON, array ou string est transformé en tableau
@@ -452,8 +450,26 @@ const CandidateDetail = () => {
                         </h3>
                         {project.date && <p className="text-sm text-muted-foreground mb-2">{project.date}</p>}
                         {project.description && <p className="text-navy-dark mb-3">{project.description}</p>}
+                        {project.technologies && (
+                          <div className="mb-2">
+                            <h4 className="text-sm font-semibold mb-1">Technologies utilisées:</h4>
+                            <p className="text-sm text-navy">{project.technologies}</p>
+                          </div>
+                        )}
+                        {project.role && (
+                          <div className="mb-2">
+                            <h4 className="text-sm font-semibold mb-1">Rôle:</h4>
+                            <p className="text-sm text-navy">{project.role}</p>
+                          </div>
+                        )}
                         {project.url && (
-                          <a href={project.url} target="_blank" rel="noopener noreferrer" className="text-sm text-navy underline">
+                          <a 
+                            href={project.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-sm text-navy underline inline-flex items-center mt-2"
+                          >
+                            <Globe size={14} className="mr-1" />
                             Voir le projet
                           </a>
                         )}
@@ -523,6 +539,7 @@ const CandidateDetail = () => {
                             </h3>
                             {cert.issuer && <p className="text-sm text-navy">{cert.issuer}</p>}
                             {cert.date && <p className="text-xs text-muted-foreground mt-1">{cert.date}</p>}
+                            {cert.description && <p className="text-sm text-navy-dark mt-2">{cert.description}</p>}
                           </div>
                         </div>
                       </div>

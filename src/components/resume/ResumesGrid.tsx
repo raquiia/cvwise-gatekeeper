@@ -84,6 +84,33 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
     return 'card-hover glass flex flex-col';
   };
   
+  // Fonction pour obtenir l'étiquette d'état du CV
+  const getResumeStatusBadge = (resume: ResumeData) => {
+    if (isResumeAnalyzed(resume)) {
+      return (
+        <div className="mt-2">
+          <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
+            <FileCheck size={12} className="mr-1" />
+            Analysé
+          </span>
+        </div>
+      );
+    }
+    
+    if (hasExtractedText(resume.id)) {
+      return (
+        <div className="mt-2">
+          <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800">
+            <FileText size={12} className="mr-1" />
+            Texte extrait
+          </span>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+  
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -195,23 +222,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                 Taille: {(resume.file_size / 1024 / 1024).toFixed(2)} MB
               </div>
               
-              {isResumeAnalyzed(resume) && (
-                <div className="mt-2">
-                  <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
-                    <FileCheck size={12} className="mr-1" />
-                    Analysé
-                  </span>
-                </div>
-              )}
-              
-              {!isResumeAnalyzed(resume) && hasExtractedText(resume.id) && (
-                <div className="mt-2">
-                  <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800">
-                    <FileText size={12} className="mr-1" />
-                    Texte extrait
-                  </span>
-                </div>
-              )}
+              {getResumeStatusBadge(resume)}
             </div>
             
             {!selectionMode && (

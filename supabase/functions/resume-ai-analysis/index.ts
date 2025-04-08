@@ -32,10 +32,16 @@ function truncateText(text: string, maxLength = 30000): string {
   const experienceMatch = text.match(/expérience|experience|professional|professionnel/i);
   const educationMatch = text.match(/education|formation|études|etudes/i);
   const skillsMatch = text.match(/compétences|competences|skills|skillset/i);
+  const languagesMatch = text.match(/langues|languages|language/i);
+  const projectsMatch = text.match(/projets|projects|réalisations/i);
+  const certificationsMatch = text.match(/certifications|certificats|diplômes/i);
   
   let experiencePart = "";
   let educationPart = "";
   let skillsPart = "";
+  let languagesPart = "";
+  let projectsPart = "";
+  let certificationsPart = "";
   
   // Get experience section if found (up to 40% of max length)
   if (experienceMatch && experienceMatch.index !== undefined) {
@@ -58,6 +64,27 @@ function truncateText(text: string, maxLength = 30000): string {
     skillsPart = text.substring(start, end);
   }
   
+  // Get languages section if found
+  if (languagesMatch && languagesMatch.index !== undefined) {
+    const start = languagesMatch.index;
+    const end = Math.min(start + (maxLength * 0.1), text.length);
+    languagesPart = text.substring(start, end);
+  }
+  
+  // Get projects section if found
+  if (projectsMatch && projectsMatch.index !== undefined) {
+    const start = projectsMatch.index;
+    const end = Math.min(start + (maxLength * 0.15), text.length);
+    projectsPart = text.substring(start, end);
+  }
+  
+  // Get certifications section if found
+  if (certificationsMatch && certificationsMatch.index !== undefined) {
+    const start = certificationsMatch.index;
+    const end = Math.min(start + (maxLength * 0.1), text.length);
+    certificationsPart = text.substring(start, end);
+  }
+  
   // Combine parts with markers
   return [
     "--- DÉBUT DU CV (PREMIÈRES INFORMATIONS) ---",
@@ -68,6 +95,12 @@ function truncateText(text: string, maxLength = 30000): string {
     educationPart,
     "--- SECTION COMPÉTENCES ---",
     skillsPart,
+    "--- SECTION LANGUES ---",
+    languagesPart,
+    "--- SECTION PROJETS ---",
+    projectsPart,
+    "--- SECTION CERTIFICATIONS ---",
+    certificationsPart,
     "--- FIN DU CV (TRONQUÉ POUR L'ANALYSE) ---"
   ].join("\n\n");
 }
@@ -258,90 +291,183 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `Tu es un expert en analyse de CV. Tu dois extraire les informations structurées suivantes d'un CV:
-            - Informations personnelles (prénom, nom, email, téléphone)
-            - Titre/position professionnelle actuelle
-            - Années d'expérience totales
-            - Lieu/localisation
-            - Compétences techniques (liste détaillée)
-            - Entreprise actuelle/dernière
-            - Expériences professionnelles (avec titre, entreprise, dates, description pour chaque expérience)
-            - Formation (avec diplôme, établissement, année pour chaque formation)
-            - Certifications (liste détaillée)
-            - Langues (avec niveau pour chaque langue)
-            - Projets significatifs (liste avec descriptions si possible)
-            - Centres d'intérêt
-            - Industries pertinentes
-            
-            IMPORTANT: Mets vraiment l'accent sur les expériences professionnelles et la formation, qui doivent être des tableaux d'objets avec toutes les informations pour chaque entrée.
-            
-            Fournis ces informations sous forme d'un objet JSON avec les propriétés suivantes:
-            {
-              "first_name": "...",
-              "last_name": "...",
-              "email": "...",
-              "phone": "...",
-              "position": "...",
-              "years_experience": number,
-              "location": "...",
-              "skills": ["skill1", "skill2", ...],
-              "company": "...",
-              "experiences": [
-                {
-                  "title": "...",
-                  "company": "...",
-                  "start_date": "...",
-                  "end_date": "...",
-                  "location": "...",
-                  "description": "..."
-                },
-                ...
-              ],
-              "education": [
-                {
-                  "degree": "...",
-                  "institution": "...",
-                  "start_date": "...",
-                  "end_date": "...",
-                  "location": "...",
-                  "description": "..."
-                },
-                ...
-              ],
-              "certifications": ["..."],
-              "languages": [
-                {
-                  "language": "...",
-                  "level": "..."
-                },
-                ...
-              ],
-              "projects": [
-                {
-                  "name": "...",
-                  "description": "...",
-                  "date": "..."
-                },
-                ...
-              ],
-              "interests": "...",
-              "industries": ["..."]
-            }
-            
-            IMPORTANT: 
-            - Ne laisse aucun champ vide. Si tu ne trouves pas l'information, fais une supposition raisonnable ou mets une valeur par défaut.
-            - Assure-toi que les structures complexes comme 'experiences', 'education', etc. sont TOUJOURS des tableaux d'objets, même s'il n'y a qu'un seul élément.
-            - S'il n'y a pas assez d'informations pour certains champs, invente des données plausibles basées sur le reste du CV.
-            
-            Fournis ces informations sous forme d'un objet JSON valide SANS utiliser de bloc de code markdown. Retourne UNIQUEMENT l'objet JSON brut, sans aucun formatage markdown ni autre texte.`
+            content: `Tu es un expert en analyse de CV avec une grande capacité de détail. Tu dois extraire TOUTES les informations structurées du CV fourni, en accordant une attention particulière aux détails. Voici les informations à extraire:
+
+1. Informations personnelles:
+   - Prénom et nom
+   - Email et téléphone
+   - Adresse/localisation complète
+   - LinkedIn ou autres profils professionnels
+
+2. Profil professionnel:
+   - Titre/position actuelle précis
+   - Années d'expérience totales (estimation si non spécifiée)
+   - Entreprise actuelle/dernière
+   - Secteurs d'activité/industries
+   - Mobilité et préférences de travail (télétravail, déplacements)
+   - Attentes salariales (si mentionnées)
+
+3. Compétences techniques:
+   - Liste EXHAUSTIVE de toutes les compétences techniques mentionnées
+   - Niveau d'expertise pour chaque compétence (si précisé)
+   - Technologies, outils, méthodologies
+   - Compétences clés mises en avant
+
+4. Expériences professionnelles:
+   - POUR CHAQUE expérience, TOUS les détails suivants:
+     * Titre exact du poste
+     * Nom complet de l'entreprise
+     * Dates précises (mois/année de début et fin)
+     * Localisation
+     * Description détaillée des responsabilités et réalisations
+     * Technologies et compétences utilisées
+     * Résultats quantifiables ou projets notables
+
+5. Formation académique:
+   - POUR CHAQUE formation:
+     * Diplôme/certification obtenu(e) (titre exact)
+     * Nom complet de l'établissement
+     * Dates précises (année de début et fin)
+     * Localisation
+     * Spécialisation/domaine d'étude
+     * Mentions ou résultats notables
+
+6. Certifications professionnelles:
+   - Intitulé exact de chaque certification
+   - Organisme de certification
+   - Date d'obtention et validité
+   - Numéro ou référence (si mentionné)
+
+7. Langues:
+   - Chaque langue maîtrisée
+   - Niveau précis pour chaque langue (CECRL: A1/A2/B1/B2/C1/C2 ou débutant/intermédiaire/courant/bilingue)
+
+8. Projets professionnels ou personnels:
+   - Nom et description de chaque projet
+   - Technologies et outils utilisés
+   - Rôle dans le projet
+   - Date ou période
+   - Résultats ou impacts
+
+9. Centres d'intérêt et activités:
+   - Loisirs, sports, activités communautaires
+   - Engagements associatifs ou bénévoles
+   - Publications ou contributions
+
+10. Autres informations pertinentes:
+    - Permis ou autorisations spéciales
+    - Publications académiques ou professionnelles
+    - Références professionnelles
+    - Disponibilité
+    - Objectifs de carrière
+    - Valeurs professionnelles
+
+IMPORTANT: 
+- Pour chaque information extraite, sois EXTRÊMEMENT PRÉCIS et EXHAUSTIF.
+- N'invente JAMAIS d'informations qui ne sont pas présentes dans le CV.
+- Si tu n'es pas sûr d'une information, indique-le clairement.
+- Pour les expériences professionnelles et formations, assure-toi de capturer TOUS les détails fournis dans le texte original.
+- Les expériences et éducation doivent TOUJOURS être des tableaux d'objets, même s'il n'y a qu'un seul élément.
+
+Retourne ces informations sous forme d'un objet JSON structuré:
+
+{
+  "first_name": "...",
+  "last_name": "...",
+  "email": "...",
+  "phone": "...",
+  "position": "...",
+  "years_experience": number,
+  "location": "...",
+  "skills": ["skill1", "skill2", ...],
+  "company": "...",
+  "experiences": [
+    {
+      "title": "...",
+      "company": "...",
+      "start_date": "...",
+      "end_date": "...",
+      "location": "...",
+      "description": "..."
+    },
+    ...
+  ],
+  "education": [
+    {
+      "degree": "...",
+      "institution": "...",
+      "start_date": "...",
+      "end_date": "...",
+      "location": "...",
+      "description": "..."
+    },
+    ...
+  ],
+  "certifications": [
+    {
+      "name": "...",
+      "issuer": "...",
+      "date": "...",
+      "description": "..."
+    },
+    ...
+  ],
+  "languages": [
+    {
+      "language": "...",
+      "level": "..."
+    },
+    ...
+  ],
+  "projects": [
+    {
+      "name": "...",
+      "description": "...",
+      "technologies": "...",
+      "date": "...",
+      "role": "...",
+      "url": "..."
+    },
+    ...
+  ],
+  "interests": "...",
+  "professional_networks": [
+    {
+      "platform": "...",
+      "url": "..."
+    },
+    ...
+  ],
+  "availability": "...",
+  "salary_expectations": "...",
+  "mobility": "...",
+  "contract_type": "...",
+  "remote_preference": "...",
+  "travel_willingness": "...",
+  "professional_references": [
+    {
+      "name": "...",
+      "position": "...",
+      "company": "...",
+      "contact": "..."
+    },
+    ...
+  ],
+  "career_objectives": "...",
+  "professional_values": "...",
+  "work_authorization": "...",
+  "industries": ["industry1", "industry2", ...]
+}
+
+Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne UNIQUEMENT le JSON, sans texte supplémentaire.`
           },
           {
             role: "user",
-            content: `Voici le texte extrait d'un CV. Analyse-le et extrait les informations structurées demandées:\n\n${truncatedText}`
+            content: `Voici le texte extrait d'un CV. Analyse-le et extrait toutes les informations structurées demandées, en étant aussi exhaustif que possible:\n\n${truncatedText}`
           }
         ],
-        temperature: 0.3,
-        max_tokens: 2000
+        temperature: 0.2,
+        max_tokens: 3000
       })
     });
     
@@ -369,6 +495,9 @@ serve(async (req) => {
       // Vérifions les expériences et l'éducation
       console.log("Expériences:", JSON.stringify(parsedData.experiences || parsedData.experience || []));
       console.log("Éducation:", JSON.stringify(parsedData.education || []));
+      console.log("Langues:", JSON.stringify(parsedData.languages || []));
+      console.log("Certifications:", JSON.stringify(parsedData.certifications || []));
+      console.log("Projets:", JSON.stringify(parsedData.projects || []));
     } catch (error) {
       console.error("Erreur lors du parsing de la réponse OpenAI:", error);
       throw new Error("Impossible de traiter la réponse de l'IA");
@@ -394,6 +523,17 @@ serve(async (req) => {
       interests: parsedData.interests || parsedData.hobbies || "",
       projects: parsedData.projects || [],
       industries: parsedData.industries || [],
+      professional_references: parsedData.professional_references || [],
+      professional_networks: parsedData.professional_networks || [],
+      availability: parsedData.availability || null,
+      salary_expectations: parsedData.salary_expectations || null,
+      mobility: parsedData.mobility || null,
+      contract_type: parsedData.contract_type || null,
+      remote_preference: parsedData.remote_preference || null,
+      travel_willingness: parsedData.travel_willingness || null,
+      career_objectives: parsedData.career_objectives || null,
+      professional_values: parsedData.professional_values || null,
+      work_authorization: parsedData.work_authorization || null,
       // Calcul du score basé sur la complétude et la qualité des données
       score: Math.min(95, 50 + 
         (Array.isArray(parsedData.skills) ? parsedData.skills.length * 3 : 0) + 
@@ -413,7 +553,8 @@ serve(async (req) => {
     
     console.log("Données du candidat préparées:", JSON.stringify({
       experiences: formattedCandidateData.experiences,
-      education: formattedCandidateData.education
+      education: formattedCandidateData.education,
+      languages: formattedCandidateData.languages
     }));
     
     // Upsert du candidat dans la base de données
