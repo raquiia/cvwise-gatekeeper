@@ -1,7 +1,7 @@
 
 // PDF Text extraction utility for Edge Function
 // Using PDF.js compatible with Deno environment
-import * as pdfjs from "pdfjs-dist";
+import * as pdfjs from "npm:pdfjs-dist@3.11.174";
 
 /**
  * Extract text from a PDF file using server-side techniques
@@ -12,7 +12,7 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
     
     // Configure PDF.js to use no worker - important for Deno environment
     const pdfjsLib = pdfjs;
-    pdfjsLib.GlobalWorkerOptions.workerPort = null;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "";  // Don't use worker in Deno
     
     // Load the PDF document with PDF.js
     const loadingTask = pdfjsLib.getDocument({
