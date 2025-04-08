@@ -92,16 +92,25 @@ export const analyzeResume = async (resumeId: string, resumeText: string): Promi
     }
     
     console.log('AI analysis successful, candidate created:', data.candidate?.id);
-    console.log('Parsed data from OpenAI:', data.parsed_data);
     
+    // Vérifier les structures complexes pour debugging
     if (data.candidate) {
+      // Check résumé des données analysées
+      console.log('Parsed data from OpenAI:', data.parsed_data ? JSON.stringify(data.parsed_data).substring(0, 200) + '...' : 'No parsed data');
+      
       // Vérifier les structures complexes pour debugging
       console.log('Experiences:', typeof data.candidate.experiences, Array.isArray(data.candidate.experiences) ? data.candidate.experiences.length : 'Not an array');
       console.log('Education:', typeof data.candidate.education, Array.isArray(data.candidate.education) ? data.candidate.education.length : 'Not an array');
       console.log('Skills:', typeof data.candidate.skills, Array.isArray(data.candidate.skills) ? data.candidate.skills.length : 'Not an array');
       
-      if (typeof data.candidate.experiences === 'string') {
-        console.log('Experiences needs to be parsed from string:', data.candidate.experiences.substring(0, 100));
+      // Afficher un échantillon des données d'expérience si disponibles
+      if (Array.isArray(data.candidate.experiences) && data.candidate.experiences.length > 0) {
+        console.log('Sample experience:', JSON.stringify(data.candidate.experiences[0]));
+      }
+      
+      // Afficher un échantillon des données d'éducation si disponibles
+      if (Array.isArray(data.candidate.education) && data.candidate.education.length > 0) {
+        console.log('Sample education:', JSON.stringify(data.candidate.education[0]));
       }
     }
     

@@ -14,40 +14,32 @@ import { Json } from '@/integrations/supabase/types';
 /**
  * Assure qu'un champ possiblement JSON, array ou string est transformé en tableau
  */
-function ensureArray<T>(data: T[] | Json | undefined): T[] {
+function ensureArray<T>(data: T[] | Json | undefined | null): T[] {
   if (!data) return [];
   
   // Si c'est déjà un tableau, le retourner
   if (Array.isArray(data)) {
-    return data.map(item => {
-      if (typeof item === 'object' && item !== null) {
-        return item as T;
-      }
-      return item as unknown as T;
-    });
+    return data;
   }
   
-  // Si c'est une string, une valeur primitive
-  if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean') {
-    return [data as unknown as T];
-  }
-  
-  // Si c'est un objet JSON, essayer de le parser s'il s'agit d'une chaîne
+  // Si c'est une string, essayer de la parser comme JSON
   if (typeof data === 'string') {
     try {
       const parsed = JSON.parse(data);
-      return Array.isArray(parsed) ? parsed : [parsed as unknown as T];
+      return Array.isArray(parsed) ? parsed : [data as unknown as T];
     } catch (e) {
+      // Si le parsing échoue, retourner la string comme élément unique du tableau
       return [data as unknown as T];
     }
   }
   
-  // Si c'est un objet mais pas un tableau
+  // Si c'est un objet JSON, le retourner comme élément unique du tableau
   if (typeof data === 'object' && data !== null) {
     return [data as unknown as T];
   }
   
-  return [];
+  // Pour les valeurs primitives (number, boolean), les retourner comme élément unique
+  return [data as unknown as T];
 }
 
 const CandidateDetail = () => {

@@ -1,4 +1,5 @@
 
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.2";
 
@@ -118,6 +119,11 @@ function ensureProperDataFormat(data: any): any {
   arrayProperties.forEach(prop => {
     if (prop in data) {
       data[prop] = ensureArray(data[prop]);
+      
+      // Log de debugging pour les propriétés importantes
+      if (prop === 'experiences' || prop === 'education') {
+        console.log(`Formatting ${prop}, final result:`, JSON.stringify(data[prop]));
+      }
     }
   });
 
@@ -259,54 +265,75 @@ serve(async (req) => {
             - Lieu/localisation
             - Compétences techniques (liste détaillée)
             - Entreprise actuelle/dernière
-            - Expériences professionnelles (avec titre, entreprise, dates, description)
-            - Formation (avec diplôme, établissement, année)
-            - Certifications
-            - Langues (avec niveau)
-            - Projets significatifs
+            - Expériences professionnelles (avec titre, entreprise, dates, description pour chaque expérience)
+            - Formation (avec diplôme, établissement, année pour chaque formation)
+            - Certifications (liste détaillée)
+            - Langues (avec niveau pour chaque langue)
+            - Projets significatifs (liste avec descriptions si possible)
             - Centres d'intérêt
             - Industries pertinentes
             
+            IMPORTANT: Mets vraiment l'accent sur les expériences professionnelles et la formation, qui doivent être des tableaux d'objets avec toutes les informations pour chaque entrée.
+            
             Fournis ces informations sous forme d'un objet JSON avec les propriétés suivantes:
             {
-              "firstName": "...",
-              "lastName": "...",
+              "first_name": "...",
+              "last_name": "...",
               "email": "...",
               "phone": "...",
               "position": "...",
-              "yearsExperience": number,
+              "years_experience": number,
               "location": "...",
               "skills": ["skill1", "skill2", ...],
               "company": "...",
-              "experiences": [{
-                "title": "...",
-                "company": "...",
-                "startDate": "...",
-                "endDate": "...",
-                "description": "..."
-              }],
-              "education": [{
-                "degree": "...",
-                "institution": "...",
-                "year": "..."
-              }],
+              "experiences": [
+                {
+                  "title": "...",
+                  "company": "...",
+                  "start_date": "...",
+                  "end_date": "...",
+                  "location": "...",
+                  "description": "..."
+                },
+                ...
+              ],
+              "education": [
+                {
+                  "degree": "...",
+                  "institution": "...",
+                  "start_date": "...",
+                  "end_date": "...",
+                  "location": "...",
+                  "description": "..."
+                },
+                ...
+              ],
               "certifications": ["..."],
-              "languages": [{
-                "language": "...",
-                "level": "..."
-              }],
-              "projects": ["..."],
+              "languages": [
+                {
+                  "language": "...",
+                  "level": "..."
+                },
+                ...
+              ],
+              "projects": [
+                {
+                  "name": "...",
+                  "description": "...",
+                  "date": "..."
+                },
+                ...
+              ],
               "interests": "...",
               "industries": ["..."]
             }
             
-            IMPORTANT: Ne laisse aucun champ vide. Si tu ne trouves pas l'information, fais une supposition raisonnable ou mets une valeur par défaut. Pour les tableaux, inclus au moins un élément si possible.
+            IMPORTANT: 
+            - Ne laisse aucun champ vide. Si tu ne trouves pas l'information, fais une supposition raisonnable ou mets une valeur par défaut.
+            - Assure-toi que les structures complexes comme 'experiences', 'education', etc. sont TOUJOURS des tableaux d'objets, même s'il n'y a qu'un seul élément.
+            - S'il n'y a pas assez d'informations pour certains champs, invente des données plausibles basées sur le reste du CV.
             
-            Fournis ces informations sous forme d'un objet JSON valide SANS utiliser de bloc de code markdown. Retourne UNIQUEMENT l'objet JSON brut, sans aucun formatage markdown ni autre texte.
-            
-            Assure-toi que toutes les propriétés qui doivent être des listes (experiences, education, skills, languages, projects, certifications, industries) sont bien au format de tableau JSON, même s'il n'y a qu'un seul élément.
-            
-            Note importante: Ce texte a été tronqué pour l'analyse, utilise les informations disponibles au mieux.`
+            Fournis ces informations sous forme d'un objet JSON valide SANS utiliser de bloc de code markdown. Retourne UNIQUEMENT l'objet JSON brut, sans aucun formatage markdown ni autre texte.`
           },
           {
             role: "user",
@@ -337,7 +364,11 @@ serve(async (req) => {
       console.log("Contenu nettoyé:", cleanedContent.substring(0, 200) + "...");
       
       parsedData = JSON.parse(cleanedContent);
-      console.log("Données structurées extraites avec succès:", parsedData);
+      console.log("Données structurées extraites avec succès");
+      
+      // Vérifions les expériences et l'éducation
+      console.log("Expériences:", JSON.stringify(parsedData.experiences || parsedData.experience || []));
+      console.log("Éducation:", JSON.stringify(parsedData.education || []));
     } catch (error) {
       console.error("Erreur lors du parsing de la réponse OpenAI:", error);
       throw new Error("Impossible de traiter la réponse de l'IA");
@@ -347,16 +378,16 @@ serve(async (req) => {
     const candidateData = {
       resume_id: resumeId,
       user_id: resumeData.user_id,
-      first_name: parsedData.firstName || parsedData.first_name || "",
-      last_name: parsedData.lastName || parsedData.last_name || "",
+      first_name: parsedData.first_name || parsedData.firstName || "",
+      last_name: parsedData.last_name || parsedData.lastName || "",
       email: parsedData.email || "",
       phone: parsedData.phone || parsedData.phoneNumber || "",
       position: parsedData.position || parsedData.title || parsedData.currentPosition || "",
-      years_experience: parsedData.yearsExperience || parsedData.years_experience || 0,
+      years_experience: parsedData.years_experience || parsedData.yearsExperience || 0,
       location: parsedData.location || "",
-      skills: Array.isArray(parsedData.skills) ? parsedData.skills : [parsedData.skills],
+      skills: parsedData.skills || [],
       company: parsedData.company || parsedData.currentCompany || "",
-      experiences: parsedData.experiences || parsedData.professionalExperiences || [],
+      experiences: parsedData.experiences || parsedData.experience || parsedData.professionalExperiences || [],
       education: parsedData.education || [],
       certifications: parsedData.certifications || [],
       languages: parsedData.languages || [],
@@ -366,12 +397,12 @@ serve(async (req) => {
       // Calcul du score basé sur la complétude et la qualité des données
       score: Math.min(95, 50 + 
         (Array.isArray(parsedData.skills) ? parsedData.skills.length * 3 : 0) + 
-        (Array.isArray(parsedData.experiences) ? parsedData.experiences.length * 5 : 0) +
+        (Array.isArray(parsedData.experiences || parsedData.experience) ? (parsedData.experiences || parsedData.experience).length * 5 : 0) +
         (Array.isArray(parsedData.education) ? parsedData.education.length * 3 : 0)),
       status: "qualification",
       profile_completeness: Math.min(95, 30 + 
         (Array.isArray(parsedData.skills) ? parsedData.skills.length * 3 : 0) + 
-        (Array.isArray(parsedData.experiences) ? parsedData.experiences.length * 5 : 0) +
+        (Array.isArray(parsedData.experiences || parsedData.experience) ? (parsedData.experiences || parsedData.experience).length * 5 : 0) +
         (Array.isArray(parsedData.education) ? parsedData.education.length * 3 : 0) +
         (Array.isArray(parsedData.languages) ? parsedData.languages.length * 2 : 0) +
         (Array.isArray(parsedData.certifications) ? parsedData.certifications.length * 2 : 0))
@@ -380,7 +411,10 @@ serve(async (req) => {
     // S'assurer que toutes les propriétés complexes sont correctement formatées
     const formattedCandidateData = ensureProperDataFormat(candidateData);
     
-    console.log("Données du candidat préparées:", formattedCandidateData);
+    console.log("Données du candidat préparées:", JSON.stringify({
+      experiences: formattedCandidateData.experiences,
+      education: formattedCandidateData.education
+    }));
     
     // Upsert du candidat dans la base de données
     console.log("Enregistrement du candidat dans la base de données");
