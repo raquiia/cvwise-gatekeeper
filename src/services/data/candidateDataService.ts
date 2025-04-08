@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { resumeDataService } from './resumeDataService';
 import { CandidateData } from './resumeDataService';
@@ -53,26 +52,24 @@ export const candidateDataService = {
     try {
       console.log("Fetching candidate with ID:", candidateId);
       
-      // Use direct query instead of RPC to avoid recursion issues with RLS
-      const { data, error } = await supabase
-        .from('candidates')
-        .select('*')
-        .eq('id', candidateId)
-        .maybeSingle();
+      // Use the secure function we created in the migration
+      const { data, error } = await supabase.rpc('get_candidate_by_id_secure', {
+        candidate_id_param: candidateId
+      });
       
       if (error) {
         console.error("Error fetching candidate:", error.message);
         throw new Error(`Erreur lors de la récupération du candidat: ${error.message}`);
       }
       
-      if (!data) {
+      if (!data || data.length === 0) {
         console.log("No candidate found with ID:", candidateId);
         return null;
       }
       
-      console.log("Successfully retrieved candidate data");
+      console.log("Successfully retrieved candidate data:", data[0]);
       
-      return data as CandidateData;
+      return data[0] as CandidateData;
     } catch (error: any) {
       console.error("Exception in getCandidateById:", error);
       throw new Error(error.message || "Impossible de récupérer le candidat");

@@ -26,7 +26,12 @@ const CandidateDetail = () => {
 
   useEffect(() => {
     const fetchCandidate = async () => {
-      if (!candidateId) return;
+      if (!candidateId) {
+        console.error("No candidate ID provided");
+        setError("Identifiant de candidat manquant");
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
@@ -37,12 +42,12 @@ const CandidateDetail = () => {
           console.log("Candidate not found:", candidateId);
           setError("Candidat non trouvé");
         } else {
-          console.log("Candidate data retrieved successfully");
+          console.log("Candidate data retrieved successfully:", data);
           setCandidate(data);
         }
       } catch (err: any) {
         console.error("Error loading candidate:", err);
-        setError("Une erreur s'est produite lors du chargement des données");
+        setError(`Une erreur s'est produite lors du chargement des données: ${err.message}`);
       } finally {
         setLoading(false);
       }
