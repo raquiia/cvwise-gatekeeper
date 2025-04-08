@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CertificateIcon } from 'lucide-react';
+import { Award } from 'lucide-react';
 import { CandidateData } from '@/services/data/resumeDataService';
 import { ensureArray } from '@/utils/candidateUtils';
 
@@ -63,7 +63,7 @@ const EducationTab: React.FC<EducationTabProps> = ({ candidate }) => {
               {certifications.map((cert: any, idx: number) => (
                 <div key={idx} className="p-4 border border-border rounded-lg">
                   <div className="flex items-start">
-                    <CertificateIcon className="mr-3 text-navy h-5 w-5 mt-1" />
+                    <Award className="mr-3 text-navy h-5 w-5 mt-1" />
                     <div>
                       <h3 className="font-semibold text-navy-dark">
                         {typeof cert === 'string' ? 
