@@ -139,7 +139,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
           {!selectionMode && (
             <div className="border-t border-border/10 p-3 flex gap-2 justify-between">
               <Button 
-                variant="primary" 
+                variant="default" 
                 size="sm" 
                 className="text-xs flex-1"
                 onClick={(e) => {
