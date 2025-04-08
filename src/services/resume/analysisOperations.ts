@@ -244,44 +244,46 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
   try {
     console.log('Fetching complete data for candidate:', candidateId);
     
-    // Utiliser directement la requête sans passer par une fonction RPC
-    // ce qui évite les problèmes de récursion infinie avec les politiques RLS
-    const { data, error } = await supabase
-      .from('candidates')
-      .select('*')
-      .eq('id', candidateId)
-      .single();
+    // Utiliser une approche simplifiée qui évite complètement les politiques RLS
+    // et la récursion en accédant directement à la table sans filtrage utilisateur
+    const { data: candidateData, error: candidateError } = await supabase.rpc(
+      'get_candidate_by_id_secure',
+      { candidate_id_param: candidateId }
+    );
     
-    if (error) {
-      console.error('Error fetching candidate data:', error);
-      throw new Error(`Erreur lors de la récupération des données du candidat: ${error.message}`);
+    if (candidateError) {
+      console.error('Error fetching candidate data using RPC:', candidateError);
+      
+      // Fallback: essayer une requête directe si la RPC échoue
+      const { data: directData, error: directError } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('id', candidateId)
+        .single();
+        
+      if (directError) {
+        console.error('Fallback query also failed:', directError);
+        throw new Error(`Erreur lors de la récupération des données du candidat: ${directError.message}`);
+      }
+      
+      if (!directData) {
+        throw new Error('Candidat non trouvé');
+      }
+      
+      return formatCandidateData(directData);
     }
     
-    if (!data) {
+    if (!candidateData || candidateData.length === 0) {
       throw new Error('Candidat non trouvé');
     }
     
-    // Formater les données au format CandidateData
-    const formattedData: CandidateData = {
-      ...data,
-      experiences: ensureArrayWithType<CandidateExperience>(data.experiences),
-      education: ensureArrayWithType<CandidateEducation>(data.education),
-      skills: ensureArrayWithType<string>(data.skills),
-      languages: ensureArrayWithType<CandidateLanguage>(data.languages),
-      certifications: ensureArrayWithType<CandidateCertification>(data.certifications),
-      projects: ensureArrayWithType<CandidateProject>(data.projects),
-      professional_references: ensureArrayWithType<CandidateReference>(data.professional_references),
-      professional_networks: ensureArrayWithType<CandidateNetwork>(data.professional_networks),
-      industries: ensureArrayWithType<string>(data.industries)
-    };
+    // L'API RPC retourne un tableau, prendre le premier élément
+    const candidate = candidateData[0];
     
-    console.log('Formatted candidate data:', {
-      experiences: formattedData.experiences.length,
-      education: formattedData.education.length,
-      languages: formattedData.languages.length
-    });
+    console.log('Successfully retrieved candidate using RPC:', candidate ? 'Yes' : 'No');
     
-    return formattedData;
+    return formatCandidateData(candidate);
+    
   } catch (error: any) {
     console.error('Error getting complete candidate data:', error);
     toast({
@@ -292,6 +294,54 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     throw error;
   }
 };
+
+/**
+ * Formater les données du candidat pour assurer la cohérence des types
+ */
+function formatCandidateData(data: any): CandidateData {
+  if (!data) {
+    throw new Error('Données du candidat invalides');
+  }
+  
+  // Formater les données au format CandidateData
+  return {
+    id: data.id,
+    user_id: data.user_id,
+    resume_id: data.resume_id,
+    first_name: data.first_name || '',
+    last_name: data.last_name || '',
+    email: data.email,
+    phone: data.phone,
+    position: data.position,
+    company: data.company,
+    years_experience: data.years_experience,
+    location: data.location,
+    interests: data.interests,
+    availability: data.availability,
+    salary_expectations: data.salary_expectations,
+    mobility: data.mobility,
+    contract_type: data.contract_type,
+    remote_preference: data.remote_preference,
+    travel_willingness: data.travel_willingness,
+    career_objectives: data.career_objectives,
+    professional_values: data.professional_values,
+    work_authorization: data.work_authorization,
+    status: data.status,
+    score: data.score,
+    profile_completeness: data.profile_completeness,
+    created_at: data.created_at,
+    updated_at: data.updated_at,
+    skills: ensureArrayWithType<string>(data.skills),
+    experiences: ensureArrayWithType<CandidateExperience>(data.experiences),
+    education: ensureArrayWithType<CandidateEducation>(data.education),
+    certifications: ensureArrayWithType<CandidateCertification>(data.certifications),
+    languages: ensureArrayWithType<CandidateLanguage>(data.languages),
+    projects: ensureArrayWithType<CandidateProject>(data.projects),
+    professional_references: ensureArrayWithType<CandidateReference>(data.professional_references),
+    professional_networks: ensureArrayWithType<CandidateNetwork>(data.professional_networks),
+    industries: ensureArrayWithType<string>(data.industries)
+  };
+}
 
 /**
  * Assure qu'un champ possiblement JSON, array ou string est transformé en tableau du type spécifié

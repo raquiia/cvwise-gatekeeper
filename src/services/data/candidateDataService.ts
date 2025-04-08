@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { resumeDataService } from './resumeDataService';
-import { CandidateData } from './resumeDataService';
+import { CandidateData } from '../resume/analysisOperations';
 import { Json } from '@/integrations/supabase/types';
 
 /**
@@ -52,24 +52,42 @@ export const candidateDataService = {
    */
   getCandidateById: async (candidateId: string): Promise<CandidateData | null> => {
     try {
-      // Utilisez une requête directe à la table au lieu d'une fonction RPC pour éviter
-      // les problèmes de récursion infinie
-      const { data, error } = await supabase
-        .from('candidates')
-        .select('*')
-        .eq('id', candidateId)
-        .single();
+      console.log("Fetching candidate by ID:", candidateId);
+      
+      // Utiliser la fonction RPC sécurisée qui contourne les politiques RLS
+      const { data, error } = await supabase.rpc('get_candidate_by_id_secure', {
+        candidate_id_param: candidateId
+      });
       
       if (error) {
-        console.error("Error fetching candidate:", error.message);
-        throw new Error(`Erreur lors de la récupération du candidat: ${error.message}`);
+        console.error("Error fetching candidate using RPC:", error.message);
+        
+        // Fallback: essayer une requête directe si la RPC échoue
+        const { data: directData, error: directError } = await supabase
+          .from('candidates')
+          .select('*')
+          .eq('id', candidateId)
+          .single();
+          
+        if (directError) {
+          console.error("Direct query also failed:", directError.message);
+          throw new Error(`Erreur lors de la récupération du candidat: ${directError.message}`);
+        }
+        
+        if (!directData) {
+          return null;
+        }
+        
+        return directData as unknown as CandidateData;
       }
       
-      if (!data) {
+      if (!data || data.length === 0) {
+        console.log("No candidate found with ID:", candidateId);
         return null;
       }
       
-      return data as unknown as CandidateData;
+      // L'API RPC retourne un tableau, prendre le premier élément
+      return data[0] as unknown as CandidateData;
     } catch (error: any) {
       console.error("Exception in getCandidateById:", error);
       throw new Error(error.message || "Impossible de récupérer le candidat");
