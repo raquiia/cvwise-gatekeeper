@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, FileText, Download, Loader2, MoreHorizontal, Calendar, Trash2, FileText2 } from 'lucide-react';
+import { Plus, FileText, Download, Loader2, MoreHorizontal, Calendar, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +51,8 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
   onExtractText,
   onCloseTextDialog
 }) => {
+  const { toast } = useToast();
+  
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -102,7 +105,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                         {extracting[resume.id] ? (
                           <Loader2 size={14} className="mr-2 animate-spin" />
                         ) : (
-                          <FileText2 size={14} className="mr-2" />
+                          <FileText size={14} className="mr-2" />
                         )}
                         Extraire le texte
                       </DropdownMenuItem>
@@ -178,7 +181,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                   {extracting[resume.id] ? (
                     <Loader2 size={14} className="mr-1 animate-spin" />
                   ) : (
-                    <FileText2 size={14} className="mr-1" />
+                    <FileText size={14} className="mr-1" />
                   )}
                   Extraire texte
                 </Button>
