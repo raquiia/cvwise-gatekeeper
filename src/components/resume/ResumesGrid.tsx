@@ -59,6 +59,11 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
 }) => {
   const { toast } = useToast();
   
+  // Fonction d'aide pour vérifier si le texte a été extrait pour un CV spécifique
+  const hasExtractedText = (resumeId: string): boolean => {
+    return resumesWithExtractedText && typeof resumesWithExtractedText[resumeId] === 'string' && resumesWithExtractedText[resumeId].length > 0;
+  };
+  
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -115,10 +120,10 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                         )}
                         Extraire le texte
                       </DropdownMenuItem>
-                      {resumesWithExtractedText[resume.id] && (
+                      {hasExtractedText(resume.id) && (
                         <DropdownMenuItem 
                           onClick={() => onAnalyzeResume(resume.id, resumesWithExtractedText[resume.id])}
-                          disabled={analyzing[resume.id] || !resumesWithExtractedText[resume.id]}
+                          disabled={analyzing[resume.id]}
                         >
                           {analyzing[resume.id] ? (
                             <Loader2 size={14} className="mr-2 animate-spin" />
@@ -205,7 +210,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                   Extraire texte
                 </Button>
                 
-                {resumesWithExtractedText[resume.id] && (
+                {hasExtractedText(resume.id) && (
                   <Button 
                     variant="outline" 
                     size="sm"

@@ -71,6 +71,26 @@ function truncateText(text: string, maxLength = 30000): string {
   ].join("\n\n");
 }
 
+// Extract JSON content from potential markdown-formatted responses
+function extractJsonFromMarkdown(text: string): string {
+  // Check if response contains markdown code blocks
+  const jsonMatch = text.match(/```(?:json)?\s*\n([\s\S]*?)\n```/);
+  if (jsonMatch && jsonMatch[1]) {
+    console.log("Extracted JSON from markdown code block");
+    return jsonMatch[1];
+  }
+  
+  // If no code blocks, try to find JSON object directly
+  const objectMatch = text.match(/\{[\s\S]*\}/);
+  if (objectMatch) {
+    console.log("Extracted JSON object directly from response");
+    return objectMatch[0];
+  }
+  
+  // Return original text if no JSON pattern found
+  return text;
+}
+
 serve(async (req) => {
   // Handle CORS
   const corsResponse = handleCors(req);
@@ -212,9 +232,7 @@ serve(async (req) => {
             - Centres d'intérêt
             - Industries pertinentes
             
-            Fournis ces informations sous forme d'un objet JSON valide et RIEN D'AUTRE, avec des propriétés en anglais.
-            
-            Réponds UNIQUEMENT avec un objet JSON, sans explications ni texte additionnel.
+            Fournis ces informations sous forme d'un objet JSON valide SANS utiliser de bloc de code markdown. Retourne UNIQUEMENT l'objet JSON brut, sans aucun formatage markdown ni autre texte.
             
             Note importante: Ce texte a été tronqué pour l'analyse, utilise les informations disponibles au mieux.`
           },
@@ -242,7 +260,11 @@ serve(async (req) => {
     let parsedData: any;
     try {
       const content = aiResult.choices[0].message.content;
-      parsedData = JSON.parse(content);
+      // Utiliser la fonction d'extraction JSON pour gérer le cas où OpenAI retourne un JSON encapsulé dans un bloc de code markdown
+      const cleanedContent = extractJsonFromMarkdown(content);
+      console.log("Contenu nettoyé:", cleanedContent.substring(0, 200) + "...");
+      
+      parsedData = JSON.parse(cleanedContent);
       console.log("Données structurées extraites avec succès");
     } catch (error) {
       console.error("Erreur lors du parsing de la réponse OpenAI:", error);

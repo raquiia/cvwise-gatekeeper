@@ -66,6 +66,10 @@ export const analyzeResume = async (resumeId: string, resumeText: string): Promi
   try {
     console.log('Starting AI analysis for resume:', resumeId);
     
+    if (!resumeText || resumeText.trim() === '') {
+      throw new Error('Le texte du CV est vide ou non défini');
+    }
+    
     // Appel à l'edge function d'analyse de CV
     const { data, error } = await supabase.functions.invoke('resume-ai-analysis', {
       body: { 
