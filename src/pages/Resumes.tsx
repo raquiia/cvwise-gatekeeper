@@ -1,14 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Loader2, AlertCircle, RefreshCw, Trash2, Eye } from 'lucide-react';
+import { Search, Loader2, AlertCircle, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { getUserResumes, deleteResume, downloadResume, analyzeResume, ResumeData } from '@/services/resumeService';
+import { getUserResumes, deleteResume, downloadResume, ResumeData } from '@/services/resumeService';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
-import { extractResumeText } from '@/services/resume/analysisOperations';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +26,6 @@ import ResumesGrid from '@/components/resume/ResumesGrid';
 import NoResumesState from '@/components/resume/NoResumesState';
 import ErrorState from '@/components/resume/ErrorState';
 import LoadingState from '@/components/resume/LoadingState';
-import ExtractedTextDialog from '@/components/resume/ExtractedTextDialog';
 
 const Resumes = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,20 +34,13 @@ const Resumes = () => {
   const [resumes, setResumes] = useState<ResumeData[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<Record<string, boolean>>({});
-  const [extractingText, setExtractingText] = useState(false);
-  const [extractedText, setExtractedText] = useState("");
-  const [selectedResumeForText, setSelectedResumeForText] = useState<ResumeData | null>(null);
-  const [showTextDialog, setShowTextDialog] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
   
   const [selectedResumes, setSelectedResumes] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [openAnalyzeDialog, setOpenAnalyzeDialog] = useState(false);
-  const [extractionMethod, setExtractionMethod] = useState<'server' | 'client'>('server');
 
   useEffect(() => {
     const initAndLoad = async () => {
@@ -132,83 +122,6 @@ const Resumes = () => {
     }
   };
 
-  const handleExtractText = async (resumeId: string) => {
-    try {
-      const resume = resumes.find(r => r.id === resumeId);
-      if (!resume) {
-        throw new Error("CV introuvable");
-      }
-      
-      setSelectedResumeForText(resume);
-      setExtractingText(true);
-      setExtractedText("");
-      setShowTextDialog(true);
-      setExtractionMethod('server'); // Reset to server-first approach
-      
-      toast({
-        title: "Extraction en cours",
-        description: "L'extraction du texte a démarré...",
-        duration: 3000,
-      });
-      
-      const result = await extractResumeText(resumeId);
-      
-      setExtractingText(false);
-      
-      if (result.success && result.text) {
-        setExtractedText(result.text);
-        
-        toast({
-          title: "Extraction terminée",
-          description: "Le texte a été extrait avec succès",
-          duration: 3000,
-        });
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (error: any) {
-      console.error('Error extracting text from resume:', error);
-      setExtractingText(false);
-      setExtractedText(error.message || "Une erreur s'est produite lors de l'extraction du texte");
-      
-      toast({
-        title: "Échec de l'extraction",
-        description: error.message || "Une erreur s'est produite lors de l'extraction du texte",
-        variant: "destructive",
-        duration: 5000,
-      });
-    }
-  };
-
-  const handleAnalyzeResume = async (resumeId: string) => {
-    try {
-      toast({
-        title: "Analyse en cours",
-        description: "L'analyse du CV a démarré...",
-      });
-      
-      const result = await analyzeResume(resumeId);
-      
-      if (result.success) {
-        toast({
-          title: "Analyse terminée",
-          description: "Le CV a été analysé et le candidat a été créé avec succès",
-        });
-        
-        await loadResumes();
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (error: any) {
-      console.error('Error analyzing resume:', error);
-      toast({
-        title: "Échec de l'analyse",
-        description: error.message || "Une erreur s'est produite lors de l'analyse du CV",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleDeleteResume = async (resumeId: string, filePath: string) => {
     try {
       const success = await deleteResume(resumeId, filePath);
@@ -279,52 +192,6 @@ const Resumes = () => {
     }
   };
 
-  const handleBatchAnalyze = async () => {
-    if (selectedResumes.length === 0) return;
-    
-    setIsProcessingBatch(true);
-    setOpenAnalyzeDialog(false);
-    
-    try {
-      toast({
-        title: "Analyse en cours",
-        description: `Analyse de ${selectedResumes.length} CV démarrée...`,
-      });
-      
-      let successCount = 0;
-      
-      for (const resumeId of selectedResumes) {
-        try {
-          const result = await analyzeResume(resumeId);
-          
-          if (result.success) {
-            successCount++;
-          }
-        } catch (error) {
-          console.error(`Error analyzing resume ${resumeId}:`, error);
-        }
-      }
-      
-      toast({
-        title: "Analyse terminée",
-        description: `${successCount} sur ${selectedResumes.length} CV ont été analysés avec succès`,
-      });
-      
-      await loadResumes();
-      setSelectedResumes([]);
-      setSelectionMode(false);
-    } catch (error: any) {
-      console.error('Error in batch analysis:', error);
-      toast({
-        title: "Échec de l'analyse groupée",
-        description: error.message || "Une erreur s'est produite lors de l'analyse des CV",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessingBatch(false);
-    }
-  };
-
   const toggleResumeSelection = (resumeId: string) => {
     setSelectedResumes(prev => {
       if (prev.includes(resumeId)) {
@@ -360,61 +227,6 @@ const Resumes = () => {
     
     return matchesSearch && matchesStatus;
   });
-
-  const closeTextDialog = () => {
-    setShowTextDialog(false);
-    setSelectedResumeForText(null);
-    setExtractedText("");
-    setExtractingText(false);
-  };
-
-  const retryExtraction = async () => {
-    if (!selectedResumeForText) return;
-    
-    setExtractingText(true);
-    setExtractedText("");
-    
-    try {
-      // Toggle between client and server methods
-      const newMethod = extractionMethod === 'server' ? 'client' : 'server';
-      setExtractionMethod(newMethod);
-      
-      toast({
-        title: "Nouvel essai d'extraction",
-        description: `Tentative avec la méthode ${newMethod === 'client' ? 'locale' : 'serveur'}...`,
-        duration: 3000,
-      });
-      
-      // Implement retry logic based on the toggled method
-      // (This would require modifications to the extractResumeText function to accept a method parameter)
-      const result = await extractResumeText(selectedResumeForText.id);
-      
-      setExtractingText(false);
-      
-      if (result.success && result.text) {
-        setExtractedText(result.text);
-        
-        toast({
-          title: "Extraction terminée",
-          description: "Le texte a été extrait avec succès",
-          duration: 3000,
-        });
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (error: any) {
-      console.error('Error in retry extraction:', error);
-      setExtractingText(false);
-      setExtractedText(error.message || "L'extraction a échoué après plusieurs tentatives");
-      
-      toast({
-        title: "Échec de l'extraction",
-        description: "Toutes les méthodes d'extraction ont échoué",
-        variant: "destructive",
-        duration: 5000,
-      });
-    }
-  };
 
   return (
     <Layout className="py-8 bg-sand/30">
@@ -482,36 +294,6 @@ const Resumes = () => {
                 </AlertDialogContent>
               </AlertDialog>
               
-              <AlertDialog open={openAnalyzeDialog} onOpenChange={setOpenAnalyzeDialog}>
-                <AlertDialogTrigger asChild>
-                  <Button 
-                    variant="default"
-                    disabled={selectedResumes.length === 0 || isProcessingBatch}
-                  >
-                    {isProcessingBatch ? (
-                      <Loader2 size={16} className="mr-2 animate-spin" />
-                    ) : (
-                      <Eye size={16} className="mr-2" />
-                    )}
-                    Analyser ({selectedResumes.length})
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Confirmation d'analyse</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Vous êtes sur le point d'analyser {selectedResumes.length} CV. Cette opération peut prendre un certain temps.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleBatchAnalyze}>
-                      Analyser
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              
               <Button 
                 variant="outline"
                 onClick={cancelSelection}
@@ -536,20 +318,9 @@ const Resumes = () => {
             downloading={downloading}
             onSelect={toggleResumeSelection}
             onDownload={handleDownloadResume}
-            onAnalyze={handleAnalyzeResume}
-            onExtractText={handleExtractText}
             onDelete={handleDeleteResume}
           />
         )}
-        
-        <ExtractedTextDialog
-          isOpen={showTextDialog}
-          onClose={closeTextDialog}
-          fileName={selectedResumeForText?.file_name || ""}
-          extractedText={extractedText}
-          isLoading={extractingText}
-          onRetry={retryExtraction}
-        />
       </div>
     </Layout>
   );

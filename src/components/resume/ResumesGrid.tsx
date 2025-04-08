@@ -1,13 +1,12 @@
 
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Plus, FileText, Download, Eye, Loader2, MoreHorizontal, Calendar, FileSearch } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, FileText, Download, Loader2, MoreHorizontal, Calendar, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import SelectableCard from './SelectableCard';
@@ -21,8 +20,6 @@ interface ResumesGridProps {
   downloading: Record<string, boolean>;
   onSelect: (resumeId: string) => void;
   onDownload: (filePath: string, fileName: string, resumeId: string) => void;
-  onAnalyze: (resumeId: string) => void;
-  onExtractText: (resumeId: string) => void;
   onDelete: (resumeId: string, filePath: string) => void;
 }
 
@@ -33,12 +30,8 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
   downloading,
   onSelect,
   onDownload,
-  onAnalyze,
-  onExtractText,
   onDelete
 }) => {
-  const navigate = useNavigate();
-
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       <Link to="/resumes/upload" className="glass rounded-xl border-2 border-dashed border-navy/20 flex flex-col items-center justify-center p-6 h-64 hover:border-navy/40 transition-colors">
@@ -73,13 +66,6 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem 
-                      onClick={() => onExtractText(resume.id)}
-                      className="font-medium text-primary"
-                    >
-                      <FileSearch size={14} className="mr-2" />
-                      Extraire le texte
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
                       onClick={() => onDownload(resume.file_path, resume.file_name, resume.id)}
                       disabled={downloading[resume.id]}
                     >
@@ -90,18 +76,11 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                       )}
                       Télécharger
                     </DropdownMenuItem>
-                    {!resume.parsed && (
-                      <DropdownMenuItem onClick={() => onAnalyze(resume.id)}>
-                        <Eye size={14} className="mr-2" />
-                        Analyser
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
                     <DropdownMenuItem 
                       className="text-red-600"
                       onClick={() => onDelete(resume.id, resume.file_path)}
                     >
-                      <Loader2 size={14} className="mr-2" />
+                      <Trash2 size={14} className="mr-2" />
                       Supprimer
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -122,7 +101,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                 <svg className="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none">
                   <path d="M12 9v4m0 4h.01M5.07 19H19a2 2 0 0 0 1.75-2.98L13.75 4.99a2 2 0 0 0-3.5 0L3.25 16.02A2 2 0 0 0 5.07 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                En attente d'analyse
+                CV importé
               </p>
             )}
             
@@ -144,34 +123,6 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                 className="text-xs flex-1"
                 onClick={(e) => {
                   e.preventDefault();
-                  onExtractText(resume.id);
-                }}
-              >
-                <FileSearch size={14} className="mr-1" />
-                Extraire texte
-              </Button>
-              
-              <Button 
-                variant={resume.parsed ? "default" : "secondary"} 
-                size="sm" 
-                className="text-xs flex-1"
-                onClick={(e) => {
-                  e.preventDefault();
-                  resume.parsed ? 
-                    navigate(`/candidates/${resume.candidates?.[0]?.id}`) :
-                    onAnalyze(resume.id);
-                }}
-              >
-                <Eye size={14} className="mr-1" />
-                {resume.parsed ? "Voir candidat" : "Analyser"}
-              </Button>
-              
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-xs"
-                onClick={(e) => {
-                  e.preventDefault();
                   onDownload(resume.file_path, resume.file_name, resume.id);
                 }}
                 disabled={downloading[resume.id]}
@@ -181,6 +132,20 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                 ) : (
                   <Download size={14} className="mr-1" />
                 )}
+                Télécharger
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="text-xs text-red-600 flex-1"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onDelete(resume.id, resume.file_path);
+                }}
+              >
+                <Trash2 size={14} className="mr-1" />
+                Supprimer
               </Button>
             </div>
           )}

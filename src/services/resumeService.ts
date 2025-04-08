@@ -12,10 +12,6 @@ import { analyzeResume, extractResumeText } from './resume/analysisOperations';
 // Re-export des interfaces
 import type { ResumeData, CandidateData } from './data/resumeDataService';
 
-// Re-export des services existants
-import { resumeAnalysisService } from './analysis/resumeAnalysisService';
-import { candidateDataService } from './data/candidateDataService';
-
 export {
   // Resume operations
   uploadResume,
@@ -26,15 +22,11 @@ export {
   downloadResume,
   deleteResume,
   
-  // Analysis operations
+  // Analysis operations (désactivées mais conservées pour compatibilité)
   analyzeResume,
   extractResumeText,
   
   // Types
   ResumeData,
-  CandidateData,
-  
-  // Other services
-  resumeAnalysisService,
-  candidateDataService
+  CandidateData
 };
