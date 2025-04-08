@@ -46,37 +46,80 @@ serve(async (req) => {
     const correctedUrl = ensureValidUrl(pdfUrl);
     console.log("URL corrigée pour extraction:", correctedUrl);
 
-    // Vérifier si l'URL est publique/accessible
-    try {
-      const checkResponse = await fetch(correctedUrl, { 
-        method: 'HEAD',
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-      
-      if (!checkResponse.ok) {
-        throw new Error(`PDF non accessible, code: ${checkResponse.status}`);
-      }
-    } catch (urlError) {
-      console.error("Erreur lors de la vérification d'accessibilité:", urlError);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: `URL inaccessible: ${urlError.message}`
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400
-        }
-      );
-    }
-
-    // Récupérer le PDF avec une meilleure gestion des erreurs et retry
+    // Check if the URL is accessible
     let response = null;
     let retryCount = 0;
     const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        response = await fetch(correctedUrl, {
+          method: 'HEAD',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        if (response.ok) break;
+        
+        console.log(`URL check attempt ${retryCount + 1}/${maxRetries} failed with status ${response.status}. Retrying...`);
+        retryCount++;
+        
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (urlError) {
+        console.error(`URL check error (attempt ${retryCount + 1}):`, urlError);
+        retryCount++;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    if (!response || !response.ok) {
+      console.error(`URL check failed after ${maxRetries} attempts:`, response?.status || 'Network error');
+      
+      // Try getting a different URL format for storage access
+      try {
+        const projectUrl = Deno.env.get('SUPABASE_URL') || '';
+        const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+        const storagePath = pdfUrl.includes('/object/public/') 
+          ? pdfUrl.split('/object/public/')[1] 
+          : pdfUrl.includes('/object/') 
+            ? pdfUrl.split('/object/')[1]
+            : pdfUrl;
+            
+        // Try with direct storage API access using service role
+        const alternativeUrl = `${projectUrl}/storage/v1/object/resumes/${storagePath}`;
+        
+        console.log("Trying alternative URL format:", alternativeUrl);
+        
+        response = await fetch(alternativeUrl, {
+          headers: {
+            'Authorization': `Bearer ${serviceKey}`,
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed with status: ${response.status}`);
+        }
+      } catch (altUrlError) {
+        console.error("Alternative URL access failed:", altUrlError);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: `PDF inaccessible après plusieurs tentatives: Vérifiez que le bucket 'resumes' existe et que le fichier est accessible.`
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400
+          }
+        );
+      }
+    }
+    
+    // Download the PDF with better error handling and retry
+    retryCount = 0;
     
     while (retryCount < maxRetries) {
       try {
@@ -89,13 +132,13 @@ serve(async (req) => {
         
         if (response.ok) break;
         
-        console.log(`Tentative ${retryCount + 1}/${maxRetries} a échoué avec le status ${response.status}. Réessai...`);
+        console.log(`Download attempt ${retryCount + 1}/${maxRetries} failed with status ${response.status}. Retrying...`);
         retryCount++;
         
-        // Attendre un peu avant de réessayer
+        // Wait a bit before retrying
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (fetchError) {
-        console.error(`Erreur de fetch (tentative ${retryCount + 1}):`, fetchError);
+        console.error(`Fetch error (attempt ${retryCount + 1}):`, fetchError);
         retryCount++;
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
@@ -114,12 +157,12 @@ serve(async (req) => {
       );
     }
     
-    // Convertir en ArrayBuffer
+    // Convert to ArrayBuffer
     let pdfData: ArrayBuffer;
     try {
       pdfData = await response.arrayBuffer();
     } catch (convError) {
-      console.error("Erreur lors de la conversion en ArrayBuffer:", convError);
+      console.error("Error converting to ArrayBuffer:", convError);
       return new Response(
         JSON.stringify({
           success: false,
@@ -145,15 +188,15 @@ serve(async (req) => {
       );
     }
     
-    console.log(`PDF téléchargé, taille: ${(pdfData.byteLength / 1024).toFixed(2)} KB`);
+    console.log(`PDF downloaded, size: ${(pdfData.byteLength / 1024).toFixed(2)} KB`);
     
-    // Limiter la taille du PDF pour éviter les timeouts
+    // Limit PDF size to avoid timeouts
     const maxSizeKB = 10 * 1024; // 10 MB
     if (pdfData.byteLength > maxSizeKB * 1024) {
-      console.log(`PDF trop volumineux (${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB), extraction limitée`);
+      console.log(`PDF too large (${(pdfData.byteLength / 1024 / 1024).toFixed(2)} MB), extraction limited`);
     }
     
-    // Extraction du texte avec notre méthode simplifiée
+    // Extract text with our simplified method
     let extractedText = "";
     let pageCount = 0;
     
@@ -162,7 +205,7 @@ serve(async (req) => {
       extractedText = result.extractedText;
       pageCount = result.pageCount;
     } catch (extractError) {
-      console.error("Erreur lors de l'extraction:", extractError);
+      console.error("Extraction error:", extractError);
       return new Response(
         JSON.stringify({
           success: false,
@@ -188,7 +231,7 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Extraction réussie, ${pageCount} page(s), longueur du texte: ${extractedText.length} caractères`);
+    console.log(`Extraction successful, ${pageCount} page(s), text length: ${extractedText.length} characters`);
     
     return new Response(
       JSON.stringify({
@@ -206,7 +249,7 @@ serve(async (req) => {
       }
     );
   } catch (error: any) {
-    console.error("Erreur lors de l'extraction du texte:", error);
+    console.error("Error during text extraction:", error);
     
     return new Response(
       JSON.stringify({
