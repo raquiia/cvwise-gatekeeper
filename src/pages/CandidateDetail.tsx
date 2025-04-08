@@ -1,45 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { candidateDataService } from '@/services/data/candidateDataService';
 import { CandidateData } from '@/services/data/resumeDataService';
-import { ArrowLeft, User, MapPin, Phone, Mail, Briefcase, Award, Calendar, FileText, Loader2, GraduationCap, Languages, Award as CertificateIcon, Book, Grid, Target, Briefcase as WorkIcon, Heart, Globe } from 'lucide-react';
+import { ArrowLeft, Briefcase, FileText } from 'lucide-react';
 
-/**
- * Assure qu'un champ possiblement JSON, array ou string est transformé en tableau
- */
-function ensureArray<T>(data: unknown): T[] {
-  if (!data) return [];
-  
-  // Si c'est déjà un tableau, le retourner
-  if (Array.isArray(data)) {
-    return data as T[];
-  }
-  
-  // Si c'est une string, essayer de la parser comme JSON
-  if (typeof data === 'string') {
-    try {
-      const parsed = JSON.parse(data);
-      return Array.isArray(parsed) ? parsed as T[] : [data as T];
-    } catch (e) {
-      // Si le parsing échoue, retourner la string comme élément unique du tableau
-      return [data as T];
-    }
-  }
-  
-  // Si c'est un objet JSON, le retourner comme élément unique du tableau
-  if (typeof data === 'object' && data !== null) {
-    return [data as T];
-  }
-  
-  // Pour les valeurs primitives (number, boolean), les retourner comme élément unique
-  return [data as T];
-}
+// Import the component tabs
+import ProfileTab from '@/components/candidates/detail/ProfileTab';
+import ExperienceTab from '@/components/candidates/detail/ExperienceTab';
+import EducationTab from '@/components/candidates/detail/EducationTab';
+import DetailsTab from '@/components/candidates/detail/DetailsTab';
+import CandidateLoading from '@/components/candidates/detail/CandidateLoading';
+import CandidateError from '@/components/candidates/detail/CandidateError';
 
 const CandidateDetail = () => {
   const { candidateId } = useParams<{ candidateId: string }>();
@@ -80,10 +55,7 @@ const CandidateDetail = () => {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-center items-center min-h-[60vh]">
-            <Loader2 className="h-8 w-8 animate-spin text-navy" />
-            <span className="ml-2">Chargement du profil...</span>
-          </div>
+          <CandidateLoading />
         </div>
       </Layout>
     );
@@ -93,39 +65,11 @@ const CandidateDetail = () => {
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-            <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
-              <User size={32} className="text-red-600" />
-            </div>
-            <h2 className="text-xl font-semibold text-navy-dark mb-2">
-              {error || "Candidat non trouvé"}
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              Le profil que vous recherchez n'existe pas ou n'est plus disponible.
-            </p>
-            <Button onClick={() => navigate('/candidates')}>
-              Retour à la liste des candidats
-            </Button>
-          </div>
+          <CandidateError errorMessage={error} />
         </div>
       </Layout>
     );
   }
-
-  // Conversion et vérification des données du candidat pour s'assurer qu'elles sont au bon format
-  const skills = ensureArray<string>(candidate.skills);
-  const education = ensureArray<any>(candidate.education);
-  const experiences = ensureArray<any>(candidate.experiences);
-  const certifications = ensureArray<any>(candidate.certifications);
-  const languages = ensureArray<any>(candidate.languages);
-  const projects = ensureArray<any>(candidate.projects);
-  const industries = ensureArray<any>(candidate.industries);
-  const professional_references = ensureArray<any>(candidate.professional_references);
-  const professional_networks = ensureArray<any>(candidate.professional_networks);
-
-  // Log pour debugging
-  console.log("Experiences formatées:", experiences);
-  console.log("Education formatée:", education);
 
   return (
     <Layout>
@@ -178,479 +122,20 @@ const CandidateDetail = () => {
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="profile" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Profil du candidat</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col md:flex-row gap-6">
-                      <div className="flex-shrink-0">
-                        <div className="w-24 h-24 rounded-full bg-navy flex items-center justify-center text-sand text-xl font-medium">
-                          {candidate.first_name?.[0]}{candidate.last_name?.[0]}
-                        </div>
-                      </div>
-                      
-                      <div className="flex-grow">
-                        <h2 className="text-xl font-semibold mb-1">
-                          {candidate.first_name} {candidate.last_name}
-                        </h2>
-                        <p className="text-navy mb-4">{candidate.position || "Poste non spécifié"}</p>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                          {candidate.location && (
-                            <div className="flex items-center">
-                              <MapPin size={18} className="text-muted-foreground mr-2" />
-                              <span>{candidate.location}</span>
-                            </div>
-                          )}
-                          
-                          {candidate.phone && (
-                            <div className="flex items-center">
-                              <Phone size={18} className="text-muted-foreground mr-2" />
-                              <span>{candidate.phone}</span>
-                            </div>
-                          )}
-                          
-                          {candidate.email && (
-                            <div className="flex items-center">
-                              <Mail size={18} className="text-muted-foreground mr-2" />
-                              <span>{candidate.email}</span>
-                            </div>
-                          )}
-                          
-                          {candidate.years_experience && (
-                            <div className="flex items-center">
-                              <Calendar size={18} className="text-muted-foreground mr-2" />
-                              <span>{candidate.years_experience} ans d'expérience</span>
-                            </div>
-                          )}
-                          
-                          {candidate.availability && (
-                            <div className="flex items-center">
-                              <Calendar size={18} className="text-muted-foreground mr-2" />
-                              <span>Disponibilité: {candidate.availability}</span>
-                            </div>
-                          )}
-                          
-                          {candidate.contract_type && (
-                            <div className="flex items-center">
-                              <FileText size={18} className="text-muted-foreground mr-2" />
-                              <span>Type de contrat: {candidate.contract_type}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <Separator className="my-6" />
-                    
-                    <div>
-                      <h3 className="font-medium text-navy-dark mb-4">Compétences</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {skills.length > 0 ? (
-                          skills.map((skill, idx) => (
-                            <div 
-                              key={idx}
-                              className="px-3 py-1.5 bg-navy/10 text-navy-dark text-sm rounded-full"
-                            >
-                              {skill}
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-muted-foreground">Aucune compétence renseignée</p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {candidate.interests && (
-                      <>
-                        <Separator className="my-6" />
-                        <div>
-                          <h3 className="font-medium text-navy-dark mb-4">Centres d'intérêt</h3>
-                          <p className="text-navy-dark">{candidate.interests}</p>
-                        </div>
-                      </>
-                    )}
-                    
-                    {industries.length > 0 && (
-                      <>
-                        <Separator className="my-6" />
-                        <div>
-                          <h3 className="font-medium text-navy-dark mb-4">Industries</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {industries.map((industry: any, idx: number) => (
-                              <div 
-                                key={idx}
-                                className="px-3 py-1.5 bg-navy/5 text-navy-dark text-sm rounded-full"
-                              >
-                                {typeof industry === 'string' ? industry : industry.name || ''}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                    
-                    {candidate.career_objectives && (
-                      <>
-                        <Separator className="my-6" />
-                        <div>
-                          <h3 className="font-medium text-navy-dark mb-4">Objectifs de carrière</h3>
-                          <p className="text-navy-dark">{candidate.career_objectives}</p>
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-              
-              <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Évaluation</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col items-center">
-                      <div className={`w-32 h-32 rounded-full flex items-center justify-center text-white text-2xl font-bold border-4 ${
-                        candidate.score && candidate.score > 85 ? 'bg-emerald-500 border-emerald-300' : 
-                        candidate.score && candidate.score > 65 ? 'bg-amber-500 border-amber-300' : 
-                        'bg-red-500 border-red-300'
-                      }`}>
-                        {candidate.score || 0}%
-                      </div>
-                      
-                      <p className="mt-4 text-center font-medium">
-                        {candidate.score && candidate.score > 85 ? 'Excellent candidat' : 
-                         candidate.score && candidate.score > 65 ? 'Bon candidat' : 
-                         'Candidat à potentiel'}
-                      </p>
-                      
-                      <Separator className="my-6" />
-                      
-                      <div className="w-full">
-                        <h4 className="text-sm font-medium mb-2">Statut actuel</h4>
-                        <div className={`p-2 rounded-md text-center ${
-                          candidate.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
-                          candidate.status === 'inactive' ? 'bg-red-100 text-red-800' :
-                          'bg-amber-100 text-amber-800'
-                        }`}>
-                          {candidate.status === 'active' ? 'Actif' :
-                           candidate.status === 'inactive' ? 'Inactif' :
-                           candidate.status === 'qualification' ? 'En qualification' :
-                           candidate.status === 'interview' ? 'En entretien' :
-                           candidate.status === 'hired' ? 'Embauché' :
-                           'Statut inconnu'}
-                        </div>
-                      </div>
-                      
-                      {(candidate.remote_preference || candidate.mobility || candidate.travel_willingness) && (
-                        <>
-                          <Separator className="my-6" />
-                          <div className="w-full">
-                            <h4 className="text-sm font-medium mb-2">Mobilité</h4>
-                            <div className="space-y-2">
-                              {candidate.remote_preference && (
-                                <div className="p-2 bg-navy/5 rounded-md">
-                                  <span className="text-sm">Télétravail: {candidate.remote_preference}</span>
-                                </div>
-                              )}
-                              {candidate.mobility && (
-                                <div className="p-2 bg-navy/5 rounded-md">
-                                  <span className="text-sm">Mobilité: {candidate.mobility}</span>
-                                </div>
-                              )}
-                              {candidate.travel_willingness && (
-                                <div className="p-2 bg-navy/5 rounded-md">
-                                  <span className="text-sm">Déplacements: {candidate.travel_willingness}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                      
-                      {candidate.salary_expectations && (
-                        <>
-                          <Separator className="my-6" />
-                          <div className="w-full">
-                            <h4 className="text-sm font-medium mb-2">Rémunération souhaitée</h4>
-                            <div className="p-2 bg-navy/5 rounded-md text-center">
-                              <span className="text-sm font-medium">{candidate.salary_expectations}</span>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+          <TabsContent value="profile">
+            <ProfileTab candidate={candidate} />
           </TabsContent>
           
-          <TabsContent value="experience" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Expérience professionnelle</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {experiences.length > 0 ? (
-                  <div className="space-y-6">
-                    {experiences.map((exp: any, idx: number) => (
-                      <div key={idx} className="relative pl-6 pb-6 border-l-2 border-navy/20 last:border-0 last:pb-0">
-                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-navy"></div>
-                        <div className="mb-1">
-                          <h3 className="text-lg font-semibold text-navy-dark">{exp.title || exp.position}</h3>
-                          <div className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
-                            <span className="font-medium text-navy">{exp.company}</span>
-                            {exp.location && <span>• {exp.location}</span>}
-                            {(exp.startDate || exp.start_date) && (
-                              <span>
-                                • {exp.startDate || exp.start_date} 
-                                {(exp.endDate || exp.end_date) ? 
-                                  ` - ${exp.endDate || exp.end_date}` : 
-                                  " - Présent"}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {(exp.description) && (
-                          <p className="mt-2 text-navy-dark">{exp.description}</p>
-                        )}
-                        {exp.skills && Array.isArray(exp.skills) && exp.skills.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {exp.skills.map((skill: string, skillIdx: number) => (
-                              <span key={skillIdx} className="px-2 py-1 text-xs bg-navy/10 text-navy-dark rounded-full">
-                                {skill}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-6">Aucune expérience renseignée</p>
-                )}
-              </CardContent>
-            </Card>
-            
-            {projects.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Projets</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {projects.map((project: any, idx: number) => (
-                      <div key={idx} className="p-4 border border-border rounded-lg">
-                        <h3 className="text-lg font-semibold text-navy-dark mb-1">
-                          {typeof project === 'string' ? 
-                            project : 
-                            project.name || project.title || 'Projet sans titre'}
-                        </h3>
-                        {project.date && <p className="text-sm text-muted-foreground mb-2">{project.date}</p>}
-                        {project.description && <p className="text-navy-dark mb-3">{project.description}</p>}
-                        {project.technologies && (
-                          <div className="mb-2">
-                            <h4 className="text-sm font-semibold mb-1">Technologies utilisées:</h4>
-                            <p className="text-sm text-navy">{project.technologies}</p>
-                          </div>
-                        )}
-                        {project.role && (
-                          <div className="mb-2">
-                            <h4 className="text-sm font-semibold mb-1">Rôle:</h4>
-                            <p className="text-sm text-navy">{project.role}</p>
-                          </div>
-                        )}
-                        {project.url && (
-                          <a 
-                            href={project.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="text-sm text-navy underline inline-flex items-center mt-2"
-                          >
-                            <Globe size={14} className="mr-1" />
-                            Voir le projet
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+          <TabsContent value="experience">
+            <ExperienceTab candidate={candidate} />
           </TabsContent>
           
-          <TabsContent value="education" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Formation académique</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {education.length > 0 ? (
-                  <div className="space-y-6">
-                    {education.map((edu: any, idx: number) => (
-                      <div key={idx} className="relative pl-6 pb-6 border-l-2 border-navy/20 last:border-0 last:pb-0">
-                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-navy"></div>
-                        <div className="mb-1">
-                          <h3 className="text-lg font-semibold text-navy-dark">{edu.degree || edu.diploma}</h3>
-                          <div className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
-                            <span className="font-medium text-navy">{edu.institution || edu.school}</span>
-                            {edu.location && <span>• {edu.location}</span>}
-                            {(edu.start_date || edu.startDate) && (
-                              <span>
-                                • {edu.start_date || edu.startDate} 
-                                {(edu.end_date || edu.endDate) ? 
-                                  ` - ${edu.end_date || edu.endDate}` : 
-                                  ""}
-                              </span>
-                            )}
-                            {!edu.start_date && !edu.startDate && edu.year && <span>• {edu.year}</span>}
-                          </div>
-                        </div>
-                        {edu.description && (
-                          <p className="mt-2 text-navy-dark">{edu.description}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-center py-6">Aucune formation renseignée</p>
-                )}
-              </CardContent>
-            </Card>
-            
-            {certifications.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Certifications</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {certifications.map((cert: any, idx: number) => (
-                      <div key={idx} className="p-4 border border-border rounded-lg">
-                        <div className="flex items-start">
-                          <CertificateIcon className="mr-3 text-navy h-5 w-5 mt-1" />
-                          <div>
-                            <h3 className="font-semibold text-navy-dark">
-                              {typeof cert === 'string' ? 
-                                cert : 
-                                cert.name || cert.title || 'Certification sans titre'}
-                            </h3>
-                            {cert.issuer && <p className="text-sm text-navy">{cert.issuer}</p>}
-                            {cert.date && <p className="text-xs text-muted-foreground mt-1">{cert.date}</p>}
-                            {cert.description && <p className="text-sm text-navy-dark mt-2">{cert.description}</p>}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+          <TabsContent value="education">
+            <EducationTab candidate={candidate} />
           </TabsContent>
           
-          <TabsContent value="details" className="space-y-6">
-            {languages.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Langues</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {languages.map((lang: any, idx: number) => (
-                      <div key={idx} className="flex items-center p-3 border border-border rounded-lg">
-                        <Languages className="h-5 w-5 mr-3 text-navy" />
-                        <div>
-                          <p className="font-medium">
-                            {typeof lang === 'string' ? 
-                              lang : 
-                              lang.language || 'Langue non spécifiée'}
-                          </p>
-                          {lang.level && <p className="text-sm text-muted-foreground">{lang.level}</p>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-6">
-                {candidate.professional_values && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Valeurs professionnelles</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-navy-dark">{candidate.professional_values}</p>
-                    </CardContent>
-                  </Card>
-                )}
-                
-                {candidate.work_authorization && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Autorisations de travail</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-navy-dark">{candidate.work_authorization}</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-              
-              <div className="space-y-6">
-                {professional_references.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Références professionnelles</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {professional_references.map((ref: any, idx: number) => (
-                          <div key={idx} className="p-3 border border-border rounded-lg">
-                            <h4 className="font-semibold">{ref.name}</h4>
-                            {ref.position && <p className="text-sm text-navy">{ref.position}</p>}
-                            {ref.company && <p className="text-sm text-muted-foreground">{ref.company}</p>}
-                            {ref.contact && <p className="text-sm mt-1">{ref.contact}</p>}
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-                
-                {professional_networks.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Réseaux professionnels</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {professional_networks.map((network: any, idx: number) => (
-                          <div key={idx} className="flex items-center">
-                            <Globe className="h-4 w-4 mr-2 text-navy" />
-                            <a 
-                              href={network.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-navy hover:underline"
-                            >
-                              {network.name || network.platform}
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
+          <TabsContent value="details">
+            <DetailsTab candidate={candidate} />
           </TabsContent>
         </Tabs>
       </div>
