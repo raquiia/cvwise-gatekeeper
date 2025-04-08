@@ -53,27 +53,27 @@ export const candidateDataService = {
     try {
       console.log("Fetching candidate with ID:", candidateId);
       
-      // Utiliser la fonction RPC get_candidate_by_id au lieu d'une requête directe
-      const { data, error } = await supabase.rpc('get_candidate_by_id', {
-        candidate_id_param: candidateId
-      });
+      // Utiliser une requête directe au lieu de la fonction RPC pour éviter les problèmes de typage
+      const { data, error } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('id', candidateId)
+        .maybeSingle();
       
       if (error) {
         console.error("Error fetching candidate:", error.message);
         throw new Error(`Erreur lors de la récupération du candidat: ${error.message}`);
       }
       
-      if (!data || (Array.isArray(data) && data.length === 0)) {
+      if (!data) {
         console.log("No candidate found with ID:", candidateId);
         return null;
       }
       
-      // Si data est un tableau (comme retourné par une RPC), prendre le premier élément
-      const candidateData = Array.isArray(data) ? data[0] : data;
+      console.log("Successfully retrieved candidate data:", data);
       
-      console.log("Successfully retrieved candidate data:", candidateData);
-      
-      return candidateData as CandidateData;
+      // Le typage est correct car data provient directement de la table candidates
+      return data as CandidateData;
     } catch (error: any) {
       console.error("Exception in getCandidateById:", error);
       throw new Error(error.message || "Impossible de récupérer le candidat");
