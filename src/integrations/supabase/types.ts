@@ -283,6 +283,50 @@ export type Database = {
         Args: { candidate_id_param: string }
         Returns: Json[]
       }
+      get_candidate_by_id_bypassing_rls: {
+        Args: { candidate_id_param: string }
+        Returns: {
+          id: string
+          user_id: string
+          resume_id: string
+          first_name: string
+          last_name: string
+          email: string
+          phone: string
+          position: string
+          years_experience: number
+          location: string
+          skills: Json
+          score: number
+          status: string
+          company: string
+          created_at: string
+          updated_at: string
+          experiences: Json
+          education: Json
+          certifications: Json
+          languages: Json
+          publications: Json
+          interests: string
+          professional_references: Json
+          availability: string
+          salary_expectations: string
+          mobility: string
+          contract_type: string
+          remote_preference: string
+          travel_willingness: string
+          professional_networks: Json
+          continuous_training: Json
+          career_objectives: string
+          professional_values: string
+          work_authorization: string
+          special_permits: Json
+          industries: Json
+          projects: Json
+          profile_completeness: number
+          last_updated_at: string
+        }[]
+      }
       get_profile_by_id: {
         Args: { _id: string }
         Returns: {

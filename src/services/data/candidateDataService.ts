@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { resumeDataService } from './resumeDataService';
 import { CandidateData } from './resumeDataService';
@@ -54,28 +53,25 @@ export const candidateDataService = {
     try {
       console.log("Fetching candidate with ID:", candidateId);
       
-      // Use our select policy directly without trying to use RPC
-      // This approach is safer as it completely avoids RLS recursion issues
-      const { data, error } = await supabase
-        .from('candidates')
-        .select('*')
-        .eq('id', candidateId)
-        .maybeSingle();
+      // Use our new bypass RLS function
+      const { data, error } = await supabase.rpc('get_candidate_by_id_bypassing_rls', {
+        candidate_id_param: candidateId
+      });
       
       if (error) {
         console.error("Error fetching candidate:", error.message);
         throw new Error(`Erreur lors de la récupération du candidat: ${error.message}`);
       }
       
-      if (!data) {
+      if (!data || data.length === 0) {
         console.log("No candidate found with ID:", candidateId);
         return null;
       }
       
-      console.log("Successfully retrieved candidate data:", data);
+      console.log("Successfully retrieved candidate data:", data[0]);
       
       // Type assertion is safe here since the data comes directly from candidates table
-      return data as CandidateData;
+      return data[0] as CandidateData;
     } catch (error: any) {
       console.error("Exception in getCandidateById:", error);
       throw new Error(error.message || "Impossible de récupérer le candidat");
