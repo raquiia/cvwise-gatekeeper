@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -10,9 +11,13 @@ import { CandidateData } from '@/services/data/resumeDataService';
 import { ArrowLeft, User, MapPin, Phone, Mail, Briefcase, Award, Calendar, FileText, Loader2, GraduationCap, Languages, Award as CertificateIcon, Book, Grid, Target, Briefcase as WorkIcon, Heart, Globe } from 'lucide-react';
 import { Json } from '@/integrations/supabase/types';
 
+/**
+ * Assure qu'un champ possiblement JSON, array ou string est transformé en tableau
+ */
 function ensureArray<T>(data: T[] | Json | undefined): T[] {
   if (!data) return [];
   
+  // Si c'est déjà un tableau, le retourner
   if (Array.isArray(data)) {
     return data.map(item => {
       if (typeof item === 'object' && item !== null) {
@@ -22,10 +27,22 @@ function ensureArray<T>(data: T[] | Json | undefined): T[] {
     });
   }
   
+  // Si c'est une string, une valeur primitive
   if (typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean') {
     return [data as unknown as T];
   }
   
+  // Si c'est un objet JSON, essayer de le parser s'il s'agit d'une chaîne
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [parsed as unknown as T];
+    } catch (e) {
+      return [data as unknown as T];
+    }
+  }
+  
+  // Si c'est un objet mais pas un tableau
   if (typeof data === 'object' && data !== null) {
     return [data as unknown as T];
   }
@@ -102,6 +119,7 @@ const CandidateDetail = () => {
     );
   }
 
+  // Conversion et vérification des données du candidat pour s'assurer qu'elles sont au bon format
   const skills = ensureArray<string>(candidate.skills);
   const education = ensureArray<any>(candidate.education);
   const experiences = ensureArray<any>(candidate.experiences);
@@ -111,6 +129,10 @@ const CandidateDetail = () => {
   const industries = ensureArray<any>(candidate.industries);
   const professional_references = ensureArray<any>(candidate.professional_references);
   const professional_networks = ensureArray<any>(candidate.professional_networks);
+
+  // Log pour debugging
+  console.log("Experiences formatées:", experiences);
+  console.log("Education formatée:", education);
 
   return (
     <Layout>
@@ -391,10 +413,17 @@ const CandidateDetail = () => {
                           <div className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
                             <span className="font-medium text-navy">{exp.company}</span>
                             {exp.location && <span>• {exp.location}</span>}
-                            {exp.start_date && <span>• {exp.start_date} {exp.end_date ? `- ${exp.end_date}` : "- Présent"}</span>}
+                            {(exp.startDate || exp.start_date) && (
+                              <span>
+                                • {exp.startDate || exp.start_date} 
+                                {(exp.endDate || exp.end_date) ? 
+                                  ` - ${exp.endDate || exp.end_date}` : 
+                                  " - Présent"}
+                              </span>
+                            )}
                           </div>
                         </div>
-                        {exp.description && (
+                        {(exp.description) && (
                           <p className="mt-2 text-navy-dark">{exp.description}</p>
                         )}
                         {exp.skills && Array.isArray(exp.skills) && exp.skills.length > 0 && (
@@ -424,7 +453,11 @@ const CandidateDetail = () => {
                   <div className="space-y-6">
                     {projects.map((project: any, idx: number) => (
                       <div key={idx} className="p-4 border border-border rounded-lg">
-                        <h3 className="text-lg font-semibold text-navy-dark mb-1">{project.name || project.title}</h3>
+                        <h3 className="text-lg font-semibold text-navy-dark mb-1">
+                          {typeof project === 'string' ? 
+                            project : 
+                            project.name || project.title || 'Projet sans titre'}
+                        </h3>
                         {project.date && <p className="text-sm text-muted-foreground mb-2">{project.date}</p>}
                         {project.description && <p className="text-navy-dark mb-3">{project.description}</p>}
                         {project.url && (
@@ -456,8 +489,15 @@ const CandidateDetail = () => {
                           <div className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
                             <span className="font-medium text-navy">{edu.institution || edu.school}</span>
                             {edu.location && <span>• {edu.location}</span>}
-                            {edu.start_date && <span>• {edu.start_date} {edu.end_date ? `- ${edu.end_date}` : ""}</span>}
-                            {!edu.start_date && edu.year && <span>• {edu.year}</span>}
+                            {(edu.start_date || edu.startDate) && (
+                              <span>
+                                • {edu.start_date || edu.startDate} 
+                                {(edu.end_date || edu.endDate) ? 
+                                  ` - ${edu.end_date || edu.endDate}` : 
+                                  ""}
+                              </span>
+                            )}
+                            {!edu.start_date && !edu.startDate && edu.year && <span>• {edu.year}</span>}
                           </div>
                         </div>
                         {edu.description && (
@@ -484,7 +524,11 @@ const CandidateDetail = () => {
                         <div className="flex items-start">
                           <CertificateIcon className="mr-3 text-navy h-5 w-5 mt-1" />
                           <div>
-                            <h3 className="font-semibold text-navy-dark">{cert.name || cert.title}</h3>
+                            <h3 className="font-semibold text-navy-dark">
+                              {typeof cert === 'string' ? 
+                                cert : 
+                                cert.name || cert.title || 'Certification sans titre'}
+                            </h3>
                             {cert.issuer && <p className="text-sm text-navy">{cert.issuer}</p>}
                             {cert.date && <p className="text-xs text-muted-foreground mt-1">{cert.date}</p>}
                           </div>
@@ -509,7 +553,11 @@ const CandidateDetail = () => {
                       <div key={idx} className="flex items-center p-3 border border-border rounded-lg">
                         <Languages className="h-5 w-5 mr-3 text-navy" />
                         <div>
-                          <p className="font-medium">{lang.language}</p>
+                          <p className="font-medium">
+                            {typeof lang === 'string' ? 
+                              lang : 
+                              lang.language || 'Langue non spécifiée'}
+                          </p>
                           {lang.level && <p className="text-sm text-muted-foreground">{lang.level}</p>}
                         </div>
                       </div>

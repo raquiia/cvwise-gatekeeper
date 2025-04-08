@@ -91,6 +91,39 @@ function extractJsonFromMarkdown(text: string): string {
   return text;
 }
 
+// Fonction pour garantir que toutes les propriétés complexes sont au bon format
+function ensureProperDataFormat(data: any): any {
+  // Fonction interne pour vérifier et convertir les données
+  const ensureArray = (value: any): any[] => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [value];
+      } catch (e) {
+        return [value];
+      }
+    }
+    return [value];
+  };
+
+  // Convertir les propriétés qui devraient être des tableaux
+  const arrayProperties = [
+    'skills', 'experiences', 'education', 'certifications', 
+    'languages', 'projects', 'professional_references', 
+    'professional_networks', 'industries'
+  ];
+  
+  arrayProperties.forEach(prop => {
+    if (prop in data) {
+      data[prop] = ensureArray(data[prop]);
+    }
+  });
+
+  return data;
+}
+
 serve(async (req) => {
   // Handle CORS
   const corsResponse = handleCors(req);
@@ -267,9 +300,11 @@ serve(async (req) => {
               "industries": ["..."]
             }
             
-            IMPORTANT: Ne laisse aucun champ vide. Si tu ne trouves pas l'information, fais une supposition raisonnable ou mets une valeur par défaut. Pour les tableaux, inclus au moins un élément.
+            IMPORTANT: Ne laisse aucun champ vide. Si tu ne trouves pas l'information, fais une supposition raisonnable ou mets une valeur par défaut. Pour les tableaux, inclus au moins un élément si possible.
             
             Fournis ces informations sous forme d'un objet JSON valide SANS utiliser de bloc de code markdown. Retourne UNIQUEMENT l'objet JSON brut, sans aucun formatage markdown ni autre texte.
+            
+            Assure-toi que toutes les propriétés qui doivent être des listes (experiences, education, skills, languages, projects, certifications, industries) sont bien au format de tableau JSON, même s'il n'y a qu'un seul élément.
             
             Note importante: Ce texte a été tronqué pour l'analyse, utilise les informations disponibles au mieux.`
           },
@@ -342,7 +377,10 @@ serve(async (req) => {
         (Array.isArray(parsedData.certifications) ? parsedData.certifications.length * 2 : 0))
     };
     
-    console.log("Données du candidat préparées:", candidateData);
+    // S'assurer que toutes les propriétés complexes sont correctement formatées
+    const formattedCandidateData = ensureProperDataFormat(candidateData);
+    
+    console.log("Données du candidat préparées:", formattedCandidateData);
     
     // Upsert du candidat dans la base de données
     console.log("Enregistrement du candidat dans la base de données");
@@ -350,7 +388,7 @@ serve(async (req) => {
       .from("candidates")
       .upsert({
         ...(existingCandidate || {}),
-        ...candidateData,
+        ...formattedCandidateData,
         updated_at: new Date().toISOString()
       })
       .select()
