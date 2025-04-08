@@ -1,10 +1,15 @@
 
 // PDF Text extraction utility for Edge Function
-import * as pdfjs from "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/+esm";
+import * as pdfjs from "pdfjs-dist";
 
-// Configure the worker
-const pdfjsWorker = { url: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js" };
-pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker.url;
+// Handle the worker configuration - NOTE: Different approach for Deno/Edge runtime
+const pdfjsWorker = await import("pdfjs-dist/build/pdf.worker.mjs");
+
+// Configure using proper Deno syntax for edge functions
+if (typeof globalThis !== 'undefined') {
+  // @ts-ignore - The types may not match exactly but this works in Deno
+  globalThis.pdfjsWorker = pdfjsWorker;
+}
 
 /**
  * Extract text from a PDF file using server-side techniques
@@ -13,8 +18,16 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
   try {
     console.log("Starting text extraction from PDF buffer");
     
-    // Charger le document PDF avec PDF.js
-    const loadingTask = pdfjs.getDocument({ data: new Uint8Array(pdfBuffer) });
+    // Load the PDF document with PDF.js
+    const loadingTask = pdfjs.getDocument({ 
+      data: new Uint8Array(pdfBuffer),
+      // Don't use worker in edge functions
+      disableWorker: true,
+      // Enable more tolerant parsing
+      isEvalSupported: false,
+      isLegacyWorker: false
+    });
+    
     const pdf = await loadingTask.promise;
     const numPages = pdf.numPages;
     
@@ -31,7 +44,7 @@ export async function extractTextFromPDF(pdfBuffer: ArrayBuffer): Promise<{ extr
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
         
-        // Extraire et concaténer le texte de la page
+        // Extract and concatenate text from the page
         const pageText = content.items
           .filter((item: any) => 'str' in item && item.str.trim().length > 0)
           .map((item: any) => item.str)
@@ -134,42 +147,41 @@ function improveTextStructure(text: string): string {
 }
 
 /**
- * Fallback extraction method
+ * Fallback extraction method - simpler approach without workers
  */
 async function fallbackExtraction(pdfBuffer: ArrayBuffer): Promise<{ extractedText: string; pageCount: number }> {
   try {
     console.log("Using fallback extraction method");
     
-    // Just try a simple approach with fewer options
+    // Try a simple approach with fewer options
     const loadingTask = pdfjs.getDocument({ 
       data: new Uint8Array(pdfBuffer),
-      disableFontFace: true,
-      ignoreErrors: true,
-      cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/",
-      cMapPacked: true
+      disableWorker: true,
+      isEvalSupported: false,
+      isLegacyWorker: false
     });
     
     const pdf = await loadingTask.promise;
     const numPages = pdf.numPages;
     const pagesToProcess = Math.min(numPages, 20);
-    const textContent: string[] = [];
+    const textContents: string[] = [];
     
     for (let i = 1; i <= pagesToProcess; i++) {
       try {
         const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
+        const content = await page.getTextContent();
         
-        const pageText = textContent.items
+        const pageText = content.items
           .map((item: any) => 'str' in item ? item.str : '')
           .join(' ');
           
-        textContent.push(pageText);
+        textContents.push(pageText);
       } catch (e) {
         console.warn(`Fallback error on page ${i}:`, e);
       }
     }
     
-    const extractedText = textContent.join('\n\n');
+    const extractedText = textContents.join('\n\n');
     
     return {
       extractedText: extractedText || "Failed to extract text with fallback method",
