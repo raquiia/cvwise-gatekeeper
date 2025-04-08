@@ -8,16 +8,9 @@ import * as pdfjs from "npm:pdfjs-dist@3.11.174/legacy/build/pdf.js";
 const CMAP_URL = "npm:pdfjs-dist@3.11.174/cmaps/";
 const CMAP_PACKED = true;
 
-// Create a dummy global worker to avoid errors
-// PDF.js expects a browser environment, but we're in Deno
-const GlobalWorkerOptions = {
-  workerSrc: ''
-};
-
-// Assign our dummy worker options to the library
-if (!pdfjs.GlobalWorkerOptions) {
-  pdfjs.GlobalWorkerOptions = GlobalWorkerOptions;
-}
+// In Deno environment, we don't need a worker
+// Just need to make sure we don't try to access GlobalWorkerOptions
+// We'll use getDocument directly without worker configuration
 
 /**
  * Extract text from a PDF file
@@ -28,7 +21,7 @@ export async function extractTextFromPDF(pdfData: ArrayBuffer): Promise<{ extrac
   console.log("Starting PDF extraction process");
   
   try {
-    // Load the PDF document
+    // Load the PDF document without worker configuration
     const loadingTask = pdfjs.getDocument({
       data: pdfData,
       cMapUrl: CMAP_URL,
