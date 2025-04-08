@@ -202,6 +202,17 @@ function estimateLineHeight(textItems: any[]): number {
 }
 
 /**
+ * Type pour les métadonnées PDF (correction des erreurs TypeScript)
+ */
+interface PDFMetadataInfo {
+  Title?: string;
+  Author?: string;
+  Subject?: string;
+  Keywords?: string;
+  [key: string]: any;
+}
+
+/**
  * Méthode d'extraction de secours pour les PDFs problématiques
  * Tente d'extraire le texte en analysant directement les données brutes du PDF
  */
@@ -245,7 +256,9 @@ const fallbackExtraction = async (pdfData: Uint8Array, numPages: number): Promis
       let metaText = '';
       
       if (metadata && metadata.info) {
-        const info = metadata.info;
+        // Typer correctement les métadonnées pour éviter les erreurs TypeScript
+        const info = metadata.info as PDFMetadataInfo;
+        
         if (info.Title) metaText += `Titre: ${info.Title}\n`;
         if (info.Author) metaText += `Auteur: ${info.Author}\n`;
         if (info.Subject) metaText += `Sujet: ${info.Subject}\n`;
