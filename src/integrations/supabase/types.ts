@@ -297,20 +297,6 @@ export type Database = {
           updated_at: string | null
         }[]
       }
-      get_profile_by_id_secure: {
-        Args: { profile_id_param: string }
-        Returns: {
-          avatar_url: string | null
-          company: string | null
-          created_at: string | null
-          first_name: string | null
-          id: string
-          is_admin: boolean | null
-          last_name: string | null
-          title: string | null
-          updated_at: string | null
-        }[]
-      }
       get_resume_by_id: {
         Args: { p_resume_id: string }
         Returns: {

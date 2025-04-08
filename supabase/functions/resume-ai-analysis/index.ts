@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.2";
@@ -124,7 +125,7 @@ function extractJsonFromMarkdown(text: string): string {
   return text;
 }
 
-// Function to ensure proper data format
+// Fonction pour garantir que toutes les propriétés complexes sont au bon format
 function ensureProperDataFormat(data: any): any {
   // Fonction interne pour vérifier et convertir les données
   const ensureArray = (value: any): any[] => {
@@ -183,7 +184,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Récupérer les données du CV pour le contexte - USING DIRECT QUERY
+    // Récupérer les données du CV pour le contexte
     const { data: resumeData, error: resumeError } = await supabase
       .from("resumes")
       .select("*")
@@ -195,7 +196,7 @@ serve(async (req) => {
       throw new Error("CV introuvable");
     }
     
-    // Récupérer ou créer le candidat associé - USING DIRECT QUERY
+    // Récupérer ou créer le candidat associé
     const { data: existingCandidate } = await supabase
       .from("candidates")
       .select("*")
@@ -556,7 +557,7 @@ Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne
       languages: formattedCandidateData.languages
     }));
     
-    // Upsert du candidat dans la base de données - USING DIRECT MUTATION
+    // Upsert du candidat dans la base de données
     console.log("Enregistrement du candidat dans la base de données");
     const { data: savedCandidate, error: candidateError } = await supabase
       .from("candidates")
@@ -573,12 +574,12 @@ Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne
       throw new Error(`Impossible d'enregistrer le candidat: ${candidateError.message}`);
     }
     
-    // Marquer le CV comme analysé - USING DIRECT MUTATION
+    // Marquer le CV comme analysé
     const { error: updateError } = await supabase
       .from("resumes")
       .update({ parsed: true })
       .eq("id", resumeId);
-    
+      
     if (updateError) {
       console.error("Erreur lors de la mise à jour du statut du CV:", updateError);
       // Ne pas faire échouer l'opération entière pour cette erreur
