@@ -22,7 +22,7 @@ export {
   downloadResume,
   deleteResume,
   
-  // Analysis operations (désactivées mais conservées pour compatibilité)
+  // Analysis operations 
   analyzeResume,
   extractResumeText,
   

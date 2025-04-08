@@ -4,7 +4,13 @@ import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { getUserResumes, deleteResume, downloadResume, ResumeData } from '@/services/resumeService';
+import { 
+  getUserResumes, 
+  deleteResume, 
+  downloadResume, 
+  extractResumeText, 
+  ResumeData 
+} from '@/services/resumeService';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
 import {
   AlertDialog,
@@ -33,6 +39,9 @@ const Resumes = () => {
   const [resumes, setResumes] = useState<ResumeData[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<Record<string, boolean>>({});
+  const [extracting, setExtracting] = useState<Record<string, boolean>>({});
+  const [extractedText, setExtractedText] = useState<string | null>(null);
+  const [isTextDialogOpen, setIsTextDialogOpen] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -139,6 +148,41 @@ const Resumes = () => {
         description: error.message || "Une erreur s'est produite lors de la suppression du CV",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleExtractText = async (resumeId: string, filePath: string) => {
+    try {
+      console.log('Extracting text from resume:', resumeId);
+      setExtracting(prev => ({ ...prev, [resumeId]: true }));
+      
+      toast({
+        title: "Extraction en cours",
+        description: "Veuillez patienter pendant l'extraction du texte..."
+      });
+      
+      const result = await extractResumeText(resumeId, filePath);
+      
+      if (result.success && result.text) {
+        setExtractedText(result.text);
+        setIsTextDialogOpen(true);
+        
+        toast({
+          title: "Extraction réussie",
+          description: "Le texte a été extrait avec succès",
+        });
+      } else {
+        throw new Error(result.message || "Erreur lors de l'extraction du texte");
+      }
+    } catch (error: any) {
+      console.error('Error extracting resume text:', error);
+      toast({
+        title: "Échec de l'extraction",
+        description: error.message || "Une erreur s'est produite lors de l'extraction du texte",
+        variant: "destructive",
+      });
+    } finally {
+      setExtracting(prev => ({ ...prev, [resumeId]: false }));
     }
   };
 
@@ -312,9 +356,14 @@ const Resumes = () => {
             selectedResumes={selectedResumes}
             selectionMode={selectionMode}
             downloading={downloading}
+            extracting={extracting}
+            extractedText={extractedText}
+            isTextDialogOpen={isTextDialogOpen}
             onSelect={toggleResumeSelection}
             onDownload={handleDownloadResume}
             onDelete={handleDeleteResume}
+            onExtractText={handleExtractText}
+            onCloseTextDialog={() => setIsTextDialogOpen(false)}
           />
         )}
       </div>
