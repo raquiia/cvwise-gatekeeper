@@ -140,3 +140,89 @@ export const analyzeResume = async (resumeId: string, resumeText: string): Promi
     };
   }
 };
+
+/**
+ * Récupérer les données complètes d'un candidat
+ */
+export const getCompleteCandidateData = async (candidateId: string): Promise<any> => {
+  try {
+    console.log('Fetching complete data for candidate:', candidateId);
+    
+    // Récupérer directement toutes les données du candidat depuis la base de données
+    const { data, error } = await supabase
+      .from('candidates')
+      .select('*')
+      .eq('id', candidateId)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching candidate data:', error);
+      throw new Error(`Erreur lors de la récupération des données du candidat: ${error.message}`);
+    }
+    
+    if (!data) {
+      throw new Error('Candidat non trouvé');
+    }
+    
+    // Vérifier et transformer les données au format attendu
+    const formattedData = {
+      ...data,
+      experiences: ensureArray(data.experiences),
+      education: ensureArray(data.education),
+      skills: ensureArray(data.skills),
+      languages: ensureArray(data.languages),
+      certifications: ensureArray(data.certifications),
+      projects: ensureArray(data.projects),
+      professional_references: ensureArray(data.professional_references),
+      professional_networks: ensureArray(data.professional_networks),
+      industries: ensureArray(data.industries)
+    };
+    
+    console.log('Formatted candidate data:', {
+      experiences: formattedData.experiences.length,
+      education: formattedData.education.length,
+      languages: formattedData.languages.length
+    });
+    
+    return formattedData;
+  } catch (error: any) {
+    console.error('Error getting complete candidate data:', error);
+    toast({
+      title: "Erreur de données",
+      description: error.message || "Une erreur est survenue lors de la récupération des données du candidat",
+      variant: "destructive",
+    });
+    throw error;
+  }
+};
+
+/**
+ * Assure qu'un champ possiblement JSON, array ou string est transformé en tableau
+ */
+function ensureArray<T>(data: unknown): T[] {
+  if (!data) return [];
+  
+  // Si c'est déjà un tableau, le retourner
+  if (Array.isArray(data)) {
+    return data as T[];
+  }
+  
+  // Si c'est une string, essayer de la parser comme JSON
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed as T[] : [data as T];
+    } catch (e) {
+      // Si le parsing échoue, retourner la string comme élément unique du tableau
+      return [data as T];
+    }
+  }
+  
+  // Si c'est un objet JSON, le retourner comme élément unique du tableau
+  if (typeof data === 'object' && data !== null) {
+    return [data as T];
+  }
+  
+  // Pour les valeurs primitives (number, boolean), les retourner comme élément unique
+  return [data as T];
+}

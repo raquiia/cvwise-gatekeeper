@@ -7,38 +7,18 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { candidateDataService } from '@/services/data/candidateDataService';
 import { CandidateData } from '@/services/data/resumeDataService';
-import { ArrowLeft, User, MapPin, Phone, Mail, Briefcase, Award, Calendar, FileText, Loader2, GraduationCap, Languages, Award as CertificateIcon, Book, Grid, Target, Briefcase as WorkIcon, Heart, Globe } from 'lucide-react';
-
-/**
- * Assure qu'un champ possiblement JSON, array ou string est transformé en tableau
- */
-function ensureArray<T>(data: unknown): T[] {
-  if (!data) return [];
-  
-  // Si c'est déjà un tableau, le retourner
-  if (Array.isArray(data)) {
-    return data as T[];
-  }
-  
-  // Si c'est une string, essayer de la parser comme JSON
-  if (typeof data === 'string') {
-    try {
-      const parsed = JSON.parse(data);
-      return Array.isArray(parsed) ? parsed as T[] : [data as T];
-    } catch (e) {
-      // Si le parsing échoue, retourner la string comme élément unique du tableau
-      return [data as T];
-    }
-  }
-  
-  // Si c'est un objet JSON, le retourner comme élément unique du tableau
-  if (typeof data === 'object' && data !== null) {
-    return [data as T];
-  }
-  
-  // Pour les valeurs primitives (number, boolean), les retourner comme élément unique
-  return [data as T];
-}
+import { getCompleteCandidateData } from '@/services/resume/analysisOperations';
+import { 
+  ArrowLeft, User, MapPin, Phone, Mail, Briefcase, Award, Calendar, 
+  FileText, Loader2, GraduationCap, Languages, Award as CertificateIcon, 
+  Book, Grid, Target, Briefcase as WorkIcon, Heart, Globe 
+} from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const CandidateDetail = () => {
   const { candidateId } = useParams<{ candidateId: string }>();
@@ -54,17 +34,19 @@ const CandidateDetail = () => {
 
       try {
         setLoading(true);
-        const data = await candidateDataService.getCandidateById(candidateId);
+        
+        const data = await getCompleteCandidateData(candidateId);
+        
+        console.log("Données complètes du candidat:", data);
         
         if (!data) {
           setError("Candidat non trouvé");
         } else {
-          console.log("Données du candidat:", data);
           setCandidate(data);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Erreur lors du chargement du candidat:", err);
-        setError("Une erreur s'est produite lors du chargement des données");
+        setError(err.message || "Une erreur s'est produite lors du chargement des données");
       } finally {
         setLoading(false);
       }
@@ -109,18 +91,16 @@ const CandidateDetail = () => {
     );
   }
 
-  // Conversion et vérification des données du candidat pour s'assurer qu'elles sont au bon format
-  const skills = ensureArray<string>(candidate.skills);
-  const education = ensureArray<any>(candidate.education);
-  const experiences = ensureArray<any>(candidate.experiences);
-  const certifications = ensureArray<any>(candidate.certifications);
-  const languages = ensureArray<any>(candidate.languages);
-  const projects = ensureArray<any>(candidate.projects);
-  const industries = ensureArray<any>(candidate.industries);
-  const professional_references = ensureArray<any>(candidate.professional_references);
-  const professional_networks = ensureArray<any>(candidate.professional_networks);
+  const skills = candidate.skills || [];
+  const education = candidate.education || [];
+  const experiences = candidate.experiences || [];
+  const certifications = candidate.certifications || [];
+  const languages = candidate.languages || [];
+  const projects = candidate.projects || [];
+  const industries = candidate.industries || [];
+  const professional_references = candidate.professional_references || [];
+  const professional_networks = candidate.professional_networks || [];
 
-  // Log pour debugging
   console.log("Experiences formatées:", experiences);
   console.log("Education formatée:", education);
 
@@ -429,7 +409,13 @@ const CandidateDetail = () => {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-center py-6">Aucune expérience renseignée</p>
+                  <div className="text-muted-foreground text-center py-6">
+                    <div className="mb-2">
+                      <Briefcase className="h-12 w-12 mx-auto text-muted-foreground/50" />
+                    </div>
+                    <p>Aucune expérience renseignée</p>
+                    <p className="text-sm mt-1">Les informations d'expérience professionnelle extraites du CV seront affichées ici.</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -515,7 +501,13 @@ const CandidateDetail = () => {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-center py-6">Aucune formation renseignée</p>
+                  <div className="text-muted-foreground text-center py-6">
+                    <div className="mb-2">
+                      <GraduationCap className="h-12 w-12 mx-auto text-muted-foreground/50" />
+                    </div>
+                    <p>Aucune formation renseignée</p>
+                    <p className="text-sm mt-1">Les informations de formation extraites du CV seront affichées ici.</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -650,6 +642,31 @@ const CandidateDetail = () => {
             </div>
           </TabsContent>
         </Tabs>
+        
+        {(experiences.length === 0 || education.length === 0) && (
+          <div className="mt-6">
+            <Accordion type="single" collapsible>
+              <AccordionItem value="debug-info">
+                <AccordionTrigger className="text-sm text-muted-foreground">
+                  Informations techniques (débogage)
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="bg-slate-100 p-4 rounded text-sm font-mono">
+                    <p>ID du candidat: {candidateId}</p>
+                    <p>Type des expériences: {typeof candidate.experiences}</p>
+                    <p>Expériences est un tableau: {Array.isArray(candidate.experiences) ? 'Oui' : 'Non'}</p>
+                    <p>Type des formations: {typeof candidate.education}</p>
+                    <p>Formations est un tableau: {Array.isArray(candidate.education) ? 'Oui' : 'Non'}</p>
+                    <p>Données brutes:</p>
+                    <pre className="mt-2 bg-slate-200 p-2 rounded text-xs overflow-auto max-h-60">
+                      {JSON.stringify(candidate, null, 2)}
+                    </pre>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        )}
       </div>
     </Layout>
   );
