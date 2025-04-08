@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Loader2, AlertTriangle } from "lucide-react";
+import { Copy, Check, Loader2, AlertTriangle, FileText } from "lucide-react";
 import { useState } from "react";
 
 interface ExtractedTextDialogProps {
@@ -40,7 +40,10 @@ const ExtractedTextDialog: React.FC<ExtractedTextDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Texte extrait de {fileName}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText size={18} />
+            Texte extrait de {fileName}
+          </DialogTitle>
           <DialogDescription>
             {hasError ? 
               "Une erreur s'est produite lors de l'extraction du texte." : 
@@ -58,7 +61,7 @@ const ExtractedTextDialog: React.FC<ExtractedTextDialogProps> = ({
           </div>
         ) : hasError ? (
           <div className="flex-grow flex items-center justify-center py-12">
-            <div className="text-center">
+            <div className="text-center max-w-lg">
               <AlertTriangle size={40} className="mx-auto mb-4 text-amber-500" />
               <p className="text-muted-foreground mb-4">Impossible d'extraire le texte de ce document.</p>
               <ScrollArea className="mt-4 p-4 border rounded-md bg-muted/30 text-sm font-mono max-h-[200px]">

@@ -73,6 +73,13 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem 
+                      onClick={() => onExtractText(resume.id)}
+                      className="font-medium text-primary"
+                    >
+                      <FileSearch size={14} className="mr-2" />
+                      Extraire le texte
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
                       onClick={() => onDownload(resume.file_path, resume.file_name, resume.id)}
                       disabled={downloading[resume.id]}
                     >
@@ -82,10 +89,6 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                         <Download size={14} className="mr-2" />
                       )}
                       Télécharger
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onExtractText(resume.id)}>
-                      <FileSearch size={14} className="mr-2" />
-                      Extraire le texte
                     </DropdownMenuItem>
                     {!resume.parsed && (
                       <DropdownMenuItem onClick={() => onAnalyze(resume.id)}>
@@ -136,9 +139,22 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
           {!selectionMode && (
             <div className="border-t border-border/10 p-3 flex gap-2 justify-between">
               <Button 
-                variant="ghost" 
+                variant="primary" 
                 size="sm" 
-                className="text-xs"
+                className="text-xs flex-1"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onExtractText(resume.id);
+                }}
+              >
+                <FileSearch size={14} className="mr-1" />
+                Extraire texte
+              </Button>
+              
+              <Button 
+                variant={resume.parsed ? "default" : "secondary"} 
+                size="sm" 
+                className="text-xs flex-1"
                 onClick={(e) => {
                   e.preventDefault();
                   resume.parsed ? 
@@ -148,19 +164,6 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
               >
                 <Eye size={14} className="mr-1" />
                 {resume.parsed ? "Voir candidat" : "Analyser"}
-              </Button>
-              
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                className="text-xs"
-                onClick={(e) => {
-                  e.preventDefault();
-                  onExtractText(resume.id);
-                }}
-              >
-                <FileSearch size={14} className="mr-1" />
-                Extraire texte
               </Button>
               
               <Button 
@@ -178,7 +181,6 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                 ) : (
                   <Download size={14} className="mr-1" />
                 )}
-                Télécharger
               </Button>
             </div>
           )}
