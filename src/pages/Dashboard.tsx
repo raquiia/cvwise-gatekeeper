@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Users, FileText, Search, CheckCircle, 
@@ -307,7 +306,7 @@ const Dashboard = () => {
             </div>
           </div>
           
-          <div className="space-y-6">
+          <div>
             {!usersLoading && (
               <UserStats 
                 activeUsersCount={realUsers.length}
@@ -324,39 +323,6 @@ const Dashboard = () => {
                 companiesCount={companiesCount}
               />
             )}
-            
-            <Card className="bg-white dark:bg-navy-dark/90 shadow-md border border-gray-200 dark:border-navy/20 rounded-xl">
-              <CardHeader className="pb-3">
-                <CardTitle>Quick Links</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <Link 
-                    to="/resumes/upload" 
-                    className="flex items-center p-2 rounded-md hover:bg-muted transition-colors"
-                  >
-                    <Upload size={18} className="mr-3 text-blue-500" />
-                    <span>Upload new resume</span>
-                  </Link>
-                  
-                  <Link 
-                    to="/candidates" 
-                    className="flex items-center p-2 rounded-md hover:bg-muted transition-colors"
-                  >
-                    <Users size={18} className="mr-3 text-emerald-500" />
-                    <span>View all candidates</span>
-                  </Link>
-                  
-                  <Link 
-                    to="/job-offers/create" 
-                    className="flex items-center p-2 rounded-md hover:bg-muted transition-colors"
-                  >
-                    <FileText size={18} className="mr-3 text-purple-500" />
-                    <span>Create job offer</span>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
