@@ -13,7 +13,7 @@ import { RealUser } from '@/hooks/useUserData';
 interface UserStatsProps {
   activeUsersCount: number;
   pendingUsersCount: number;
-  recentUsers: RealUser[];
+  recentUsers: Pick<RealUser, 'id' | 'first_name' | 'last_name' | 'last_sign_in_at' | 'email' | 'created_at'>[]; 
   formatDate: (date?: string) => string;
   companiesCount: number;
 }

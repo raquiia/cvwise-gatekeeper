@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Users, Settings, Shield, Building, RefreshCw, 
@@ -145,13 +144,11 @@ const Admin = () => {
   const handleApproveUser = (userId: number) => {
     const userToApprove = pendingUsers.find(user => user.id === userId);
     if (userToApprove) {
-      // In a real application, this would call an API to approve the user
       setPendingUsers(prev => prev.filter(user => user.id !== userId));
     }
   };
   
   const handleRejectUser = (userId: number) => {
-    // In a real application, this would call an API to reject the user
     setPendingUsers(prev => prev.filter(user => user.id !== userId));
   };
   
@@ -162,8 +159,11 @@ const Admin = () => {
       return dateB - dateA;
     })
     .map(user => ({
+      id: user.id,
+      email: user.email || '',
       first_name: user.profile?.first_name || user.first_name || '',
       last_name: user.profile?.last_name || user.last_name || '',
+      created_at: user.created_at,
       last_sign_in_at: user.last_sign_in_at
     }));
   
