@@ -3,7 +3,7 @@ import { candidateService } from './candidateService';
 import { jobOfferService } from './jobOfferService';
 import { candidateMatchingService } from './candidateMatchingService';
 import type { JobOffer } from './jobOfferService';
-import type { CandidateJobMatch } from './candidateMatchingService';
+import type { CandidateJobMatch, CandidateMatch } from './candidateMatchingService';
 
 /**
  * Re-export all the services to maintain backward compatibility
@@ -30,4 +30,4 @@ export const candidateDataService = {
 };
 
 // Re-export types to maintain backward compatibility
-export { JobOffer, CandidateJobMatch };
+export { JobOffer, CandidateJobMatch, CandidateMatch };

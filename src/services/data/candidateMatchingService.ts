@@ -1,26 +1,102 @@
 // Import the necessary libraries and services
 import { JobOffer } from "./jobOfferService";
 import { jobOfferService } from "./jobOfferService";
+import type { CandidateData } from "./resumeDataService";
+
+/**
+ * Interface for JobOfferSuggestion
+ */
+export interface JobOfferSuggestion extends Partial<JobOffer> {
+  description?: string;
+  requiredSkills?: string[];
+  preferredSkills?: string[];
+  education?: string;
+  experience?: {
+    min?: number;
+    max?: number;
+  };
+  contractType?: string;
+  remotePreference?: string;
+  salary?: {
+    min?: number;
+    max?: number;
+    currency?: string;
+  };
+  benefits?: string[];
+  industrySectors?: string[];
+}
+
+/**
+ * Interface for CandidateJobMatch
+ */
+export interface CandidateJobMatch {
+  id: string;
+  candidate_id: string;
+  job_offer_id: string;
+  match_score: number;
+  skills_match_score: number;
+  experience_match_score: number;
+  education_match_score: number;
+  location_match_score: number;
+  match_details?: any;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Interface for CandidateMatch (combination of candidate and match data)
+ */
+export interface CandidateMatch {
+  candidate: CandidateData;
+  match: CandidateJobMatch;
+}
 
 /**
  * Service for candidate matching operations
  */
 export const candidateMatchingService = {
 
-  // Existing methods would be here
-
   /**
    * Calculate matches for a job offer
    */
   calculateMatchesForJobOffer: async (jobOfferId: string): Promise<boolean> => {
     // Implementation would be here
+    console.log(`Calculating matches for job offer: ${jobOfferId}`);
+    // Mock implementation for now
     return true;
+  },
+
+  /**
+   * Get match details between a candidate and job offer
+   */
+  getCandidateJobMatch: async (candidateId: string, jobOfferId: string): Promise<CandidateJobMatch | null> => {
+    console.log(`Getting match between candidate ${candidateId} and job offer ${jobOfferId}`);
+    // Mock implementation for now
+    return null;
+  },
+
+  /**
+   * Get all candidate matches for a job offer
+   */
+  getMatchesForJobOffer: async (jobOfferId: string): Promise<CandidateMatch[]> => {
+    console.log(`Getting all candidate matches for job offer: ${jobOfferId}`);
+    // Mock implementation for now
+    return [];
+  },
+
+  /**
+   * Get top candidates for a job offer
+   */
+  getTopCandidatesForJobOffer: async (jobOfferId: string, limit: number = 5): Promise<CandidateMatch[]> => {
+    console.log(`Getting top ${limit} candidates for job offer: ${jobOfferId}`);
+    // Mock implementation for now
+    return [];
   },
 
   /**
    * Generate job offer suggestions based on title and location
    */
-  generateJobOfferSuggestions: async (title: string, location?: string): Promise<Partial<JobOffer>> => {
+  generateJobOfferSuggestions: async (title: string, location?: string): Promise<JobOfferSuggestion> => {
     console.log(`Generating job offer suggestions for: ${title} in ${location || 'unspecified location'}`);
     
     let country = 'France'; // Default country
@@ -66,18 +142,22 @@ export const candidateMatchingService = {
     return {
       title: title,
       description: suggestions.description,
-      required_skills: suggestions.requiredSkills,
-      preferred_skills: suggestions.preferredSkills,
-      experience_years_min: suggestions.experienceYearsMin,
-      experience_years_max: suggestions.experienceYearsMax,
-      education_level: suggestions.educationLevel,
-      salary_min: salaryMin,
-      salary_max: salaryMax,
-      salary_currency: currency,
-      contract_type: suggestions.contractType,
-      remote_preference: suggestions.remotePreference,
+      requiredSkills: suggestions.requiredSkills,
+      preferredSkills: suggestions.preferredSkills,
+      experience: {
+        min: suggestions.experienceYearsMin,
+        max: suggestions.experienceYearsMax
+      },
+      education: suggestions.educationLevel,
+      salary: {
+        min: salaryMin,
+        max: salaryMax,
+        currency: currency
+      },
+      contractType: suggestions.contractType,
+      remotePreference: suggestions.remotePreference,
       benefits: suggestions.benefits,
-      industry_sectors: suggestions.industrySectors
+      industrySectors: suggestions.industrySectors
     };
   }
 };
@@ -90,9 +170,9 @@ function generateSuggestionsBasedOnJobTitle(title: string): any {
   
   // Base template
   const baseSuggestion = {
-    description: `Nous recherchons un(e) ${title} talentueux(se) pour rejoindre notre équipe. Le/la candidat(e) idéal(e) devra posséder une solide expérience dans le domaine et être capable de travailler de manière autonome tout en collaborant efficacement avec les différentes équipes.`,
-    requiredSkills: [] as { name: string; level?: string }[],
-    preferredSkills: [] as { name: string; level?: string }[],
+    description: `Nous recherchons un(e) ${title} talentueux(se) pour rejoindre notre équipe.`,
+    requiredSkills: [],
+    preferredSkills: [],
     experienceYearsMin: 2,
     experienceYearsMax: 5,
     educationLevel: "Bac+5",

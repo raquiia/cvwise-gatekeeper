@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Sparkles, Info, Plus } from 'lucide-react';
@@ -57,7 +56,6 @@ interface JobOfferFormProps {
   isEditing?: boolean;
 }
 
-// Liste des entreprises prédéfinies
 const PREDEFINED_COMPANIES = [
   "MIGSO-PCUBED",
   "Autre"
@@ -77,7 +75,7 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     resolver: zodResolver(jobOfferSchema),
     defaultValues: {
       title: "",
-      company: "MIGSO-PCUBED", // Valeur par défaut
+      company: "MIGSO-PCUBED",
       custom_company: "",
       contract_type: "CDI",
       remote_preference: "Sur site",
@@ -90,7 +88,6 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     },
   });
   
-  // Surveiller le changement du champ company pour afficher le champ custom_company si nécessaire
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'company' && value.company === 'Autre') {
@@ -112,7 +109,6 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
         const jobOffer = await jobOfferService.getJobOfferById(jobOfferId);
         
         if (jobOffer) {
-          // Vérifier si l'entreprise fait partie des prédéfinies
           const companyValue = PREDEFINED_COMPANIES.includes(jobOffer.company || "") 
             ? jobOffer.company 
             : "Autre";
@@ -174,16 +170,13 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
         throw new Error("Le titre est requis");
       }
       
-      // Gérer le nom de l'entreprise en fonction de la sélection
       const finalCompany = values.company === "Autre" ? values.custom_company : values.company;
       
-      // Préparer les données pour la sauvegarde
       const formattedValues = {
         ...values,
         company: finalCompany
       };
       
-      // Supprimer le champ custom_company qui n'est pas nécessaire pour la BD
       delete formattedValues.custom_company;
       
       if (isEditing && jobOfferId) {
@@ -230,6 +223,7 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
 
   const generateSuggestions = async () => {
     const jobTitle = form.getValues('title');
+    const location = form.getValues('location');
     
     if (!jobTitle || jobTitle.length < 3) {
       toast({
@@ -241,7 +235,7 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     
     try {
       setLoadingAiSuggestions(true);
-      const suggestions = await candidateMatchingService.generateJobOfferSuggestions(jobTitle);
+      const suggestions = await candidateMatchingService.generateJobOfferSuggestions(jobTitle, location);
       setSuggestion(suggestions);
       setShowSuggestionDialog(true);
     } catch (error: any) {
