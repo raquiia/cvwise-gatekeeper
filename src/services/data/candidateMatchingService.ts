@@ -37,6 +37,7 @@ export interface SkillsDetails {
   skillsScore: number;
 }
 
+// Add an index signature to make it compatible with Json type
 export interface MatchDetails {
   skillsMatch: number;
   experienceMatch: number;
@@ -44,7 +45,7 @@ export interface MatchDetails {
   matchedSkills: string[];
   missingSkills: string[];
   skills_details?: SkillsDetails;
-  [key: string]: any; // Add index signature to make it compatible with Json type
+  [key: string]: any; // This adds the index signature
 }
 
 export interface CandidateJobMatch {
@@ -374,7 +375,52 @@ export const candidateMatchingService = {
     try {
       console.log(`Getting matches for job offer ID: ${jobOfferId}`);
       
-      // First, try to get matches directly from the database
+      // Try to use the RPC function first to avoid recursion issues
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_matches_for_job_offer', {
+          p_job_offer_id: jobOfferId
+        });
+        
+        if (rpcError) {
+          console.error("Error with RPC get_matches_for_job_offer:", rpcError);
+          throw rpcError;
+        }
+        
+        if (rpcData && Array.isArray(rpcData) && rpcData.length > 0) {
+          console.log(`Found ${rpcData.length} matches using RPC function`);
+          
+          const typedMatches: CandidateMatch[] = rpcData.map((item: any) => {
+            const match = item.match;
+            const candidate = item.candidate;
+            
+            const matchDetails = convertJsonToMatchDetails(match.match_details);
+            
+            const typedMatch: CandidateJobMatch = {
+              candidate_id: match.candidate_id,
+              job_offer_id: match.job_offer_id,
+              match_score: match.match_score || 0,
+              skills_match_score: match.skills_match_score || 0,
+              experience_match_score: match.experience_match_score || 0,
+              education_match_score: match.education_match_score || 0,
+              location_match_score: match.location_match_score || 0,
+              match_details: matchDetails,
+              created_at: match.created_at,
+              updated_at: match.updated_at
+            };
+            
+            return {
+              candidate,
+              match: typedMatch
+            };
+          });
+          
+          return typedMatches;
+        }
+      } catch (rpcFunctionError) {
+        console.error("Error with RPC function, trying direct query:", rpcFunctionError);
+      }
+      
+      // Fall back to direct query if RPC function fails
       const { data: matchesData, error: matchesError } = await supabase
         .from('candidate_job_matches')
         .select(`
@@ -395,6 +441,7 @@ export const candidateMatchingService = {
           const match = item;
           const candidate = item.candidate;
           
+          // Convert match_details from Json to MatchDetails
           const matchDetails = convertJsonToMatchDetails(match.match_details);
           
           const typedMatch: CandidateJobMatch = {
@@ -445,6 +492,7 @@ export const candidateMatchingService = {
           const match = item;
           const candidate = item.candidate;
           
+          // Convert match_details from Json to MatchDetails
           const matchDetails = convertJsonToMatchDetails(match.match_details);
           
           const typedMatch: CandidateJobMatch = {

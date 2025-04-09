@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, Edit, RefreshCw, FileText, User, Briefcase, AlertTriangle } from 'lucide-react';
@@ -110,7 +111,7 @@ const JobOfferDetail = () => {
         toast({
           title: "Problème de calcul",
           description: "Le calcul des correspondances a échoué. Veuillez vous assurer que vous avez des candidats dans votre base de données.",
-          variant: "warning",
+          variant: "default",
         });
       }
       
