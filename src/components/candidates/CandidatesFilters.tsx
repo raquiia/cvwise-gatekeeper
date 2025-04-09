@@ -125,7 +125,7 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
                 <SelectValue placeholder="Toutes" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toutes</SelectItem>
+                <SelectItem value="all">Toutes</SelectItem>
                 <SelectItem value="1-3">1-3 ans</SelectItem>
                 <SelectItem value="4-6">4-6 ans</SelectItem>
                 <SelectItem value="7-10">7-10 ans</SelectItem>

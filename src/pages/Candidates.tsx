@@ -26,7 +26,6 @@ const Candidates = () => {
   const [error, setError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState(false);
   
-  // New filter states
   const [locationFilter, setLocationFilter] = useState('');
   const [companyFilter, setCompanyFilter] = useState('');
   const [experienceFilter, setExperienceFilter] = useState('');
@@ -47,7 +46,6 @@ const Candidates = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Function to fetch candidates that we can call multiple times
   const fetchCandidates = async () => {
     if (!user?.id) {
       setError("Vous devez être connecté pour voir vos candidats");
@@ -86,18 +84,14 @@ const Candidates = () => {
   
   useEffect(() => {
     fetchCandidates();
-    // This effect should run when the component mounts and when the location changes
   }, [user, location.key]);
   
-  // Apply active filters to candidates
   const applyFiltersToCandidate = (candidate: CandidateData) => {
-    // Filter by location
     if (activeFilters.location && (!candidate.location || 
         !candidate.location.toLowerCase().includes(activeFilters.location.toLowerCase()))) {
       return false;
     }
     
-    // Filter by company
     if (activeFilters.company) {
       const candidateCompanies = Array.isArray(candidate.experiences) 
         ? candidate.experiences.map((exp: any) => exp.company?.toLowerCase() || '')
@@ -111,17 +105,14 @@ const Candidates = () => {
       }
     }
     
-    // Filter by experience
-    if (activeFilters.experience) {
+    if (activeFilters.experience && activeFilters.experience !== 'all') {
       const [minExp, maxExp] = activeFilters.experience.split('-').map(Number);
       
       if (activeFilters.experience === '10+') {
-        // "10+" means 10 years or more
         if (!candidate.years_experience || candidate.years_experience < 10) {
           return false;
         }
       } else if (minExp && maxExp) {
-        // Range like "1-3", "4-6", "7-10"
         if (!candidate.years_experience || 
             candidate.years_experience < minExp || 
             candidate.years_experience > maxExp) {
@@ -130,7 +121,6 @@ const Candidates = () => {
       }
     }
     
-    // Filter by skills
     if (activeFilters.skills.length > 0) {
       const candidateSkills = Array.isArray(candidate.skills) 
         ? candidate.skills.map(skill => 
@@ -151,9 +141,7 @@ const Candidates = () => {
     return true;
   };
   
-  // Filtrer les candidats en fonction des critères de recherche
   const filteredCandidates = candidates.filter(candidate => {
-    // Filtre par recherche (nom, poste, compétences)
     const matchesSearch = !searchQuery 
       || (candidate.first_name && candidate.first_name.toLowerCase().includes(searchQuery.toLowerCase()))
       || (candidate.last_name && candidate.last_name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -162,10 +150,8 @@ const Candidates = () => {
           typeof skill === 'string' && skill.toLowerCase().includes(searchQuery.toLowerCase())
         ));
     
-    // Filtre par statut
     const matchesStatus = !selectedStatus || candidate.status === selectedStatus;
     
-    // Appliquer tous les filtres
     const matchesAdvancedFilters = applyFiltersToCandidate(candidate);
     
     return matchesSearch && matchesStatus && matchesAdvancedFilters;
@@ -219,7 +205,6 @@ const Candidates = () => {
   };
   
   const handleCandidateDeleted = () => {
-    // Recharger la liste des candidats après suppression
     fetchCandidates();
   };
   
