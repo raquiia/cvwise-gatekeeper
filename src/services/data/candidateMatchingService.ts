@@ -29,6 +29,16 @@ export interface CandidateJobMatch {
 }
 
 /**
+ * Interface pour les suggestions générées par l'IA
+ */
+export interface JobOfferSuggestion {
+  description?: string;
+  requiredSkills?: string[];
+  jobTitle?: string;
+  additionalInfo?: string;
+}
+
+/**
  * Service responsable de la gestion des matchings entre candidats et offres d'emploi
  */
 export const candidateMatchingService = {
@@ -170,6 +180,89 @@ export const candidateMatchingService = {
     } catch (error: any) {
       console.error("Exception in getTopCandidatesForJobOffer:", error);
       throw new Error(error.message || "Impossible de récupérer les meilleurs candidats");
+    }
+  },
+
+  /**
+   * Générer des suggestions pour une offre d'emploi à partir du titre de poste
+   */
+  generateJobOfferSuggestions: async (jobTitle: string): Promise<JobOfferSuggestion> => {
+    try {
+      console.log(`Generating suggestions for job title: ${jobTitle}`);
+      
+      // Simuler un délai de traitement
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Suggestions par défaut pour des postes communs
+      const defaultSuggestions: Record<string, JobOfferSuggestion> = {
+        "Développeur Frontend": {
+          description: `Nous recherchons un développeur Frontend talentueux pour rejoindre notre équipe. Vous serez responsable de la conception et de l'implémentation d'interfaces utilisateur réactives et intuitives pour nos applications web. Vous travaillerez en étroite collaboration avec notre équipe de design et nos développeurs backend pour créer des expériences utilisateur exceptionnelles.
+
+Responsabilités:
+- Développer des interfaces utilisateur réactives et intuitives
+- Collaborer avec les designers pour implémenter fidèlement les maquettes
+- Optimiser les applications pour une performance maximale sur différents navigateurs et appareils
+- Assurer la maintenance et l'amélioration continue des interfaces existantes
+- Participer aux revues de code et aux sessions de brainstorming`,
+          requiredSkills: ["JavaScript", "HTML5", "CSS3", "React", "TypeScript", "Git", "Responsive Design", "Testing (Jest, RTL)"]
+        },
+        "Développeur Backend": {
+          description: `Nous recherchons un développeur Backend expérimenté pour rejoindre notre équipe technique. Vous serez responsable de la conception, du développement et de la maintenance des composants serveur de nos applications. Vous travaillerez en étroite collaboration avec l'équipe frontend pour assurer une intégration fluide des fonctionnalités.
+
+Responsabilités:
+- Concevoir et développer des API RESTful performantes et sécurisées
+- Implémenter des modèles de données et optimiser les requêtes de base de données
+- Assurer la sécurité, la fiabilité et la scalabilité de nos services
+- Participer à l'architecture technique et aux choix technologiques
+- Mettre en place des tests automatisés pour garantir la qualité du code`,
+          requiredSkills: ["Node.js", "Express", "PostgreSQL", "MongoDB", "Docker", "API REST", "Git", "Testing", "Sécurité des applications"]
+        },
+        "Data Scientist": {
+          description: `Nous recherchons un Data Scientist passionné pour rejoindre notre équipe d'analyse de données. Vous serez responsable de l'analyse et de l'interprétation de grands ensembles de données pour extraire des insights précieux et guider les décisions stratégiques de l'entreprise.
+
+Responsabilités:
+- Collecter, nettoyer et prétraiter de grands ensembles de données
+- Développer des modèles prédictifs et des algorithmes d'apprentissage automatique
+- Analyser les données pour identifier des tendances et des opportunités
+- Présenter les résultats d'analyse aux parties prenantes de manière claire et concise
+- Collaborer avec les équipes produit pour intégrer des solutions basées sur les données`,
+          requiredSkills: ["Python", "R", "SQL", "Machine Learning", "Statistiques", "Data Visualization", "TensorFlow/PyTorch", "Jupyter Notebooks"]
+        },
+        "Chef de Projet IT": {
+          description: `Nous recherchons un Chef de Projet IT expérimenté pour gérer nos projets technologiques stratégiques. Vous serez responsable de la planification, de l'exécution et de la livraison des projets dans les délais et le budget impartis, tout en assurant la satisfaction des parties prenantes.
+
+Responsabilités:
+- Définir le périmètre, les objectifs et les livrables des projets
+- Élaborer des plannings détaillés et gérer les ressources efficacement
+- Coordonner les équipes techniques et fonctionnelles
+- Identifier et gérer les risques liés aux projets
+- Assurer une communication régulière avec les parties prenantes`,
+          requiredSkills: ["Gestion de projet", "Méthodologies Agile (Scrum)", "MS Project", "Jira", "Budgétisation", "Analyse des risques", "Communication", "Connaissance technique IT"]
+        }
+      };
+      
+      // Chercher une correspondance dans les suggestions par défaut
+      const suggestion = defaultSuggestions[jobTitle];
+      
+      // Si aucune correspondance exacte n'est trouvée, renvoyer des suggestions génériques
+      if (!suggestion) {
+        return {
+          description: `Nous recherchons un(e) ${jobTitle} talentueux(se) pour rejoindre notre équipe. Le/la candidat(e) idéal(e) possède une solide expérience dans le domaine et est passionné(e) par l'innovation et l'excellence.
+
+Responsabilités:
+- Contribuer activement aux projets de l'entreprise
+- Collaborer efficacement avec les différentes équipes
+- Proposer des solutions innovantes face aux défis rencontrés
+- Assurer une veille technologique et méthodologique
+- Participer à l'amélioration continue des processus`,
+          requiredSkills: ["Communication", "Travail d'équipe", "Résolution de problèmes", "Adaptabilité", "Organisation"]
+        };
+      }
+      
+      return suggestion;
+    } catch (error: any) {
+      console.error("Exception in generateJobOfferSuggestions:", error);
+      throw new Error(error.message || "Impossible de générer des suggestions");
     }
   }
 };

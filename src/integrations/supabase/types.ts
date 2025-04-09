@@ -582,6 +582,10 @@ export type Database = {
           last_updated_at: string
         }[]
       }
+      get_user_job_offers: {
+        Args: Record<PropertyKey, never>
+        Returns: Json[]
+      }
       get_user_resume_by_id: {
         Args: { resume_id_param: string }
         Returns: {

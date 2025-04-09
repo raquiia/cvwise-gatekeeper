@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles, Info } from 'lucide-react';
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/jobOfferService';
+import { candidateMatchingService, JobOfferSuggestion } from '@/services/data/candidateMatchingService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { JobOffer } from '@/services/data/jobOfferService';
 
 // Schema de validation pour le formulaire d'offre d'emploi
@@ -52,6 +55,9 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(isEditing);
   const [skillInput, setSkillInput] = useState('');
+  const [loadingAiSuggestions, setLoadingAiSuggestions] = useState(false);
+  const [suggestion, setSuggestion] = useState<JobOfferSuggestion | null>(null);
+  const [showSuggestionDialog, setShowSuggestionDialog] = useState(false);
   const navigate = useNavigate();
   
   // Initialiser le formulaire avec les valeurs par défaut
@@ -179,6 +185,54 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     const currentSkills = form.getValues('required_skills') || [];
     form.setValue('required_skills', currentSkills.filter(skill => skill !== skillToRemove));
   };
+
+  // Fonction pour générer des suggestions avec l'IA
+  const generateSuggestions = async () => {
+    const jobTitle = form.getValues('title');
+    
+    if (!jobTitle || jobTitle.length < 3) {
+      toast({
+        title: "Information requise",
+        description: "Veuillez d'abord saisir un titre de poste d'au moins 3 caractères",
+      });
+      return;
+    }
+    
+    try {
+      setLoadingAiSuggestions(true);
+      const suggestions = await candidateMatchingService.generateJobOfferSuggestions(jobTitle);
+      setSuggestion(suggestions);
+      setShowSuggestionDialog(true);
+    } catch (error: any) {
+      console.error('Error generating suggestions:', error);
+      toast({
+        title: "Erreur",
+        description: error?.message || "Impossible de générer des suggestions",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingAiSuggestions(false);
+    }
+  };
+
+  // Fonction pour appliquer les suggestions
+  const applySuggestions = () => {
+    if (!suggestion) return;
+    
+    if (suggestion.description) {
+      form.setValue('description', suggestion.description);
+    }
+    
+    if (suggestion.requiredSkills && suggestion.requiredSkills.length > 0) {
+      form.setValue('required_skills', suggestion.requiredSkills);
+    }
+    
+    setShowSuggestionDialog(false);
+    toast({
+      title: "Suggestions appliquées",
+      description: "Les suggestions ont été appliquées avec succès",
+    });
+  };
   
   if (initialLoading) {
     return (
@@ -192,6 +246,33 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-navy">Détails de l'offre</h2>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={generateSuggestions}
+                  disabled={loadingAiSuggestions}
+                >
+                  {loadingAiSuggestions ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  Assistant IA
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Obtenez des suggestions IA pour améliorer votre offre d'emploi</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-6">
             <FormField
@@ -200,9 +281,23 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Titre du poste *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="ex: Développeur Frontend React" {...field} />
-                  </FormControl>
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <Input placeholder="ex: Développeur Frontend React" {...field} />
+                    </FormControl>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button type="button" variant="ghost" size="icon">
+                            <Info className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Un titre précis améliore la qualité du matching avec les candidats</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -232,6 +327,9 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
                     <FormControl>
                       <Input placeholder="ex: Paris, France" {...field} />
                     </FormControl>
+                    <FormDescription>
+                      Important pour le matching géographique
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -244,13 +342,19 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Description du poste</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Décrivez le poste, les responsabilités, etc."
-                      rows={5}
-                      {...field} 
-                    />
-                  </FormControl>
+                  <div className="flex flex-col">
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Décrivez le poste, les responsabilités, etc."
+                        rows={5}
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription className="mt-1 flex items-center gap-1">
+                      <Info className="h-3 w-3" />
+                      Une description détaillée améliore la qualité du matching
+                    </FormDescription>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -363,6 +467,10 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
                       Ajouter
                     </Button>
                   </div>
+                  <FormDescription className="mt-1 flex items-center gap-1">
+                    <Info className="h-3 w-3" />
+                    Les compétences sont essentielles pour un bon matching avec les candidats
+                  </FormDescription>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {field.value?.map((skill, index) => (
                       <Badge key={index} variant="secondary" className="flex items-center gap-1">
@@ -508,6 +616,56 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
           </Button>
         </div>
       </form>
+
+      {/* Dialog pour afficher et appliquer les suggestions */}
+      <Dialog open={showSuggestionDialog} onOpenChange={setShowSuggestionDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              Suggestions pour votre offre d'emploi
+            </DialogTitle>
+            <DialogDescription>
+              Voici des suggestions générées par notre IA pour améliorer votre offre d'emploi et obtenir de meilleurs matchings avec les candidats.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 mt-4">
+            {suggestion && (
+              <>
+                <div>
+                  <h3 className="font-semibold text-navy">Description suggérée</h3>
+                  <div className="bg-muted/50 p-3 rounded-md mt-1 whitespace-pre-wrap">
+                    {suggestion.description}
+                  </div>
+                </div>
+
+                {suggestion.requiredSkills && suggestion.requiredSkills.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-navy">Compétences suggérées</h3>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {suggestion.requiredSkills.map((skill, index) => (
+                        <Badge key={index} variant="outline" className="bg-muted/50">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-4 flex items-center justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowSuggestionDialog(false)}>
+                    Ignorer
+                  </Button>
+                  <Button onClick={applySuggestions}>
+                    Appliquer les suggestions
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Form>
   );
 };
