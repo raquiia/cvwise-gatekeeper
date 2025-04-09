@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { candidateDataService } from '@/services/data/candidateDataService';
+import { candidateDataService, CandidateData } from '@/services/data/candidateDataService';
 import { ArrowLeft, Briefcase, FileText } from 'lucide-react';
 
 // Import the component tabs
@@ -13,7 +14,6 @@ import EducationTab from '@/components/candidates/detail/EducationTab';
 import DetailsTab from '@/components/candidates/detail/DetailsTab';
 import CandidateLoading from '@/components/candidates/detail/CandidateLoading';
 import CandidateError from '@/components/candidates/detail/CandidateError';
-import { CandidateData } from '@/services/data/candidateService';
 
 const CandidateDetail = () => {
   const { candidateId } = useParams<{ candidateId: string }>();
@@ -42,7 +42,7 @@ const CandidateDetail = () => {
           setError("Candidat non trouvé");
         } else {
           console.log("Candidate data retrieved successfully:", data);
-          setCandidate(data as CandidateData);
+          setCandidate(data);
         }
       } catch (err: any) {
         console.error("Error loading candidate:", err);

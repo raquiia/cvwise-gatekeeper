@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { MapPin, Phone, Mail, Calendar, FileText } from 'lucide-react';
-import { CandidateData } from '@/services/data/resumeDataService';
+import { CandidateData } from '@/services/data/candidateDataService';
 import { ensureArray } from '@/utils/candidateUtils';
 
 interface ProfileTabProps {

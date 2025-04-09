@@ -16,6 +16,8 @@ const Candidates = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -64,6 +66,14 @@ const Candidates = () => {
     setSelectedStatus(status);
   };
 
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const handleToggleFilters = () => {
+    setShowFilters(!showFilters);
+  };
+
   const handleViewCandidate = (candidateId: string) => {
     navigate(`/candidates/${candidateId}`);
   };
@@ -76,11 +86,32 @@ const Candidates = () => {
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        <CandidatesHeader onImportClick={() => navigate('/resumes/upload')} />
+        <CandidatesHeader 
+          searchQuery={searchQuery}
+          onSearchChange={handleSearchChange}
+          onToggleFilters={handleToggleFilters}
+          showFilters={showFilters}
+        />
         
         <div className="flex flex-col md:flex-row gap-6 my-6">
           <div className="w-full md:w-72">
-            <CandidatesFilters />
+            <CandidatesFilters 
+              showFilters={showFilters}
+              onLocationChange={() => {}}
+              onCompanyChange={() => {}}
+              onPreviousCompanyChange={() => {}}
+              onSkillsChange={() => {}}
+              onExperienceChange={() => {}}
+              onEducationChange={() => {}}
+              onCertificationChange={() => {}}
+              onLanguageChange={() => {}}
+              onAvailabilityChange={() => {}}
+              onSalaryChange={() => {}}
+              onContractTypeChange={() => {}}
+              onRemotePreferenceChange={() => {}}
+              onMobilityChange={() => {}}
+              onReset={() => {}}
+            />
           </div>
           
           <div className="flex-1">
