@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Sparkles, Info } from 'lucide-react';
+import { Loader2, Sparkles, Info, Plus } from 'lucide-react';
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -16,11 +17,18 @@ import { Badge } from '@/components/ui/badge';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { JobOffer } from '@/services/data/jobOfferService';
 
 const jobOfferSchema = z.object({
   title: z.string().min(3, { message: "Le titre doit comporter au moins 3 caractères" }),
   company: z.string().optional(),
+  custom_company: z.string().optional(),
   location: z.string().optional(),
   description: z.string().optional(),
   contract_type: z.string().optional(),
@@ -49,6 +57,12 @@ interface JobOfferFormProps {
   isEditing?: boolean;
 }
 
+// Liste des entreprises prédéfinies
+const PREDEFINED_COMPANIES = [
+  "MIGSO-PCUBED",
+  "Autre"
+];
+
 const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = false }) => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(isEditing);
@@ -56,12 +70,15 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
   const [loadingAiSuggestions, setLoadingAiSuggestions] = useState(false);
   const [suggestion, setSuggestion] = useState<JobOfferSuggestion | null>(null);
   const [showSuggestionDialog, setShowSuggestionDialog] = useState(false);
+  const [isCustomCompany, setIsCustomCompany] = useState(false);
   const navigate = useNavigate();
   
   const form = useForm<JobOfferFormValues>({
     resolver: zodResolver(jobOfferSchema),
     defaultValues: {
       title: "",
+      company: "MIGSO-PCUBED", // Valeur par défaut
+      custom_company: "",
       contract_type: "CDI",
       remote_preference: "Sur site",
       status: "active",
@@ -73,6 +90,19 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     },
   });
   
+  // Surveiller le changement du champ company pour afficher le champ custom_company si nécessaire
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'company' && value.company === 'Autre') {
+        setIsCustomCompany(true);
+      } else if (name === 'company') {
+        setIsCustomCompany(false);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form.watch]);
+  
   useEffect(() => {
     const fetchJobOffer = async () => {
       if (!isEditing || !jobOfferId) return;
@@ -82,9 +112,21 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
         const jobOffer = await jobOfferService.getJobOfferById(jobOfferId);
         
         if (jobOffer) {
+          // Vérifier si l'entreprise fait partie des prédéfinies
+          const companyValue = PREDEFINED_COMPANIES.includes(jobOffer.company || "") 
+            ? jobOffer.company 
+            : "Autre";
+          
+          const customCompanyValue = !PREDEFINED_COMPANIES.includes(jobOffer.company || "") && jobOffer.company
+            ? jobOffer.company
+            : "";
+          
+          setIsCustomCompany(companyValue === "Autre");
+          
           form.reset({
             title: jobOffer.title || "",
-            company: jobOffer.company || "",
+            company: companyValue || "MIGSO-PCUBED",
+            custom_company: customCompanyValue || "",
             location: jobOffer.location || "",
             description: jobOffer.description || "",
             contract_type: jobOffer.contract_type || "CDI",
@@ -132,14 +174,26 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
         throw new Error("Le titre est requis");
       }
       
+      // Gérer le nom de l'entreprise en fonction de la sélection
+      const finalCompany = values.company === "Autre" ? values.custom_company : values.company;
+      
+      // Préparer les données pour la sauvegarde
+      const formattedValues = {
+        ...values,
+        company: finalCompany
+      };
+      
+      // Supprimer le champ custom_company qui n'est pas nécessaire pour la BD
+      delete formattedValues.custom_company;
+      
       if (isEditing && jobOfferId) {
-        await jobOfferService.updateJobOffer(jobOfferId, values);
+        await jobOfferService.updateJobOffer(jobOfferId, formattedValues);
         toast({
           title: "Offre d'emploi mise à jour",
           description: "L'offre d'emploi a été mise à jour avec succès",
         });
       } else {
-        const newJobOffer = await jobOfferService.createJobOffer(values as Omit<JobOffer, 'id' | 'user_id' | 'created_at' | 'updated_at'>);
+        const newJobOffer = await jobOfferService.createJobOffer(formattedValues as Omit<JobOffer, 'id' | 'user_id' | 'created_at' | 'updated_at'>);
         toast({
           title: "Offre d'emploi créée",
           description: "L'offre d'emploi a été créée avec succès",
@@ -329,14 +383,62 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Entreprise</FormLabel>
-                    <FormControl>
-                      <Input placeholder="ex: Ma Société" {...field} />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner une entreprise" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PREDEFINED_COMPANIES.map((company) => (
+                          <SelectItem key={company} value={company}>
+                            {company}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               
+              {isCustomCompany && (
+                <FormField
+                  control={form.control}
+                  name="custom_company"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nom de l'entreprise</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Saisir le nom de l'entreprise" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              
+              {!isCustomCompany && (
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Localisation</FormLabel>
+                      <FormControl>
+                        <Input placeholder="ex: Paris, France" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Important pour le matching géographique
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+            
+            {isCustomCompany && (
               <FormField
                 control={form.control}
                 name="location"
@@ -353,7 +455,7 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
                   </FormItem>
                 )}
               />
-            </div>
+            )}
             
             <FormField
               control={form.control}
