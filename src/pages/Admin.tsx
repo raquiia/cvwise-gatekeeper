@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   Users, Settings, Shield, Building, RefreshCw, 
@@ -152,6 +153,15 @@ const Admin = () => {
     setPendingUsers(prev => prev.filter(user => user.id !== userId));
   };
   
+  // Extract unique companies count from real users
+  const uniqueCompanies = new Set(
+    realUsers
+      .filter(user => user.profile?.company || user.company)
+      .map(user => user.profile?.company || user.company)
+  );
+  
+  const companiesCount = uniqueCompanies.size;
+  
   const recentUsers = realUsers.slice()
     .sort((a, b) => {
       const dateA = a.last_sign_in_at ? new Date(a.last_sign_in_at).getTime() : 0;
@@ -217,6 +227,7 @@ const Admin = () => {
                   pendingUsersCount={pendingUsers.length}
                   recentUsers={recentUsers}
                   formatDate={formatDate}
+                  companiesCount={companiesCount}
                 />
               </div>
               
