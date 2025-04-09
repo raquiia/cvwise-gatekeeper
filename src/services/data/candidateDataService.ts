@@ -223,12 +223,15 @@ export const candidateDataService = {
         throw new Error("Non authentifié");
       }
       
-      // Utilisez l'API directe plutôt que via supabase.from
+      // Prepare job offer data
+      const jobOfferData = {
+        ...jobOffer,
+        user_id: user.id
+      };
+      
+      // Use the secure RPC function
       const { data, error } = await supabase.rpc('create_job_offer', {
-        p_job_offer: {
-          ...jobOffer,
-          user_id: user.id
-        }
+        p_job_offer: jobOfferData
       });
       
       if (error) {
@@ -238,12 +241,15 @@ export const candidateDataService = {
       
       console.log("Job offer created successfully:", data);
       
+      // Cast data to JobOffer type
+      const typedData = data as JobOffer;
+      
       // Calculer automatiquement les scores de matching pour tous les candidats de l'utilisateur
-      if (data && data.id) {
-        await candidateDataService.calculateMatchesForJobOffer(data.id);
+      if (typedData && typedData.id) {
+        await candidateDataService.calculateMatchesForJobOffer(typedData.id);
       }
       
-      return data as JobOffer;
+      return typedData;
     } catch (error: any) {
       console.error("Exception in createJobOffer:", error);
       throw new Error(error.message || "Impossible de créer l'offre d'emploi");
@@ -257,7 +263,7 @@ export const candidateDataService = {
     try {
       console.log(`Updating job offer with ID: ${jobOfferId}`);
       
-      // Utilisez l'API directe plutôt que via supabase.from
+      // Use the secure RPC function
       const { data, error } = await supabase.rpc('update_job_offer', {
         p_job_offer_id: jobOfferId,
         p_updates: updates
@@ -270,12 +276,15 @@ export const candidateDataService = {
       
       console.log("Job offer updated successfully:", data);
       
+      // Cast data to JobOffer type
+      const typedData = data as JobOffer;
+      
       // Recalculer les scores de matching pour tous les candidats
-      if (data && data.id) {
+      if (typedData && typedData.id) {
         await candidateDataService.calculateMatchesForJobOffer(jobOfferId);
       }
       
-      return data as JobOffer;
+      return typedData;
     } catch (error: any) {
       console.error("Exception in updateJobOffer:", error);
       throw new Error(error.message || "Impossible de mettre à jour l'offre d'emploi");
@@ -289,7 +298,7 @@ export const candidateDataService = {
     try {
       console.log(`Deleting job offer with ID: ${jobOfferId}`);
       
-      // Utilisez l'API directe plutôt que via supabase.from
+      // Use the secure RPC function
       const { data, error } = await supabase.rpc('delete_job_offer', {
         p_job_offer_id: jobOfferId
       });
@@ -300,7 +309,7 @@ export const candidateDataService = {
       }
       
       console.log(`Job offer ${jobOfferId} deleted successfully`);
-      return true;
+      return data as boolean;
     } catch (error: any) {
       console.error("Exception in deleteJobOffer:", error);
       throw new Error(error.message || "Impossible de supprimer l'offre d'emploi");
@@ -314,7 +323,7 @@ export const candidateDataService = {
     try {
       console.log("Fetching job offers for current user");
       
-      // Utilisez l'API directe plutôt que via supabase.from
+      // Use the secure RPC function
       const { data, error } = await supabase.rpc('get_user_job_offers');
       
       if (error) {
@@ -322,8 +331,11 @@ export const candidateDataService = {
         throw new Error(`Erreur lors de la récupération des offres d'emploi: ${error.message}`);
       }
       
-      console.log(`Retrieved ${data ? data.length : 0} job offers`);
-      return (data || []) as JobOffer[];
+      // Cast data to JobOffer[] type
+      const typedData = (data || []) as JobOffer[];
+      
+      console.log(`Retrieved ${typedData.length} job offers`);
+      return typedData;
     } catch (error: any) {
       console.error("Exception in getUserJobOffers:", error);
       throw new Error(error.message || "Impossible de récupérer les offres d'emploi");
@@ -337,7 +349,7 @@ export const candidateDataService = {
     try {
       console.log(`Fetching job offer with ID: ${jobOfferId}`);
       
-      // Utilisez l'API directe plutôt que via supabase.from
+      // Use the secure RPC function
       const { data, error } = await supabase.rpc('get_job_offer_by_id', {
         p_job_offer_id: jobOfferId
       });
@@ -352,8 +364,11 @@ export const candidateDataService = {
         return null;
       }
       
-      console.log("Job offer retrieved successfully:", data);
-      return data as JobOffer;
+      // Cast data to JobOffer type
+      const typedData = data as JobOffer;
+      
+      console.log("Job offer retrieved successfully:", typedData);
+      return typedData;
     } catch (error: any) {
       console.error("Exception in getJobOfferById:", error);
       throw new Error(error.message || "Impossible de récupérer l'offre d'emploi");
@@ -376,8 +391,11 @@ export const candidateDataService = {
         throw new Error(`Erreur lors du calcul des correspondances: ${error.message}`);
       }
       
-      console.log(`Calculated matches for ${data ? data.length : 0} candidates`);
-      return (data || []) as string[];
+      // Cast data to string[] type
+      const typedData = (data || []) as string[];
+      
+      console.log(`Calculated matches for ${typedData.length} candidates`);
+      return typedData;
     } catch (error: any) {
       console.error("Exception in calculateMatchesForJobOffer:", error);
       throw new Error(error.message || "Impossible de calculer les correspondances");
@@ -391,7 +409,7 @@ export const candidateDataService = {
     try {
       console.log(`Fetching match between candidate ${candidateId} and job offer ${jobOfferId}`);
       
-      // Utilisez l'API directe plutôt que via supabase.from
+      // Use the secure RPC function
       const { data, error } = await supabase.rpc('get_candidate_job_match', {
         p_candidate_id: candidateId,
         p_job_offer_id: jobOfferId
@@ -407,8 +425,11 @@ export const candidateDataService = {
         return null;
       }
       
-      console.log("Match retrieved successfully:", data);
-      return data as CandidateJobMatch;
+      // Cast data to CandidateJobMatch type
+      const typedData = data as CandidateJobMatch;
+      
+      console.log("Match retrieved successfully:", typedData);
+      return typedData;
     } catch (error: any) {
       console.error("Exception in getCandidateJobMatch:", error);
       throw new Error(error.message || "Impossible de récupérer le matching");
@@ -422,7 +443,7 @@ export const candidateDataService = {
     try {
       console.log(`Fetching all matches for job offer: ${jobOfferId}`);
       
-      // Utilisez l'API directe plutôt que via supabase.from
+      // Use the secure RPC function
       const { data, error } = await supabase.rpc('get_matches_for_job_offer', {
         p_job_offer_id: jobOfferId
       });
@@ -437,17 +458,14 @@ export const candidateDataService = {
         return [];
       }
       
-      // Transformer les données en format attendu
-      const candidatesWithMatches = data.map(item => ({
-        candidate: item.candidate as CandidateData,
-        match: item.match as CandidateJobMatch
-      }));
+      // Cast data to expected type
+      const typedData = data as {candidate: CandidateData; match: CandidateJobMatch}[];
       
       // Trier par score de matching (du plus élevé au plus bas)
-      candidatesWithMatches.sort((a, b) => b.match.match_score - a.match.match_score);
+      typedData.sort((a, b) => b.match.match_score - a.match.match_score);
       
-      console.log(`Retrieved ${candidatesWithMatches.length} matches for job offer ${jobOfferId}`);
-      return candidatesWithMatches;
+      console.log(`Retrieved ${typedData.length} matches for job offer ${jobOfferId}`);
+      return typedData;
     } catch (error: any) {
       console.error("Exception in getMatchesForJobOffer:", error);
       throw new Error(error.message || "Impossible de récupérer les matchings");
