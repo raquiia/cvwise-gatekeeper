@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { UserCheck, Clock, Building, User } from 'lucide-react';
+import { UserCheck, Clock, Award, User } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   Card,
@@ -55,9 +55,9 @@ const UserStats: React.FC<UserStatsProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950/60 flex items-center justify-center mr-3">
-                <Building size={16} className="text-blue-600 dark:text-blue-400" />
+                <Award size={16} className="text-blue-600 dark:text-blue-400" />
               </div>
-              <span className="text-sm font-medium">Companies</span>
+              <span className="text-sm font-medium">Top Candidates</span>
             </div>
             <span className="font-semibold">{companiesCount}</span>
           </div>

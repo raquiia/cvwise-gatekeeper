@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Users, FileText, Search, CheckCircle, 
-  ChevronRight, Upload, Briefcase
+  ChevronRight, Upload, Briefcase, Award
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
@@ -20,21 +20,9 @@ const Dashboard = () => {
   const [recentCandidates, setRecentCandidates] = useState([]);
   const { toast } = useToast();
   const { realUsers, loading: usersLoading } = useUserData();
-  const [companiesCount, setCompaniesCount] = useState(0);
   const [candidatesCount, setCandidatesCount] = useState(0);
   const [resumesCount, setResumesCount] = useState(0);
-  
-  useEffect(() => {
-    if (realUsers.length > 0) {
-      const uniqueCompanies = new Set(
-        realUsers
-          .filter(user => user.company || (user.profile && user.profile.company))
-          .map(user => user.company || (user.profile && user.profile.company))
-          .filter(Boolean)
-      );
-      setCompaniesCount(uniqueCompanies.size);
-    }
-  }, [realUsers]);
+  const [topCandidatesCount, setTopCandidatesCount] = useState(0);
   
   useEffect(() => {
     const fetchData = async () => {
@@ -55,6 +43,11 @@ const Dashboard = () => {
         }
         
         setCandidatesCount(candidatesData?.length || 0);
+        
+        const highScoredCandidates = (candidatesData || []).filter(
+          candidate => candidate.score >= 85
+        );
+        setTopCandidatesCount(highScoredCandidates.length);
         
         const recentCandidatesList = (candidatesData || [])
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -102,7 +95,7 @@ const Dashboard = () => {
           <div className="mb-4 md:mb-0">
             <h1 className="text-2xl font-bold text-navy-dark mb-1">Dashboard</h1>
             <p className="text-muted-foreground">
-              Welcome. Here is an overview of your activity.
+              Welcome to Migso's recruitment dashboard. Here is an overview of your activity.
             </p>
           </div>
           
@@ -180,16 +173,16 @@ const Dashboard = () => {
               <div className="glass rounded-xl p-5 card-hover">
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <p className="text-muted-foreground text-sm">Companies</p>
-                    <h3 className="text-2xl font-bold text-navy-dark">{companiesCount}</h3>
+                    <p className="text-muted-foreground text-sm">Top Candidates</p>
+                    <h3 className="text-2xl font-bold text-navy-dark">{topCandidatesCount}</h3>
                   </div>
                   <div className="bg-emerald-500 p-2 rounded-lg text-white">
-                    <Briefcase size={20} />
+                    <Award size={20} />
                   </div>
                 </div>
                 <div className="flex items-center">
                   <span className="text-xs text-muted-foreground">
-                    From user profiles
+                    Score 85% or higher
                   </span>
                 </div>
               </div>
@@ -320,7 +313,7 @@ const Dashboard = () => {
                   last_sign_in_at: user.last_sign_in_at
                 }))}
                 formatDate={formatDate}
-                companiesCount={companiesCount}
+                companiesCount={topCandidatesCount}
               />
             )}
           </div>
