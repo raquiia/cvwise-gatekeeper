@@ -319,6 +319,8 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     try {
       setLoadingAiSuggestions(true);
       
+      console.log("Generating suggestions from freeform text:", freeformInput.substring(0, 100) + "...");
+      
       const firstLine = freeformInput.split('\n')[0].trim();
       const possibleTitle = firstLine.length < 100 ? firstLine : freeformInput.split('.')[0].trim();
       const jobTitle = possibleTitle.length < 100 ? possibleTitle : "Offre d'emploi";
@@ -329,52 +331,54 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
       const suggestions = await candidateMatchingService.generateJobOfferSuggestions(jobTitle, location, freeformInput);
       setSuggestion(suggestions);
       
-      if (suggestions.title) {
-        form.setValue('title', suggestions.title);
-      }
-      
-      if (suggestions.location) {
-        form.setValue('location', suggestions.location);
-      }
-      
-      if (suggestions.description) {
-        form.setValue('description', suggestions.description);
-      }
-      
-      if (suggestions.requiredSkills && suggestions.requiredSkills.length > 0) {
-        form.setValue('required_skills', suggestions.requiredSkills);
-      }
-      
-      if (suggestions.education) {
-        form.setValue('education_level', suggestions.education);
-      }
-      
-      if (suggestions.experience) {
-        if (suggestion.experience.min !== undefined) {
-          form.setValue('experience_years_min', suggestions.experience.min);
+      if (suggestions) {
+        if (suggestions.title) {
+          form.setValue('title', suggestions.title);
         }
-        if (suggestion.experience.max !== undefined) {
-          form.setValue('experience_years_max', suggestions.experience.max);
+        
+        if (suggestions.location) {
+          form.setValue('location', suggestions.location);
         }
-      }
-      
-      if (suggestion.contractType) {
-        form.setValue('contract_type', suggestions.contractType);
-      }
-      
-      if (suggestion.remotePreference) {
-        form.setValue('remote_preference', suggestions.remotePreference);
-      }
-      
-      if (suggestion.salary) {
-        if (suggestion.salary.min !== undefined) {
-          form.setValue('salary_min', suggestions.salary.min);
+        
+        if (suggestions.description) {
+          form.setValue('description', suggestions.description);
         }
-        if (suggestion.salary.max !== undefined) {
-          form.setValue('salary_max', suggestions.salary.max);
+        
+        if (suggestion.requiredSkills && suggestion.requiredSkills.length > 0) {
+          form.setValue('required_skills', suggestion.requiredSkills);
         }
-        if (suggestion.salary.currency) {
-          form.setValue('salary_currency', suggestions.salary.currency);
+        
+        if (suggestion.education) {
+          form.setValue('education_level', suggestions.education);
+        }
+        
+        if (suggestion.experience) {
+          if (suggestion.experience.min !== undefined) {
+            form.setValue('experience_years_min', suggestions.experience.min);
+          }
+          if (suggestion.experience.max !== undefined) {
+            form.setValue('experience_years_max', suggestions.experience.max);
+          }
+        }
+        
+        if (suggestion.contractType) {
+          form.setValue('contract_type', suggestions.contractType);
+        }
+        
+        if (suggestion.remotePreference) {
+          form.setValue('remote_preference', suggestions.remotePreference);
+        }
+        
+        if (suggestion.salary) {
+          if (suggestion.salary.min !== undefined) {
+            form.setValue('salary_min', suggestions.salary.min);
+          }
+          if (suggestion.salary.max !== undefined) {
+            form.setValue('salary_max', suggestions.salary.max);
+          }
+          if (suggestion.salary.currency) {
+            form.setValue('salary_currency', suggestions.salary.currency);
+          }
         }
       }
       
