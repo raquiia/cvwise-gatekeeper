@@ -5,7 +5,6 @@ import Layout from '@/components/Layout';
 import CandidatesHeader from '@/components/candidates/CandidatesHeader';
 import CandidatesTable from '@/components/candidates/CandidatesTable';
 import CandidatesFilters from '@/components/candidates/CandidatesFilters';
-import MockDataAlert from '@/components/candidates/MockDataAlert';
 import { candidateDataService } from '@/services/data/candidateDataService';
 import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
@@ -112,8 +111,9 @@ const Candidates = () => {
   };
   
   const handleApplyFilters = () => {
-    // TODO: Apply filters to candidate data
+    // Apply filters to candidate data
     console.log("Applying filters:", { location, company, previousCompany, experience, selectedSkills, semanticSearch });
+    // TODO: Implement actual filtering logic
   };
   
   const handleResetFilters = () => {
@@ -171,7 +171,7 @@ const Candidates = () => {
           </div>
           
           <div className="flex-1">
-            <MockDataAlert />
+            {/* Suppression du composant MockDataAlert */}
             
             <CandidatesTable 
               candidates={filteredCandidates}

@@ -1,4 +1,3 @@
-
 // Full implementation of candidate matching service with job offer suggestions
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -287,10 +286,9 @@ export const candidateMatchingService = {
       }
       
       if (!matchesData || matchesData.length === 0) {
-        console.log("No matches found in database, using mock data");
-        // Return mock matches when no real matches exist
-        const mockMatches = generateMockMatches(jobOfferId);
-        return mockMatches;
+        console.log("No matches found in database");
+        // Nous ne retournons plus de données fictives, mais un tableau vide
+        return [];
       }
       
       // Step 2: Get candidate details separately to avoid recursion issues
@@ -335,13 +333,12 @@ export const candidateMatchingService = {
       console.error("Error fetching matches for job offer:", error);
       toast({
         title: "Erreur de récupération des correspondances",
-        description: "Utilisation des données de démonstration comme solution de secours.",
+        description: "Une erreur s'est produite lors de la récupération des correspondances.",
         variant: "destructive",
       });
       
-      // Fall back to mock data when there's an error
-      console.log("Using mock data as fallback after error");
-      return generateMockMatches(jobOfferId);
+      // Retourner un tableau vide en cas d'erreur au lieu de données fictives
+      return [];
     }
   },
   
@@ -360,6 +357,6 @@ export const candidateMatchingService = {
     }
   },
   
-  // Flag to indicate whether mock data is being used
+  // Modifier le flag pour indiquer que nous n'utilisons pas de données fictives
   usingMockData: false
 };
