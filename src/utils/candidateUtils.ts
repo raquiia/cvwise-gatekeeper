@@ -95,19 +95,21 @@ export function processJobOfferData(jobOffer: any) {
  * Process candidate data to ensure type consistency
  */
 export function processCandidateData(candidate: any) {
+  if (!candidate) return {};
+  
   return {
     ...candidate,
-    skills: ensureStringArray(candidate.skills),
-    education: ensureArray(candidate.education),
-    experiences: ensureArray(candidate.experiences),
-    languages: ensureArray(candidate.languages),
-    certifications: ensureArray(candidate.certifications),
-    publications: ensureArray(candidate.publications),
-    professional_references: ensureArray(candidate.professional_references),
-    professional_networks: ensureArray(candidate.professional_networks),
-    continuous_training: ensureArray(candidate.continuous_training),
-    special_permits: ensureArray(candidate.special_permits),
-    industries: ensureArray(candidate.industries),
-    projects: ensureArray(candidate.projects)
+    skills: ensureStringArray(candidate.skills || []),
+    education: ensureArray(candidate.education || []),
+    experiences: ensureArray(candidate.experiences || []),
+    languages: ensureArray(candidate.languages || []),
+    certifications: ensureArray(candidate.certifications || []),
+    publications: ensureArray(candidate.publications || []),
+    professional_references: ensureArray(candidate.professional_references || []),
+    professional_networks: ensureArray(candidate.professional_networks || []),
+    continuous_training: ensureArray(candidate.continuous_training || []),
+    special_permits: ensureArray(candidate.special_permits || []),
+    industries: ensureArray(candidate.industries || []),
+    projects: ensureArray(candidate.projects || [])
   };
 }

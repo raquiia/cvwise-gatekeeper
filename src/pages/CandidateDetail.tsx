@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -46,6 +45,7 @@ const CandidateDetail = () => {
           console.log("Candidate data retrieved successfully:", data);
           // Process the data to ensure arrays and properties are correctly formatted
           const processedData = processCandidateData(data);
+          console.log("Processed candidate data:", processedData);
           setCandidate(processedData);
         }
       } catch (err: any) {
