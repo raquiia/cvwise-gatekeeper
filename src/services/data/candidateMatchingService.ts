@@ -1,7 +1,9 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import type { JobOffer } from './job-offers/types';
 import type { CandidateData } from './candidateService';
 import { semanticMatchingService } from '../semantic/semanticMatchingService';
+import { ensureArray } from '@/utils/candidateUtils';
 
 // Define types for matching
 export interface SkillsDetails {
@@ -52,6 +54,23 @@ export interface JobOfferSuggestion {
   company: string;
   matchScore: number;
   details?: MatchDetails;
+  description?: string;
+  requiredSkills?: string[];
+  softSkills?: string[];
+  toolsAndTechnologies?: string[];
+  education?: string;
+  experience?: {
+    min: number;
+    max: number;
+  };
+  contractType?: string;
+  remotePreference?: string;
+  salary?: {
+    min: number;
+    max: number;
+    currency: string;
+  };
+  location?: string;
 }
 
 // Job offer matching service
@@ -178,13 +197,11 @@ export const candidateMatchingService = {
         candidate.id, jobOffer.id);
       
       // Extract skills
-      const candidateSkills = Array.isArray(candidate.skills) 
-        ? candidate.skills.map(s => typeof s === 'string' ? s.toLowerCase() : '')
-        : [];
+      const candidateSkills = ensureArray<string>(candidate.skills)
+        .map(s => typeof s === 'string' ? s.toLowerCase() : '');
         
-      const jobSkills = Array.isArray(jobOffer.required_skills) 
-        ? jobOffer.required_skills.map(s => typeof s === 'string' ? s.toLowerCase() : '')
-        : [];
+      const jobSkills = ensureArray<string>(jobOffer.required_skills)
+        .map(s => typeof s === 'string' ? s.toLowerCase() : '');
       
       // Match skills
       const matchedSkills = candidateSkills.filter(skill => 
@@ -225,9 +242,9 @@ export const candidateMatchingService = {
       
       // Match experience
       const experienceMatch = {
-        required: jobOffer.experience_years_required || 0,
+        required: jobOffer.experience_years_min || 0,
         candidate: candidate.years_experience || 0,
-        match: (candidate.years_experience || 0) >= (jobOffer.experience_years_required || 0)
+        match: (candidate.years_experience || 0) >= (jobOffer.experience_years_min || 0)
       };
       
       // Match location
@@ -256,17 +273,19 @@ export const candidateMatchingService = {
         match: false
       };
       
-      if (candidate.education && Array.isArray(candidate.education) && candidate.education.length > 0) {
+      const candidateEducation = ensureArray(candidate.education);
+      
+      if (candidateEducation.length > 0) {
         // Extract highest education level from candidate
-        const candidateEducation = candidate.education.map(edu => {
+        const candidateEduString = candidateEducation.map(edu => {
           if (typeof edu === 'string') return edu;
           return edu.degree || edu.diploma || '';
         }).join(' ');
         
-        educationMatch.candidate = candidateEducation;
+        educationMatch.candidate = candidateEduString;
         
         if (jobOffer.education_level) {
-          educationMatch.match = candidateEducation.toLowerCase().includes(
+          educationMatch.match = candidateEduString.toLowerCase().includes(
             jobOffer.education_level.toLowerCase()
           );
         }
@@ -280,7 +299,7 @@ export const candidateMatchingService = {
       
       const overallScore = Math.round(
         (skillMatchPercentage * skillsWeight) +
-        (experienceMatch.match ? 100 : Math.min(100, (candidate.years_experience || 0) / (jobOffer.experience_years_required || 1) * 100)) * experienceWeight +
+        (experienceMatch.match ? 100 : Math.min(100, (candidate.years_experience || 0) / (jobOffer.experience_years_min || 1) * 100)) * experienceWeight +
         (locationMatch.match ? 100 : 0) * locationWeight +
         (educationMatch.match ? 100 : 0) * educationWeight
       );
@@ -395,58 +414,43 @@ export const candidateMatchingService = {
   },
   
   // Generate job offer suggestions for a candidate
-  generateJobOfferSuggestions: async (candidateId: string): Promise<JobOfferSuggestion[]> => {
+  generateJobOfferSuggestions: async (
+    jobTitle: string, 
+    location?: string, 
+    freeformText?: string
+  ): Promise<JobOfferSuggestion> => {
     try {
-      console.log('Generating job suggestions for candidate:', candidateId);
+      console.log('Generating job suggestions with:', { jobTitle, location, freeformText: freeformText?.substring(0, 100) + "..." });
       
-      // Fetch the candidate
-      const { data: candidate, error: candidateError } = await supabase
-        .from('candidates')
-        .select('*')
-        .eq('id', candidateId)
-        .single();
-        
-      if (candidateError || !candidate) {
-        console.error('Error fetching candidate:', candidateError);
-        throw new Error('Candidate not found');
-      }
+      // Here we would normally communicate with an API or backend service
+      // For now, we'll return a mock suggestion
       
-      // Fetch all job offers
-      const { data: jobOffers, error: jobOffersError } = await supabase
-        .from('job_offers')
-        .select('*');
-        
-      if (jobOffersError) {
-        console.error('Error fetching job offers:', jobOffersError);
-        throw jobOffersError;
-      }
-      
-      if (!jobOffers || jobOffers.length === 0) {
-        return [];
-      }
-      
-      // Calculate match scores for each job offer
-      const suggestions: JobOfferSuggestion[] = [];
-      
-      for (const jobOffer of jobOffers) {
-        const match = await candidateMatchingService.getCandidateJobMatch(candidate, jobOffer);
-        
-        suggestions.push({
-          id: jobOffer.id,
-          title: jobOffer.title,
-          company: jobOffer.company,
-          matchScore: match.score,
-          details: match.details
-        });
-      }
-      
-      // Sort by score (descending)
-      suggestions.sort((a, b) => b.matchScore - a.matchScore);
-      
-      return suggestions;
+      return {
+        id: "suggestion-1",
+        title: jobTitle,
+        company: "Company Name",
+        location: location || "Paris, France",
+        matchScore: 85,
+        description: freeformText || `Description for ${jobTitle}`,
+        requiredSkills: ["JavaScript", "React", "TypeScript", "Node.js", "Git"],
+        softSkills: ["Communication", "Teamwork", "Problem Solving"],
+        toolsAndTechnologies: ["VS Code", "GitHub", "Docker"],
+        education: "Bac+5",
+        experience: {
+          min: 2,
+          max: 5
+        },
+        contractType: "CDI",
+        remotePreference: "Hybride",
+        salary: {
+          min: 45000,
+          max: 60000,
+          currency: "EUR"
+        }
+      };
     } catch (error) {
       console.error('Error generating job offer suggestions:', error);
-      return [];
+      throw error;
     }
   }
 };

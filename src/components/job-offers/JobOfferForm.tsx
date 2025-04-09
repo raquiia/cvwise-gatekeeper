@@ -5,7 +5,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from '@/hooks/use-toast';
-import { jobOfferService } from '@/services/data/jobOfferService';
+import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
 import { candidateMatchingService } from '@/services/data/candidateMatchingService';
 import { JobOfferSuggestion } from '@/services/data/candidateMatchingService';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import type { JobOffer } from '@/services/data/jobOfferService';
+import type { JobOffer } from '@/services/data/job-offers/types';
 
 const jobOfferSchema = z.object({
   title: z.string().min(3, { message: "Le titre doit comporter au moins 3 caractères" }),
@@ -344,39 +344,39 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
           form.setValue('description', suggestions.description);
         }
         
-        if (suggestion.requiredSkills && suggestion.requiredSkills.length > 0) {
-          form.setValue('required_skills', suggestion.requiredSkills);
+        if (suggestions.requiredSkills && suggestions.requiredSkills.length > 0) {
+          form.setValue('required_skills', suggestions.requiredSkills);
         }
         
-        if (suggestion.education) {
+        if (suggestions.education) {
           form.setValue('education_level', suggestions.education);
         }
         
-        if (suggestion.experience) {
-          if (suggestion.experience.min !== undefined) {
+        if (suggestions.experience) {
+          if (suggestions.experience.min !== undefined) {
             form.setValue('experience_years_min', suggestions.experience.min);
           }
-          if (suggestion.experience.max !== undefined) {
+          if (suggestions.experience.max !== undefined) {
             form.setValue('experience_years_max', suggestions.experience.max);
           }
         }
         
-        if (suggestion.contractType) {
+        if (suggestions.contractType) {
           form.setValue('contract_type', suggestions.contractType);
         }
         
-        if (suggestion.remotePreference) {
+        if (suggestions.remotePreference) {
           form.setValue('remote_preference', suggestions.remotePreference);
         }
         
-        if (suggestion.salary) {
-          if (suggestion.salary.min !== undefined) {
+        if (suggestions.salary) {
+          if (suggestions.salary.min !== undefined) {
             form.setValue('salary_min', suggestions.salary.min);
           }
-          if (suggestion.salary.max !== undefined) {
+          if (suggestions.salary.max !== undefined) {
             form.setValue('salary_max', suggestions.salary.max);
           }
-          if (suggestion.salary.currency) {
+          if (suggestions.salary.currency) {
             form.setValue('salary_currency', suggestions.salary.currency);
           }
         }

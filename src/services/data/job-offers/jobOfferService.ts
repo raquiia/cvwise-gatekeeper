@@ -1,7 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { candidateMatchingService } from '../candidateMatchingService';
 import { JobOffer } from './types';
+import { ensureArray } from '@/utils/candidateUtils';
 
 /**
  * Service responsable de la gestion des offres d'emploi

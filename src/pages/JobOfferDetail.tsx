@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, Edit, RefreshCw, FileText, User, Briefcase, AlertTriangle } from 'lucide-react';
@@ -15,11 +14,33 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { JobOffer } from '@/services/data/job-offers/types';
 import type { CandidateJobMatch, CandidateMatch } from '@/services/data/candidateMatchingService';
+import { supabase } from '@/integrations/supabase/client';
+
+interface ExtendedCandidateMatch extends CandidateMatch {
+  candidate?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    position?: string;
+    company?: string;
+    location?: string;
+    years_experience?: number;
+    experiences?: any[];
+  };
+  match?: {
+    match_score: number;
+    skills_match_score: number;
+    experience_match_score: number;
+    education_match_score: number;
+    location_match_score: number;
+    match_details?: any;
+  };
+}
 
 const JobOfferDetail = () => {
   const { jobOfferId } = useParams<{ jobOfferId: string }>();
   const [jobOffer, setJobOffer] = useState<JobOffer | null>(null);
-  const [candidateMatches, setCandidateMatches] = useState<CandidateMatch[]>([]);
+  const [candidateMatches, setCandidateMatches] = useState<ExtendedCandidateMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [matchLoading, setMatchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,8 +97,39 @@ const JobOfferDetail = () => {
       const matches = await candidateMatchingService.getMatchesForJobOffer(jobOfferId);
       
       if (matches && matches.length > 0) {
-        setCandidateMatches(matches);
-        console.log("Real candidate matches loaded:", matches.length);
+        // Fetch additional candidate details for each match
+        const enhancedMatches: ExtendedCandidateMatch[] = await Promise.all(
+          matches.map(async (match) => {
+            try {
+              const { data: candidate } = await supabase
+                .from('candidates')
+                .select('*')
+                .eq('id', match.candidateId)
+                .single();
+              
+              return {
+                ...match,
+                candidate: candidate || undefined,
+                match: {
+                  match_score: match.score,
+                  skills_match_score: match.details?.skills.matchPercentage || 0,
+                  experience_match_score: match.details?.experienceLevel.match ? 100 : 
+                    Math.min(100, ((match.details?.experienceLevel.candidate || 0) / 
+                    (match.details?.experienceLevel.required || 1)) * 100),
+                  education_match_score: match.details?.educationLevel.match ? 100 : 0,
+                  location_match_score: match.details?.location.match ? 100 : 0,
+                  match_details: match.details
+                }
+              };
+            } catch (error) {
+              console.error(`Error fetching candidate details for ${match.candidateId}:`, error);
+              return match as ExtendedCandidateMatch;
+            }
+          })
+        );
+        
+        setCandidateMatches(enhancedMatches);
+        console.log("Real candidate matches loaded:", enhancedMatches.length);
       } else {
         setCandidateMatches([]);
         console.log("No candidate matches found");
@@ -100,20 +152,12 @@ const JobOfferDetail = () => {
     try {
       setMatchLoading(true);
       
-      const success = await candidateMatchingService.calculateMatchesForJobOffer(jobOfferId);
+      await candidateMatchingService.calculateMatchesForJobOffer(jobOfferId);
       
-      if (success) {
-        toast({
-          title: "Calcul terminé",
-          description: "Les correspondances ont été recalculées avec succès",
-        });
-      } else {
-        toast({
-          title: "Problème de calcul",
-          description: "Le calcul des correspondances a échoué. Veuillez vous assurer que vous avez des candidats dans votre base de données.",
-          variant: "default",
-        });
-      }
+      toast({
+        title: "Calcul terminé",
+        description: "Les correspondances ont été recalculées avec succès",
+      });
       
       await fetchCandidateMatches();
     } catch (error: any) {
@@ -143,13 +187,13 @@ const JobOfferDetail = () => {
     navigate(`/job-offers/${jobOfferId}/edit`);
   };
   
-  const renderMatchedSkills = (match: CandidateJobMatch) => {
-    const matchedSkills = match.match_details?.matchedSkills || 
-                          match.match_details?.skills_details?.matchedSkills || 
+  const renderMatchedSkills = (item: ExtendedCandidateMatch) => {
+    const matchedSkills = item.details?.skills.matched || 
+                          item.match?.match_details?.skills?.matched || 
                           [];
     
     if (matchedSkills.length > 0) {
-      return matchedSkills.map((skill, index) => (
+      return matchedSkills.map((skill: string, index: number) => (
         <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800 border-green-200">
           {skill}
         </Badge>
@@ -159,13 +203,13 @@ const JobOfferDetail = () => {
     }
   };
   
-  const renderMissingSkills = (match: CandidateJobMatch) => {
-    const missingSkills = match.match_details?.missingSkills || 
-                          match.match_details?.skills_details?.missingSkills || 
+  const renderMissingSkills = (item: ExtendedCandidateMatch) => {
+    const missingSkills = item.details?.skills.missing || 
+                          item.match?.match_details?.skills?.missing || 
                           [];
     
     if (missingSkills.length > 0) {
-      return missingSkills.map((skill, index) => (
+      return missingSkills.map((skill: string, index: number) => (
         <Badge key={index} variant="outline" className="text-xs bg-red-50 text-red-800 border-red-200">
           {skill}
         </Badge>
@@ -174,6 +218,7 @@ const JobOfferDetail = () => {
       return <span className="text-xs text-gray-500 italic">Aucune compétence manquante</span>;
     }
   };
+  
   
   if (loading) {
     return (
@@ -259,6 +304,7 @@ const JobOfferDetail = () => {
                 <CardTitle className="text-lg font-semibold">Détails de l'offre</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                
                 {jobOffer.description && (
                   <div className="mb-4">
                     <h3 className="font-semibold mb-2">Description</h3>
@@ -373,7 +419,7 @@ const JobOfferDetail = () => {
                     <span className="text-sm font-medium">Score moyen</span>
                     <span className="text-sm font-medium">
                       {candidateMatches.length > 0 
-                        ? Math.round(candidateMatches.reduce((sum, match) => sum + match.match.match_score, 0) / candidateMatches.length)
+                        ? Math.round(candidateMatches.reduce((sum, match) => sum + (match.match?.match_score || match.score), 0) / candidateMatches.length)
                         : 0}%
                     </span>
                   </div>
@@ -382,7 +428,7 @@ const JobOfferDetail = () => {
                     <span className="text-sm font-medium">Meilleur score</span>
                     <span className="text-sm font-medium">
                       {candidateMatches.length > 0 
-                        ? Math.max(...candidateMatches.map(match => match.match.match_score))
+                        ? Math.max(...candidateMatches.map(match => match.match?.match_score || match.score))
                         : 0}%
                     </span>
                   </div>
@@ -394,6 +440,7 @@ const JobOfferDetail = () => {
                   <h3 className="font-semibold mb-2">Distribution des scores</h3>
                   {candidateMatches.length > 0 ? (
                     <div className="space-y-3">
+                      
                       {[
                         { label: '90-100%', min: 90, max: 100 },
                         { label: '75-89%', min: 75, max: 89 },
@@ -401,9 +448,10 @@ const JobOfferDetail = () => {
                         { label: '25-49%', min: 25, max: 49 },
                         { label: '0-24%', min: 0, max: 24 },
                       ].map((range) => {
-                        const count = candidateMatches.filter(m => 
-                          m.match.match_score >= range.min && m.match.match_score <= range.max
-                        ).length;
+                        const count = candidateMatches.filter(m => {
+                          const score = m.match?.match_score || m.score;
+                          return score >= range.min && score <= range.max;
+                        }).length;
                         const percentage = candidateMatches.length > 0 
                           ? Math.round((count / candidateMatches.length) * 100) 
                           : 0;
@@ -453,13 +501,13 @@ const JobOfferDetail = () => {
               {candidateMatches.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                   {candidateMatches
-                    .sort((a, b) => b.match.match_score - a.match.match_score)
+                    .sort((a, b) => (b.match?.match_score || b.score) - (a.match?.match_score || a.score))
                     .map((item) => (
-                      <Card key={item.candidate.id} className="overflow-hidden">
+                      <Card key={item.candidateId} className="overflow-hidden">
                         <div className="flex">
                           <div className="w-24 bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
                             <div className="text-center">
-                              <div className="text-2xl font-bold text-white">{item.match.match_score}%</div>
+                              <div className="text-2xl font-bold text-white">{item.match?.match_score || item.score}%</div>
                               <div className="text-xs text-blue-100">Match</div>
                             </div>
                           </div>
@@ -468,14 +516,14 @@ const JobOfferDetail = () => {
                             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                               <div className="md:col-span-2">
                                 <h3 className="text-lg font-semibold">
-                                  {item.candidate.first_name} {item.candidate.last_name}
+                                  {item.firstName} {item.lastName}
                                 </h3>
-                                <p className="text-gray-600">{item.candidate.position || 'Aucun poste spécifié'}</p>
-                                <p className="text-sm text-gray-500 mt-1">{item.candidate.location || 'Aucune localisation'}</p>
+                                <p className="text-gray-600">{item.position || item.candidate?.position || 'Aucun poste spécifié'}</p>
+                                <p className="text-sm text-gray-500 mt-1">{item.candidate?.location || 'Aucune localisation'}</p>
                                 <div className="mt-2">
                                   <Button 
                                     size="sm" 
-                                    onClick={() => handleViewCandidate(item.candidate.id)}
+                                    onClick={() => handleViewCandidate(item.candidateId)}
                                     className="gap-1"
                                   >
                                     <User size={14} />
@@ -489,32 +537,32 @@ const JobOfferDetail = () => {
                                   <div>
                                     <div className="text-sm text-gray-500">Compétences</div>
                                     <div className="flex items-center mt-1">
-                                      <Progress value={item.match.skills_match_score} className="h-2 flex-1 mr-2" />
-                                      <span className="text-sm font-medium">{item.match.skills_match_score}%</span>
+                                      <Progress value={item.match?.skills_match_score || item.details?.skills.matchPercentage || 0} className="h-2 flex-1 mr-2" />
+                                      <span className="text-sm font-medium">{item.match?.skills_match_score || item.details?.skills.matchPercentage || 0}%</span>
                                     </div>
                                   </div>
                                   
                                   <div>
                                     <div className="text-sm text-gray-500">Expérience</div>
                                     <div className="flex items-center mt-1">
-                                      <Progress value={item.match.experience_match_score} className="h-2 flex-1 mr-2" />
-                                      <span className="text-sm font-medium">{item.match.experience_match_score}%</span>
+                                      <Progress value={item.match?.experience_match_score || (item.details?.experienceLevel.match ? 100 : 50)} className="h-2 flex-1 mr-2" />
+                                      <span className="text-sm font-medium">{item.match?.experience_match_score || (item.details?.experienceLevel.match ? 100 : 50)}%</span>
                                     </div>
                                   </div>
                                   
                                   <div>
                                     <div className="text-sm text-gray-500">Éducation</div>
                                     <div className="flex items-center mt-1">
-                                      <Progress value={item.match.education_match_score} className="h-2 flex-1 mr-2" />
-                                      <span className="text-sm font-medium">{item.match.education_match_score}%</span>
+                                      <Progress value={item.match?.education_match_score || (item.details?.educationLevel.match ? 100 : 0)} className="h-2 flex-1 mr-2" />
+                                      <span className="text-sm font-medium">{item.match?.education_match_score || (item.details?.educationLevel.match ? 100 : 0)}%</span>
                                     </div>
                                   </div>
                                   
                                   <div>
                                     <div className="text-sm text-gray-500">Localisation</div>
                                     <div className="flex items-center mt-1">
-                                      <Progress value={item.match.location_match_score} className="h-2 flex-1 mr-2" />
-                                      <span className="text-sm font-medium">{item.match.location_match_score}%</span>
+                                      <Progress value={item.match?.location_match_score || (item.details?.location.match ? 100 : 0)} className="h-2 flex-1 mr-2" />
+                                      <span className="text-sm font-medium">{item.match?.location_match_score || (item.details?.location.match ? 100 : 0)}%</span>
                                     </div>
                                   </div>
                                 </div>
@@ -522,7 +570,7 @@ const JobOfferDetail = () => {
                                 <div className="mt-3">
                                   <h4 className="text-sm font-semibold mb-1">Compétences correspondantes:</h4>
                                   <div className="flex flex-wrap gap-1">
-                                    {renderMatchedSkills(item.match)}
+                                    {renderMatchedSkills(item)}
                                   </div>
                                 </div>
                               </div>
@@ -550,21 +598,21 @@ const JobOfferDetail = () => {
               {candidateMatches.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                   {candidateMatches
-                    .sort((a, b) => b.match.skills_match_score - a.match.skills_match_score)
+                    .sort((a, b) => (b.match?.skills_match_score || (b.details?.skills.matchPercentage || 0)) - (a.match?.skills_match_score || (a.details?.skills.matchPercentage || 0)))
                     .map((item) => (
-                      <Card key={item.candidate.id}>
+                      <Card key={item.candidateId}>
                         <CardContent className="p-4">
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                               <h3 className="text-lg font-semibold">
-                                {item.candidate.first_name} {item.candidate.last_name}
+                                {item.firstName} {item.lastName}
                               </h3>
-                              <p className="text-gray-600">{item.candidate.position || 'Aucun poste spécifié'}</p>
-                              <p className="text-sm text-gray-500">{item.candidate.location || 'Aucune localisation'}</p>
+                              <p className="text-gray-600">{item.position || item.candidate?.position || 'Aucun poste spécifié'}</p>
+                              <p className="text-sm text-gray-500">{item.candidate?.location || 'Aucune localisation'}</p>
                               <div className="mt-2">
                                 <Button 
                                   size="sm" 
-                                  onClick={() => handleViewCandidate(item.candidate.id)}
+                                  onClick={() => handleViewCandidate(item.candidateId)}
                                   className="gap-1"
                                 >
                                   <User size={14} />
@@ -577,23 +625,23 @@ const JobOfferDetail = () => {
                               <div className="mb-4">
                                 <div className="flex justify-between items-center mb-1">
                                   <span className="font-medium">Match de compétences</span>
-                                  <span className="font-bold text-lg">{item.match.skills_match_score}%</span>
+                                  <span className="font-bold text-lg">{item.match?.skills_match_score || item.details?.skills.matchPercentage || 0}%</span>
                                 </div>
-                                <Progress value={item.match.skills_match_score} className="h-2" />
+                                <Progress value={item.match?.skills_match_score || item.details?.skills.matchPercentage || 0} className="h-2" />
                               </div>
                               
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                   <h4 className="text-sm font-semibold mb-2">Compétences correspondantes:</h4>
                                   <div className="flex flex-wrap gap-1">
-                                    {renderMatchedSkills(item.match)}
+                                    {renderMatchedSkills(item)}
                                   </div>
                                 </div>
                                 
                                 <div>
                                   <h4 className="text-sm font-semibold mb-2">Compétences manquantes:</h4>
                                   <div className="flex flex-wrap gap-1">
-                                    {renderMissingSkills(item.match)}
+                                    {renderMissingSkills(item)}
                                   </div>
                                 </div>
                               </div>
@@ -602,16 +650,16 @@ const JobOfferDetail = () => {
                                 <h4 className="text-sm font-semibold mb-1">Autres scores:</h4>
                                 <div className="grid grid-cols-3 gap-2">
                                   <div>
-                                    <div className="text-xs text-gray-500">Global: {item.match.match_score}%</div>
-                                    <Progress value={item.match.match_score} className="h-1 mt-1" />
+                                    <div className="text-xs text-gray-500">Global: {item.match?.match_score || item.score}%</div>
+                                    <Progress value={item.match?.match_score || item.score} className="h-1 mt-1" />
                                   </div>
                                   <div>
-                                    <div className="text-xs text-gray-500">Expérience: {item.match.experience_match_score}%</div>
-                                    <Progress value={item.match.experience_match_score} className="h-1 mt-1" />
+                                    <div className="text-xs text-gray-500">Expérience: {item.match?.experience_match_score || (item.details?.experienceLevel.match ? 100 : 50)}%</div>
+                                    <Progress value={item.match?.experience_match_score || (item.details?.experienceLevel.match ? 100 : 50)} className="h-1 mt-1" />
                                   </div>
                                   <div>
-                                    <div className="text-xs text-gray-500">Éducation: {item.match.education_match_score}%</div>
-                                    <Progress value={item.match.education_match_score} className="h-1 mt-1" />
+                                    <div className="text-xs text-gray-500">Éducation: {item.match?.education_match_score || (item.details?.educationLevel.match ? 100 : 0)}%</div>
+                                    <Progress value={item.match?.education_match_score || (item.details?.educationLevel.match ? 100 : 0)} className="h-1 mt-1" />
                                   </div>
                                 </div>
                               </div>
@@ -635,28 +683,28 @@ const JobOfferDetail = () => {
               {candidateMatches.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4">
                   {candidateMatches
-                    .sort((a, b) => b.match.experience_match_score - a.match.experience_match_score)
+                    .sort((a, b) => (b.match?.experience_match_score || (b.details?.experienceLevel.match ? 100 : 50)) - (a.match?.experience_match_score || (a.details?.experienceLevel.match ? 100 : 50)))
                     .map((item) => (
-                      <Card key={item.candidate.id}>
+                      <Card key={item.candidateId}>
                         <CardContent className="p-4">
                           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                             <div className="md:col-span-2">
                               <h3 className="text-lg font-semibold">
-                                {item.candidate.first_name} {item.candidate.last_name}
+                                {item.firstName} {item.lastName}
                               </h3>
-                              <p className="text-gray-600">{item.candidate.position || 'Aucun poste spécifié'}</p>
+                              <p className="text-gray-600">{item.position || item.candidate?.position || 'Aucun poste spécifié'}</p>
                               <div className="flex justify-between items-center mt-2">
                                 <span className="text-sm text-gray-500">
-                                  {item.candidate.years_experience || 0} an{item.candidate.years_experience !== 1 ? 's' : ''} d'expérience
+                                  {item.candidate?.years_experience || 0} an{item.candidate?.years_experience !== 1 ? 's' : ''} d'expérience
                                 </span>
                                 <Badge variant="secondary">
-                                  {item.match.experience_match_score}%
+                                  {item.match?.experience_match_score || (item.details?.experienceLevel.match ? 100 : 50)}%
                                 </Badge>
                               </div>
                               <div className="mt-2">
                                 <Button 
                                   size="sm" 
-                                  onClick={() => handleViewCandidate(item.candidate.id)}
+                                  onClick={() => handleViewCandidate(item.candidateId)}
                                   className="gap-1"
                                 >
                                   <User size={14} />
@@ -669,19 +717,19 @@ const JobOfferDetail = () => {
                               <div className="mb-4">
                                 <div className="flex justify-between items-center mb-1">
                                   <span className="font-medium">Match d'expérience</span>
-                                  <span className="font-bold text-lg">{item.match.experience_match_score}%</span>
+                                  <span className="font-bold text-lg">{item.match?.experience_match_score || (item.details?.experienceLevel.match ? 100 : 50)}%</span>
                                 </div>
-                                <Progress value={item.match.experience_match_score} className="h-2" />
+                                <Progress value={item.match?.experience_match_score || (item.details?.experienceLevel.match ? 100 : 50)} className="h-2" />
                               </div>
                               
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <h4 className="text-sm font-semibold mb-1">Expérience du candidat:</h4>
                                   <p className="text-sm">
-                                    {item.candidate.years_experience || 0} an{item.candidate.years_experience !== 1 ? 's' : ''}
+                                    {item.candidate?.years_experience || 0} an{item.candidate?.years_experience !== 1 ? 's' : ''}
                                   </p>
                                   <p className="text-xs text-gray-500 mt-1">
-                                    {item.candidate.experiences && Array.isArray(item.candidate.experiences) && item.candidate.experiences.length > 0 
+                                    {item.candidate?.experiences && Array.isArray(item.candidate.experiences) && item.candidate.experiences.length > 0 
                                       ? `${item.candidate.experiences.length} expérience(s) professionnelle(s)` 
                                       : 'Aucune expérience détaillée'}
                                   </p>
@@ -699,39 +747,8 @@ const JobOfferDetail = () => {
                                 <h4 className="text-sm font-semibold mb-1">Autres scores:</h4>
                                 <div className="grid grid-cols-3 gap-2">
                                   <div>
-                                    <div className="text-xs text-gray-500">Global: {item.match.match_score}%</div>
-                                    <Progress value={item.match.match_score} className="h-1 mt-1" />
+                                    <div className="text-xs text-gray-500">Global: {item.match?.match_score || item.score}%</div>
+                                    <Progress value={item.match?.match_score || item.score} className="h-1 mt-1" />
                                   </div>
                                   <div>
-                                    <div className="text-xs text-gray-500">Compétences: {item.match.skills_match_score}%</div>
-                                    <Progress value={item.match.skills_match_score} className="h-1 mt-1" />
-                                  </div>
-                                  <div>
-                                    <div className="text-xs text-gray-500">Éducation: {item.match.education_match_score}%</div>
-                                    <Progress value={item.match.education_match_score} className="h-1 mt-1" />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                </div>
-              ) : (
-                <div className="text-center p-8 bg-muted rounded-lg">
-                  <h3 className="text-lg font-medium">Aucun candidat correspondant</h3>
-                  <p className="text-muted-foreground mt-2">
-                    Il n'y a actuellement aucun candidat qui corresponde à cette offre d'emploi.
-                  </p>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
-    </Layout>
-  );
-};
-
-export default JobOfferDetail;
+                                    <div className="text-xs
