@@ -1,50 +1,35 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { MapPin, Phone, Mail, Calendar, FileText } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateDataService';
-import { ensureArray } from '@/utils/candidateUtils';
+import { ensureArray, ensureStringArray, safeString, isUndefinedObject } from '@/utils/candidateUtils';
 
 interface ProfileTabProps {
   candidate: CandidateData;
 }
 
 const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
-  const skills = ensureArray<string>(candidate.skills);
+  const skills = ensureStringArray(candidate.skills);
   const industries = ensureArray<any>(candidate.industries);
   
-  const hasValidInterests = candidate.interests && 
-    typeof candidate.interests === 'string' && 
-    !candidate.interests.includes('undefined');
-    
-  const hasValidCareerObjectives = candidate.career_objectives && 
-    typeof candidate.career_objectives === 'string' && 
-    !candidate.career_objectives.includes('undefined');
-    
-  const hasValidAvailability = candidate.availability && 
-    typeof candidate.availability === 'string' && 
-    !candidate.availability.includes('undefined');
-    
-  const hasValidContractType = candidate.contract_type && 
-    typeof candidate.contract_type === 'string' && 
-    !candidate.contract_type.includes('undefined');
-    
-  const hasValidRemotePreference = candidate.remote_preference && 
-    typeof candidate.remote_preference === 'string' && 
-    !candidate.remote_preference.includes('undefined');
-    
-  const hasValidMobility = candidate.mobility && 
-    typeof candidate.mobility === 'string' && 
-    !candidate.mobility.includes('undefined');
-    
-  const hasValidTravelWillingness = candidate.travel_willingness && 
-    typeof candidate.travel_willingness === 'string' && 
-    !candidate.travel_willingness.includes('undefined');
-    
-  const hasValidSalaryExpectations = candidate.salary_expectations && 
-    typeof candidate.salary_expectations === 'string' && 
-    !candidate.salary_expectations.includes('undefined');
+  const interests = safeString(candidate.interests);
+  const careerObjectives = safeString(candidate.career_objectives);
+  const availability = safeString(candidate.availability);
+  const contractType = safeString(candidate.contract_type);
+  const remotePreference = safeString(candidate.remote_preference);
+  const mobility = safeString(candidate.mobility);
+  const travelWillingness = safeString(candidate.travel_willingness);
+  const salaryExpectations = safeString(candidate.salary_expectations);
+  
+  const hasValidInterests = interests.trim().length > 0;
+  const hasValidCareerObjectives = careerObjectives.trim().length > 0;
+  const hasValidAvailability = availability.trim().length > 0;
+  const hasValidContractType = contractType.trim().length > 0;
+  const hasValidRemotePreference = remotePreference.trim().length > 0;
+  const hasValidMobility = mobility.trim().length > 0;
+  const hasValidTravelWillingness = travelWillingness.trim().length > 0;
+  const hasValidSalaryExpectations = salaryExpectations.trim().length > 0;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Languages, Globe } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateDataService';
-import { ensureArray } from '@/utils/candidateUtils';
+import { ensureArray, safeString } from '@/utils/candidateUtils';
 
 interface DetailsTabProps {
   candidate: CandidateData;
@@ -14,17 +14,17 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ candidate }) => {
   const professional_references = ensureArray<any>(candidate.professional_references);
   const professional_networks = ensureArray<any>(candidate.professional_networks);
   
-  const hasValidProfessionalValues = candidate.professional_values && 
-    typeof candidate.professional_values === 'string' && 
-    !candidate.professional_values.includes('undefined');
-    
-  const hasValidWorkAuthorization = candidate.work_authorization && 
-    typeof candidate.work_authorization === 'string' && 
-    !candidate.work_authorization.includes('undefined');
+  // Use safe string extraction
+  const professional_values = safeString(candidate.professional_values);
+  const work_authorization = safeString(candidate.work_authorization);
+  
+  // Check if strings have valid content
+  const hasValidProfessionalValues = professional_values.trim().length > 0;
+  const hasValidWorkAuthorization = work_authorization.trim().length > 0;
 
   return (
     <div className="space-y-6">
-      {languages.length > 0 && !languages.some(lang => lang._type === 'undefined') && (
+      {languages.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Langues</CardTitle>
@@ -57,7 +57,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ candidate }) => {
                 <CardTitle>Valeurs professionnelles</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-navy-dark">{candidate.professional_values}</p>
+                <p className="text-navy-dark">{professional_values}</p>
               </CardContent>
             </Card>
           )}
@@ -68,14 +68,14 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ candidate }) => {
                 <CardTitle>Autorisations de travail</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-navy-dark">{candidate.work_authorization}</p>
+                <p className="text-navy-dark">{work_authorization}</p>
               </CardContent>
             </Card>
           )}
         </div>
         
         <div className="space-y-6">
-          {professional_references.length > 0 && !professional_references.some(ref => ref._type === 'undefined') && (
+          {professional_references.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Références professionnelles</CardTitle>
@@ -95,7 +95,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ candidate }) => {
             </Card>
           )}
           
-          {professional_networks.length > 0 && !professional_networks.some(network => network._type === 'undefined') && (
+          {professional_networks.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Réseaux professionnels</CardTitle>

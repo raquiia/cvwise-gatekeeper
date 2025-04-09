@@ -2,34 +2,44 @@
 import { Json } from '@/integrations/supabase/types';
 
 /**
+ * Checks if a value represents an "undefined" special object
+ */
+export function isUndefinedObject(value: any): boolean {
+  return (
+    typeof value === 'object' && 
+    value !== null &&
+    '_type' in value && 
+    value._type === 'undefined'
+  );
+}
+
+/**
  * Ensures that a value is always returned as an array
  * Handles string JSON, objects, or already-arrays
  */
 export function ensureArray<T>(value: Json | null | undefined): T[] {
   if (!value) return [];
   
+  // Handle special "undefined" objects
+  if (isUndefinedObject(value)) {
+    return [];
+  }
+  
   if (Array.isArray(value)) {
-    return value as T[];
+    // Remove any "undefined" objects from arrays
+    return value.filter(item => !isUndefinedObject(item)) as T[];
   }
   
   if (typeof value === 'string') {
     try {
       const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [value as unknown as T];
+      return Array.isArray(parsed) ? parsed.filter(item => !isUndefinedObject(item)) : [value as unknown as T];
     } catch (e) {
       return [value as unknown as T];
     }
   }
   
-  // For type objects like {_type: "undefined", value: "undefined"}
-  if (typeof value === 'object' && value !== null) {
-    if ('_type' in value && value._type === 'undefined') {
-      return [];
-    }
-    return [value as unknown as T];
-  }
-  
-  // Default fallback
+  // For other objects that aren't special "undefined" objects
   return [value as unknown as T];
 }
 
@@ -58,6 +68,15 @@ export function safeGet<T>(obj: unknown, key: string, defaultValue: T): T {
     return obj[key] as unknown as T;
   }
   return defaultValue;
+}
+
+/**
+ * Safe string extractor that handles undefined objects
+ */
+export function safeString(value: unknown, defaultValue: string = ''): string {
+  if (value === null || value === undefined) return defaultValue;
+  if (isUndefinedObject(value)) return defaultValue;
+  return typeof value === 'string' ? value : String(value);
 }
 
 /**

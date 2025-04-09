@@ -3,13 +3,14 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Award } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateDataService';
-import { ensureArray } from '@/utils/candidateUtils';
+import { ensureArray, isUndefinedObject } from '@/utils/candidateUtils';
 
 interface EducationTabProps {
   candidate: CandidateData;
 }
 
 const EducationTab: React.FC<EducationTabProps> = ({ candidate }) => {
+  // Filter out any undefined objects
   const education = ensureArray<any>(candidate.education);
   const certifications = ensureArray<any>(candidate.certifications);
 
@@ -20,7 +21,7 @@ const EducationTab: React.FC<EducationTabProps> = ({ candidate }) => {
           <CardTitle>Formation académique</CardTitle>
         </CardHeader>
         <CardContent>
-          {education.length > 0 && !education.some(edu => edu._type === 'undefined') ? (
+          {education.length > 0 ? (
             <div className="space-y-6">
               {education.map((edu: any, idx: number) => (
                 <div key={idx} className="relative pl-6 pb-6 border-l-2 border-navy/20 last:border-0 last:pb-0">
@@ -53,7 +54,7 @@ const EducationTab: React.FC<EducationTabProps> = ({ candidate }) => {
         </CardContent>
       </Card>
       
-      {certifications.length > 0 && !certifications.some(cert => cert._type === 'undefined') && (
+      {certifications.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Certifications</CardTitle>

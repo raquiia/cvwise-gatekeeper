@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { candidateDataService } from '@/services/data/candidateDataService';
 import { CandidateData } from '@/services/data/candidateService';
 import { ArrowLeft, Briefcase, FileText } from 'lucide-react';
+import { processCandidateData } from '@/utils/candidateUtils';
 
 // Import the component tabs
 import ProfileTab from '@/components/candidates/detail/ProfileTab';
@@ -43,7 +44,9 @@ const CandidateDetail = () => {
           setError("Candidat non trouvé");
         } else {
           console.log("Candidate data retrieved successfully:", data);
-          setCandidate(data);
+          // Process the data to ensure arrays and properties are correctly formatted
+          const processedData = processCandidateData(data);
+          setCandidate(processedData);
         }
       } catch (err: any) {
         console.error("Error loading candidate:", err);
