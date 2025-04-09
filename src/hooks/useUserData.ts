@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface RealUser {
   id: string;
-  email: string;
+  email: string | null;
   first_name?: string;
   last_name?: string;
   company?: string;
@@ -32,7 +32,7 @@ export const useUserData = () => {
         setLoading(true);
         
         // Using our secure function to get profile data
-        const { data: userData, error } = await supabase
+        const { data: profilesData, error } = await supabase
           .rpc('get_all_profiles_secure');
         
         if (error) {
@@ -46,9 +46,28 @@ export const useUserData = () => {
           return;
         }
         
-        if (userData) {
-          console.log("Utilisateurs réels chargés:", userData);
-          setRealUsers(userData);
+        if (profilesData) {
+          console.log("Profils utilisateurs chargés:", profilesData);
+          
+          // Map the profiles data to match the RealUser interface
+          const mappedUsers: RealUser[] = profilesData.map(profile => ({
+            id: profile.id,
+            email: null, // Email not available in profiles table
+            first_name: profile.first_name || undefined,
+            last_name: profile.last_name || undefined,
+            company: profile.company || undefined,
+            created_at: profile.created_at || new Date().toISOString(),
+            avatar_url: profile.avatar_url || undefined,
+            profile: {
+              first_name: profile.first_name || undefined,
+              last_name: profile.last_name || undefined,
+              company: profile.company || undefined,
+              is_admin: profile.is_admin || false,
+              avatar_url: profile.avatar_url || undefined
+            }
+          }));
+          
+          setRealUsers(mappedUsers);
         } else {
           console.error('Aucune donnée d\'utilisateur reçue');
           
