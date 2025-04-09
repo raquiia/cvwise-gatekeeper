@@ -1,5 +1,5 @@
 
-import { CandidateMatch, MatchDetails } from '../candidateMatchingService';
+import { CandidateMatch, MatchDetails, SkillsDetails } from '../candidateMatchingService';
 
 // Génère des compétences correspondantes aléatoires
 const generateRandomSkills = (count: number): string[] => {
@@ -97,6 +97,18 @@ const generateRandomMatch = (candidateId: string, jobOfferId: string): Candidate
   
   const name = generateRandomName();
   
+  // Create properly typed match details
+  const skillsDetails: SkillsDetails = {
+    matchedSkills: matchedSkills,
+    missingSkills: missingSkills,
+    additionalSkills: [],
+    skillsScore: skillsScore
+  };
+  
+  const matchDetails: MatchDetails = {
+    skills_details: skillsDetails
+  };
+  
   const match: CandidateMatch = {
     candidate: {
       id: candidateId,
@@ -116,14 +128,7 @@ const generateRandomMatch = (candidateId: string, jobOfferId: string): Candidate
       experience_match_score: experienceScore,
       education_match_score: educationScore,
       location_match_score: locationScore,
-      match_details: {
-        skills_details: {
-          matchedSkills: matchedSkills,
-          missingSkills: missingSkills,
-          additionalSkills: [],
-          skillsScore: skillsScore
-        }
-      },
+      match_details: matchDetails,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
