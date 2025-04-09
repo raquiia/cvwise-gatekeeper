@@ -31,16 +31,15 @@ export const useUserData = () => {
       try {
         setLoading(true);
         
-        // Get all profiles directly without using RPC
+        // Get all profiles using the secure function
         const { data: profilesData, error } = await supabase
-          .from('profiles')
-          .select('*');
+          .rpc('get_all_profiles_secure');
         
         if (error) {
-          console.error('Erreur lors de la récupération des utilisateurs:', error);
+          console.error('Error fetching users:', error.message);
           toast({
-            title: "Erreur",
-            description: "Impossible de récupérer les utilisateurs",
+            title: "Error",
+            description: "Unable to retrieve users",
             variant: "destructive",
           });
           setLoading(false);
@@ -48,7 +47,7 @@ export const useUserData = () => {
         }
         
         if (profilesData && profilesData.length > 0) {
-          console.log("Profils utilisateurs chargés:", profilesData);
+          console.log("User profiles loaded:", profilesData);
           
           // Map the profiles data to match the RealUser interface
           const mappedUsers: RealUser[] = profilesData.map(profile => ({
@@ -71,7 +70,7 @@ export const useUserData = () => {
           
           setRealUsers(mappedUsers);
         } else {
-          console.error('Aucune donnée d\'utilisateur reçue');
+          console.log('No user data received');
           
           // Fallback to Edge Function if profiles query returns no data
           try {
@@ -82,17 +81,17 @@ export const useUserData = () => {
             }
             
             if (edgeFunctionData && edgeFunctionData.users) {
-              console.log("Utilisateurs réels chargés via Edge Function:", edgeFunctionData.users);
+              console.log("Real users loaded via Edge Function:", edgeFunctionData.users);
               setRealUsers(edgeFunctionData.users);
             }
           } catch (fallbackError) {
-            console.error('Erreur lors de la récupération des utilisateurs via Edge Function:', fallbackError);
+            console.error('Error fetching users via Edge Function:', fallbackError);
           }
         }
         
         setLoading(false);
-      } catch (error) {
-        console.error('Erreur inattendue:', error);
+      } catch (error: any) {
+        console.error('Unexpected error:', error);
         setLoading(false);
       }
     };

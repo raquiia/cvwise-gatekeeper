@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Users, FileText, Search, Clock, CheckCircle, 
@@ -14,6 +15,7 @@ import { jobOfferService } from '@/services/data/jobOfferService';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MockDataAlert } from '@/components/candidates/MockDataAlert';
+import { useUserData } from '@/hooks/useUserData';
 
 interface DashboardStats {
   candidatesCount: number;
@@ -57,6 +59,7 @@ const Dashboard = () => {
   const [recentCandidates, setRecentCandidates] = useState<RecentCandidate[]>([]);
   const [usingMockData, setUsingMockData] = useState(false);
   const { toast } = useToast();
+  const { realUsers, loading: usersLoading } = useUserData();
   
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -126,7 +129,7 @@ const Dashboard = () => {
             return {
               id: candidate.id,
               name: `${candidate.first_name} ${candidate.last_name}`,
-              position: candidate.position || 'Non spécifié',
+              position: candidate.position || 'Not specified',
               score,
               date: new Date(candidate.created_at).toLocaleDateString('fr-FR'),
               status
@@ -191,14 +194,14 @@ const Dashboard = () => {
             
             if (item.type === 'candidate') {
               return {
-                action: "CV uploadé",
+                action: "Resume uploaded",
                 user: item.name,
                 time: timeAgo,
                 icon: <Upload size={16} className="text-emerald-500" />
               };
             } else {
               return {
-                action: "Offre créée",
+                action: "Offer created",
                 user: item.name,
                 time: timeAgo,
                 icon: <FileText size={16} className="text-blue-500" />
@@ -217,8 +220,8 @@ const Dashboard = () => {
         console.error('Error fetching dashboard data:', error);
         setUsingMockData(true);
         toast({
-          title: "Erreur de chargement",
-          description: "Impossible de charger les données du tableau de bord. Affichage des données de démonstration.",
+          title: "Loading error",
+          description: "Unable to load dashboard data. Displaying demo data.",
           variant: "destructive",
         });
         
@@ -242,9 +245,9 @@ const Dashboard = () => {
     const diffHours = Math.round(diffMs / 3600000);
     const diffDays = Math.round(diffMs / 86400000);
     
-    if (diffMins < 60) return `il y a ${diffMins}min`;
-    if (diffHours < 24) return `il y a ${diffHours}h`;
-    return `il y a ${diffDays}j`;
+    if (diffMins < 60) return `${diffMins}min ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
   };
   
   const getMockStats = (): DashboardStats => ({
@@ -259,11 +262,11 @@ const Dashboard = () => {
   });
   
   const getMockRecentCandidates = (): RecentCandidate[] => [
-    { id: "1", name: "Marie Laurent", position: "Chef de projet industriel", score: 92, date: "23/07/2023", status: "high" },
-    { id: "2", name: "Thomas Dubois", position: "PMO Senior", score: 86, date: "21/07/2023", status: "high" },
+    { id: "1", name: "Marie Laurent", position: "Industrial Project Manager", score: 92, date: "23/07/2023", status: "high" },
+    { id: "2", name: "Thomas Dubois", position: "Senior PMO", score: 86, date: "21/07/2023", status: "high" },
     { id: "3", name: "Julie Bernard", position: "Project Manager", score: 78, date: "20/07/2023", status: "medium" },
-    { id: "4", name: "Nicolas Martin", position: "Directeur de projets", score: 65, date: "18/07/2023", status: "medium" },
-    { id: "5", name: "Caroline Petit", position: "Ingénieur industriel", score: 54, date: "15/07/2023", status: "low" }
+    { id: "4", name: "Nicolas Martin", position: "Project Director", score: 65, date: "18/07/2023", status: "medium" },
+    { id: "5", name: "Caroline Petit", position: "Industrial Engineer", score: 54, date: "15/07/2023", status: "low" }
   ];
   
   const getMockTopSkills = (): TopSkill[] => [
@@ -275,10 +278,10 @@ const Dashboard = () => {
   ];
   
   const getMockRecentActivity = (): RecentActivity[] => [
-    { action: "CV uploadé", user: "Thomas Petit", time: "il y a 5min", icon: <Upload size={16} className="text-emerald-500" /> },
-    { action: "Candidat validé", user: "Julie Martin", time: "il y a 30min", icon: <CheckCircle size={16} className="text-emerald-500" /> },
-    { action: "CV analysé", user: "Marc Dubois", time: "il y a 1h", icon: <FileText size={16} className="text-blue-500" /> },
-    { action: "Nouvel utilisateur", user: "Sophie Girard", time: "il y a 3h", icon: <Users size={16} className="text-purple-500" /> }
+    { action: "Resume uploaded", user: "Thomas Petit", time: "5min ago", icon: <Upload size={16} className="text-emerald-500" /> },
+    { action: "Candidate validated", user: "Julie Martin", time: "30min ago", icon: <CheckCircle size={16} className="text-emerald-500" /> },
+    { action: "Resume analyzed", user: "Marc Dubois", time: "1h ago", icon: <FileText size={16} className="text-blue-500" /> },
+    { action: "New user", user: "Sophie Girard", time: "3h ago", icon: <Users size={16} className="text-purple-500" /> }
   ];
   
   const getStatsArray = () => {
@@ -286,7 +289,7 @@ const Dashboard = () => {
     
     return [
       { 
-        title: "CV analysés", 
+        title: "Analyzed resumes", 
         value: stats.resumesCount, 
         change: `${stats.resumesGrowth > 0 ? '+' : ''}${stats.resumesGrowth}%`, 
         isPositive: stats.resumesGrowth > 0,
@@ -294,7 +297,7 @@ const Dashboard = () => {
         color: "bg-navy" 
       },
       { 
-        title: "Candidats", 
+        title: "Candidates", 
         value: stats.candidatesCount, 
         change: `${stats.candidatesGrowth > 0 ? '+' : ''}${stats.candidatesGrowth}%`, 
         isPositive: stats.candidatesGrowth > 0,
@@ -302,7 +305,7 @@ const Dashboard = () => {
         color: "bg-blue-500" 
       },
       { 
-        title: "Offres d'emploi", 
+        title: "Job offers", 
         value: stats.jobOffersCount, 
         change: `${stats.jobOffersGrowth > 0 ? '+' : ''}${stats.jobOffersGrowth}%`, 
         isPositive: stats.jobOffersGrowth > 0,
@@ -310,7 +313,7 @@ const Dashboard = () => {
         color: "bg-emerald-500" 
       },
       { 
-        title: "En attente", 
+        title: "Pending", 
         value: stats.pendingCount, 
         change: `${stats.pendingGrowth > 0 ? '+' : ''}${stats.pendingGrowth}%`, 
         isPositive: stats.pendingGrowth < 0, // For pending, negative is good
@@ -325,9 +328,9 @@ const Dashboard = () => {
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
           <div className="mb-4 md:mb-0">
-            <h1 className="text-2xl font-bold text-navy-dark mb-1">Tableau de bord</h1>
+            <h1 className="text-2xl font-bold text-navy-dark mb-1">Dashboard</h1>
             <p className="text-muted-foreground">
-              Bienvenue. Voici un aperçu de votre activité récente.
+              Welcome. Here is an overview of your recent activity.
             </p>
           </div>
           
@@ -336,7 +339,7 @@ const Dashboard = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
               <input
                 type="text"
-                placeholder="Rechercher un candidat..."
+                placeholder="Search candidate..."
                 className="input-field pl-10 w-full sm:w-auto"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -346,7 +349,7 @@ const Dashboard = () => {
             <Link to="/resumes/upload">
               <Button className="button-primary w-full sm:w-auto">
                 <Upload size={18} className="mr-2" />
-                Importer un CV
+                Import Resume
               </Button>
             </Link>
           </div>
@@ -391,7 +394,7 @@ const Dashboard = () => {
                   <span className={`text-xs font-medium ${
                     stat.isPositive ? 'text-emerald-500' : 'text-red-500'
                   }`}>
-                    {stat.change} depuis le mois dernier
+                    {stat.change} since last month
                   </span>
                 </div>
               </div>
@@ -403,10 +406,10 @@ const Dashboard = () => {
           <div className="lg:col-span-2 glass rounded-xl overflow-hidden">
             <div className="p-5 border-b border-border/30">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-navy-dark">Candidats récents</h2>
+                <h2 className="text-lg font-semibold text-navy-dark">Recent Candidates</h2>
                 <Link to="/candidates">
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-navy-dark">
-                    Voir tout
+                    View all
                     <ChevronRight size={16} className="ml-1" />
                   </Button>
                 </Link>
@@ -417,8 +420,8 @@ const Dashboard = () => {
               <table className="w-full">
                 <thead>
                   <tr className="bg-navy/5">
-                    <th className="text-left p-4 text-sm font-medium text-navy-dark">Nom</th>
-                    <th className="text-left p-4 text-sm font-medium text-navy-dark">Poste</th>
+                    <th className="text-left p-4 text-sm font-medium text-navy-dark">Name</th>
+                    <th className="text-left p-4 text-sm font-medium text-navy-dark">Position</th>
                     <th className="text-left p-4 text-sm font-medium text-navy-dark">Score</th>
                     <th className="text-left p-4 text-sm font-medium text-navy-dark">Date</th>
                     <th className="text-right p-4 text-sm font-medium text-navy-dark">Action</th>
@@ -473,7 +476,7 @@ const Dashboard = () => {
                         <td className="p-4 text-right">
                           <Link to={`/candidates/${candidate.id}`}>
                             <Button variant="ghost" size="sm">
-                              Détails
+                              Details
                             </Button>
                           </Link>
                         </td>
@@ -482,7 +485,7 @@ const Dashboard = () => {
                   ) : (
                     <tr>
                       <td colSpan={5} className="p-4 text-center text-muted-foreground">
-                        Aucun candidat récent
+                        No recent candidates
                       </td>
                     </tr>
                   )}
@@ -494,12 +497,12 @@ const Dashboard = () => {
           <div className="space-y-6">
             <div className="glass rounded-xl">
               <div className="p-5 border-b border-border/30">
-                <h2 className="text-lg font-semibold text-navy-dark">Activité récente</h2>
+                <h2 className="text-lg font-semibold text-navy-dark">Recent Activity</h2>
               </div>
               <div className="p-5">
                 {loading ? (
                   Array(4).fill(0).map((_, idx) => (
-                    <div key={idx} className="flex items-start">
+                    <div key={idx} className="flex items-start mb-4">
                       <Skeleton className="w-8 h-8 rounded-full mr-3" />
                       <div className="flex-1">
                         <Skeleton className="h-4 w-32 mb-1" />
@@ -509,7 +512,7 @@ const Dashboard = () => {
                   ))
                 ) : recentActivity.length > 0 ? (
                   recentActivity.map((activity, idx) => (
-                    <div key={idx} className="flex items-start">
+                    <div key={idx} className="flex items-start mb-4">
                       <div className="w-8 h-8 rounded-full bg-navy/10 flex items-center justify-center mr-3">
                         {activity.icon}
                       </div>
@@ -522,7 +525,7 @@ const Dashboard = () => {
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-muted-foreground">Aucune activité récente</p>
+                  <p className="text-sm text-muted-foreground">No recent activity</p>
                 )}
               </div>
             </div>
@@ -530,7 +533,7 @@ const Dashboard = () => {
             <div className="glass rounded-xl">
               <div className="p-5 border-b border-border/30">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-navy-dark">Compétences populaires</h2>
+                  <h2 className="text-lg font-semibold text-navy-dark">Popular Skills</h2>
                   <Button variant="ghost" size="icon">
                     <Filter size={16} />
                   </Button>
@@ -539,7 +542,7 @@ const Dashboard = () => {
               <div className="p-5">
                 {loading ? (
                   Array(5).fill(0).map((_, idx) => (
-                    <div key={idx}>
+                    <div key={idx} className="mb-4">
                       <div className="flex justify-between mb-1">
                         <Skeleton className="h-4 w-32" />
                         <Skeleton className="h-4 w-16" />
@@ -549,16 +552,16 @@ const Dashboard = () => {
                   ))
                 ) : topSkills.length > 0 ? (
                   topSkills.map((skill, idx) => (
-                    <div key={idx}>
+                    <div key={idx} className="mb-4">
                       <div className="flex justify-between mb-1">
                         <span className="text-sm font-medium text-navy-dark">{skill.name}</span>
-                        <span className="text-xs text-muted-foreground">{skill.count} candidats</span>
+                        <span className="text-xs text-muted-foreground">{skill.count} candidates</span>
                       </div>
                       <Progress value={skill.percentage} className="h-2" />
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-muted-foreground">Aucune compétence trouvée</p>
+                  <p className="text-sm text-muted-foreground">No skills found</p>
                 )}
               </div>
             </div>
@@ -569,9 +572,9 @@ const Dashboard = () => {
                   <AlertCircle size={18} className="text-navy" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-navy-dark mb-1">Conseil du jour</h3>
+                  <h3 className="text-sm font-medium text-navy-dark mb-1">Tip of the day</h3>
                   <p className="text-xs text-navy-dark/80">
-                    Utilisez les filtres avancés pour affiner votre recherche de candidats. Vous pouvez filtrer par compétences, années d'expérience et localisation.
+                    Use advanced filters to refine your candidate search. You can filter by skills, years of experience, and location.
                   </p>
                 </div>
               </div>
