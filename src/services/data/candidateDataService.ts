@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { resumeDataService } from './resumeDataService';
 import { CandidateData } from './resumeDataService';
@@ -222,14 +223,13 @@ export const candidateDataService = {
         throw new Error("Non authentifié");
       }
       
-      const { data, error } = await supabase
-        .from('job_offers')
-        .insert({
+      // Utilisez l'API directe plutôt que via supabase.from
+      const { data, error } = await supabase.rpc('create_job_offer', {
+        p_job_offer: {
           ...jobOffer,
-          user_id: user.id,
-        })
-        .select()
-        .single();
+          user_id: user.id
+        }
+      });
       
       if (error) {
         console.error("Error creating job offer:", error.message);
@@ -239,9 +239,11 @@ export const candidateDataService = {
       console.log("Job offer created successfully:", data);
       
       // Calculer automatiquement les scores de matching pour tous les candidats de l'utilisateur
-      await candidateDataService.calculateMatchesForJobOffer(data.id);
+      if (data && data.id) {
+        await candidateDataService.calculateMatchesForJobOffer(data.id);
+      }
       
-      return data;
+      return data as JobOffer;
     } catch (error: any) {
       console.error("Exception in createJobOffer:", error);
       throw new Error(error.message || "Impossible de créer l'offre d'emploi");
@@ -255,12 +257,11 @@ export const candidateDataService = {
     try {
       console.log(`Updating job offer with ID: ${jobOfferId}`);
       
-      const { data, error } = await supabase
-        .from('job_offers')
-        .update(updates)
-        .eq('id', jobOfferId)
-        .select()
-        .single();
+      // Utilisez l'API directe plutôt que via supabase.from
+      const { data, error } = await supabase.rpc('update_job_offer', {
+        p_job_offer_id: jobOfferId,
+        p_updates: updates
+      });
       
       if (error) {
         console.error("Error updating job offer:", error.message);
@@ -270,9 +271,11 @@ export const candidateDataService = {
       console.log("Job offer updated successfully:", data);
       
       // Recalculer les scores de matching pour tous les candidats
-      await candidateDataService.calculateMatchesForJobOffer(jobOfferId);
+      if (data && data.id) {
+        await candidateDataService.calculateMatchesForJobOffer(jobOfferId);
+      }
       
-      return data;
+      return data as JobOffer;
     } catch (error: any) {
       console.error("Exception in updateJobOffer:", error);
       throw new Error(error.message || "Impossible de mettre à jour l'offre d'emploi");
@@ -286,11 +289,10 @@ export const candidateDataService = {
     try {
       console.log(`Deleting job offer with ID: ${jobOfferId}`);
       
-      // Les matches associés seront automatiquement supprimés grâce à la contrainte ON DELETE CASCADE
-      const { error } = await supabase
-        .from('job_offers')
-        .delete()
-        .eq('id', jobOfferId);
+      // Utilisez l'API directe plutôt que via supabase.from
+      const { data, error } = await supabase.rpc('delete_job_offer', {
+        p_job_offer_id: jobOfferId
+      });
       
       if (error) {
         console.error("Error deleting job offer:", error.message);
@@ -312,18 +314,16 @@ export const candidateDataService = {
     try {
       console.log("Fetching job offers for current user");
       
-      const { data, error } = await supabase
-        .from('job_offers')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Utilisez l'API directe plutôt que via supabase.from
+      const { data, error } = await supabase.rpc('get_user_job_offers');
       
       if (error) {
         console.error("Error fetching job offers:", error.message);
         throw new Error(`Erreur lors de la récupération des offres d'emploi: ${error.message}`);
       }
       
-      console.log(`Retrieved ${data.length} job offers`);
-      return data || [];
+      console.log(`Retrieved ${data ? data.length : 0} job offers`);
+      return (data || []) as JobOffer[];
     } catch (error: any) {
       console.error("Exception in getUserJobOffers:", error);
       throw new Error(error.message || "Impossible de récupérer les offres d'emploi");
@@ -337,11 +337,10 @@ export const candidateDataService = {
     try {
       console.log(`Fetching job offer with ID: ${jobOfferId}`);
       
-      const { data, error } = await supabase
-        .from('job_offers')
-        .select('*')
-        .eq('id', jobOfferId)
-        .maybeSingle();
+      // Utilisez l'API directe plutôt que via supabase.from
+      const { data, error } = await supabase.rpc('get_job_offer_by_id', {
+        p_job_offer_id: jobOfferId
+      });
       
       if (error) {
         console.error("Error fetching job offer:", error.message);
@@ -354,7 +353,7 @@ export const candidateDataService = {
       }
       
       console.log("Job offer retrieved successfully:", data);
-      return data;
+      return data as JobOffer;
     } catch (error: any) {
       console.error("Exception in getJobOfferById:", error);
       throw new Error(error.message || "Impossible de récupérer l'offre d'emploi");
@@ -377,8 +376,8 @@ export const candidateDataService = {
         throw new Error(`Erreur lors du calcul des correspondances: ${error.message}`);
       }
       
-      console.log(`Calculated matches for ${data?.length || 0} candidates`);
-      return data || [];
+      console.log(`Calculated matches for ${data ? data.length : 0} candidates`);
+      return (data || []) as string[];
     } catch (error: any) {
       console.error("Exception in calculateMatchesForJobOffer:", error);
       throw new Error(error.message || "Impossible de calculer les correspondances");
@@ -392,12 +391,11 @@ export const candidateDataService = {
     try {
       console.log(`Fetching match between candidate ${candidateId} and job offer ${jobOfferId}`);
       
-      const { data, error } = await supabase
-        .from('candidate_job_matches')
-        .select('*')
-        .eq('candidate_id', candidateId)
-        .eq('job_offer_id', jobOfferId)
-        .maybeSingle();
+      // Utilisez l'API directe plutôt que via supabase.from
+      const { data, error } = await supabase.rpc('get_candidate_job_match', {
+        p_candidate_id: candidateId,
+        p_job_offer_id: jobOfferId
+      });
       
       if (error) {
         console.error("Error fetching candidate-job match:", error.message);
@@ -410,7 +408,7 @@ export const candidateDataService = {
       }
       
       console.log("Match retrieved successfully:", data);
-      return data;
+      return data as CandidateJobMatch;
     } catch (error: any) {
       console.error("Exception in getCandidateJobMatch:", error);
       throw new Error(error.message || "Impossible de récupérer le matching");
@@ -424,37 +422,26 @@ export const candidateDataService = {
     try {
       console.log(`Fetching all matches for job offer: ${jobOfferId}`);
       
-      // Récupérer tous les candidats de l'utilisateur
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("Non authentifié");
-      }
-      
-      const candidates = await candidateDataService.getUserCandidates(user.id);
-      
-      // Récupérer tous les matchs pour cette offre d'emploi
-      const { data: matches, error } = await supabase
-        .from('candidate_job_matches')
-        .select('*')
-        .eq('job_offer_id', jobOfferId);
+      // Utilisez l'API directe plutôt que via supabase.from
+      const { data, error } = await supabase.rpc('get_matches_for_job_offer', {
+        p_job_offer_id: jobOfferId
+      });
       
       if (error) {
         console.error("Error fetching matches for job offer:", error.message);
         throw new Error(`Erreur lors de la récupération des matchings: ${error.message}`);
       }
       
-      // Combiner les données des candidats avec leurs scores de matching
-      const candidatesWithMatches = matches
-        .map(match => {
-          const candidate = candidates.find(c => c.id === match.candidate_id);
-          if (!candidate) return null;
-          
-          return {
-            candidate,
-            match
-          };
-        })
-        .filter(item => item !== null) as {candidate: CandidateData; match: CandidateJobMatch}[];
+      // Si aucune donnée n'est retournée, renvoyer un tableau vide
+      if (!data || !Array.isArray(data)) {
+        return [];
+      }
+      
+      // Transformer les données en format attendu
+      const candidatesWithMatches = data.map(item => ({
+        candidate: item.candidate as CandidateData,
+        match: item.match as CandidateJobMatch
+      }));
       
       // Trier par score de matching (du plus élevé au plus bas)
       candidatesWithMatches.sort((a, b) => b.match.match_score - a.match.match_score);
