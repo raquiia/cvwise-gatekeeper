@@ -1,3 +1,4 @@
+
 // Full implementation of candidate matching service with job offer suggestions
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -326,10 +327,11 @@ export const candidateMatchingService = {
       
       const candidateIds = matchesData.map(match => match.candidate_id);
       
+      // Instead of using RPC, use a direct query with the IN operator
       const { data: candidatesData, error: candidatesError } = await supabase
-        .rpc('get_candidates_by_ids', {
-          candidate_ids: candidateIds
-        });
+        .from('candidates')
+        .select('*')
+        .in('id', candidateIds);
       
       if (candidatesError) {
         console.error("Error fetching candidates:", candidatesError);
