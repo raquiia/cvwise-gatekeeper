@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Users, FileText, Search, Clock, CheckCircle, 
@@ -120,7 +121,7 @@ const Dashboard = () => {
     const resumesCount = resumesData?.length || 0;
     
     // Fetch job offers count
-    const jobOffers = await jobOfferService.getUserJobOffers(user.id);
+    const jobOffers = await jobOfferService.getUserJobOffers();
     const jobOffersCount = jobOffers.length;
     
     // Fetch pending candidates count
@@ -236,7 +237,7 @@ const Dashboard = () => {
       // For now, we'll generate based on recent candidates and job offers
       
       const candidates = await candidateService.getUserCandidates(user.id);
-      const jobOffers = await jobOfferService.getUserJobOffers(user.id);
+      const jobOffers = await jobOfferService.getUserJobOffers();
       
       // Sort all items by date
       const allItems = [
