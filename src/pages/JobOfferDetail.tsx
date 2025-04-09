@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, Edit, RefreshCw, FileText, User, Briefcase, AlertTriangle } from 'lucide-react';
@@ -14,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import MockDataAlert from '@/components/candidates/MockDataAlert';
 import type { JobOffer } from '@/services/data/job-offers/types';
 import type { CandidateJobMatch, CandidateMatch } from '@/services/data/candidateMatchingService';
 
@@ -62,7 +62,6 @@ const JobOfferDetail = () => {
       if (matches && matches.length > 0) {
         setCandidateMatches(matches);
       } else {
-        // Si aucun match n'est trouvé ou en cas d'erreur, utiliser les données de mock
         console.log("No real matches found, using mock data");
         const mockMatches = generateMockMatches(jobOfferId, 8);
         setCandidateMatches(mockMatches);
@@ -70,7 +69,6 @@ const JobOfferDetail = () => {
       }
     } catch (error: any) {
       console.error('Error fetching candidate matches:', error);
-      // En cas d'erreur, utiliser les données de mock
       console.log("Error fetching matches, using mock data");
       const mockMatches = generateMockMatches(jobOfferId, 8);
       setCandidateMatches(mockMatches);
@@ -98,7 +96,6 @@ const JobOfferDetail = () => {
           description: "Les correspondances ont été recalculées avec succès",
         });
       } else {
-        // Si le calcul échoue, afficher un message et utiliser des données de mock
         console.log("Match calculation failed, using mock data");
         const mockMatches = generateMockMatches(jobOfferId, 8);
         setCandidateMatches(mockMatches);
@@ -115,7 +112,6 @@ const JobOfferDetail = () => {
     } catch (error: any) {
       console.error('Error recalculating matches:', error);
       
-      // En cas d'erreur, utiliser les données de mock
       const mockMatches = generateMockMatches(jobOfferId, 8);
       setCandidateMatches(mockMatches);
       setUsingMockData(true);
@@ -130,17 +126,12 @@ const JobOfferDetail = () => {
     }
   };
   
-  useEffect(() => {
-    fetchJobOffer();
-  }, [jobOfferId]);
-  
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('fr-FR');
   };
   
   const handleViewCandidate = (candidateId: string) => {
-    // Si nous utilisons des données de mock, afficher un message d'information
     if (usingMockData) {
       toast({
         title: "Données de démonstration",
@@ -252,16 +243,7 @@ const JobOfferDetail = () => {
           </div>
         </div>
         
-        {usingMockData && (
-          <Alert variant="warning" className="mb-6">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Données de démonstration</AlertTitle>
-            <AlertDescription>
-              En raison d'un problème technique, nous affichons des candidats fictifs pour démontrer l'interface. 
-              Ces données ne sont pas réelles. Réessayez ultérieurement pour voir les vrais candidats correspondants.
-            </AlertDescription>
-          </Alert>
-        )}
+        {usingMockData && <MockDataAlert />}
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="md:col-span-2">
