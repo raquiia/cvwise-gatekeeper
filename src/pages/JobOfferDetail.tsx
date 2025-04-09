@@ -7,7 +7,7 @@ import Layout from '@/components/Layout';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
 import { candidateMatchingService } from '@/services/data/candidate-matching';
 import { supabase } from '@/integrations/supabase/client';
-import { ensureArray } from '@/utils/candidateUtils';
+import { ensureArray, processCandidateData } from '@/utils/candidateUtils';
 import type { JobOffer } from '@/services/data/job-offers/types';
 import type { ExtendedCandidateMatch } from './types/candidateTypes';
 
@@ -77,7 +77,57 @@ const JobOfferDetail = () => {
     if (!jobOfferId) return;
     
     try {
-      const matches = await candidateMatchingService.getMatchesForJobOffer(jobOfferId);
+      let matches;
+      
+      try {
+        // First try getting matches from RPC function
+        const { data, error } = await supabase
+          .rpc('get_matches_for_job_offer', { p_job_offer_id: jobOfferId });
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Process data from RPC
+          const processedMatches = data.map((item: any) => {
+            const candidate = processCandidateData(item.candidate || {});
+            const match = item.match || {};
+            
+            return {
+              candidateId: candidate.id,
+              firstName: candidate.first_name || '',
+              lastName: candidate.last_name || '',
+              position: candidate.position || '',
+              company: candidate.company || '',
+              score: match.match_score || 0,
+              details: match.match_details || {
+                skills: { matched: [], missing: [], additional: [], matchPercentage: 0 },
+                experienceLevel: { required: 0, candidate: 0, match: false },
+                location: { required: '', candidate: '', match: false },
+                educationLevel: { required: '', candidate: '', match: false },
+                overall: 0
+              },
+              candidate: candidate,
+              match: {
+                match_score: match.match_score || 0,
+                skills_match_score: match.skills_match_score || 0,
+                experience_match_score: match.experience_match_score || 0,
+                education_match_score: match.education_match_score || 0,
+                location_match_score: match.location_match_score || 0,
+                match_details: match.match_details
+              }
+            };
+          });
+          
+          setCandidateMatches(processedMatches);
+          console.log("Matches loaded from RPC:", processedMatches.length);
+          return;
+        }
+      } catch (rpcError) {
+        console.error('Error using RPC for matches, falling back to service:', rpcError);
+      }
+      
+      // Fall back to service if RPC fails
+      matches = await candidateMatchingService.getMatchesForJobOffer(jobOfferId);
       
       if (matches && matches.length > 0) {
         // Fetch additional candidate details for each match
@@ -95,12 +145,7 @@ const JobOfferDetail = () => {
               }
               
               // Process candidate data to ensure arrays
-              const candidate = {
-                ...candidateData,
-                experiences: ensureArray(candidateData.experiences),
-                education: ensureArray(candidateData.education),
-                skills: ensureArray(candidateData.skills)
-              };
+              const candidate = processCandidateData(candidateData);
               
               return {
                 ...match,
@@ -124,7 +169,7 @@ const JobOfferDetail = () => {
         );
         
         setCandidateMatches(enhancedMatches);
-        console.log("Real candidate matches loaded:", enhancedMatches.length);
+        console.log("Candidate matches loaded from service:", enhancedMatches.length);
       } else {
         setCandidateMatches([]);
         console.log("No candidate matches found");

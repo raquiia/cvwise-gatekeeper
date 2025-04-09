@@ -26,14 +26,16 @@ export function ensureArray<T>(value: Json | null | undefined): T[] {
   }
   
   if (Array.isArray(value)) {
-    // Remove any "undefined" objects from arrays
-    return value.filter(item => !isUndefinedObject(item)) as T[];
+    // Remove any "undefined" objects from arrays and null/undefined values
+    return value.filter(item => item !== null && item !== undefined && !isUndefinedObject(item)) as T[];
   }
   
   if (typeof value === 'string') {
     try {
       const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed.filter(item => !isUndefinedObject(item)) : [value as unknown as T];
+      return Array.isArray(parsed) ? 
+        parsed.filter(item => item !== null && item !== undefined && !isUndefinedObject(item)) : 
+        [value as unknown as T];
     } catch (e) {
       return [value as unknown as T];
     }
@@ -83,6 +85,8 @@ export function safeString(value: unknown, defaultValue: string = ''): string {
  * Process job offer data to ensure type consistency
  */
 export function processJobOfferData(jobOffer: any) {
+  if (!jobOffer) return {};
+  
   return {
     ...jobOffer,
     required_skills: ensureStringArray(jobOffer.required_skills),
@@ -108,19 +112,31 @@ export function processCandidateData(candidate: any) {
     return processCandidateData(candidate[0]);
   }
   
+  // Deep clean the education and experiences arrays to ensure they don't contain undefined objects
+  let education = ensureArray(candidate.education || []);
+  let experiences = ensureArray(candidate.experiences || []);
+  let certifications = ensureArray(candidate.certifications || []);
+  let projects = ensureArray(candidate.projects || []);
+  
+  // Ensure each item in these arrays isn't an "undefined" object
+  education = education.filter(item => !isUndefinedObject(item));
+  experiences = experiences.filter(item => !isUndefinedObject(item));
+  certifications = certifications.filter(item => !isUndefinedObject(item));
+  projects = projects.filter(item => !isUndefinedObject(item));
+  
   return {
     ...candidate,
     skills: ensureStringArray(candidate.skills || []),
-    education: ensureArray(candidate.education || []),
-    experiences: ensureArray(candidate.experiences || []),
+    education: education,
+    experiences: experiences,
     languages: ensureArray(candidate.languages || []),
-    certifications: ensureArray(candidate.certifications || []),
+    certifications: certifications,
     publications: ensureArray(candidate.publications || []),
     professional_references: ensureArray(candidate.professional_references || []),
     professional_networks: ensureArray(candidate.professional_networks || []),
     continuous_training: ensureArray(candidate.continuous_training || []),
     special_permits: ensureArray(candidate.special_permits || []),
     industries: ensureArray(candidate.industries || []),
-    projects: ensureArray(candidate.projects || [])
+    projects: projects
   };
 }
