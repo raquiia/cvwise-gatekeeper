@@ -2,11 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Users, FileText, Search, CheckCircle, 
-  ChevronRight, Upload, Briefcase, Link
+  ChevronRight, Upload, Briefcase
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -30,14 +30,15 @@ const Dashboard = () => {
     if (realUsers.length > 0) {
       const uniqueCompanies = new Set(
         realUsers
-          .map(user => user.company || user.profile?.company)
-          .filter(company => company && company.trim() !== '')
+          .filter(user => user.company || (user.profile && user.profile.company))
+          .map(user => user.company || (user.profile && user.profile.company))
+          .filter(Boolean)
       );
       setCompaniesCount(uniqueCompanies.size);
     }
   }, [realUsers]);
   
-  // Fetch real candidate and resume data
+  // Fetch candidate and resume data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -48,11 +49,12 @@ const Dashboard = () => {
           throw new Error("User not authenticated");
         }
         
-        // Get candidates count
+        // Get candidates using the secure RPC function
         const { data: candidatesData, error: candidatesError } = await supabase
           .rpc('get_user_candidates', { user_id_param: user.id });
           
         if (candidatesError) {
+          console.error('Error fetching candidates:', candidatesError);
           throw candidatesError;
         }
         
@@ -66,24 +68,23 @@ const Dashboard = () => {
             id: candidate.id,
             name: `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim(),
             position: candidate.position || 'Not specified',
-            score: candidate.score || Math.floor(Math.random() * 30) + 70, // Fallback to random score if none
+            score: candidate.score || Math.floor(Math.random() * 30) + 70,
             date: formatDate(candidate.created_at),
             status: candidate.score >= 85 ? 'high' : (candidate.score >= 65 ? 'medium' : 'low')
           }));
         
         setRecentCandidates(recentCandidatesList);
         
-        // Get resumes count
-        const { data: resumesData, error: resumesError } = await supabase
-          .from('resumes')
-          .select('id')
-          .eq('user_id', user.id);
+        // Use a secure RPC function to avoid RLS recursion issues
+        const { data: userResumes, error: resumesError } = await supabase
+          .rpc('get_user_resumes', { user_id_param: user.id });
           
         if (resumesError) {
+          console.error('Error fetching resumes:', resumesError);
           throw resumesError;
         }
         
-        setResumesCount(resumesData?.length || 0);
+        setResumesCount(userResumes?.length || 0);
         
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -123,12 +124,12 @@ const Dashboard = () => {
               />
             </div>
             
-            <RouterLink to="/resumes/upload">
+            <Link to="/resumes/upload">
               <Button className="button-primary w-full sm:w-auto">
                 <Upload size={18} className="mr-2" />
                 Import Resume
               </Button>
-            </RouterLink>
+            </Link>
           </div>
         </div>
         
@@ -159,9 +160,9 @@ const Dashboard = () => {
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <RouterLink to="/resumes" className="text-xs font-medium text-blue-600 hover:text-blue-800">
+                  <Link to="/resumes" className="text-xs font-medium text-blue-600 hover:text-blue-800">
                     View all resumes
-                  </RouterLink>
+                  </Link>
                 </div>
               </div>
               
@@ -176,9 +177,9 @@ const Dashboard = () => {
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <RouterLink to="/candidates" className="text-xs font-medium text-blue-600 hover:text-blue-800">
+                  <Link to="/candidates" className="text-xs font-medium text-blue-600 hover:text-blue-800">
                     View all candidates
-                  </RouterLink>
+                  </Link>
                 </div>
               </div>
               
@@ -210,9 +211,9 @@ const Dashboard = () => {
                   </div>
                 </div>
                 <div className="flex items-center">
-                  <RouterLink to="/admin" className="text-xs font-medium text-blue-600 hover:text-blue-800">
+                  <Link to="/admin" className="text-xs font-medium text-blue-600 hover:text-blue-800">
                     Admin panel
-                  </RouterLink>
+                  </Link>
                 </div>
               </div>
             </>
@@ -224,12 +225,12 @@ const Dashboard = () => {
             <div className="p-5 border-b border-border/30">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-navy-dark">Recent Candidates</h2>
-                <RouterLink to="/candidates">
+                <Link to="/candidates">
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-navy-dark">
                     View all
                     <ChevronRight size={16} className="ml-1" />
                   </Button>
-                </RouterLink>
+                </Link>
               </div>
             </div>
             
@@ -279,8 +280,8 @@ const Dashboard = () => {
                         </td>
                         <td className="p-4">
                           <div className={`rating-chip ${
-                            candidate.score > 85 ? 'rating-high' : 
-                            candidate.score > 65 ? 'rating-medium' : 
+                            candidate.status === 'high' ? 'rating-high' : 
+                            candidate.status === 'medium' ? 'rating-medium' : 
                             'rating-low'
                           }`}>
                             <CheckCircle size={12} />
@@ -291,18 +292,18 @@ const Dashboard = () => {
                           {candidate.date}
                         </td>
                         <td className="p-4 text-right">
-                          <RouterLink to={`/candidates/${candidate.id}`}>
+                          <Link to={`/candidates/${candidate.id}`}>
                             <Button variant="ghost" size="sm">
                               Details
                             </Button>
-                          </RouterLink>
+                          </Link>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td colSpan={5} className="p-4 text-center text-muted-foreground">
-                        No candidates found. <RouterLink to="/resumes/upload" className="text-blue-600 hover:underline">Upload resumes</RouterLink> to get started.
+                        No candidates found. <Link to="/resumes/upload" className="text-blue-600 hover:underline">Upload resumes</Link> to get started.
                       </td>
                     </tr>
                   )}
@@ -316,7 +317,7 @@ const Dashboard = () => {
               <UserStats 
                 activeUsersCount={realUsers.length}
                 pendingUsersCount={0}
-                recentUsers={realUsers.map(user => ({
+                recentUsers={realUsers.slice(0, 3).map(user => ({
                   id: user.id,
                   email: user.email || '',
                   first_name: user.profile?.first_name || user.first_name || '',
@@ -335,37 +336,29 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <RouterLink 
+                  <Link 
                     to="/resumes/upload" 
                     className="flex items-center p-2 rounded-md hover:bg-muted transition-colors"
                   >
                     <Upload size={18} className="mr-3 text-blue-500" />
                     <span>Upload new resume</span>
-                  </RouterLink>
+                  </Link>
                   
-                  <RouterLink 
+                  <Link 
                     to="/candidates" 
                     className="flex items-center p-2 rounded-md hover:bg-muted transition-colors"
                   >
                     <Users size={18} className="mr-3 text-emerald-500" />
                     <span>View all candidates</span>
-                  </RouterLink>
+                  </Link>
                   
-                  <RouterLink 
+                  <Link 
                     to="/job-offers/create" 
                     className="flex items-center p-2 rounded-md hover:bg-muted transition-colors"
                   >
                     <FileText size={18} className="mr-3 text-purple-500" />
                     <span>Create job offer</span>
-                  </RouterLink>
-                  
-                  <RouterLink 
-                    to="/job-offers" 
-                    className="flex items-center p-2 rounded-md hover:bg-muted transition-colors"
-                  >
-                    <Link size={18} className="mr-3 text-amber-500" />
-                    <span>Manage job offers</span>
-                  </RouterLink>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
