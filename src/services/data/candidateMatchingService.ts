@@ -113,6 +113,11 @@ const convertJsonToMatchDetails = (jsonData: Json | null): MatchDetails | undefi
   }
 };
 
+// Convert MatchDetails to Json properly
+const convertMatchDetailsToJson = (details: MatchDetails): Json => {
+  return JSON.parse(JSON.stringify(details)) as Json;
+};
+
 export const candidateMatchingService = {
   getActiveJobOfferId: () => activeJobOfferId,
   
@@ -283,7 +288,14 @@ export const candidateMatchingService = {
                 const matchResult = calculateOverallMatch(candidate, jobOffer);
                 
                 // Convert MatchDetails to a proper Json object before inserting
-                const matchDetailsJson = JSON.parse(JSON.stringify(matchResult.details)) as Json;
+                const matchDetailsJson = convertMatchDetailsToJson(matchResult.details);
+                
+                // Log detailed information about what we're inserting
+                console.log(`Calculated match for ${candidate.first_name} ${candidate.last_name}:`, {
+                  score: matchResult.score,
+                  skillsMatch: matchResult.details.skillsMatch,
+                  experienceMatch: matchResult.details.experienceMatch
+                });
                 
                 // Insert or update the match in the database
                 const { error: insertError } = await supabase

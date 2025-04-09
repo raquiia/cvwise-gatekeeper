@@ -78,17 +78,21 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
             const candidate = updatedCandidates[i];
             console.log(`Calculating score for candidate: ${candidate.first_name} ${candidate.last_name}`);
             
-            const matchResult = await candidateMatchingService.calculateCandidateActiveJobScore(candidate);
-            
-            // Log match result for debugging
-            console.log(`Match result for ${candidate.first_name} ${candidate.last_name}:`, matchResult);
-            
-            // Update the candidate score with the match score
-            updatedCandidates[i] = {
-              ...candidate,
-              score: matchResult.score,
-              matchDetails: matchResult.details
-            };
+            try {
+              const matchResult = await candidateMatchingService.calculateCandidateActiveJobScore(candidate);
+              
+              // Log match result for debugging
+              console.log(`Match result for ${candidate.first_name} ${candidate.last_name}:`, matchResult);
+              
+              // Update the candidate score with the match score
+              updatedCandidates[i] = {
+                ...candidate,
+                score: matchResult.score,
+                matchDetails: matchResult.details
+              };
+            } catch (error) {
+              console.error(`Error calculating score for candidate ${candidate.id}:`, error);
+            }
           }
           
           setCandidatesWithScores(updatedCandidates);
