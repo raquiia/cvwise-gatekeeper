@@ -1,5 +1,5 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, SUPABASE_API_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 import { resumeDataService } from './resumeDataService';
 import { CandidateData } from './resumeDataService';
 import { Json } from '@/integrations/supabase/types';
@@ -223,13 +223,13 @@ export const candidateDataService = {
         throw new Error("Non authentifié");
       }
       
-      // Use direct fetch for the API call since rpc is not in types
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/create_job_offer`, {
+      // Use direct fetch for the API call
+      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/rpc/create_job_offer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({
           p_job_offer: {
@@ -270,12 +270,12 @@ export const candidateDataService = {
       console.log(`Updating job offer with ID: ${jobOfferId}`);
       
       // Use direct fetch for the API call
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/update_job_offer`, {
+      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/rpc/update_job_offer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({
           p_job_offer_id: jobOfferId,
@@ -314,12 +314,12 @@ export const candidateDataService = {
       console.log(`Deleting job offer with ID: ${jobOfferId}`);
       
       // Use direct fetch for the API call
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/delete_job_offer`, {
+      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/rpc/delete_job_offer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({
           p_job_offer_id: jobOfferId
@@ -348,12 +348,12 @@ export const candidateDataService = {
       console.log("Fetching job offers for current user");
       
       // Use direct fetch for the API call
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/get_user_job_offers`, {
+      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/rpc/get_user_job_offers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
       });
 
@@ -383,12 +383,12 @@ export const candidateDataService = {
       console.log(`Fetching job offer with ID: ${jobOfferId}`);
       
       // Use direct fetch for the API call
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/get_job_offer_by_id`, {
+      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/rpc/get_job_offer_by_id`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({
           p_job_offer_id: jobOfferId
@@ -426,12 +426,12 @@ export const candidateDataService = {
       console.log(`Calculating matches for job offer ID: ${jobOfferId}`);
       
       // Use direct fetch for the API call
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/calculate_all_candidates_job_matches`, {
+      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/rpc/calculate_all_candidates_job_matches`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({
           p_job_offer_id: jobOfferId
@@ -464,12 +464,12 @@ export const candidateDataService = {
       console.log(`Fetching match between candidate ${candidateId} and job offer ${jobOfferId}`);
       
       // Use direct fetch for the API call
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/get_candidate_job_match`, {
+      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/rpc/get_candidate_job_match`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({
           p_candidate_id: candidateId,
@@ -508,12 +508,12 @@ export const candidateDataService = {
       console.log(`Fetching all matches for job offer: ${jobOfferId}`);
       
       // Use direct fetch for the API call
-      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/get_matches_for_job_offer`, {
+      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/rpc/get_matches_for_job_offer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': supabase.supabaseKey,
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({
           p_job_offer_id: jobOfferId
