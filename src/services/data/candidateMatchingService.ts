@@ -36,6 +36,18 @@ export interface JobOfferSuggestion {
   requiredSkills?: string[];
   jobTitle?: string;
   additionalInfo?: string;
+  salary?: {
+    min?: number;
+    max?: number;
+    currency?: string;
+  };
+  experience?: {
+    min?: number;
+    max?: number;
+  };
+  education?: string;
+  contractType?: string;
+  remotePreference?: string;
 }
 
 /**
@@ -190,75 +202,373 @@ export const candidateMatchingService = {
     try {
       console.log(`Generating suggestions for job title: ${jobTitle}`);
       
-      // Simuler un délai de traitement
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Simuler un délai de traitement pour créer l'effet d'une analyse IA
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Suggestions par défaut pour des postes communs
-      const defaultSuggestions: Record<string, JobOfferSuggestion> = {
+      // Base de données de suggestions enrichies pour différents postes
+      const detailedSuggestions: Record<string, JobOfferSuggestion> = {
         "Développeur Frontend": {
-          description: `Nous recherchons un développeur Frontend talentueux pour rejoindre notre équipe. Vous serez responsable de la conception et de l'implémentation d'interfaces utilisateur réactives et intuitives pour nos applications web. Vous travaillerez en étroite collaboration avec notre équipe de design et nos développeurs backend pour créer des expériences utilisateur exceptionnelles.
+          description: `## À propos du poste
+          
+Nous recherchons un Développeur Frontend expérimenté pour rejoindre notre équipe technique. Dans ce rôle clé, vous serez responsable de transformer des maquettes en interfaces utilisateurs dynamiques et performantes, tout en collaborant étroitement avec nos designers et développeurs backend.
 
-Responsabilités:
-- Développer des interfaces utilisateur réactives et intuitives
-- Collaborer avec les designers pour implémenter fidèlement les maquettes
-- Optimiser les applications pour une performance maximale sur différents navigateurs et appareils
-- Assurer la maintenance et l'amélioration continue des interfaces existantes
-- Participer aux revues de code et aux sessions de brainstorming`,
-          requiredSkills: ["JavaScript", "HTML5", "CSS3", "React", "TypeScript", "Git", "Responsive Design", "Testing (Jest, RTL)"]
+## Responsabilités
+- Développer des interfaces utilisateurs réactives, accessibles et cross-browser selon les standards modernes du web
+- Implémenter et maintenir des composants UI réutilisables et maintenables
+- Optimiser les applications pour des performances optimales et une expérience utilisateur fluide
+- Participer activement aux revues de code et à l'amélioration continue des processus de développement
+- Collaborer avec l'équipe UX/UI pour traduire fidèlement les maquettes en code
+- Résoudre les problèmes techniques complexes et proposer des solutions innovantes
+- Assurer la qualité du code par des tests automatisés
+- Participer à l'évolution de l'architecture frontend de nos applications
+
+## Environnement de travail
+Vous rejoindrez une équipe agile et pluridisciplinaire, où l'autonomie et la créativité sont encouragées. Nous valorisons la qualité du code, les bonnes pratiques et l'amélioration continue.`,
+          requiredSkills: [
+            // Hard skills techniques
+            "JavaScript", "TypeScript", "React", "Redux", "HTML5", "CSS3", "SCSS/SASS", 
+            "Webpack", "Responsive Design", "RESTful API", "GraphQL", "Jest", "React Testing Library",
+            "Next.js", "Tailwind CSS", "Storybook", "Git", "CI/CD", "Performance Optimization",
+            
+            // Outils spécifiques
+            "VSCode", "Chrome DevTools", "Figma", "NPM/Yarn", "ESLint", "Prettier",
+            
+            // Méthodologies
+            "Agile/Scrum", "TDD", "BEM", "Atomic Design"
+          ],
+          education: "Bac+3 à Bac+5 en Informatique ou équivalent",
+          experience: {
+            min: 2,
+            max: 5
+          },
+          contractType: "CDI",
+          remotePreference: "Hybride",
+          salary: {
+            min: 45000,
+            max: 65000,
+            currency: "EUR"
+          }
         },
+        
         "Développeur Backend": {
-          description: `Nous recherchons un développeur Backend expérimenté pour rejoindre notre équipe technique. Vous serez responsable de la conception, du développement et de la maintenance des composants serveur de nos applications. Vous travaillerez en étroite collaboration avec l'équipe frontend pour assurer une intégration fluide des fonctionnalités.
+          description: `## À propos du poste
+          
+Nous recherchons un Développeur Backend chevronné pour concevoir, développer et maintenir les services et APIs qui alimentent nos applications. Vous jouerez un rôle essentiel dans la création d'architectures robustes, scalables et sécurisées.
 
-Responsabilités:
-- Concevoir et développer des API RESTful performantes et sécurisées
-- Implémenter des modèles de données et optimiser les requêtes de base de données
-- Assurer la sécurité, la fiabilité et la scalabilité de nos services
-- Participer à l'architecture technique et aux choix technologiques
-- Mettre en place des tests automatisés pour garantir la qualité du code`,
-          requiredSkills: ["Node.js", "Express", "PostgreSQL", "MongoDB", "Docker", "API REST", "Git", "Testing", "Sécurité des applications"]
+## Responsabilités
+- Concevoir et développer des APIs RESTful et des microservices performants
+- Implémenter et optimiser les modèles de données et les requêtes pour nos bases de données
+- Assurer la sécurité, la scalabilité et la haute disponibilité de nos services
+- Collaborer avec les équipes frontend pour définir les contrats d'API et garantir une intégration fluide
+- Mettre en place des processus de CI/CD et des tests automatisés
+- Participer à la résolution des incidents de production et à l'amélioration continue de nos systèmes
+- Contribuer à l'évolution de l'architecture technique de nos applications
+- Documenter les APIs et les processus techniques
+
+## Environnement de travail
+Vous intégrerez une équipe technique passionnée, travaillant sur des problématiques variées et stimulantes. Nous privilégions l'apprentissage continu et l'innovation technologique dans un cadre collaboratif.`,
+          requiredSkills: [
+            // Hard skills techniques
+            "Java", "Spring Boot", "Node.js", "Express", "Python", "Django/Flask", "C#", ".NET Core",
+            "SQL", "PostgreSQL", "MongoDB", "Redis", "RabbitMQ", "Kafka", "Docker", "Kubernetes",
+            "AWS/Azure/GCP", "Microservices", "RESTful API", "GraphQL", "OAuth/JWT", "JUnit", "Mocha",
+            
+            // Outils spécifiques
+            "Git", "Jenkins", "Terraform", "Swagger/OpenAPI", "Postman", "ELK Stack", "Prometheus", "Grafana",
+            
+            // Méthodologies
+            "Agile/Scrum", "TDD", "DDD", "Clean Architecture", "DevOps"
+          ],
+          education: "Bac+5 en Informatique ou équivalent",
+          experience: {
+            min: 3,
+            max: 8
+          },
+          contractType: "CDI",
+          remotePreference: "Hybride",
+          salary: {
+            min: 50000,
+            max: 80000,
+            currency: "EUR"
+          }
         },
+        
         "Data Scientist": {
-          description: `Nous recherchons un Data Scientist passionné pour rejoindre notre équipe d'analyse de données. Vous serez responsable de l'analyse et de l'interprétation de grands ensembles de données pour extraire des insights précieux et guider les décisions stratégiques de l'entreprise.
+          description: `## À propos du poste
+          
+Nous recherchons un Data Scientist expérimenté pour rejoindre notre équipe d'analyse de données. Vous serez chargé d'extraire des insights précieux de nos données et de développer des algorithmes d'apprentissage automatique pour résoudre des problèmes métier complexes.
 
-Responsabilités:
-- Collecter, nettoyer et prétraiter de grands ensembles de données
-- Développer des modèles prédictifs et des algorithmes d'apprentissage automatique
-- Analyser les données pour identifier des tendances et des opportunités
-- Présenter les résultats d'analyse aux parties prenantes de manière claire et concise
-- Collaborer avec les équipes produit pour intégrer des solutions basées sur les données`,
-          requiredSkills: ["Python", "R", "SQL", "Machine Learning", "Statistiques", "Data Visualization", "TensorFlow/PyTorch", "Jupyter Notebooks"]
+## Responsabilités
+- Collecter, nettoyer et transformer des ensembles de données complexes et volumineux
+- Concevoir et implémenter des modèles prédictifs et des algorithmes d'apprentissage automatique
+- Collaborer avec les équipes produit et métier pour traduire leurs besoins en modèles analytiques
+- Développer des visualisations de données pertinentes pour communiquer efficacement les résultats
+- Mettre en production des modèles ML robustes et évolutifs
+- Réaliser des analyses statistiques avancées pour identifier des tendances et des opportunités
+- Rester à jour sur les dernières avancées en matière de science des données et d'IA
+- Participer à la définition de la stratégie data de l'entreprise
+
+## Environnement de travail
+Vous rejoindrez une équipe pluridisciplinaire travaillant sur des projets variés à fort impact. Nous valorisons l'innovation, la rigueur scientifique et l'approche collaborative pour résoudre des problèmes complexes.`,
+          requiredSkills: [
+            // Hard skills techniques
+            "Python", "R", "SQL", "Pandas", "NumPy", "SciPy", "Scikit-learn", "TensorFlow", "PyTorch",
+            "Keras", "Machine Learning", "Deep Learning", "NLP", "Computer Vision", "Time Series Analysis",
+            "A/B Testing", "Statistiques", "Regression Analysis", "Clustering", "Big Data", "Spark",
+            
+            // Outils spécifiques
+            "Jupyter Notebooks", "Git", "Docker", "AWS SageMaker", "Google Colab", "Tableau", "Power BI",
+            "Hadoop", "Airflow", "MLflow", "DVC",
+            
+            // Méthodologies
+            "CRISP-DM", "Agile", "MLOps"
+          ],
+          education: "Bac+5 ou Doctorat en Data Science, Statistiques, Mathématiques appliquées ou domaine similaire",
+          experience: {
+            min: 3,
+            max: 8
+          },
+          contractType: "CDI",
+          remotePreference: "Hybride",
+          salary: {
+            min: 55000,
+            max: 85000,
+            currency: "EUR"
+          }
         },
+        
         "Chef de Projet IT": {
-          description: `Nous recherchons un Chef de Projet IT expérimenté pour gérer nos projets technologiques stratégiques. Vous serez responsable de la planification, de l'exécution et de la livraison des projets dans les délais et le budget impartis, tout en assurant la satisfaction des parties prenantes.
+          description: `## À propos du poste
+          
+Nous recherchons un Chef de Projet IT expérimenté pour piloter nos projets technologiques stratégiques. Vous serez responsable de la planification, de l'exécution et de la livraison de projets complexes, en garantissant le respect des délais, du budget et des exigences de qualité.
 
-Responsabilités:
-- Définir le périmètre, les objectifs et les livrables des projets
-- Élaborer des plannings détaillés et gérer les ressources efficacement
-- Coordonner les équipes techniques et fonctionnelles
-- Identifier et gérer les risques liés aux projets
-- Assurer une communication régulière avec les parties prenantes`,
-          requiredSkills: ["Gestion de projet", "Méthodologies Agile (Scrum)", "MS Project", "Jira", "Budgétisation", "Analyse des risques", "Communication", "Connaissance technique IT"]
+## Responsabilités
+- Définir et planifier les projets IT en collaboration avec les parties prenantes métier et techniques
+- Constituer et coordonner les équipes projets pluridisciplinaires
+- Élaborer et suivre les plannings, les budgets et les ressources allouées
+- Identifier et gérer les risques projet de manière proactive
+- Assurer une communication efficace et transparente avec toutes les parties prenantes
+- Mettre en place et suivre des indicateurs de performance des projets
+- Animer les réunions d'avancement et les comités de pilotage
+- Gérer les changements de périmètre et leurs impacts sur les projets
+- Assurer la documentation et le transfert de connaissances
+
+## Environnement de travail
+Vous évoluerez dans un environnement dynamique où vous piloterez simultanément plusieurs projets stratégiques. Votre capacité à fédérer des équipes pluridisciplinaires et à communiquer efficacement sera essentielle pour réussir dans ce poste.`,
+          requiredSkills: [
+            // Hard skills techniques
+            "Gestion de projet IT", "MS Project", "Jira", "Confluence", "Trello", "Gestion budgétaire", 
+            "Analyse fonctionnelle", "Cahier des charges", "Planification", "Gestion des risques",
+            "Reporting", "KPIs", "Méthodologies de test", "Recette", "Management d'équipe",
+            
+            // Méthodologies
+            "Agile/Scrum", "Prince2", "PMI/PMP", "ITIL", "Lean", "SAFe", "Cycle en V",
+            
+            // Outils spécifiques
+            "MS Office", "PowerPoint", "Excel avancé", "Gantt", "Monday", "ClickUp", "Asana"
+          ],
+          education: "Bac+5 en Informatique, Management de projet ou équivalent",
+          experience: {
+            min: 5,
+            max: 10
+          },
+          contractType: "CDI",
+          remotePreference: "Hybride",
+          salary: {
+            min: 60000,
+            max: 90000,
+            currency: "EUR"
+          }
+        },
+        
+        "Product Owner": {
+          description: `## À propos du poste
+          
+Nous recherchons un Product Owner passionné pour définir et faire évoluer notre vision produit. Vous serez le pont entre les besoins métier et les équipes techniques, en charge de maximiser la valeur de nos produits numériques.
+
+## Responsabilités
+- Définir et prioriser le backlog produit en fonction de la valeur métier et des retours utilisateurs
+- Rédiger des user stories claires et détaillées pour les équipes de développement
+- Collaborer étroitement avec les parties prenantes pour comprendre leurs besoins et attentes
+- Participer activement aux cérémonies agiles (planification, revue, rétrospective)
+- Valider les développements livrés et s'assurer qu'ils répondent aux critères d'acceptation
+- Analyser les métriques produit et les retours utilisateurs pour identifier les axes d'amélioration
+- Participer à l'élaboration de la roadmap produit et de la stratégie à moyen/long terme
+- Communiquer efficacement sur l'avancement du produit et ses évolutions
+
+## Environnement de travail
+Vous rejoindrez une organisation orientée produit où vous aurez un impact direct sur l'évolution de nos solutions. Votre capacité à comprendre les enjeux métier et à les traduire en fonctionnalités techniques sera déterminante pour réussir dans ce rôle.`,
+          requiredSkills: [
+            // Hard skills techniques
+            "Gestion de backlog", "User stories", "Priorisation", "Jira", "Confluence", "Aha!", "ProductBoard",
+            "Wireframing", "Prototypage", "Analyse fonctionnelle", "Tests utilisateurs", "A/B Testing",
+            "Product Analytics", "KPIs produit", "Roadmapping", "Spécifications fonctionnelles",
+            
+            // Outils spécifiques
+            "Figma", "Miro", "Amplitude", "Mixpanel", "Google Analytics", "Hotjar", "Optimal Workshop",
+            
+            // Méthodologies
+            "Agile/Scrum", "Lean Startup", "Design Thinking", "Jobs to be Done", "Impact Mapping", "Story Mapping"
+          ],
+          education: "Bac+5 en Informatique, Management de produit, ou formation équivalente",
+          experience: {
+            min: 3,
+            max: 8
+          },
+          contractType: "CDI",
+          remotePreference: "Hybride",
+          salary: {
+            min: 55000,
+            max: 80000,
+            currency: "EUR"
+          }
+        },
+        
+        "Ingénieur DevOps": {
+          description: `## À propos du poste
+          
+Nous recherchons un Ingénieur DevOps expérimenté pour accélérer notre transformation vers une culture DevOps mature. Vous serez responsable de la mise en place et de l'amélioration continue de nos infrastructures, pipelines CI/CD et pratiques d'automatisation.
+
+## Responsabilités
+- Concevoir, implémenter et maintenir des infrastructures cloud robustes et sécurisées
+- Mettre en place et optimiser des pipelines CI/CD pour automatiser le déploiement de nos applications
+- Collaborer avec les équipes de développement pour améliorer les pratiques de livraison continue
+- Assurer la haute disponibilité, la scalabilité et la sécurité de nos environnements
+- Mettre en œuvre des solutions de monitoring et d'alerting efficaces
+- Automatiser les tâches opérationnelles répétitives pour améliorer la productivité des équipes
+- Participer à la résolution des incidents et l'amélioration de nos processus de gestion de crise
+- Documenter les architectures, procédures et bonnes pratiques DevOps
+
+## Environnement de travail
+Vous rejoindrez une équipe technique dynamique où l'innovation et l'amélioration continue sont au cœur de notre culture. Votre expertise technique et votre capacité à automatiser des processus complexes seront fortement valorisées.`,
+          requiredSkills: [
+            // Hard skills techniques
+            "Linux", "Bash/Shell", "Docker", "Kubernetes", "Terraform", "Ansible", "Puppet", "Chef", 
+            "AWS/Azure/GCP", "CI/CD", "Jenkins", "GitLab CI", "GitHub Actions", "CircleCI", "ArgoCD",
+            "Infrastructure as Code", "Cloud Architecture", "Microservices", "Serverless",
+            
+            // Monitoring et sécurité
+            "Prometheus", "Grafana", "ELK Stack", "Datadog", "New Relic", "PagerDuty", "Vault", "Security Scanning",
+            
+            // Méthodologies
+            "DevOps", "SRE", "GitOps", "ChatOps", "Agile"
+          ],
+          education: "Bac+5 en Informatique ou équivalent",
+          experience: {
+            min: 3,
+            max: 8
+          },
+          contractType: "CDI",
+          remotePreference: "Hybride",
+          salary: {
+            min: 55000,
+            max: 85000,
+            currency: "EUR"
+          }
+        },
+        
+        "UX/UI Designer": {
+          description: `## À propos du poste
+          
+Nous recherchons un UX/UI Designer talentueux pour concevoir des expériences utilisateurs exceptionnelles et des interfaces visuellement attrayantes pour nos produits numériques. Vous combinerez créativité et rigueur méthodologique pour créer des designs centrés sur l'utilisateur.
+
+## Responsabilités
+- Réaliser des recherches utilisateurs (interviews, tests, enquêtes) pour comprendre les besoins et attentes
+- Créer des personas, parcours utilisateurs, et wireframes pour structurer l'expérience
+- Concevoir des interfaces élégantes, intuitives et accessibles selon nos guidelines de design
+- Élaborer des prototypes interactifs pour tester et valider les concepts
+- Collaborer étroitement avec les développeurs pour assurer une implémentation fidèle des designs
+- Participer à l'évolution de notre système de design et de notre identité visuelle
+- Réaliser des tests d'utilisabilité et itérer sur les designs en fonction des retours
+- Rester à jour sur les tendances UX/UI et les meilleures pratiques du secteur
+
+## Environnement de travail
+Vous rejoindrez une équipe créative où votre expertise en design centré utilisateur sera valorisée. Vous aurez l'opportunité d'impacter directement l'expérience de nos utilisateurs à travers des projets variés et stimulants.`,
+          requiredSkills: [
+            // Hard skills techniques
+            "UX Design", "UI Design", "Wireframing", "Prototypage", "Responsive Design", "Design Systems",
+            "Typography", "Color Theory", "Interaction Design", "Motion Design", "Iconography",
+            "Information Architecture", "Atomic Design", "Design Thinking", "Micro-interactions",
+            
+            // Outils spécifiques
+            "Figma", "Sketch", "Adobe XD", "Illustrator", "Photoshop", "InVision", "Principle", "Framer",
+            "Axure", "Zeplin", "Abstract", "Miro", "ProtoPie",
+            
+            // Méthodologies
+            "Design Sprint", "User-Centered Design", "Lean UX", "Atomic Design", "Double Diamond"
+          ],
+          education: "Bac+3 à Bac+5 en Design, UI/UX, ou équivalent",
+          experience: {
+            min: 2,
+            max: 6
+          },
+          contractType: "CDI",
+          remotePreference: "Hybride",
+          salary: {
+            min: 40000,
+            max: 65000,
+            currency: "EUR"
+          }
         }
       };
       
-      // Chercher une correspondance dans les suggestions par défaut
-      const suggestion = defaultSuggestions[jobTitle];
+      // Recherche de correspondance exacte
+      let suggestion = detailedSuggestions[jobTitle];
       
-      // Si aucune correspondance exacte n'est trouvée, renvoyer des suggestions génériques
+      // Si pas de correspondance exacte, recherche partielle
+      if (!suggestion) {
+        const normalizedTitle = jobTitle.toLowerCase();
+        for (const [key, value] of Object.entries(detailedSuggestions)) {
+          if (normalizedTitle.includes(key.toLowerCase()) || key.toLowerCase().includes(normalizedTitle)) {
+            suggestion = value;
+            break;
+          }
+        }
+      }
+      
+      // Si toujours pas de correspondance, génération d'une suggestion générique plus complète
       if (!suggestion) {
         return {
-          description: `Nous recherchons un(e) ${jobTitle} talentueux(se) pour rejoindre notre équipe. Le/la candidat(e) idéal(e) possède une solide expérience dans le domaine et est passionné(e) par l'innovation et l'excellence.
+          description: `## À propos du poste
+          
+Nous recherchons un(e) ${jobTitle} talentueux(se) pour rejoindre notre équipe. Ce poste est une opportunité unique de contribuer à des projets stimulants et d'avoir un impact significatif dans notre organisation.
 
-Responsabilités:
-- Contribuer activement aux projets de l'entreprise
-- Collaborer efficacement avec les différentes équipes
-- Proposer des solutions innovantes face aux défis rencontrés
-- Assurer une veille technologique et méthodologique
-- Participer à l'amélioration continue des processus`,
-          requiredSkills: ["Communication", "Travail d'équipe", "Résolution de problèmes", "Adaptabilité", "Organisation"]
+## Responsabilités
+- Mettre en œuvre votre expertise technique pour résoudre des problèmes complexes
+- Collaborer efficacement avec différentes équipes au sein de l'organisation
+- Contribuer à l'amélioration continue des processus et des méthodologies
+- Participer activement aux réunions d'équipe et aux revues de projets
+- Rester à jour sur les dernières tendances et technologies du secteur
+- Documenter votre travail de manière claire et précise
+- Respecter les délais et les standards de qualité
+
+## Environnement de travail
+Vous rejoindrez une équipe dynamique et collaborative, où l'innovation et l'excellence sont valorisées. Nous offrons un cadre de travail stimulant qui favorise l'apprentissage continu et le développement professionnel.`,
+          requiredSkills: [
+            // Hard skills génériques mais précis
+            "Maîtrise technique dans le domaine concerné", "Résolution de problèmes complexes", "Analyse de données",
+            "Rédaction technique", "Gestion de projet", "Outils collaboratifs", "Connaissances sectorielles",
+            
+            // Soft skills essentiels
+            "Communication efficace", "Travail d'équipe", "Rigueur analytique", "Autonomie", "Adaptabilité",
+            "Organisation", "Capacité d'apprentissage", "Gestion des priorités", "Prise d'initiative"
+          ],
+          education: "Formation supérieure en lien avec le domaine du poste",
+          experience: {
+            min: 2,
+            max: 5
+          },
+          contractType: "CDI",
+          remotePreference: "Hybride",
+          salary: {
+            min: 40000,
+            max: 60000,
+            currency: "EUR"
+          }
         };
       }
       
+      console.log(`Generated detailed suggestions for job title: ${jobTitle}`);
       return suggestion;
     } catch (error: any) {
       console.error("Exception in generateJobOfferSuggestions:", error);

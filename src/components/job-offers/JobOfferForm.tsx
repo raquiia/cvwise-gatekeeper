@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Sparkles, Info } from 'lucide-react';
@@ -19,7 +18,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import type { JobOffer } from '@/services/data/jobOfferService';
 
-// Schema de validation pour le formulaire d'offre d'emploi
 const jobOfferSchema = z.object({
   title: z.string().min(3, { message: "Le titre doit comporter au moins 3 caractères" }),
   company: z.string().optional(),
@@ -60,7 +58,6 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
   const [showSuggestionDialog, setShowSuggestionDialog] = useState(false);
   const navigate = useNavigate();
   
-  // Initialiser le formulaire avec les valeurs par défaut
   const form = useForm<JobOfferFormValues>({
     resolver: zodResolver(jobOfferSchema),
     defaultValues: {
@@ -76,7 +73,6 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     },
   });
   
-  // Charger les données de l'offre d'emploi si on est en mode édition
   useEffect(() => {
     const fetchJobOffer = async () => {
       if (!isEditing || !jobOfferId) return;
@@ -86,7 +82,6 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
         const jobOffer = await jobOfferService.getJobOfferById(jobOfferId);
         
         if (jobOffer) {
-          // Convertir les données pour le formulaire
           form.reset({
             title: jobOffer.title || "",
             company: jobOffer.company || "",
@@ -129,25 +124,21 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     fetchJobOffer();
   }, [isEditing, jobOfferId, form]);
   
-  // Fonction pour gérer la soumission du formulaire
   const onSubmit = async (values: JobOfferFormValues) => {
     try {
       setLoading(true);
       
-      // Nous nous assurons que title est présent dans values
       if (!values.title) {
         throw new Error("Le titre est requis");
       }
       
       if (isEditing && jobOfferId) {
-        // Mettre à jour l'offre d'emploi existante
         await jobOfferService.updateJobOffer(jobOfferId, values);
         toast({
           title: "Offre d'emploi mise à jour",
           description: "L'offre d'emploi a été mise à jour avec succès",
         });
       } else {
-        // Créer une nouvelle offre d'emploi
         const newJobOffer = await jobOfferService.createJobOffer(values as Omit<JobOffer, 'id' | 'user_id' | 'created_at' | 'updated_at'>);
         toast({
           title: "Offre d'emploi créée",
@@ -155,7 +146,6 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
         });
       }
       
-      // Rediriger vers la liste des offres d'emploi
       navigate('/job-offers');
     } catch (error: any) {
       console.error('Error saving job offer:', error);
@@ -169,7 +159,6 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     }
   };
   
-  // Fonction pour ajouter une compétence requise
   const addRequiredSkill = () => {
     if (!skillInput.trim()) return;
     
@@ -180,13 +169,11 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     setSkillInput('');
   };
   
-  // Fonction pour supprimer une compétence requise
   const removeRequiredSkill = (skillToRemove: string) => {
     const currentSkills = form.getValues('required_skills') || [];
     form.setValue('required_skills', currentSkills.filter(skill => skill !== skillToRemove));
   };
 
-  // Fonction pour générer des suggestions avec l'IA
   const generateSuggestions = async () => {
     const jobTitle = form.getValues('title');
     
@@ -215,7 +202,6 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     }
   };
 
-  // Fonction pour appliquer les suggestions
   const applySuggestions = () => {
     if (!suggestion) return;
     
@@ -227,10 +213,43 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
       form.setValue('required_skills', suggestion.requiredSkills);
     }
     
+    if (suggestion.education) {
+      form.setValue('education_level', suggestion.education);
+    }
+    
+    if (suggestion.experience) {
+      if (suggestion.experience.min !== undefined) {
+        form.setValue('experience_years_min', suggestion.experience.min);
+      }
+      if (suggestion.experience.max !== undefined) {
+        form.setValue('experience_years_max', suggestion.experience.max);
+      }
+    }
+    
+    if (suggestion.contractType) {
+      form.setValue('contract_type', suggestion.contractType);
+    }
+    
+    if (suggestion.remotePreference) {
+      form.setValue('remote_preference', suggestion.remotePreference);
+    }
+    
+    if (suggestion.salary) {
+      if (suggestion.salary.min !== undefined) {
+        form.setValue('salary_min', suggestion.salary.min);
+      }
+      if (suggestion.salary.max !== undefined) {
+        form.setValue('salary_max', suggestion.salary.max);
+      }
+      if (suggestion.salary.currency) {
+        form.setValue('salary_currency', suggestion.salary.currency);
+      }
+    }
+    
     setShowSuggestionDialog(false);
     toast({
       title: "Suggestions appliquées",
-      description: "Les suggestions ont été appliquées avec succès",
+      description: "Les suggestions complètes ont été appliquées avec succès",
     });
   };
   
@@ -254,20 +273,20 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
                 <Button 
                   type="button" 
                   variant="outline" 
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:bg-blue-100"
                   onClick={generateSuggestions}
                   disabled={loadingAiSuggestions}
                 >
                   {loadingAiSuggestions ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Sparkles className="h-4 w-4" />
+                    <Sparkles className="h-4 w-4 text-blue-500" />
                   )}
-                  Assistant IA
+                  <span className="text-blue-700">Assistant IA</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Obtenez des suggestions IA pour améliorer votre offre d'emploi</p>
+                <p>Obtenez des suggestions détaillées pour améliorer votre offre d'emploi</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -617,48 +636,107 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
         </div>
       </form>
 
-      {/* Dialog pour afficher et appliquer les suggestions */}
       <Dialog open={showSuggestionDialog} onOpenChange={setShowSuggestionDialog}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
-              Suggestions pour votre offre d'emploi
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Sparkles className="h-6 w-6 text-blue-500" />
+              Suggestions IA pour votre offre d'emploi
             </DialogTitle>
             <DialogDescription>
-              Voici des suggestions générées par notre IA pour améliorer votre offre d'emploi et obtenir de meilleurs matchings avec les candidats.
+              Notre IA a généré des suggestions détaillées pour votre offre. Examinez-les et appliquez celles qui correspondent le mieux à vos besoins.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 mt-4">
+          <div className="space-y-6 mt-4">
             {suggestion && (
               <>
                 <div>
-                  <h3 className="font-semibold text-navy">Description suggérée</h3>
-                  <div className="bg-muted/50 p-3 rounded-md mt-1 whitespace-pre-wrap">
+                  <h3 className="font-semibold text-navy text-lg">Description suggérée</h3>
+                  <div className="bg-muted/30 p-4 rounded-md mt-2 whitespace-pre-wrap prose prose-sm max-w-none">
                     {suggestion.description}
                   </div>
                 </div>
 
                 {suggestion.requiredSkills && suggestion.requiredSkills.length > 0 && (
                   <div>
-                    <h3 className="font-semibold text-navy">Compétences suggérées</h3>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {suggestion.requiredSkills.map((skill, index) => (
-                        <Badge key={index} variant="outline" className="bg-muted/50">
-                          {skill}
-                        </Badge>
-                      ))}
+                    <h3 className="font-semibold text-navy text-lg">Compétences techniques suggérées</h3>
+                    <div className="mt-2 space-y-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        {suggestion.requiredSkills.map((skill, index) => (
+                          <Badge key={index} variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 px-2 py-1">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Ces compétences sont cruciales pour un matching optimal avec les candidats qualifiés.
+                      </p>
                     </div>
                   </div>
                 )}
+                  
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {suggestion.education && (
+                    <div>
+                      <h3 className="font-semibold text-navy">Niveau d'éducation suggéré</h3>
+                      <div className="bg-muted/30 p-3 rounded-md mt-1">
+                        {suggestion.education}
+                      </div>
+                    </div>
+                  )}
+                    
+                  {suggestion.contractType && (
+                    <div>
+                      <h3 className="font-semibold text-navy">Type de contrat suggéré</h3>
+                      <div className="bg-muted/30 p-3 rounded-md mt-1">
+                        {suggestion.contractType}
+                      </div>
+                    </div>
+                  )}
+                    
+                  {suggestion.remotePreference && (
+                    <div>
+                      <h3 className="font-semibold text-navy">Mode de travail suggéré</h3>
+                      <div className="bg-muted/30 p-3 rounded-md mt-1">
+                        {suggestion.remotePreference}
+                      </div>
+                    </div>
+                  )}
+                    
+                  {suggestion.experience && (suggestion.experience.min !== undefined || suggestion.experience.max !== undefined) && (
+                    <div>
+                      <h3 className="font-semibold text-navy">Expérience suggérée</h3>
+                      <div className="bg-muted/30 p-3 rounded-md mt-1">
+                        {suggestion.experience.min !== undefined && suggestion.experience.max !== undefined
+                          ? `${suggestion.experience.min} à ${suggestion.experience.max} ans`
+                          : suggestion.experience.min !== undefined
+                          ? `Minimum ${suggestion.experience.min} ans`
+                          : `Maximum ${suggestion.experience.max} ans`}
+                      </div>
+                    </div>
+                  )}
+                    
+                  {suggestion.salary && (suggestion.salary.min !== undefined || suggestion.salary.max !== undefined) && (
+                    <div>
+                      <h3 className="font-semibold text-navy">Salaire suggéré</h3>
+                      <div className="bg-muted/30 p-3 rounded-md mt-1">
+                        {suggestion.salary.min !== undefined && suggestion.salary.max !== undefined
+                          ? `${suggestion.salary.min.toLocaleString()} à ${suggestion.salary.max.toLocaleString()} ${suggestion.salary.currency || 'EUR'}`
+                          : suggestion.salary.min !== undefined
+                          ? `Minimum ${suggestion.salary.min.toLocaleString()} ${suggestion.salary.currency || 'EUR'}`
+                          : `Maximum ${suggestion.salary.max?.toLocaleString()} ${suggestion.salary.currency || 'EUR'}`}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <div className="pt-4 flex items-center justify-end gap-2">
                   <Button variant="outline" onClick={() => setShowSuggestionDialog(false)}>
                     Ignorer
                   </Button>
-                  <Button onClick={applySuggestions}>
-                    Appliquer les suggestions
+                  <Button onClick={applySuggestions} className="bg-blue-600 hover:bg-blue-700">
+                    Appliquer toutes les suggestions
                   </Button>
                 </div>
               </>
