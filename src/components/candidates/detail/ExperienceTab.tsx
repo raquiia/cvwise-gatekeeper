@@ -20,7 +20,7 @@ const ExperienceTab: React.FC<ExperienceTabProps> = ({ candidate }) => {
           <CardTitle>Expérience professionnelle</CardTitle>
         </CardHeader>
         <CardContent>
-          {experiences.length > 0 ? (
+          {experiences.length > 0 && !experiences.some(exp => exp._type === 'undefined') ? (
             <div className="space-y-6">
               {experiences.map((exp: any, idx: number) => (
                 <div key={idx} className="relative pl-6 pb-6 border-l-2 border-navy/20 last:border-0 last:pb-0">
@@ -61,7 +61,7 @@ const ExperienceTab: React.FC<ExperienceTabProps> = ({ candidate }) => {
         </CardContent>
       </Card>
       
-      {projects.length > 0 && (
+      {projects.length > 0 && !projects.some(proj => proj._type === 'undefined') && (
         <Card>
           <CardHeader>
             <CardTitle>Projets</CardTitle>

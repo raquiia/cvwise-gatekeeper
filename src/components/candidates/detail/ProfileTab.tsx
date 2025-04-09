@@ -13,6 +13,38 @@ interface ProfileTabProps {
 const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
   const skills = ensureArray<string>(candidate.skills);
   const industries = ensureArray<any>(candidate.industries);
+  
+  const hasValidInterests = candidate.interests && 
+    typeof candidate.interests === 'string' && 
+    !candidate.interests.includes('undefined');
+    
+  const hasValidCareerObjectives = candidate.career_objectives && 
+    typeof candidate.career_objectives === 'string' && 
+    !candidate.career_objectives.includes('undefined');
+    
+  const hasValidAvailability = candidate.availability && 
+    typeof candidate.availability === 'string' && 
+    !candidate.availability.includes('undefined');
+    
+  const hasValidContractType = candidate.contract_type && 
+    typeof candidate.contract_type === 'string' && 
+    !candidate.contract_type.includes('undefined');
+    
+  const hasValidRemotePreference = candidate.remote_preference && 
+    typeof candidate.remote_preference === 'string' && 
+    !candidate.remote_preference.includes('undefined');
+    
+  const hasValidMobility = candidate.mobility && 
+    typeof candidate.mobility === 'string' && 
+    !candidate.mobility.includes('undefined');
+    
+  const hasValidTravelWillingness = candidate.travel_willingness && 
+    typeof candidate.travel_willingness === 'string' && 
+    !candidate.travel_willingness.includes('undefined');
+    
+  const hasValidSalaryExpectations = candidate.salary_expectations && 
+    typeof candidate.salary_expectations === 'string' && 
+    !candidate.salary_expectations.includes('undefined');
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -64,14 +96,14 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
                     </div>
                   )}
                   
-                  {candidate.availability && (
+                  {hasValidAvailability && (
                     <div className="flex items-center">
                       <Calendar size={18} className="text-muted-foreground mr-2" />
                       <span>Disponibilité: {candidate.availability}</span>
                     </div>
                   )}
                   
-                  {candidate.contract_type && (
+                  {hasValidContractType && (
                     <div className="flex items-center">
                       <FileText size={18} className="text-muted-foreground mr-2" />
                       <span>Type de contrat: {candidate.contract_type}</span>
@@ -101,7 +133,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
               </div>
             </div>
             
-            {candidate.interests && (
+            {hasValidInterests && (
               <>
                 <Separator className="my-6" />
                 <div>
@@ -111,7 +143,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
               </>
             )}
             
-            {industries.length > 0 && (
+            {industries.length > 0 && !industries.some(ind => ind._type === 'undefined') && (
               <>
                 <Separator className="my-6" />
                 <div>
@@ -130,7 +162,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
               </>
             )}
             
-            {candidate.career_objectives && (
+            {hasValidCareerObjectives && (
               <>
                 <Separator className="my-6" />
                 <div>
@@ -182,23 +214,23 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
                 </div>
               </div>
               
-              {(candidate.remote_preference || candidate.mobility || candidate.travel_willingness) && (
+              {(hasValidRemotePreference || hasValidMobility || hasValidTravelWillingness) && (
                 <>
                   <Separator className="my-6" />
                   <div className="w-full">
                     <h4 className="text-sm font-medium mb-2">Mobilité</h4>
                     <div className="space-y-2">
-                      {candidate.remote_preference && (
+                      {hasValidRemotePreference && (
                         <div className="p-2 bg-navy/5 rounded-md">
                           <span className="text-sm">Télétravail: {candidate.remote_preference}</span>
                         </div>
                       )}
-                      {candidate.mobility && (
+                      {hasValidMobility && (
                         <div className="p-2 bg-navy/5 rounded-md">
                           <span className="text-sm">Mobilité: {candidate.mobility}</span>
                         </div>
                       )}
-                      {candidate.travel_willingness && (
+                      {hasValidTravelWillingness && (
                         <div className="p-2 bg-navy/5 rounded-md">
                           <span className="text-sm">Déplacements: {candidate.travel_willingness}</span>
                         </div>
@@ -208,7 +240,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
                 </>
               )}
               
-              {candidate.salary_expectations && (
+              {hasValidSalaryExpectations && (
                 <>
                   <Separator className="my-6" />
                   <div className="w-full">

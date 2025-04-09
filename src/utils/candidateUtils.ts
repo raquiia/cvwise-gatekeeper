@@ -21,7 +21,15 @@ export function ensureArray<T>(value: Json | null | undefined): T[] {
     }
   }
   
-  // For objects that aren't arrays
+  // For type objects like {_type: "undefined", value: "undefined"}
+  if (typeof value === 'object' && value !== null) {
+    if ('_type' in value && value._type === 'undefined') {
+      return [];
+    }
+    return [value as unknown as T];
+  }
+  
+  // Default fallback
   return [value as unknown as T];
 }
 

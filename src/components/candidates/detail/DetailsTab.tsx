@@ -13,10 +13,18 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ candidate }) => {
   const languages = ensureArray<any>(candidate.languages);
   const professional_references = ensureArray<any>(candidate.professional_references);
   const professional_networks = ensureArray<any>(candidate.professional_networks);
+  
+  const hasValidProfessionalValues = candidate.professional_values && 
+    typeof candidate.professional_values === 'string' && 
+    !candidate.professional_values.includes('undefined');
+    
+  const hasValidWorkAuthorization = candidate.work_authorization && 
+    typeof candidate.work_authorization === 'string' && 
+    !candidate.work_authorization.includes('undefined');
 
   return (
     <div className="space-y-6">
-      {languages.length > 0 && (
+      {languages.length > 0 && !languages.some(lang => lang._type === 'undefined') && (
         <Card>
           <CardHeader>
             <CardTitle>Langues</CardTitle>
@@ -43,7 +51,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ candidate }) => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-6">
-          {candidate.professional_values && (
+          {hasValidProfessionalValues && (
             <Card>
               <CardHeader>
                 <CardTitle>Valeurs professionnelles</CardTitle>
@@ -54,7 +62,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ candidate }) => {
             </Card>
           )}
           
-          {candidate.work_authorization && (
+          {hasValidWorkAuthorization && (
             <Card>
               <CardHeader>
                 <CardTitle>Autorisations de travail</CardTitle>
@@ -67,7 +75,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ candidate }) => {
         </div>
         
         <div className="space-y-6">
-          {professional_references.length > 0 && (
+          {professional_references.length > 0 && !professional_references.some(ref => ref._type === 'undefined') && (
             <Card>
               <CardHeader>
                 <CardTitle>Références professionnelles</CardTitle>
@@ -87,7 +95,7 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ candidate }) => {
             </Card>
           )}
           
-          {professional_networks.length > 0 && (
+          {professional_networks.length > 0 && !professional_networks.some(network => network._type === 'undefined') && (
             <Card>
               <CardHeader>
                 <CardTitle>Réseaux professionnels</CardTitle>

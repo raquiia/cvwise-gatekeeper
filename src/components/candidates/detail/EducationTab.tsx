@@ -20,7 +20,7 @@ const EducationTab: React.FC<EducationTabProps> = ({ candidate }) => {
           <CardTitle>Formation académique</CardTitle>
         </CardHeader>
         <CardContent>
-          {education.length > 0 ? (
+          {education.length > 0 && !education.some(edu => edu._type === 'undefined') ? (
             <div className="space-y-6">
               {education.map((edu: any, idx: number) => (
                 <div key={idx} className="relative pl-6 pb-6 border-l-2 border-navy/20 last:border-0 last:pb-0">
@@ -53,7 +53,7 @@ const EducationTab: React.FC<EducationTabProps> = ({ candidate }) => {
         </CardContent>
       </Card>
       
-      {certifications.length > 0 && (
+      {certifications.length > 0 && !certifications.some(cert => cert._type === 'undefined') && (
         <Card>
           <CardHeader>
             <CardTitle>Certifications</CardTitle>
