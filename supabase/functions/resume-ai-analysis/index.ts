@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.2";
@@ -161,6 +160,80 @@ function ensureProperDataFormat(data: any): any {
   });
 
   return data;
+}
+
+// Importer les fonctions depuis notre fichier d'utilitaires
+// Note: les edge functions ne peuvent pas importer directement du projet frontend,
+// donc nous avons besoin de recréer la fonction ici
+function calculateCandidateQualityScore(candidateData: any): number {
+  if (!candidateData) return 0;
+  
+  // Base score starts at 50
+  let baseScore = 50;
+  
+  // Skills quality - award points for relevant/in-demand skills
+  const inDemandSkills = [
+    'javascript', 'python', 'react', 'nodejs', 'typescript', 'aws', 'azure', 
+    'docker', 'kubernetes', 'machine learning', 'data science', 'devops',
+    'product management', 'ui/ux', 'agile', 'scrum', 'java', 'c#', '.net',
+    'sql', 'nosql', 'mongodb', 'postgresql', 'leadership'
+  ];
+  
+  const candidateSkills = candidateData.skills || [];
+  const normalizedCandidateSkills = candidateSkills.map((skill: string) => 
+    typeof skill === 'string' ? skill.toLowerCase() : String(skill).toLowerCase()
+  );
+  
+  // Count in-demand skills (with partial matching)
+  let inDemandSkillCount = 0;
+  for (const skill of normalizedCandidateSkills) {
+    if (inDemandSkills.some(inDemandSkill => 
+      skill === inDemandSkill || 
+      skill.includes(inDemandSkill) || 
+      inDemandSkill.includes(skill)
+    )) {
+      inDemandSkillCount++;
+    }
+  }
+  
+  // Award up to 20 points for in-demand skills (capped at 20 points)
+  const skillsScore = Math.min(20, inDemandSkillCount * 2);
+  
+  // Experience quality - award points for years of experience
+  const experienceYears = candidateData.years_experience || 0;
+  // 0-15 points based on years of experience (capped at 15 years)
+  const experienceScore = Math.min(15, experienceYears);
+  
+  // Education quality - award points for education level
+  let educationScore = 0;
+  const education = candidateData.education || [];
+  
+  // Check for highest education level
+  if (education.length > 0) {
+    // Award points based on highest education (simplified)
+    const degrees = education.map((edu: any) => 
+      (edu.degree || '').toLowerCase()
+    );
+    
+    if (degrees.some(d => d.includes('phd') || d.includes('doctorate'))) {
+      educationScore = 15;
+    } else if (degrees.some(d => d.includes('master') || d.includes('mba'))) {
+      educationScore = 12;
+    } else if (degrees.some(d => d.includes('bachelor') || d.includes('license'))) {
+      educationScore = 10;
+    } else if (degrees.some(d => d.includes('associate') || d.includes('certificate'))) {
+      educationScore = 7;
+    } else {
+      educationScore = 5; // Some education listed but not recognized
+    }
+  }
+  
+  // Calculate final score
+  const finalScore = Math.min(95, 
+    baseScore + skillsScore + experienceScore + educationScore
+  );
+  
+  return Math.round(finalScore);
 }
 
 serve(async (req) => {
@@ -534,11 +607,13 @@ Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne
       career_objectives: parsedData.career_objectives || null,
       professional_values: parsedData.professional_values || null,
       work_authorization: parsedData.work_authorization || null,
-      // Calcul du score basé sur la complétude et la qualité des données
-      score: Math.min(95, 50 + 
-        (Array.isArray(parsedData.skills) ? parsedData.skills.length * 3 : 0) + 
-        (Array.isArray(parsedData.experiences || parsedData.experience) ? (parsedData.experiences || parsedData.experience).length * 5 : 0) +
-        (Array.isArray(parsedData.education) ? parsedData.education.length * 3 : 0)),
+      // Utiliser notre fonction de calcul de score de qualité
+      score: calculateCandidateQualityScore({
+        skills: parsedData.skills || [],
+        years_experience: parsedData.years_experience || parsedData.yearsExperience || 0,
+        education: parsedData.education || [],
+        experiences: parsedData.experiences || parsedData.experience || []
+      }),
       status: "qualification",
       profile_completeness: Math.min(95, 30 + 
         (Array.isArray(parsedData.skills) ? parsedData.skills.length * 3 : 0) + 
