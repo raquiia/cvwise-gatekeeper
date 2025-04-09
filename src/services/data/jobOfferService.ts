@@ -1,4 +1,4 @@
-import { SUPABASE_API_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
+import { supabase, SUPABASE_API_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 import { candidateMatchingService } from './candidateMatchingService';
 
 /**
@@ -45,25 +45,31 @@ export const jobOfferService = {
     try {
       console.log("Creating new job offer:", jobOffer.title);
       
-      // Use direct fetch for the API call
-      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/rpc/create_job_offer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          p_job_offer: jobOffer
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error creating job offer: ${errorText}`);
+      // Récupérer l'ID de l'utilisateur actuel
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error("Utilisateur non authentifié");
       }
-
-      const data = await response.json();
+      
+      // Préparer les données pour l'insertion
+      const jobOfferData = {
+        ...jobOffer,
+        user_id: user.id
+      };
+      
+      // Insérer directement dans la table job_offers
+      const { data, error } = await supabase
+        .from('job_offers')
+        .insert(jobOfferData)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Error creating job offer:", error);
+        throw new Error(`Error creating job offer: ${error.message}`);
+      }
+      
       console.log("Job offer created successfully:", data);
       
       // Cast data to JobOffer type
@@ -88,26 +94,19 @@ export const jobOfferService = {
     try {
       console.log(`Updating job offer with ID: ${jobOfferId}`);
       
-      // Use direct fetch for the API call
-      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/rpc/update_job_offer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          p_job_offer_id: jobOfferId,
-          p_updates: updates
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error updating job offer: ${errorText}`);
+      // Utiliser directement les opérations de mise à jour de Supabase
+      const { data, error } = await supabase
+        .from('job_offers')
+        .update(updates)
+        .eq('id', jobOfferId)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Error updating job offer:", error);
+        throw new Error(`Error updating job offer: ${error.message}`);
       }
-
-      const data = await response.json();
+      
       console.log("Job offer updated successfully:", data);
       
       // Cast data to JobOffer type
@@ -132,27 +131,19 @@ export const jobOfferService = {
     try {
       console.log(`Deleting job offer with ID: ${jobOfferId}`);
       
-      // Use direct fetch for the API call
-      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/rpc/delete_job_offer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          p_job_offer_id: jobOfferId
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error deleting job offer: ${errorText}`);
+      // Utiliser directement les opérations de suppression de Supabase
+      const { error } = await supabase
+        .from('job_offers')
+        .delete()
+        .eq('id', jobOfferId);
+      
+      if (error) {
+        console.error("Error deleting job offer:", error);
+        throw new Error(`Error deleting job offer: ${error.message}`);
       }
-
-      const result = await response.json();
+      
       console.log(`Job offer ${jobOfferId} deleted successfully`);
-      return result as boolean;
+      return true;
     } catch (error: any) {
       console.error("Exception in deleteJobOffer:", error);
       throw new Error(error.message || "Impossible de supprimer l'offre d'emploi");
