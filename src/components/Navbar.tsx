@@ -1,194 +1,198 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  User, LogOut, Moon, Sun, Menu, X,
-  Home, Users, FileText, Settings, Bell
+import {
+  Menu,
+  User,
+  LogOut,
+  UserPlus,
+  LogIn,
+  FileText,
+  BarChart,
+  Users,
+  Briefcase
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-type NavLink = {
-  label: string;
-  path: string;
-  icon: React.ElementType;
-  adminOnly?: boolean;
-};
-
-const navLinks: NavLink[] = [
-  { label: 'Tableau de bord', path: '/dashboard', icon: Home },
-  { label: 'Candidats', path: '/candidates', icon: Users },
-  { label: 'CV', path: '/resumes', icon: FileText },
-  { label: 'Administration', path: '/admin', icon: Settings, adminOnly: true },
-];
+import { useAuth } from '@/context/AuthContext';
+import { useMobile } from '@/hooks/use-mobile';
+import ThemeToggle from './ThemeToggle';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const Navbar = () => {
+  const { user, logout } = useAuth();
   const location = useLocation();
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isMobile = useMobile();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  // Check if user is admin (to be replaced with actual auth check)
-  const isAdmin = true;
-  
-  // Filter links based on admin status
-  const visibleLinks = navLinks.filter(link => !link.adminOnly || isAdmin);
-  
-  // Toggle dark mode
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    document.documentElement.classList.toggle('dark');
-    localStorage.setItem('theme', newTheme);
+  const NavLink = ({ href, children, icon: Icon, onClick = () => {} }) => {
+    const isActive = location.pathname === href;
+    
+    return (
+      <Link
+        to={href}
+        onClick={() => {
+          setIsMenuOpen(false);
+          onClick();
+        }}
+        className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${
+          isActive
+            ? 'bg-foreground/10 text-foreground'
+            : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'
+        }`}
+      >
+        {Icon && <Icon className="mr-2 h-4 w-4" />}
+        <span>{children}</span>
+      </Link>
+    );
   };
   
-  // Check if the user is authenticated (to be replaced with actual auth check)
-  const isAuthenticated = true;
-  
-  // Handle scroll effect
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-  
-  // Initialize theme from localStorage
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      if (savedTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-      }
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
-      document.documentElement.classList.add('dark');
-    }
-  }, []);
-  
   return (
-    <header 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'glass shadow-sm py-2' : 'bg-transparent py-4'
-      }`}
-    >
-      <div className="container mx-auto px-4 flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="flex items-center space-x-2">
-          <div className="w-10 h-10 bg-navy rounded-lg flex items-center justify-center">
-            <span className="text-sand text-xl font-bold">CV</span>
-          </div>
-          <span className="text-xl font-semibold text-navy-dark dark:text-sand">CVwise</span>
-        </Link>
-        
-        {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center space-x-1">
-          {visibleLinks.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              className={`nav-link ${location.pathname === link.path ? 'active' : ''}`}
-            >
-              <span className="flex items-center gap-1.5">
-                <link.icon size={18} />
-                {link.label}
-              </span>
-            </Link>
-          ))}
-        </nav>
-        
-        {/* Right Section */}
-        <div className="flex items-center space-x-3">
-          {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell size={20} />
-            <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-gold animate-pulse" />
-          </Button>
-          
-          {/* Theme Toggle */}
-          <Button variant="ghost" size="icon" onClick={toggleTheme}>
-            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-          </Button>
-          
-          {/* User Menu - Desktop */}
-          {isAuthenticated ? (
-            <div className="hidden md:flex items-center space-x-2">
-              <Button variant="ghost" className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                  <User size={16} className="text-muted-foreground" />
-                </div>
-                <span className="font-medium">Mon Compte</span>
-              </Button>
-              <Button variant="ghost" size="icon">
-                <LogOut size={20} />
-              </Button>
-            </div>
-          ) : (
-            <div className="hidden md:block">
-              <Link to="/login">
-                <Button className="button-primary">Connexion</Button>
-              </Link>
-            </div>
-          )}
-          
-          {/* Mobile Menu Toggle */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="md:hidden"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </Button>
-        </div>
-      </div>
-      
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 glass animate-fade-in py-4 border-t border-border/10">
-          <div className="container px-4 flex flex-col space-y-2">
-            {visibleLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`flex items-center gap-2 p-3 rounded-md transition-colors ${
-                  location.pathname === link.path 
-                    ? 'bg-navy/10 text-navy-dark dark:bg-navy/20 dark:text-sand font-medium' 
-                    : 'hover:bg-navy/5 dark:hover:bg-navy/10'
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <link.icon size={18} />
-                {link.label}
-              </Link>
-            ))}
-            
-            {isAuthenticated ? (
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center">
+        <div className="mr-4 flex">
+          <Link to="/" className="mr-6 flex items-center space-x-2">
+            <span className="font-bold">ResuScan</span>
+          </Link>
+          <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
+            {user ? (
               <>
-                <hr className="border-border/10 my-2" />
-                <div className="flex items-center justify-between">
-                  <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="outline" className="w-full justify-start">
-                      <User size={18} className="mr-2" />
-                      Mon Compte
-                    </Button>
-                  </Link>
-                  <Button variant="ghost" size="icon">
-                    <LogOut size={20} />
-                  </Button>
-                </div>
+                <NavLink href="/dashboard" icon={BarChart}>
+                  Tableau de bord
+                </NavLink>
+                <NavLink href="/candidates" icon={Users}>
+                  Candidats
+                </NavLink>
+                <NavLink href="/resumes" icon={FileText}>
+                  CV
+                </NavLink>
+                <NavLink href="/job-offers" icon={Briefcase}>
+                  Offres d'emploi
+                </NavLink>
               </>
             ) : (
               <>
-                <hr className="border-border/10 my-2" />
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="button-primary w-full">Connexion</Button>
-                </Link>
+                <NavLink href="/" icon={null}>
+                  Accueil
+                </NavLink>
+              </>
+            )}
+          </nav>
+        </div>
+        <div className="flex flex-1 items-center justify-end">
+          <div className="flex items-center gap-2">
+            {user ? (
+              <>
+                <div className="hidden md:block">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="relative h-8 w-8 rounded-full"
+                      >
+                        <User className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard">
+                          <User className="mr-2 h-4 w-4" />
+                          <span>Profile</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild onClick={logout}>
+                        <button className="w-full flex items-center">
+                          <LogOut className="mr-2 h-4 w-4" />
+                          <span>Déconnexion</span>
+                        </button>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <ThemeToggle />
+                <Button
+                  variant="ghost"
+                  className="md:hidden"
+                  size="icon"
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="hidden md:flex gap-2">
+                  <Button asChild variant="ghost">
+                    <Link to="/login">
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Se connecter
+                    </Link>
+                  </Button>
+                  <Button asChild>
+                    <Link to="/register">
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      S'inscrire
+                    </Link>
+                  </Button>
+                </div>
+                <ThemeToggle />
+                <Button
+                  variant="ghost"
+                  className="md:hidden"
+                  size="icon"
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
               </>
             )}
           </div>
+        </div>
+      </div>
+      {isMenuOpen && isMobile && (
+        <div className="md:hidden border-t border-border/40 p-4 flex flex-col space-y-3 bg-background">
+          {user ? (
+            <>
+              <NavLink href="/dashboard" icon={BarChart}>
+                Tableau de bord
+              </NavLink>
+              <NavLink href="/candidates" icon={Users}>
+                Candidats
+              </NavLink>
+              <NavLink href="/resumes" icon={FileText}>
+                CV
+              </NavLink>
+              <NavLink href="/job-offers" icon={Briefcase}>
+                Offres d'emploi
+              </NavLink>
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  logout();
+                }}
+                className="flex items-center px-4 py-2 text-sm font-medium rounded-md text-foreground/60 hover:text-foreground hover:bg-foreground/5"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Déconnexion</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <NavLink href="/" icon={null}>
+                Accueil
+              </NavLink>
+              <NavLink href="/login" icon={LogIn}>
+                Se connecter
+              </NavLink>
+              <NavLink href="/register" icon={UserPlus}>
+                S'inscrire
+              </NavLink>
+            </>
+          )}
         </div>
       )}
     </header>

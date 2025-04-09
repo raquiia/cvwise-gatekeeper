@@ -13,6 +13,10 @@ import Candidates from "./pages/Candidates";
 import CandidateDetail from "./pages/CandidateDetail";
 import Resumes from "./pages/Resumes";
 import ResumeUpload from "./pages/ResumeUpload";
+import JobOffers from "./pages/JobOffers";
+import JobOfferCreate from "./pages/JobOfferCreate";
+import JobOfferEdit from "./pages/JobOfferEdit";
+import JobOfferDetail from "./pages/JobOfferDetail";
 import Admin from "./pages/Admin";
 import AllUsers from "./pages/AllUsers";
 import NotFound from "./pages/NotFound";
@@ -71,6 +75,29 @@ const App = () => (
           <ResumeUpload />
         </ProtectedRoute>
       } />
+      
+      {/* Nouvelles routes pour les offres d'emploi */}
+      <Route path="/job-offers" element={
+        <ProtectedRoute>
+          <JobOffers />
+        </ProtectedRoute>
+      } />
+      <Route path="/job-offers/create" element={
+        <ProtectedRoute>
+          <JobOfferCreate />
+        </ProtectedRoute>
+      } />
+      <Route path="/job-offers/:jobOfferId" element={
+        <ProtectedRoute>
+          <JobOfferDetail />
+        </ProtectedRoute>
+      } />
+      <Route path="/job-offers/:jobOfferId/edit" element={
+        <ProtectedRoute>
+          <JobOfferEdit />
+        </ProtectedRoute>
+      } />
+      
       <Route path="/admin" element={
         <ProtectedRoute>
           <Admin />
