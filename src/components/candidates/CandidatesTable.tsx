@@ -35,6 +35,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   const [activeJobOfferId, setActiveJobOfferId] = useState<string | null>(null);
   const [candidatesWithScores, setCandidatesWithScores] = useState<CandidateData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [sortBy, setSortBy] = useState<'score' | 'name' | 'date'>('score');
   
   // Fetch job offers on component mount
   useEffect(() => {
@@ -95,14 +96,16 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
             }
           }
           
-          // Sort candidates by score in descending order
-          updatedCandidates.sort((a, b) => (b.score || 0) - (a.score || 0));
+          // Sort candidates by score in descending order by default
+          sortCandidates(updatedCandidates, sortBy);
           
           setCandidatesWithScores(updatedCandidates);
         } catch (error) {
           console.error("Error updating candidate scores:", error);
           // Fall back to regular candidates if there's an error
-          setCandidatesWithScores(candidates);
+          const sortedCandidates = [...candidates];
+          sortCandidates(sortedCandidates, sortBy);
+          setCandidatesWithScores(sortedCandidates);
           
           toast({
             title: "Erreur de calcul des scores",
@@ -113,14 +116,34 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
           setIsLoading(false);
         }
       } else {
-        // If no active job offer, use the original candidates but sorted by their base score
-        const sortedCandidates = [...candidates].sort((a, b) => (b.score || 0) - (a.score || 0));
+        // If no active job offer, use the original candidates but sorted
+        const sortedCandidates = [...candidates];
+        sortCandidates(sortedCandidates, sortBy);
         setCandidatesWithScores(sortedCandidates);
       }
     };
     
     updateCandidateScores();
-  }, [candidates, activeJobOfferId]);
+  }, [candidates, activeJobOfferId, sortBy]);
+  
+  // Function to sort candidates based on sort criteria
+  const sortCandidates = (candidatesList: CandidateData[], criteria: 'score' | 'name' | 'date') => {
+    switch(criteria) {
+      case 'score':
+        candidatesList.sort((a, b) => (b.score || 0) - (a.score || 0));
+        break;
+      case 'name':
+        candidatesList.sort((a, b) => 
+          `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
+        );
+        break;
+      case 'date':
+        candidatesList.sort((a, b) => 
+          new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
+        );
+        break;
+    }
+  };
   
   // Handle changing the active job offer
   const handleJobOfferChange = async (jobOfferId: string | null) => {
@@ -159,6 +182,10 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const handleSortChange = (criteria: 'score' | 'name' | 'date') => {
+    setSortBy(criteria);
   };
   
   // Debug: Log the candidates data being received
@@ -265,10 +292,25 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
             </DropdownMenuContent>
           </DropdownMenu>
         
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-navy-dark">
-            <ArrowUpDown size={14} className="mr-1" />
-            Trier
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-navy-dark">
+                <ArrowUpDown size={14} className="mr-1" />
+                Trier
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleSortChange('score')} className={sortBy === 'score' ? "bg-muted" : ""}>
+                Par score
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSortChange('name')} className={sortBy === 'name' ? "bg-muted" : ""}>
+                Par nom
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSortChange('date')} className={sortBy === 'date' ? "bg-muted" : ""}>
+                Par date de mise à jour
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           
           <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-navy-dark">
             <SlidersHorizontal size={14} className="mr-1" />

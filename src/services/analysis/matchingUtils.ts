@@ -37,16 +37,19 @@ export function calculateSkillMatch(candidateSkills: string[], jobSkills: string
     if (exactMatch) {
       matchScore += 1.0; // Full point for exact match
     } else if (containsMatch) {
-      matchScore += 0.7; // Partial point for partial match
+      matchScore += 0.5; // Half point for partial match
     }
   }
   
-  // Calculate percentage with higher precision
-  return Math.round((matchScore / totalJobSkills) * 100);
+  // Calculate percentage
+  const percentage = Math.min(100, Math.round((matchScore / totalJobSkills) * 100));
+  
+  // Return a more distinctive score (0-100)
+  return percentage;
 }
 
 /**
- * Calculate an overall match score between a candidate and a job position
+ * Calculate an overall match score between a candidate and a job position with higher differentiation
  */
 export function calculateOverallMatch(
   candidateData: any, 
@@ -64,8 +67,8 @@ export function calculateOverallMatch(
   });
 
   // Initialize scoring factors with weighted importance
-  const skillsWeight = 0.5;     // 50% of the score comes from skills match
-  const experienceWeight = 0.3; // 30% from experience
+  const skillsWeight = 0.45;     // 45% of the score comes from skills match
+  const experienceWeight = 0.35; // 35% from experience
   const otherWeight = 0.2;      // 20% from other factors
 
   // Check for required data
@@ -94,10 +97,10 @@ export function calculateOverallMatch(
       Object.values(jobPosition.required_skills) : 
       []);
 
-  // Calculate skills match
+  // Calculate skills match with higher differentiation
   const skillsMatch = calculateSkillMatch(candidateSkills, jobSkills);
   
-  // Experience match - if job requires X years, candidate should have at least X years
+  // Experience match - create more nuanced scoring
   const requiredYearsMin = jobPosition.experience_years_min || jobPosition.required_years_experience || 0;
   const requiredYearsMax = jobPosition.experience_years_max || requiredYearsMin + 5 || 0;
   const candidateYears = candidateData.years_experience || 0;
@@ -107,23 +110,23 @@ export function calculateOverallMatch(
   if (requiredYearsMin <= 0) {
     experienceMatch = 100; // No experience required
   } else if (candidateYears >= requiredYearsMin && candidateYears <= requiredYearsMax) {
-    // Perfect match with a gradient for exact matches
+    // Perfect match - create a bell curve for optimal years
     const idealYears = (requiredYearsMin + requiredYearsMax) / 2;
     const distanceFromIdeal = Math.abs(candidateYears - idealYears);
     const rangeSize = (requiredYearsMax - requiredYearsMin) / 2;
     
     // Higher score the closer they are to the ideal years
-    experienceMatch = 100 - Math.round((distanceFromIdeal / rangeSize) * 15);
-    experienceMatch = Math.max(85, experienceMatch); // Minimum 85% if within range
+    experienceMatch = 100 - Math.round((distanceFromIdeal / rangeSize) * 20);
+    experienceMatch = Math.max(80, experienceMatch); // Minimum 80% if within range
   } else if (candidateYears > requiredYearsMax) {
-    // Over-qualified with a more significant penalty
-    experienceMatch = Math.max(60, 100 - ((candidateYears - requiredYearsMax) * 7));
+    // Over-qualified with penalty
+    experienceMatch = Math.max(50, 100 - ((candidateYears - requiredYearsMax) * 10));
   } else if (candidateYears > 0) {
-    // Some experience but under the minimum - more distinctive scoring
-    experienceMatch = Math.min(80, Math.round((candidateYears / requiredYearsMin) * 85));
+    // Some experience but under the minimum
+    experienceMatch = Math.min(70, Math.round((candidateYears / requiredYearsMin) * 80));
   }
   
-  // For location match - make more distinctive
+  // For location match - more distinctive scoring
   let locationMatch = 30; // Default - lower to create more differentiation
   
   if (jobPosition.location && candidateData.location) {
@@ -134,42 +137,32 @@ export function calculateOverallMatch(
     if (jobLocation === candidateLocation) {
       locationMatch = 100; // Exact match
     } else if (jobLocation.includes(candidateLocation) || candidateLocation.includes(jobLocation)) {
-      // Partial string match - more granular
-      const shortestLength = Math.min(jobLocation.length, candidateLocation.length);
-      const longestLength = Math.max(jobLocation.length, candidateLocation.length);
-      const similarityRatio = shortestLength / longestLength;
-      
-      locationMatch = Math.round(85 * similarityRatio);
+      // Partial match - reduced score for subtlety
+      locationMatch = 75;
     } else {
-      // Check for parts matching (city/region/country)
-      const locationParts = jobLocation.split(/[,\s]+/).filter(Boolean);
-      const candidateLocationParts = candidateLocation.split(/[,\s]+/).filter(Boolean);
+      // Check for city/region match
+      const jobParts = jobLocation.split(/[,\s]+/).filter(Boolean);
+      const candidateParts = candidateLocation.split(/[,\s]+/).filter(Boolean);
       
-      let partMatches = 0;
-      for (const part of locationParts) {
-        if (candidateLocationParts.includes(part) && part.length > 2) {
-          partMatches++;
+      for (const part of jobParts) {
+        if (part.length > 2 && candidateParts.includes(part)) {
+          locationMatch = 60;
+          break;
         }
-      }
-      
-      if (partMatches > 0) {
-        locationMatch = Math.min(70, 40 + (partMatches * 15)); // Base 40% + 15% per matching part
       }
     }
   }
   
-  // Other factors match - consider education & cultural fit
+  // Education match - more distinctive
   const educationMatch = calculateEducationMatch(
     Array.isArray(candidateData.education) ? candidateData.education : [], 
     jobPosition.education_level
   );
   
-  // Base candidate quality still matters but with lower weight to differentiate more
-  const baseQualityFactor = (candidateData.score || 75) * 0.2;
+  // Other factors including education, location, and base quality
+  const otherFactorsMatch = (educationMatch * 0.6) + (locationMatch * 0.4);
   
-  const otherFactorsMatch = educationMatch * 0.8 + baseQualityFactor;
-  
-  // Calculate weighted score - ensure we round only at the end for more differentiation
+  // Calculate weighted score with enhanced differentiation
   const overallScore = Math.round(
     (skillsMatch * skillsWeight) + 
     (experienceMatch * experienceWeight) + 
@@ -188,8 +181,8 @@ export function calculateOverallMatch(
     locationMatch,
     otherFactorsMatch,
     overallScore,
-    matchedSkills: matchedSkills.length,
-    missingSkills: missingSkills.length
+    matchedSkills,
+    missingSkills
   });
   
   return {
@@ -197,7 +190,7 @@ export function calculateOverallMatch(
     details: {
       skillsMatch: skillsMatch,
       experienceMatch: experienceMatch,
-      otherFactorsMatch: otherFactorsMatch,
+      otherFactorsMatch: Math.round(otherFactorsMatch),
       matchedSkills: matchedSkills,
       missingSkills: missingSkills
     }
@@ -205,14 +198,14 @@ export function calculateOverallMatch(
 }
 
 /**
- * Calculate education match score
+ * Calculate education match score with greater differentiation
  */
 function calculateEducationMatch(candidateEducation: any[], jobEducationLevel: string | null): number {
   if (!jobEducationLevel || !candidateEducation || candidateEducation.length === 0) {
     return 50; // Default match when no specific requirements
   }
   
-  // Education levels in ascending order
+  // Education levels in ascending order with more detailed distinctions
   const educationLevels = [
     'high school', 'secondary', 
     'associate', 'bachelor', 'license', 'undergraduate', 'bac+3', 'bac+4',
@@ -220,7 +213,7 @@ function calculateEducationMatch(candidateEducation: any[], jobEducationLevel: s
     'phd', 'doctorate', 'doctoral'
   ];
   
-  // Education level weights - to create more differentiation
+  // Education level weights with more separation
   const educationWeights: {[key: string]: number} = {
     'high school': 10,
     'secondary': 20,
@@ -277,15 +270,13 @@ function calculateEducationMatch(candidateEducation: any[], jobEducationLevel: s
   
   // Calculate match based on difference between required and actual level
   if (highestLevelIndex >= requiredLevelIndex) {
-    // Exceed or meets requirements - but don't give full 100% for excessive qualifications
-    const overQualifiedPenalty = highestLevelIndex > requiredLevelIndex + 2 ? 10 : 0;
+    // Exceed or meets requirements - lower score for significantly overqualified
+    const overQualifiedPenalty = highestLevelIndex > requiredLevelIndex + 2 ? 15 : 0;
     return 100 - overQualifiedPenalty;
   } else {
-    // Partial match - more nuanced calculation
+    // Under qualified - more significant penalties
     const levelDifference = requiredLevelIndex - highestLevelIndex;
-    const weightRatio = highestLevelWeight / requiredLevelWeight;
-    
-    return Math.round(Math.min(90, weightRatio * 100 * (1 - (levelDifference * 0.15))));
+    return Math.max(20, 85 - (levelDifference * 20));
   }
 }
 
@@ -362,16 +353,16 @@ export function findMissingSkills(candidateSkills: string[], jobSkills: string[]
 export function calculateCandidateQualityScore(candidateData: any): number {
   if (!candidateData) return 0;
   
-  // Base score starts at 50
-  let baseScore = 50;
+  // Base score starts lower for greater differentiation
+  let baseScore = 40;
   
   // Skills quality - award points for relevant/in-demand skills
-  // This is a simplified version - in a real system, you would have a list of in-demand skills
   const inDemandSkills = [
     'javascript', 'python', 'react', 'nodejs', 'typescript', 'aws', 'azure', 
     'docker', 'kubernetes', 'machine learning', 'data science', 'devops',
     'product management', 'ui/ux', 'agile', 'scrum', 'java', 'c#', '.net',
-    'sql', 'nosql', 'mongodb', 'postgresql', 'leadership'
+    'sql', 'nosql', 'mongodb', 'postgresql', 'leadership', 'gestion de projet',
+    'project management', 'marketing', 'sales', 'finance', 'accounting'
   ];
   
   const candidateSkills = candidateData.skills || [];
@@ -391,13 +382,13 @@ export function calculateCandidateQualityScore(candidateData: any): number {
     }
   }
   
-  // Award up to 20 points for in-demand skills (capped at 20 points)
-  const skillsScore = Math.min(20, inDemandSkillCount * 2);
+  // Award up to 25 points for in-demand skills (increased from 20)
+  const skillsScore = Math.min(25, inDemandSkillCount * 2.5);
   
-  // Experience quality - award points for years of experience
+  // Experience quality - award points for years of experience with diminishing returns
   const experienceYears = candidateData.years_experience || 0;
-  // 0-15 points based on years of experience (capped at 15 years)
-  const experienceScore = Math.min(15, experienceYears);
+  // 0-20 points based on years of experience with diminishing returns
+  const experienceScore = Math.min(20, Math.sqrt(experienceYears) * 5);
   
   // Education quality - award points for education level
   let educationScore = 0;
@@ -406,7 +397,6 @@ export function calculateCandidateQualityScore(candidateData: any): number {
   // Check for highest education level
   if (education.length > 0) {
     // Award points based on highest education (simplified)
-    // In a real system, you'd parse and categorize degrees more intelligently
     const degrees = education.map((edu: any) => 
       (edu.degree || '').toLowerCase()
     );
@@ -420,11 +410,11 @@ export function calculateCandidateQualityScore(candidateData: any): number {
     } else if (degrees.some(d => d.includes('associate') || d.includes('certificate'))) {
       educationScore = 7;
     } else {
-      educationScore = 5; // Some education listed but not recognized
+      educationScore = 4; // Some education listed but not recognized
     }
   }
   
-  // Calculate final score
+  // Calculate final score with wider range
   const finalScore = Math.min(95, 
     baseScore + skillsScore + experienceScore + educationScore
   );
