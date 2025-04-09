@@ -80,17 +80,43 @@ const convertJsonToMatchDetails = (jsonData: Json | null): MatchDetails | undefi
     const details = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
     
     // Ensure we return an object that conforms to the MatchDetails interface
-    return {
+    const matchDetails: MatchDetails = {
       skillsMatch: details.skillsMatch || 0,
       experienceMatch: details.experienceMatch || 0,
       otherFactorsMatch: details.otherFactorsMatch || 0,
-      matchedSkills: details.matchedSkills || [],
-      missingSkills: details.missingSkills || [],
-      skills_details: details.skills_details || undefined
+      matchedSkills: Array.isArray(details.matchedSkills) ? details.matchedSkills : [],
+      missingSkills: Array.isArray(details.missingSkills) ? details.missingSkills : [],
     };
+    
+    // Only add skills_details if it exists in the JSON
+    if (details.skills_details) {
+      matchDetails.skills_details = {
+        matchedSkills: Array.isArray(details.skills_details.matchedSkills) 
+          ? details.skills_details.matchedSkills 
+          : [],
+        missingSkills: Array.isArray(details.skills_details.missingSkills) 
+          ? details.skills_details.missingSkills 
+          : [],
+        additionalSkills: Array.isArray(details.skills_details.additionalSkills) 
+          ? details.skills_details.additionalSkills 
+          : [],
+        skillsScore: typeof details.skills_details.skillsScore === 'number' 
+          ? details.skills_details.skillsScore 
+          : 0
+      };
+    }
+    
+    return matchDetails;
   } catch (error) {
     console.error("Error converting JSON to MatchDetails:", error);
-    return undefined;
+    // Return a valid default MatchDetails object instead of undefined
+    return {
+      skillsMatch: 0,
+      experienceMatch: 0,
+      otherFactorsMatch: 0,
+      matchedSkills: [],
+      missingSkills: []
+    };
   }
 };
 
@@ -323,7 +349,7 @@ export const candidateMatchingService = {
       const combinedData: CandidateMatch[] = matchesData.map(match => {
         const candidate = candidatesData.find(c => c.id === match.candidate_id) || null;
         
-        // Convert match_details from Json to MatchDetails
+        // Convert match_details from Json to MatchDetails using our helper function
         const matchDetails = convertJsonToMatchDetails(match.match_details);
         
         // Fix TypeScript error by explicitly constructing a CandidateJobMatch object
