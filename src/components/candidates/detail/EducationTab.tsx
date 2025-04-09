@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Award } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
-import { ensureArray } from '@/utils/candidateUtils';
+import { ensureArray, isUndefinedObject } from '@/utils/candidateUtils';
 
 interface EducationTabProps {
   candidate: CandidateData;
@@ -32,9 +32,9 @@ const EducationTab: React.FC<EducationTabProps> = ({ candidate }) => {
                 <div key={idx} className="relative pl-6 pb-6 border-l-2 border-navy/20 last:border-0 last:pb-0">
                   <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-navy"></div>
                   <div className="mb-1">
-                    <h3 className="text-lg font-semibold text-navy-dark">{edu.degree || edu.diploma}</h3>
+                    <h3 className="text-lg font-semibold text-navy-dark">{edu.degree || edu.diploma || 'Formation'}</h3>
                     <div className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
-                      <span className="font-medium text-navy">{edu.institution || edu.school}</span>
+                      <span className="font-medium text-navy">{edu.institution || edu.school || 'Institution'}</span>
                       {edu.location && <span>• {edu.location}</span>}
                       {(edu.start_date || edu.startDate) && (
                         <span>
@@ -76,9 +76,9 @@ const EducationTab: React.FC<EducationTabProps> = ({ candidate }) => {
                           cert : 
                           cert.name || cert.title || 'Certification sans titre'}
                       </h3>
-                      {cert.issuer && <p className="text-sm text-navy">{cert.issuer}</p>}
-                      {cert.date && <p className="text-xs text-muted-foreground mt-1">{cert.date}</p>}
-                      {cert.description && <p className="text-sm text-navy-dark mt-2">{cert.description}</p>}
+                      {cert && cert.issuer && <p className="text-sm text-navy">{cert.issuer}</p>}
+                      {cert && cert.date && <p className="text-xs text-muted-foreground mt-1">{cert.date}</p>}
+                      {cert && cert.description && <p className="text-sm text-navy-dark mt-2">{cert.description}</p>}
                     </div>
                   </div>
                 </div>

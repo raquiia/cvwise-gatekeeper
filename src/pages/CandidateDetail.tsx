@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { candidateService } from '@/services/data/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
-import { ArrowLeft, Briefcase, FileText } from 'lucide-react';
+import { ArrowLeft, Briefcase, FileText, Edit } from 'lucide-react';
 import { processCandidateData } from '@/utils/candidateUtils';
+import { toast } from '@/hooks/use-toast';
 
 // Import the component tabs
 import ProfileTab from '@/components/candidates/detail/ProfileTab';
@@ -16,6 +17,7 @@ import EducationTab from '@/components/candidates/detail/EducationTab';
 import DetailsTab from '@/components/candidates/detail/DetailsTab';
 import CandidateLoading from '@/components/candidates/detail/CandidateLoading';
 import CandidateError from '@/components/candidates/detail/CandidateError';
+import DataMissingAlert from '@/components/candidates/detail/DataMissingAlert';
 
 const CandidateDetail = () => {
   const { candidateId } = useParams<{ candidateId: string }>();
@@ -24,6 +26,7 @@ const CandidateDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
+  const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
 
   useEffect(() => {
     const fetchCandidate = async () => {
@@ -46,33 +49,18 @@ const CandidateDetail = () => {
           setError("Candidat non trouvé");
         } else {
           console.log("Candidate data retrieved successfully:", data);
-          console.log("Raw data type:", typeof data);
-          
-          if (typeof data === 'object') {
-            console.log("Data has experiences:", Boolean(data.experiences));
-            console.log("Data has education:", Boolean(data.education));
-            
-            if (data.experiences) {
-              console.log("Experiences type:", typeof data.experiences);
-              console.log("Experiences sample:", JSON.stringify(data.experiences).substring(0, 100) + "...");
-            }
-            
-            if (data.education) {
-              console.log("Education type:", typeof data.education);
-              console.log("Education sample:", JSON.stringify(data.education).substring(0, 100) + "...");
-            }
-          }
           
           // Process the data to ensure arrays and properties are correctly formatted
           const processedData = processCandidateData(data);
           console.log("Processed candidate data:", processedData);
           
-          // Additional logging to help debug
-          console.log("Processed experiences:", processedData.experiences);
-          console.log("Processed education:", processedData.education);
-          console.log("Processed languages:", processedData.languages);
-          console.log("Processed certifications:", processedData.certifications);
+          // Check for data incompleteness
+          const hasIncompleteData = 
+            (!processedData.experiences || processedData.experiences.length === 0) &&
+            (!processedData.education || processedData.education.length === 0) &&
+            (!processedData.languages || processedData.languages.length === 0);
           
+          setDataIncompletenessDetected(hasIncompleteData);
           setCandidate(processedData);
         }
       } catch (err: any) {
@@ -85,6 +73,14 @@ const CandidateDetail = () => {
 
     fetchCandidate();
   }, [candidateId]);
+
+  const handleEditCandidate = () => {
+    // This is a placeholder for future functionality
+    toast({
+      title: "Fonctionnalité à venir",
+      description: "L'édition du profil candidat sera bientôt disponible",
+    });
+  };
 
   if (loading) {
     return (
@@ -133,6 +129,10 @@ const CandidateDetail = () => {
                 <Briefcase size={16} className="mr-2" />
                 Match d'emploi
               </Button>
+              <Button variant="outline" onClick={handleEditCandidate}>
+                <Edit size={16} className="mr-2" />
+                Éditer
+              </Button>
               <Button>
                 <FileText size={16} className="mr-2" />
                 Voir le CV
@@ -140,6 +140,10 @@ const CandidateDetail = () => {
             </div>
           </div>
         </div>
+        
+        {dataIncompletenessDetected && (
+          <DataMissingAlert candidateName={`${candidate.first_name} ${candidate.last_name}`} />
+        )}
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
           <TabsList className="w-full md:w-auto bg-navy/5 p-1 rounded-lg mb-6">
