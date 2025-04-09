@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Calendar, ChevronDown, CheckSquare, Building } from 'lucide-react';
+import { Calendar, ChevronDown, CheckSquare, Building, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -20,6 +20,8 @@ interface ResumesFiltersProps {
   selectionMode: boolean;
   companyFilter?: string;
   setCompanyFilter?: (company: string) => void;
+  semanticSearchQuery?: string;
+  setSemanticSearchQuery?: (query: string) => void;
 }
 
 const ResumesFilters: React.FC<ResumesFiltersProps> = ({
@@ -31,12 +33,15 @@ const ResumesFilters: React.FC<ResumesFiltersProps> = ({
   onEnableSelection,
   selectionMode,
   companyFilter = '',
-  setCompanyFilter = () => {}
+  setCompanyFilter = () => {},
+  semanticSearchQuery = '',
+  setSemanticSearchQuery = () => {}
 }) => {
   const handleReset = () => {
     setSearchQuery('');
     setSelectedStatus(null);
     if (setCompanyFilter) setCompanyFilter('');
+    if (setSemanticSearchQuery) setSemanticSearchQuery('');
   };
 
   return (
@@ -94,6 +99,20 @@ const ResumesFilters: React.FC<ResumesFiltersProps> = ({
               className="h-9 pl-10"
               value={companyFilter}
               onChange={(e) => setCompanyFilter(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+      
+      {setSemanticSearchQuery && (
+        <div className="flex-1 min-w-[250px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+            <Input
+              placeholder="Recherche sémantique (ex: chef de projet ferroviaire)..."
+              className="h-9 pl-10"
+              value={semanticSearchQuery}
+              onChange={(e) => setSemanticSearchQuery(e.target.value)}
             />
           </div>
         </div>

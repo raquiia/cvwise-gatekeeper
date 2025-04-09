@@ -17,6 +17,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { semanticMatchingService } from '@/services/semantic/semanticMatchingService';
 
 const Candidates = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,18 +33,21 @@ const Candidates = () => {
   const [previousCompanyFilter, setPreviousCompanyFilter] = useState('');
   const [experienceFilter, setExperienceFilter] = useState('');
   const [skillsFilter, setSkillsFilter] = useState<string[]>([]);
+  const [semanticSearchFilter, setSemanticSearchFilter] = useState('');
   const [activeFilters, setActiveFilters] = useState<{
     location: string;
     company: string;
     previousCompany: string;
     experience: string;
     skills: string[];
+    semanticSearch: string;
   }>({
     location: '',
     company: '',
     previousCompany: '',
     experience: '',
-    skills: []
+    skills: [],
+    semanticSearch: ''
   });
   
   const { user } = useAuth();
@@ -155,6 +159,19 @@ const Candidates = () => {
       }
     }
     
+    // Filtre par recherche sémantique
+    if (activeFilters.semanticSearch) {
+      const candidateText = semanticMatchingService.getCandidateSearchableText(candidate);
+      const isMatch = semanticMatchingService.isSemanticMatch({
+        query: activeFilters.semanticSearch,
+        candidateText
+      });
+      
+      if (!isMatch) {
+        return false;
+      }
+    }
+    
     return true;
   };
   
@@ -192,7 +209,8 @@ const Candidates = () => {
       company: companyFilter,
       previousCompany: previousCompanyFilter,
       experience: experienceFilter,
-      skills: skillsFilter
+      skills: skillsFilter,
+      semanticSearch: semanticSearchFilter
     });
     
     toast({
@@ -207,12 +225,14 @@ const Candidates = () => {
     setPreviousCompanyFilter('');
     setExperienceFilter('');
     setSkillsFilter([]);
+    setSemanticSearchFilter('');
     setActiveFilters({
       location: '',
       company: '',
       previousCompany: '',
       experience: '',
-      skills: []
+      skills: [],
+      semanticSearch: ''
     });
     
     toast({
@@ -315,12 +335,14 @@ const Candidates = () => {
           onPreviousCompanyChange={setPreviousCompanyFilter}
           onExperienceChange={setExperienceFilter}
           onSkillsChange={setSkillsFilter}
+          onSemanticSearchChange={setSemanticSearchFilter}
           onApplyFilters={handleApplyFilters}
           onResetFilters={handleResetFilters}
           location={locationFilter}
           company={companyFilter}
           previousCompany={previousCompanyFilter}
           experience={experienceFilter}
+          semanticSearch={semanticSearchFilter}
           selectedSkills={skillsFilter}
         />
         

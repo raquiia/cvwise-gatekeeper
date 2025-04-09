@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { MapPin, Briefcase, Calendar, X, Filter, Check, Building, History } from 'lucide-react';
+import { MapPin, Briefcase, Calendar, X, Filter, Check, Building, History, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,12 +23,14 @@ interface CandidatesFiltersProps {
   onPreviousCompanyChange: (company: string) => void;
   onExperienceChange: (experience: string) => void;
   onSkillsChange: (skills: string[]) => void;
+  onSemanticSearchChange: (query: string) => void;
   onApplyFilters: () => void;
   onResetFilters: () => void;
   location: string;
   company: string;
   previousCompany: string;
   experience: string;
+  semanticSearch: string;
   selectedSkills: string[];
 }
 
@@ -39,12 +41,14 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
   onPreviousCompanyChange,
   onExperienceChange,
   onSkillsChange,
+  onSemanticSearchChange,
   onApplyFilters,
   onResetFilters,
   location,
   company,
   previousCompany,
   experience,
+  semanticSearch,
   selectedSkills
 }) => {
   const [skillInput, setSkillInput] = useState('');
@@ -88,6 +92,22 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
         >
           Réinitialiser
         </Button>
+      </div>
+      
+      <div className="mb-4">
+        <label className="label text-sm text-muted-foreground mb-1.5">Recherche sémantique</label>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+          <Input
+            placeholder="Ex: chef de projet ferroviaire, développeur fullstack santé..."
+            className="input-field pl-10"
+            value={semanticSearch}
+            onChange={(e) => onSemanticSearchChange(e.target.value)}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Trouvez des candidats avec des profils similaires, même s'ils n'utilisent pas exactement les mêmes termes
+        </p>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
