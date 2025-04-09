@@ -2,7 +2,7 @@
 import React from 'react';
 import Layout from '@/components/Layout';
 import JobOfferForm from '@/components/job-offers/JobOfferForm';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, MapPin } from 'lucide-react';
 
 const JobOfferCreate = () => {
   return (
@@ -37,10 +37,15 @@ const JobOfferCreate = () => {
                   <span className="mr-2">•</span> 
                   <span>Suggestions adaptées au contexte du marché actuel</span>
                 </li>
+                <li className="flex items-center">
+                  <span className="mr-2">•</span> 
+                  <span className="font-semibold">Fourchettes de salaire adaptées à la localisation (Paris, Genève, Londres...)</span>
+                </li>
               </ul>
-              <p className="mt-3 text-sm text-blue-600 italic">
-                Commencez par saisir le titre du poste et cliquez sur "Assistant IA" pour générer des recommandations complètes.
-              </p>
+              <div className="mt-3 flex items-center text-sm text-blue-600 italic">
+                <MapPin className="h-4 w-4 mr-1.5 flex-shrink-0" />
+                <span>N'oubliez pas d'indiquer la localisation précise (ville et pays) pour des recommandations salariales adaptées.</span>
+              </div>
             </div>
           </div>
           
