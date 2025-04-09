@@ -7,7 +7,12 @@ import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket'
 // Re-export des opérations sur les CV
 import { uploadResume, getUserResumes, checkDuplicateResume } from './resume/resumeOperations';
 import { downloadResume, deleteResume } from './resume/fileOperations';
-import { analyzeResume, extractResumeText, checkResumeAlreadyAnalyzed } from './resume/analysisOperations';
+import { 
+  analyzeResume, 
+  extractResumeText, 
+  checkResumeAlreadyAnalyzed, 
+  analyzeBatchResumes 
+} from './resume/analysisOperations';
 
 // Re-export des interfaces
 import type { ResumeData, CandidateData } from './data/resumeDataService';
@@ -26,6 +31,7 @@ export {
   analyzeResume,
   extractResumeText,
   checkResumeAlreadyAnalyzed,
+  analyzeBatchResumes,
   
   // Types
   ResumeData,

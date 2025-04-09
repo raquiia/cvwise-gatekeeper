@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Loader2, AlertCircle, RefreshCw, Trash2 } from 'lucide-react';
+import { Search, Loader2, AlertCircle, RefreshCw, Trash2, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +11,7 @@ import {
   downloadResume, 
   extractResumeText,
   analyzeResume,
+  analyzeBatchResumes,
   ResumeData 
 } from '@/services/resumeService';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
@@ -25,6 +26,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Progress
+} from "@/components/ui/progress";
 
 import ResumesHeader from '@/components/resume/ResumesHeader';
 import ResumesFilters from '@/components/resume/ResumesFilters';
@@ -53,7 +57,10 @@ const Resumes = () => {
   const [selectedResumes, setSelectedResumes] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
+  const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, percent: 0 });
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [openBatchAnalyzeDialog, setOpenBatchAnalyzeDialog] = useState(false);
 
   useEffect(() => {
     const initAndLoad = async () => {
@@ -310,6 +317,87 @@ const Resumes = () => {
     }
   };
 
+  const handleBatchAnalyze = async () => {
+    if (selectedResumes.length === 0) return;
+    
+    setIsBatchAnalyzing(true);
+    setOpenBatchAnalyzeDialog(false);
+    setBatchProgress({ current: 0, total: selectedResumes.length, percent: 0 });
+    
+    try {
+      toast({
+        title: "Analyse en lot démarrée",
+        description: `L'analyse de ${selectedResumes.length} CV a commencé...`,
+      });
+      
+      const itemsToAnalyze = [];
+      
+      for (const resumeId of selectedResumes) {
+        const resume = resumes.find(r => r.id === resumeId);
+        
+        if (!resume) continue;
+        
+        if (resumesWithExtractedText[resumeId]) {
+          itemsToAnalyze.push({
+            resumeId,
+            text: resumesWithExtractedText[resumeId]
+          });
+        } else {
+          try {
+            const extractResult = await extractResumeText(resumeId, resume.file_path);
+            
+            if (extractResult.success && extractResult.text) {
+              const newExtractedTexts = {
+                ...resumesWithExtractedText,
+                [resumeId]: extractResult.text
+              };
+              setResumesWithExtractedText(newExtractedTexts);
+              localStorage.setItem('resumesWithExtractedText', JSON.stringify(newExtractedTexts));
+              
+              itemsToAnalyze.push({
+                resumeId,
+                text: extractResult.text
+              });
+            }
+          } catch (error) {
+            console.error(`Error extracting text for resume ${resumeId}:`, error);
+          }
+        }
+      }
+      
+      const result = await analyzeBatchResumes(itemsToAnalyze, (current, total, resumeId, success) => {
+        const percent = Math.round((current / total) * 100);
+        setBatchProgress({ current, total, percent });
+        
+        if (success) {
+          setResumes(prev => 
+            prev.map(resume => 
+              resume.id === resumeId ? { ...resume, parsed: true } : resume
+            )
+          );
+        }
+      });
+      
+      toast({
+        title: "Analyse en lot terminée",
+        description: `${result.successCount} sur ${result.totalCount} CV ont été analysés avec succès`,
+      });
+      
+      await loadResumes();
+      setSelectedResumes([]);
+      setSelectionMode(false);
+    } catch (error: any) {
+      console.error('Error in batch analysis:', error);
+      toast({
+        title: "Échec de l'analyse en lot",
+        description: error.message || "Une erreur s'est produite lors de l'analyse des CV",
+        variant: "destructive",
+      });
+    } finally {
+      setIsBatchAnalyzing(false);
+    }
+  };
+
   const toggleResumeSelection = (resumeId: string) => {
     setSelectedResumes(prev => {
       if (prev.includes(resumeId)) {
@@ -386,7 +474,7 @@ const Resumes = () => {
                 <AlertDialogTrigger asChild>
                   <Button 
                     variant="destructive"
-                    disabled={selectedResumes.length === 0 || isProcessingBatch}
+                    disabled={selectedResumes.length === 0 || isProcessingBatch || isBatchAnalyzing}
                   >
                     {isProcessingBatch ? (
                       <Loader2 size={16} className="mr-2 animate-spin" />
@@ -412,13 +500,56 @@ const Resumes = () => {
                 </AlertDialogContent>
               </AlertDialog>
               
+              <AlertDialog open={openBatchAnalyzeDialog} onOpenChange={setOpenBatchAnalyzeDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="default"
+                    disabled={selectedResumes.length === 0 || isProcessingBatch || isBatchAnalyzing}
+                  >
+                    {isBatchAnalyzing ? (
+                      <Loader2 size={16} className="mr-2 animate-spin" />
+                    ) : (
+                      <Brain size={16} className="mr-2" />
+                    )}
+                    Analyser ({selectedResumes.length})
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmation d'analyse en lot</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Vous êtes sur le point d'analyser {selectedResumes.length} CV. Cette action peut prendre un certain temps.
+                      <br /><br />
+                      Les CV déjà analysés seront ignorés. Pour les autres, le texte sera extrait puis analysé automatiquement.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleBatchAnalyze} className="bg-blue-600 hover:bg-blue-700">
+                      Analyser
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              
               <Button 
                 variant="outline"
                 onClick={cancelSelection}
+                disabled={isBatchAnalyzing || isProcessingBatch}
               >
                 Annuler
               </Button>
             </div>
+            
+            {isBatchAnalyzing && (
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-muted-foreground">Analyse en cours...</span>
+                  <span className="text-sm text-muted-foreground">{batchProgress.current}/{batchProgress.total} CV</span>
+                </div>
+                <Progress value={batchProgress.percent} className="h-2" />
+              </div>
+            )}
           </>
         )}
         

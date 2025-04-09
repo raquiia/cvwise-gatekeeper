@@ -1,4 +1,3 @@
-
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from '@/services/data/resumeDataService';
@@ -204,6 +203,68 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
       success: false, 
       message: error.message || "Échec de l'analyse du CV"
     };
+  }
+};
+
+/**
+ * Exécuter l'analyse en lot de plusieurs CV
+ */
+export const analyzeBatchResumes = async (
+  resumeItems: Array<{ resumeId: string, text: string }>,
+  onProgress?: (index: number, total: number, currentResumeId: string, success: boolean) => void
+): Promise<{ successCount: number; totalCount: number; failedResumes: string[] }> => {
+  try {
+    console.log(`Starting batch analysis of ${resumeItems.length} resumes`);
+    
+    let successCount = 0;
+    const failedResumes: string[] = [];
+    
+    // Traiter les CV un par un pour éviter de surcharger le système
+    for (let i = 0; i < resumeItems.length; i++) {
+      const { resumeId, text } = resumeItems[i];
+      
+      console.log(`Processing resume ${i + 1}/${resumeItems.length}, ID: ${resumeId}`);
+      
+      try {
+        // Vérifier si le CV a déjà été analysé
+        const { analyzed } = await checkResumeAlreadyAnalyzed(resumeId);
+        
+        // Analyser le CV (ne pas écraser s'il existe déjà)
+        if (!analyzed) {
+          const result = await analyzeResume(resumeId, text);
+          
+          if (result.success) {
+            successCount++;
+            console.log(`Successfully analyzed resume ${resumeId}`);
+          } else {
+            failedResumes.push(resumeId);
+            console.error(`Failed to analyze resume ${resumeId}: ${result.message}`);
+          }
+        } else {
+          // Compter comme réussi si déjà analysé
+          successCount++;
+          console.log(`Resume ${resumeId} was already analyzed, skipping`);
+        }
+      } catch (error) {
+        console.error(`Error analyzing resume ${resumeId}:`, error);
+        failedResumes.push(resumeId);
+      }
+      
+      // Appeler la fonction de progression si fournie
+      if (onProgress) {
+        onProgress(i + 1, resumeItems.length, resumeId, !failedResumes.includes(resumeId));
+      }
+    }
+    
+    console.log(`Batch analysis completed. Success: ${successCount}/${resumeItems.length}`);
+    return {
+      successCount,
+      totalCount: resumeItems.length,
+      failedResumes
+    };
+  } catch (error: any) {
+    console.error('Error in batch analysis:', error);
+    throw new Error(`Erreur lors de l'analyse par lot: ${error.message}`);
   }
 };
 
