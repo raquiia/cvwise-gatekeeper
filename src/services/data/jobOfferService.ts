@@ -1,3 +1,4 @@
+
 import { supabase, SUPABASE_API_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 import { candidateMatchingService } from './candidateMatchingService';
 
@@ -157,22 +158,24 @@ export const jobOfferService = {
     try {
       console.log("Fetching job offers for current user");
       
-      // Use direct fetch for the API call
-      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/rpc/get_user_job_offers`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error fetching job offers: ${errorText}`);
+      // Récupérer l'ID de l'utilisateur actuel
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error("Utilisateur non authentifié");
       }
-
-      const data = await response.json();
+      
+      // Utiliser directement les opérations de requête de Supabase
+      const { data, error } = await supabase
+        .from('job_offers')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching job offers:", error);
+        throw new Error(`Error fetching job offers: ${error.message}`);
+      }
       
       // Cast data to JobOffer[] type
       const typedData = (data || []) as JobOffer[];
@@ -192,25 +195,22 @@ export const jobOfferService = {
     try {
       console.log(`Fetching job offer with ID: ${jobOfferId}`);
       
-      // Use direct fetch for the API call
-      const response = await fetch(`${SUPABASE_API_URL}/rest/v1/rpc/get_job_offer_by_id`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          p_job_offer_id: jobOfferId
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error fetching job offer: ${errorText}`);
+      // Utiliser directement les opérations de requête de Supabase
+      const { data, error } = await supabase
+        .from('job_offers')
+        .select('*')
+        .eq('id', jobOfferId)
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No data found
+          console.log(`No job offer found with ID: ${jobOfferId}`);
+          return null;
+        }
+        console.error("Error fetching job offer:", error);
+        throw new Error(`Error fetching job offer: ${error.message}`);
       }
-
-      const data = await response.json();
       
       if (!data) {
         console.log(`No job offer found with ID: ${jobOfferId}`);
