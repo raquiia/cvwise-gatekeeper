@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Users, FileText, Search, CheckCircle, 
@@ -25,7 +24,6 @@ const Dashboard = () => {
   const [candidatesCount, setCandidatesCount] = useState(0);
   const [resumesCount, setResumesCount] = useState(0);
   
-  // Extract unique companies from users data
   useEffect(() => {
     if (realUsers.length > 0) {
       const uniqueCompanies = new Set(
@@ -38,7 +36,6 @@ const Dashboard = () => {
     }
   }, [realUsers]);
   
-  // Fetch candidate and resume data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -49,7 +46,6 @@ const Dashboard = () => {
           throw new Error("User not authenticated");
         }
         
-        // Get candidates using the secure RPC function
         const { data: candidatesData, error: candidatesError } = await supabase
           .rpc('get_user_candidates', { user_id_param: user.id });
           
@@ -60,7 +56,6 @@ const Dashboard = () => {
         
         setCandidatesCount(candidatesData?.length || 0);
         
-        // Get recent candidates for display (limit to 5)
         const recentCandidatesList = (candidatesData || [])
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .slice(0, 5)
@@ -75,7 +70,6 @@ const Dashboard = () => {
         
         setRecentCandidates(recentCandidatesList);
         
-        // Use a secure RPC function to avoid RLS recursion issues
         const { data: userResumes, error: resumesError } = await supabase
           .rpc('get_user_resumes', { user_id_param: user.id });
           
@@ -330,7 +324,7 @@ const Dashboard = () => {
               />
             )}
             
-            <Card className="glass rounded-xl">
+            <Card className="bg-white dark:bg-navy-dark rounded-xl">
               <CardHeader className="pb-3">
                 <CardTitle>Quick Links</CardTitle>
               </CardHeader>
