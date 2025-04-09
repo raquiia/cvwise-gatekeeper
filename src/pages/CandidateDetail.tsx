@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -28,50 +27,50 @@ const CandidateDetail = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
 
+  const fetchCandidateData = async () => {
+    if (!candidateId) {
+      console.error("No candidate ID provided");
+      setError("Identifiant de candidat manquant");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log("Fetching candidate with ID:", candidateId);
+      
+      // Use candidateService instead of candidateDataService
+      const data = await candidateService.getCandidateById(candidateId);
+      
+      if (!data) {
+        console.log("Candidate not found:", candidateId);
+        setError("Candidat non trouvé");
+      } else {
+        console.log("Candidate data retrieved successfully:", data);
+        
+        // Process the data to ensure arrays and properties are correctly formatted
+        const processedData = processCandidateData(data);
+        console.log("Processed candidate data:", processedData);
+        
+        // Check for data incompleteness
+        const hasIncompleteData = 
+          (!processedData.experiences || processedData.experiences.length === 0) &&
+          (!processedData.education || processedData.education.length === 0) &&
+          (!processedData.languages || processedData.languages.length === 0);
+        
+        setDataIncompletenessDetected(hasIncompleteData);
+        setCandidate(processedData);
+      }
+    } catch (err: any) {
+      console.error("Error loading candidate:", err);
+      setError(`Une erreur s'est produite lors du chargement des données: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchCandidate = async () => {
-      if (!candidateId) {
-        console.error("No candidate ID provided");
-        setError("Identifiant de candidat manquant");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        console.log("Fetching candidate with ID:", candidateId);
-        
-        // Use candidateService instead of candidateDataService
-        const data = await candidateService.getCandidateById(candidateId);
-        
-        if (!data) {
-          console.log("Candidate not found:", candidateId);
-          setError("Candidat non trouvé");
-        } else {
-          console.log("Candidate data retrieved successfully:", data);
-          
-          // Process the data to ensure arrays and properties are correctly formatted
-          const processedData = processCandidateData(data);
-          console.log("Processed candidate data:", processedData);
-          
-          // Check for data incompleteness
-          const hasIncompleteData = 
-            (!processedData.experiences || processedData.experiences.length === 0) &&
-            (!processedData.education || processedData.education.length === 0) &&
-            (!processedData.languages || processedData.languages.length === 0);
-          
-          setDataIncompletenessDetected(hasIncompleteData);
-          setCandidate(processedData);
-        }
-      } catch (err: any) {
-        console.error("Error loading candidate:", err);
-        setError(`Une erreur s'est produite lors du chargement des données: ${err.message}`);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCandidate();
+    fetchCandidateData();
   }, [candidateId]);
 
   const handleEditCandidate = () => {
@@ -142,7 +141,11 @@ const CandidateDetail = () => {
         </div>
         
         {dataIncompletenessDetected && (
-          <DataMissingAlert candidateName={`${candidate.first_name} ${candidate.last_name}`} />
+          <DataMissingAlert 
+            candidateName={`${candidate.first_name} ${candidate.last_name}`} 
+            resumeId={candidate.resume_id}
+            onReanalysisComplete={fetchCandidateData}
+          />
         )}
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
