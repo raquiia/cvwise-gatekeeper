@@ -416,6 +416,20 @@ export type Database = {
         Args: { resume_id_param: string }
         Returns: boolean
       }
+      get_all_profiles_secure: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          avatar_url: string | null
+          company: string | null
+          created_at: string | null
+          first_name: string | null
+          id: string
+          is_admin: boolean | null
+          last_name: string | null
+          title: string | null
+          updated_at: string | null
+        }[]
+      }
       get_auth_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string

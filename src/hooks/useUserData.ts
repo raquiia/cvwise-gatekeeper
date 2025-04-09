@@ -31,10 +31,11 @@ export const useUserData = () => {
       try {
         setLoading(true);
         
-        // Using RPC function to get profile data to avoid the recursion issue
+        // Using direct query to the profiles table with our secure function
         const { data: userData, error } = await supabase
-          .rpc('get_all_profiles_secure')
-          .select('*');
+          .from('profiles')
+          .select('*')
+          .rpc('get_all_profiles_secure');
         
         if (error) {
           console.error('Erreur lors de la récupération des utilisateurs:', error);
