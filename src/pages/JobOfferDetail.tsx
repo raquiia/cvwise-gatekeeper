@@ -253,15 +253,17 @@ const JobOfferDetail = () => {
   
   // Enhanced renderMatchedSkills with better null checking
   const renderMatchedSkills = (item: ExtendedCandidateMatch) => {
-    // First, try to get matched skills from direct details
-    const matchedSkillsFromDetails = item.details?.skills?.matched;
-    // Then try from match_details if available
-    const matchedSkillsFromMatch = item.match?.match_details?.skills?.matched;
-    // Use a safe array with fallbacks at each level
-    const matchedSkills = Array.isArray(matchedSkillsFromDetails) 
-      ? matchedSkillsFromDetails 
-      : Array.isArray(matchedSkillsFromMatch) 
-        ? matchedSkillsFromMatch 
+    // First try to get matched skills from match.match_details path
+    const matchDetailsSkills = item.match?.match_details?.skills?.matched;
+    
+    // Then try from details path
+    const detailsSkills = item.details?.skills?.matched;
+    
+    // Use a safe array with comprehensive fallbacks
+    const matchedSkills = Array.isArray(matchDetailsSkills) 
+      ? matchDetailsSkills 
+      : Array.isArray(detailsSkills) 
+        ? detailsSkills 
         : [];
     
     if (matchedSkills.length > 0) {
@@ -278,12 +280,13 @@ const JobOfferDetail = () => {
   // Enhanced renderMissingSkills with better null checking
   const renderMissingSkills = (item: ExtendedCandidateMatch) => {
     // Similar approach for missing skills with multiple fallbacks
+    const missingSkillsFromMatchDetails = item.match?.match_details?.skills?.missing;
     const missingSkillsFromDetails = item.details?.skills?.missing;
-    const missingSkillsFromMatch = item.match?.match_details?.skills?.missing;
-    const missingSkills = Array.isArray(missingSkillsFromDetails) 
-      ? missingSkillsFromDetails 
-      : Array.isArray(missingSkillsFromMatch) 
-        ? missingSkillsFromMatch 
+    
+    const missingSkills = Array.isArray(missingSkillsFromMatchDetails) 
+      ? missingSkillsFromMatchDetails 
+      : Array.isArray(missingSkillsFromDetails) 
+        ? missingSkillsFromDetails 
         : [];
     
     if (missingSkills.length > 0) {
