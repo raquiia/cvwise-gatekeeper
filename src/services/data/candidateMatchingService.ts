@@ -1,3 +1,4 @@
+
 // Import the necessary libraries and services
 import { JobOffer } from "./jobOfferService";
 import { jobOfferService } from "./jobOfferService";
@@ -27,6 +28,25 @@ export interface JobOfferSuggestion extends Partial<JobOffer> {
 }
 
 /**
+ * Interface for skill match details
+ */
+export interface SkillsDetails {
+  score: number;
+  matchedSkills?: string[];
+  missingSkills?: string[];
+}
+
+/**
+ * Interface for match details
+ */
+export interface MatchDetails {
+  skills_details: SkillsDetails;
+  experience_details: { score: number };
+  education_details: { score: number };
+  location_details: { score: number };
+}
+
+/**
  * Interface for CandidateJobMatch
  */
 export interface CandidateJobMatch {
@@ -38,7 +58,7 @@ export interface CandidateJobMatch {
   experience_match_score: number;
   education_match_score: number;
   location_match_score: number;
-  match_details?: any;
+  match_details: MatchDetails; // Now required, not optional
   created_at?: string;
   updated_at?: string;
 }
@@ -55,7 +75,6 @@ export interface CandidateMatch {
  * Service for candidate matching operations
  */
 export const candidateMatchingService = {
-
   /**
    * Calculate matches for a job offer
    */
@@ -80,7 +99,7 @@ export const candidateMatchingService = {
    */
   getMatchesForJobOffer: async (jobOfferId: string): Promise<CandidateMatch[]> => {
     console.log(`Getting all candidate matches for job offer: ${jobOfferId}`);
-    // Mock implementation for now
+    // Mock implementation that returns an empty array with the required structure
     return [];
   },
 
@@ -89,7 +108,7 @@ export const candidateMatchingService = {
    */
   getTopCandidatesForJobOffer: async (jobOfferId: string, limit: number = 5): Promise<CandidateMatch[]> => {
     console.log(`Getting top ${limit} candidates for job offer: ${jobOfferId}`);
-    // Mock implementation for now
+    // Mock implementation that returns an empty array with the required structure
     return [];
   },
 

@@ -13,27 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import type { JobOffer } from '@/services/data/jobOfferService';
 import type { CandidateData } from '@/services/data/resumeDataService';
-import type { CandidateJobMatch } from '@/services/data/candidateMatchingService';
-
-interface ExtendedSkillsDetails {
-  score: number;
-  matchedSkills?: string[];
-  missingSkills?: string[];
-}
-
-interface ExtendedCandidateJobMatch extends CandidateJobMatch {
-  match_details: {
-    skills_details: ExtendedSkillsDetails;
-    experience_details: { score: number };
-    education_details: { score: number };
-    location_details: { score: number };
-  };
-}
-
-interface CandidateMatch {
-  candidate: CandidateData;
-  match: ExtendedCandidateJobMatch;
-}
+import type { CandidateJobMatch, CandidateMatch } from '@/services/data/candidateMatchingService';
 
 const JobOfferDetail = () => {
   const { jobOfferId } = useParams<{ jobOfferId: string }>();
@@ -129,7 +109,7 @@ const JobOfferDetail = () => {
     navigate(`/job-offers/${jobOfferId}/edit`);
   };
   
-  const renderMatchedSkills = (match: ExtendedCandidateJobMatch) => {
+  const renderMatchedSkills = (match: CandidateJobMatch) => {
     const matchedSkills = match.match_details?.skills_details?.matchedSkills || [];
     
     if (matchedSkills.length > 0) {
@@ -143,7 +123,7 @@ const JobOfferDetail = () => {
     }
   };
   
-  const renderMissingSkills = (match: ExtendedCandidateJobMatch) => {
+  const renderMissingSkills = (match: CandidateJobMatch) => {
     const missingSkills = match.match_details?.skills_details?.missingSkills || [];
     
     if (missingSkills.length > 0) {

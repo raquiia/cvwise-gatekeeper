@@ -3,7 +3,13 @@ import { candidateService } from './candidateService';
 import { jobOfferService } from './jobOfferService';
 import { candidateMatchingService } from './candidateMatchingService';
 import type { JobOffer } from './jobOfferService';
-import type { CandidateJobMatch, CandidateMatch } from './candidateMatchingService';
+import type { 
+  CandidateJobMatch, 
+  CandidateMatch, 
+  JobOfferSuggestion,
+  MatchDetails,
+  SkillsDetails
+} from './candidateMatchingService';
 
 /**
  * Re-export all the services to maintain backward compatibility
@@ -26,8 +32,16 @@ export const candidateDataService = {
   calculateMatchesForJobOffer: candidateMatchingService.calculateMatchesForJobOffer,
   getCandidateJobMatch: candidateMatchingService.getCandidateJobMatch,
   getMatchesForJobOffer: candidateMatchingService.getMatchesForJobOffer,
-  getTopCandidatesForJobOffer: candidateMatchingService.getTopCandidatesForJobOffer
+  getTopCandidatesForJobOffer: candidateMatchingService.getTopCandidatesForJobOffer,
+  generateJobOfferSuggestions: candidateMatchingService.generateJobOfferSuggestions
 };
 
 // Re-export types to maintain backward compatibility
-export { JobOffer, CandidateJobMatch, CandidateMatch };
+export { 
+  JobOffer, 
+  CandidateJobMatch, 
+  CandidateMatch, 
+  JobOfferSuggestion,
+  MatchDetails,
+  SkillsDetails 
+};
