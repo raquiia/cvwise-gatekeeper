@@ -1,4 +1,3 @@
-
 // Full implementation of candidate matching service with job offer suggestions
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -274,7 +273,7 @@ export const candidateMatchingService = {
             updated_at: match.updated_at
           }
         };
-      }).filter(item => item.candidate !== null);
+      }).filter(item => item.candidate !== null);\
       
       return combinedData;
     } catch (error: any) {
