@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import ThemeToggle from './ThemeToggle';
 import {
   DropdownMenu,
@@ -24,9 +24,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const location = useLocation();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const NavLink = ({ href, children, icon: Icon, onClick = () => {} }) => {
@@ -104,7 +104,7 @@ const Navbar = () => {
                           <span>Profile</span>
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild onClick={logout}>
+                      <DropdownMenuItem asChild onClick={signOut}>
                         <button className="w-full flex items-center">
                           <LogOut className="mr-2 h-4 w-4" />
                           <span>Déconnexion</span>
@@ -172,7 +172,7 @@ const Navbar = () => {
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
-                  logout();
+                  signOut();
                 }}
                 className="flex items-center px-4 py-2 text-sm font-medium rounded-md text-foreground/60 hover:text-foreground hover:bg-foreground/5"
               >
