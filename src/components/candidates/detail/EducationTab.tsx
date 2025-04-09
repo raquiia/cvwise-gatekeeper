@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Award } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
-import { ensureArray, isUndefinedObject } from '@/utils/candidateUtils';
+import { ensureArray } from '@/utils/candidateUtils';
 
 interface EducationTabProps {
   candidate: CandidateData;
