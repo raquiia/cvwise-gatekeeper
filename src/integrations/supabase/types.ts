@@ -496,6 +496,50 @@ export type Database = {
           last_updated_at: string
         }[]
       }
+      get_candidates_by_ids: {
+        Args: { candidate_ids: string[] }
+        Returns: {
+          availability: string | null
+          career_objectives: string | null
+          certifications: Json | null
+          company: string | null
+          continuous_training: Json | null
+          contract_type: string | null
+          created_at: string | null
+          education: Json | null
+          email: string | null
+          experiences: Json | null
+          first_name: string
+          id: string
+          industries: Json | null
+          interests: string | null
+          languages: Json | null
+          last_name: string
+          last_updated_at: string | null
+          location: string | null
+          mobility: string | null
+          phone: string | null
+          position: string | null
+          professional_networks: Json | null
+          professional_references: Json | null
+          professional_values: string | null
+          profile_completeness: number | null
+          projects: Json | null
+          publications: Json | null
+          remote_preference: string | null
+          resume_id: string | null
+          salary_expectations: string | null
+          score: number | null
+          skills: Json | null
+          special_permits: Json | null
+          status: string | null
+          travel_willingness: string | null
+          updated_at: string | null
+          user_id: string
+          work_authorization: string | null
+          years_experience: number | null
+        }[]
+      }
       get_profile_by_id: {
         Args: { _id: string }
         Returns: {

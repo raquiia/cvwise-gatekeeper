@@ -1,4 +1,3 @@
-
 // Full implementation of candidate matching service with job offer suggestions
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -31,7 +30,6 @@ export interface JobOfferSuggestion {
   salary?: Salary;
 }
 
-// These interfaces were previously exported and are needed by other parts of the application
 export interface SkillsDetails {
   matchedSkills: string[];
   missingSkills: string[];
@@ -45,7 +43,6 @@ export interface MatchDetails {
   otherFactorsMatch: number;
   matchedSkills: string[];
   missingSkills: string[];
-  // Add the skills_details property to match what's being used in the code
   skills_details?: SkillsDetails;
 }
 
@@ -67,19 +64,15 @@ export interface CandidateMatch {
   match: CandidateJobMatch;
 }
 
-// Track currently active job offer (for context-based scoring)
 let activeJobOfferId: string | null = null;
 let activeJobOffer: any = null;
 
-// Helper function to safely convert Json to MatchDetails
 const convertJsonToMatchDetails = (jsonData: Json | null): MatchDetails | undefined => {
   if (!jsonData) return undefined;
   
   try {
-    // If jsonData is already an object, use it directly
     const details = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
     
-    // Ensure we return an object that conforms to the MatchDetails interface
     const matchDetails: MatchDetails = {
       skillsMatch: details.skillsMatch || 0,
       experienceMatch: details.experienceMatch || 0,
@@ -88,7 +81,6 @@ const convertJsonToMatchDetails = (jsonData: Json | null): MatchDetails | undefi
       missingSkills: Array.isArray(details.missingSkills) ? details.missingSkills : [],
     };
     
-    // Only add skills_details if it exists in the JSON
     if (details.skills_details) {
       matchDetails.skills_details = {
         matchedSkills: Array.isArray(details.skills_details.matchedSkills) 
@@ -109,7 +101,6 @@ const convertJsonToMatchDetails = (jsonData: Json | null): MatchDetails | undefi
     return matchDetails;
   } catch (error) {
     console.error("Error converting JSON to MatchDetails:", error);
-    // Return a valid default MatchDetails object instead of undefined
     return {
       skillsMatch: 0,
       experienceMatch: 0,
@@ -120,18 +111,14 @@ const convertJsonToMatchDetails = (jsonData: Json | null): MatchDetails | undefi
   }
 };
 
-// Full service that includes both job offer suggestions and candidate matching functionality
 export const candidateMatchingService = {
-  // Get currently active job offer ID
   getActiveJobOfferId: () => activeJobOfferId,
   
-  // Set active job offer (which will be used for candidate scoring)
   setActiveJobOffer: async (jobOfferId: string | null) => {
     activeJobOfferId = jobOfferId;
     
     if (jobOfferId) {
       try {
-        // Fetch the job offer details
         const { data, error } = await supabase
           .from('job_offers')
           .select('*')
@@ -155,10 +142,8 @@ export const candidateMatchingService = {
     }
   },
   
-  // Calculate a candidate's match score against the active job offer
   calculateCandidateActiveJobScore: async (candidate: any): Promise<MatchResult> => {
     if (!activeJobOffer || !candidate) {
-      // Return default score when no active job offer or candidate
       return { 
         score: candidate?.score || 0, 
         details: {
@@ -172,16 +157,13 @@ export const candidateMatchingService = {
     }
     
     try {
-      // Debug logs to track calculation inputs
       console.log("Calculating match for candidate:", candidate.first_name, candidate.last_name);
       console.log("Against job offer:", activeJobOffer.title);
       console.log("Candidate skills:", candidate.skills);
       console.log("Job required skills:", activeJobOffer.required_skills);
       
-      // Use the matching utility function
       const matchResult = calculateOverallMatch(candidate, activeJobOffer);
       
-      // Debug the result
       console.log("Match result:", matchResult);
       
       return matchResult;
@@ -200,7 +182,6 @@ export const candidateMatchingService = {
     }
   },
   
-  // Generate job offer suggestions using the Edge Function
   async generateJobOfferSuggestions(
     jobTitle: string,
     location?: string,
@@ -237,13 +218,11 @@ export const candidateMatchingService = {
       throw error;
     }
   },
-
-  // Calculate matches for a job offer (previously existing function)
+  
   async calculateMatchesForJobOffer(jobOfferId: string): Promise<boolean> {
     try {
       console.log(`Calculating matches for job offer ID: ${jobOfferId}`);
       
-      // Option 1: Use the Edge Function (if available)
       try {
         const { data, error } = await supabase.functions.invoke('calculate-job-matches', {
           body: { jobOfferId }
@@ -258,7 +237,6 @@ export const candidateMatchingService = {
       } catch (edgeFunctionError) {
         console.error("Error with Edge Function:", edgeFunctionError);
         
-        // Option 2: Fallback to using the database function directly
         try {
           const { data, error } = await supabase.rpc('calculate_all_candidates_job_matches', {
             p_job_offer_id: jobOfferId
@@ -273,7 +251,6 @@ export const candidateMatchingService = {
         } catch (rpcError) {
           console.error("Error with RPC function:", rpcError);
           
-          // If both methods fail, display a message to the user
           toast({
             title: "Problème de calcul des correspondances",
             description: "Le système n'a pas pu calculer les correspondances. Veuillez réessayer plus tard.",
@@ -289,12 +266,10 @@ export const candidateMatchingService = {
     }
   },
   
-  // Get a specific candidate-job match (previously existing function)
   async getCandidateJobMatch(candidateId: string, jobOfferId: string): Promise<CandidateJobMatch | null> {
     try {
       console.log(`Getting match for candidate ${candidateId} and job offer ${jobOfferId}`);
       
-      // Using direct query instead of RPC since the function doesn't exist
       const { data, error } = await supabase
         .from('candidate_job_matches')
         .select('*')
@@ -304,11 +279,9 @@ export const candidateMatchingService = {
       
       if (error) throw error;
       
-      // Convert the raw database result to CandidateJobMatch type
       if (data) {
         const matchDetails = convertJsonToMatchDetails(data.match_details);
         
-        // Cast as unknown first, then to CandidateJobMatch
         const typedMatch: CandidateJobMatch = {
           candidate_id: data.candidate_id,
           job_offer_id: data.job_offer_id,
@@ -332,13 +305,10 @@ export const candidateMatchingService = {
     }
   },
   
-  // Get all matches for a job offer - FIXED to avoid recursion issues
   async getMatchesForJobOffer(jobOfferId: string): Promise<CandidateMatch[]> {
     try {
       console.log(`Getting matches for job offer ID: ${jobOfferId}`);
       
-      // Avoid profiles table recursion by using a different approach
-      // First get all candidate_job_matches
       const { data: matchesData, error: matchesError } = await supabase
         .from('candidate_job_matches')
         .select('*')
@@ -354,36 +324,28 @@ export const candidateMatchingService = {
         return [];
       }
       
-      // Then, get candidate IDs and fetch them separately via a direct query approach
-      // without using the custom RPC function which isn't registered yet
       const candidateIds = matchesData.map(match => match.candidate_id);
       
-      // Using a direct query approach instead of the RPC function
       const { data: candidatesData, error: candidatesError } = await supabase
-        .from('candidates')
-        .select('*')
-        .in('id', candidateIds);
+        .rpc('get_candidates_by_ids', {
+          candidate_ids: candidateIds
+        });
       
       if (candidatesError) {
         console.error("Error fetching candidates:", candidatesError);
         throw candidatesError;
       }
       
-      // Now combine the data safely
       const combinedData: CandidateMatch[] = [];
       
       for (const match of matchesData) {
-        // Check if candidatesData is defined before using find
-        if (!candidatesData) continue;
+        if (!candidatesData || !Array.isArray(candidatesData)) continue;
         
-        // Find corresponding candidate
         const candidate = candidatesData.find(c => c.id === match.candidate_id);
         
         if (candidate) {
-          // Convert match_details from Json to MatchDetails
           const matchDetails = convertJsonToMatchDetails(match.match_details);
           
-          // Create properly typed CandidateJobMatch object
           const typedMatch: CandidateJobMatch = {
             candidate_id: match.candidate_id,
             job_offer_id: match.job_offer_id,
@@ -397,7 +359,6 @@ export const candidateMatchingService = {
             updated_at: match.updated_at
           };
           
-          // Add to combined result
           combinedData.push({
             candidate,
             match: typedMatch
@@ -418,12 +379,10 @@ export const candidateMatchingService = {
     }
   },
   
-  // Get top candidates for a job offer (previously existing function)
   async getTopCandidatesForJobOffer(jobOfferId: string, limit: number = 5): Promise<CandidateMatch[]> {
     try {
       const matches = await this.getMatchesForJobOffer(jobOfferId);
       
-      // Sort by match score and take the top 'limit' matches
       return matches
         .sort((a, b) => b.match.match_score - a.match.match_score)
         .slice(0, limit);
@@ -433,6 +392,5 @@ export const candidateMatchingService = {
     }
   },
   
-  // Modifier le flag pour indiquer que nous n'utilisons pas de données fictives
   usingMockData: false
 };
