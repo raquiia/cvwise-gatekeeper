@@ -1,7 +1,6 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, FileText, Download, Loader2, MoreHorizontal, Calendar, Trash2, Brain, FileCheck } from 'lucide-react';
+import { Plus, FileText, Download, Loader2, MoreHorizontal, Calendar, Trash2, Brain, FileCheck, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -18,9 +17,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import SelectableCard from './SelectableCard';
 import { ResumeData } from '@/services/data/resumeDataService';
 import { formatDate } from '@/utils/dateFormatter';
+import { checkResumeAlreadyAnalyzed } from '@/services/resume/analysisOperations';
 
 interface ResumesGridProps {
   resumes: ResumeData[];
@@ -35,7 +45,7 @@ interface ResumesGridProps {
   onDownload: (filePath: string, fileName: string, resumeId: string) => void;
   onDelete: (resumeId: string, filePath: string) => void;
   onExtractText: (resumeId: string, filePath: string) => void;
-  onAnalyzeResume: (resumeId: string, resumeText: string) => void;
+  onAnalyzeResume: (resumeId: string, resumeText: string, overwriteExisting?: boolean) => void;
   onCloseTextDialog: () => void;
   resumesWithExtractedText: Record<string, string>;
 }
@@ -58,6 +68,9 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
   resumesWithExtractedText
 }) => {
   const { toast } = useToast();
+  const [resumeToAnalyze, setResumeToAnalyze] = useState<{id: string, text: string} | null>(null);
+  const [isOverwriteDialogOpen, setIsOverwriteDialogOpen] = useState(false);
+  const [checkingAnalyzed, setCheckingAnalyzed] = useState<Record<string, boolean>>({});
   
   // Fonction d'aide pour vérifier si le texte a été extrait pour un CV spécifique
   const hasExtractedText = (resumeId: string): boolean => {
@@ -109,6 +122,46 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
     }
     
     return null;
+  };
+  
+  // Fonction pour gérer le clic sur le bouton "Analyser avec IA"
+  const handleAnalyzeClick = async (resumeId: string, resumeText: string) => {
+    try {
+      setCheckingAnalyzed(prev => ({ ...prev, [resumeId]: true }));
+      
+      // Vérifier si le CV a déjà été analysé
+      const result = await checkResumeAlreadyAnalyzed(resumeId);
+      
+      if (result.analyzed) {
+        // Si déjà analysé, demander confirmation pour écraser
+        setResumeToAnalyze({ id: resumeId, text: resumeText });
+        setIsOverwriteDialogOpen(true);
+      } else {
+        // Si pas encore analysé, procéder normalement
+        onAnalyzeResume(resumeId, resumeText);
+      }
+    } catch (error) {
+      console.error('Error checking if resume was analyzed:', error);
+      // En cas d'erreur, procéder quand même à l'analyse
+      onAnalyzeResume(resumeId, resumeText);
+    } finally {
+      setCheckingAnalyzed(prev => ({ ...prev, [resumeId]: false }));
+    }
+  };
+  
+  // Fonction pour confirmer l'écrasement des données existantes
+  const confirmOverwrite = () => {
+    if (resumeToAnalyze) {
+      onAnalyzeResume(resumeToAnalyze.id, resumeToAnalyze.text, true);
+      setIsOverwriteDialogOpen(false);
+      setResumeToAnalyze(null);
+    }
+  };
+  
+  // Fonction pour annuler l'écrasement
+  const cancelOverwrite = () => {
+    setIsOverwriteDialogOpen(false);
+    setResumeToAnalyze(null);
   };
   
   return (
@@ -173,10 +226,10 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                       </DropdownMenuItem>
                       {hasExtractedText(resume.id) && (
                         <DropdownMenuItem 
-                          onClick={() => onAnalyzeResume(resume.id, resumesWithExtractedText[resume.id])}
-                          disabled={analyzing[resume.id]}
+                          onClick={() => handleAnalyzeClick(resume.id, resumesWithExtractedText[resume.id])}
+                          disabled={analyzing[resume.id] || checkingAnalyzed[resume.id]}
                         >
-                          {analyzing[resume.id] ? (
+                          {analyzing[resume.id] || checkingAnalyzed[resume.id] ? (
                             <Loader2 size={14} className="mr-2 animate-spin" />
                           ) : (
                             <Brain size={14} className="mr-2" />
@@ -270,11 +323,11 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                     className={`text-xs flex-1 ${isResumeAnalyzed(resume) ? "bg-green-50 border-green-200 hover:bg-green-100" : "bg-blue-500 hover:bg-blue-600"}`}
                     onClick={(e) => {
                       e.preventDefault();
-                      onAnalyzeResume(resume.id, resumesWithExtractedText[resume.id]);
+                      handleAnalyzeClick(resume.id, resumesWithExtractedText[resume.id]);
                     }}
-                    disabled={analyzing[resume.id]}
+                    disabled={analyzing[resume.id] || checkingAnalyzed[resume.id]}
                   >
-                    {analyzing[resume.id] ? (
+                    {analyzing[resume.id] || checkingAnalyzed[resume.id] ? (
                       <Loader2 size={14} className="mr-1 animate-spin" />
                     ) : (
                       <Brain size={14} className="mr-1" />
@@ -301,6 +354,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
         ))}
       </div>
       
+      {/* Boîte de dialogue pour le texte extrait */}
       <Dialog open={isTextDialogOpen} onOpenChange={onCloseTextDialog}>
         <DialogContent className="max-w-4xl max-h-[80vh]">
           <DialogHeader>
@@ -339,6 +393,29 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Boîte de dialogue pour la confirmation d'écrasement */}
+      <AlertDialog open={isOverwriteDialogOpen} onOpenChange={setIsOverwriteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              <div className="flex items-center">
+                <AlertTriangle className="h-5 w-5 text-amber-500 mr-2" />
+                CV déjà analysé
+              </div>
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Ce CV a déjà été analysé et un candidat a été créé. Souhaitez-vous refaire l'analyse et écraser les données existantes du candidat ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelOverwrite}>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmOverwrite} className="bg-amber-500 hover:bg-amber-600">
+              Refaire l'analyse
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

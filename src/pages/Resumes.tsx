@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, AlertCircle, RefreshCw, Trash2 } from 'lucide-react';
@@ -73,7 +72,6 @@ const Resumes = () => {
         const data = await getUserResumes(user.id);
         setResumes(data || []);
         
-        // Restaurer les textes extraits à partir du localStorage
         try {
           const savedExtractedTexts = localStorage.getItem('resumesWithExtractedText');
           if (savedExtractedTexts) {
@@ -155,13 +153,11 @@ const Resumes = () => {
         
         setResumes(prev => prev.filter(resume => resume.id !== resumeId));
         
-        // Supprimer également le texte extrait s'il existe
         if (resumesWithExtractedText[resumeId]) {
           const newExtractedTexts = { ...resumesWithExtractedText };
           delete newExtractedTexts[resumeId];
           setResumesWithExtractedText(newExtractedTexts);
           
-          // Mettre à jour le localStorage
           localStorage.setItem('resumesWithExtractedText', JSON.stringify(newExtractedTexts));
         }
       } else {
@@ -193,14 +189,12 @@ const Resumes = () => {
         setExtractedText(result.text);
         setIsTextDialogOpen(true);
         
-        // Stocker le texte extrait pour l'utiliser plus tard
         const newExtractedTexts = {
           ...resumesWithExtractedText,
           [resumeId]: result.text || ''
         };
         setResumesWithExtractedText(newExtractedTexts);
         
-        // Sauvegarder dans le localStorage pour persistance
         localStorage.setItem('resumesWithExtractedText', JSON.stringify(newExtractedTexts));
         
         toast({
@@ -221,36 +215,37 @@ const Resumes = () => {
       setExtracting(prev => ({ ...prev, [resumeId]: false }));
     }
   };
-  
-  const handleAnalyzeResume = async (resumeId: string, resumeText: string) => {
+
+  const handleAnalyzeResume = async (resumeId: string, resumeText: string, overwriteExisting: boolean = false) => {
     try {
-      console.log('Analyzing resume with AI:', resumeId);
+      console.log('Analyzing resume with AI:', resumeId, 'overwriteExisting:', overwriteExisting);
       setAnalyzing(prev => ({ ...prev, [resumeId]: true }));
       
       toast({
         title: "Analyse en cours",
-        description: "Veuillez patienter pendant l'analyse du CV avec l'IA..."
+        description: overwriteExisting 
+          ? "Veuillez patienter pendant la ré-analyse du CV avec l'IA..." 
+          : "Veuillez patienter pendant l'analyse du CV avec l'IA..."
       });
       
-      const result = await analyzeResume(resumeId, resumeText);
+      const result = await analyzeResume(resumeId, resumeText, overwriteExisting);
       
       if (result.success) {
         toast({
           title: "Analyse réussie",
-          description: "Le CV a été analysé avec succès et un candidat a été créé"
+          description: overwriteExisting
+            ? "Le CV a été ré-analysé avec succès et les données du candidat ont été mises à jour"
+            : "Le CV a été analysé avec succès et un candidat a été créé"
         });
         
-        // Mettre à jour le statut parsed du CV localement
         setResumes(prev => 
           prev.map(resume => 
             resume.id === resumeId ? { ...resume, parsed: true } : resume
           )
         );
         
-        // Recharger les CV pour afficher le candidat associé
         await loadResumes();
         
-        // Rediriger vers la page du candidat si un ID est retourné
         if (result.candidateId) {
           navigate(`/candidates/${result.candidateId}`);
         }

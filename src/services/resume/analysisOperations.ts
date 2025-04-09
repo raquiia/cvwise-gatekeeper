@@ -5,6 +5,52 @@ import { CandidateData } from '@/services/data/resumeDataService';
 import { Json } from '@/integrations/supabase/types';
 
 /**
+ * Vérifier si un CV a déjà été analysé
+ */
+export const checkResumeAlreadyAnalyzed = async (resumeId: string): Promise<{ analyzed: boolean; candidateId?: string }> => {
+  try {
+    console.log('Checking if resume has already been analyzed:', resumeId);
+    
+    // Vérifier si le CV est marqué comme analysé
+    const { data: resume, error: resumeError } = await supabase
+      .from('resumes')
+      .select('parsed')
+      .eq('id', resumeId)
+      .single();
+    
+    if (resumeError) {
+      console.error('Error checking resume parsed status:', resumeError);
+      throw new Error(`Erreur lors de la vérification du statut du CV: ${resumeError.message}`);
+    }
+    
+    if (!resume.parsed) {
+      return { analyzed: false };
+    }
+    
+    // Récupérer le candidat associé à ce CV
+    const { data: candidate, error: candidateError } = await supabase
+      .from('candidates')
+      .select('id')
+      .eq('resume_id', resumeId)
+      .single();
+    
+    if (candidateError && candidateError.code !== 'PGRST116') { // PGRST116 = not found
+      console.error('Error checking candidate for resume:', candidateError);
+      throw new Error(`Erreur lors de la vérification du candidat: ${candidateError.message}`);
+    }
+    
+    if (candidate) {
+      return { analyzed: true, candidateId: candidate.id };
+    }
+    
+    return { analyzed: true }; // Le CV est marqué comme analysé mais aucun candidat trouvé
+  } catch (error: any) {
+    console.error('Exception in checkResumeAlreadyAnalyzed:', error);
+    throw error;
+  }
+};
+
+/**
  * Extraire le texte d'un CV à partir de son ID
  */
 export const extractResumeText = async (resumeId: string, filePath: string): Promise<{ success: boolean; message?: string; text?: string }> => {
@@ -64,12 +110,25 @@ export const extractResumeText = async (resumeId: string, filePath: string): Pro
 /**
  * Analyser un CV avec l'IA et créer automatiquement un candidat
  */
-export const analyzeResume = async (resumeId: string, resumeText: string): Promise<{ success: boolean; message?: string; candidateId?: string }> => {
+export const analyzeResume = async (resumeId: string, resumeText: string, overwriteExisting: boolean = false): Promise<{ success: boolean; message?: string; candidateId?: string }> => {
   try {
     console.log('Starting AI analysis for resume:', resumeId);
     
     if (!resumeText || resumeText.trim() === '') {
       throw new Error('Le texte du CV est vide ou non défini');
+    }
+    
+    // Vérifier si le CV a déjà été analysé (si overwriteExisting est false)
+    if (!overwriteExisting) {
+      const { analyzed, candidateId } = await checkResumeAlreadyAnalyzed(resumeId);
+      if (analyzed) {
+        console.log('Resume has already been analyzed, returning existing candidateId:', candidateId);
+        return { 
+          success: true, 
+          message: "Ce CV a déjà été analysé",
+          candidateId: candidateId
+        };
+      }
     }
     
     console.log(`Text length being sent to OpenAI: ${resumeText.length} characters`);
@@ -79,7 +138,8 @@ export const analyzeResume = async (resumeId: string, resumeText: string): Promi
     const { data, error } = await supabase.functions.invoke('resume-ai-analysis', {
       body: { 
         resumeId: resumeId,
-        resumeText: resumeText
+        resumeText: resumeText,
+        overwriteExisting: overwriteExisting
       }
     });
     
@@ -119,14 +179,18 @@ export const analyzeResume = async (resumeId: string, resumeText: string): Promi
       }
     }
     
+    const successMessage = overwriteExisting 
+      ? "Le CV a été ré-analysé avec succès et les données du candidat ont été mises à jour" 
+      : "Le CV a été analysé avec succès et un candidat a été créé";
+    
     toast({
       title: "Analyse terminée",
-      description: "Le CV a été analysé avec succès et un candidat a été créé",
+      description: successMessage,
     });
     
     return { 
       success: true, 
-      message: "CV analysé avec succès",
+      message: successMessage,
       candidateId: data.candidate?.id
     };
   } catch (error: any) {
