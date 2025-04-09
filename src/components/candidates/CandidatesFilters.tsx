@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { MapPin, Briefcase, Calendar, X, Filter, Check } from 'lucide-react';
+import { MapPin, Briefcase, Calendar, X, Filter, Check, Building, History } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,12 +20,14 @@ interface CandidatesFiltersProps {
   showFilters: boolean;
   onLocationChange: (location: string) => void;
   onCompanyChange: (company: string) => void;
+  onPreviousCompanyChange: (company: string) => void;
   onExperienceChange: (experience: string) => void;
   onSkillsChange: (skills: string[]) => void;
   onApplyFilters: () => void;
   onResetFilters: () => void;
   location: string;
   company: string;
+  previousCompany: string;
   experience: string;
   selectedSkills: string[];
 }
@@ -34,12 +36,14 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
   showFilters,
   onLocationChange,
   onCompanyChange,
+  onPreviousCompanyChange,
   onExperienceChange,
   onSkillsChange,
   onApplyFilters,
   onResetFilters,
   location,
   company,
+  previousCompany,
   experience,
   selectedSkills
 }) => {
@@ -101,11 +105,11 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
         </div>
         
         <div>
-          <label className="label text-sm text-muted-foreground mb-1.5">Entreprise</label>
+          <label className="label text-sm text-muted-foreground mb-1.5">Entreprise actuelle</label>
           <div className="relative">
-            <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+            <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
             <Input
-              placeholder="Nom de l'entreprise..."
+              placeholder="Nom de l'entreprise actuelle..."
               className="input-field pl-10"
               value={company}
               onChange={(e) => onCompanyChange(e.target.value)}
@@ -133,6 +137,19 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
               </SelectContent>
             </Select>
           </div>
+        </div>
+      </div>
+      
+      <div className="mt-4">
+        <label className="label text-sm text-muted-foreground mb-1.5">A travaillé pour</label>
+        <div className="relative">
+          <History className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+          <Input
+            placeholder="Nom d'une entreprise précédente..."
+            className="input-field pl-10"
+            value={previousCompany}
+            onChange={(e) => onPreviousCompanyChange(e.target.value)}
+          />
         </div>
       </div>
       

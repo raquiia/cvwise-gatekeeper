@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2, RefreshCw, Bug, Filter } from 'lucide-react';
@@ -28,16 +29,19 @@ const Candidates = () => {
   
   const [locationFilter, setLocationFilter] = useState('');
   const [companyFilter, setCompanyFilter] = useState('');
+  const [previousCompanyFilter, setPreviousCompanyFilter] = useState('');
   const [experienceFilter, setExperienceFilter] = useState('');
   const [skillsFilter, setSkillsFilter] = useState<string[]>([]);
   const [activeFilters, setActiveFilters] = useState<{
     location: string;
     company: string;
+    previousCompany: string;
     experience: string;
     skills: string[];
   }>({
     location: '',
     company: '',
+    previousCompany: '',
     experience: '',
     skills: []
   });
@@ -92,15 +96,28 @@ const Candidates = () => {
       return false;
     }
     
+    // Filtre par entreprise actuelle
     if (activeFilters.company) {
-      const candidateCompanies = Array.isArray(candidate.experiences) 
-        ? candidate.experiences.map((exp: any) => exp.company?.toLowerCase() || '')
+      const candidateCurrentCompany = candidate.company?.toLowerCase() || '';
+      
+      if (!candidateCurrentCompany.includes(activeFilters.company.toLowerCase())) {
+        return false;
+      }
+    }
+    
+    // Filtre par entreprises précédentes
+    if (activeFilters.previousCompany) {
+      const candidatePreviousCompanies = Array.isArray(candidate.experiences) 
+        ? candidate.experiences
+            .filter((exp: any) => exp.company !== candidate.company) // Exclure l'entreprise actuelle
+            .map((exp: any) => exp.company?.toLowerCase() || '')
         : [];
         
-      const hasCompany = candidate.company?.toLowerCase().includes(activeFilters.company.toLowerCase()) ||
-        candidateCompanies.some(company => company.includes(activeFilters.company.toLowerCase()));
-        
-      if (!hasCompany) {
+      const hasWorkedFor = candidatePreviousCompanies.some(company => 
+        company.includes(activeFilters.previousCompany.toLowerCase())
+      );
+      
+      if (!hasWorkedFor) {
         return false;
       }
     }
@@ -173,6 +190,7 @@ const Candidates = () => {
     setActiveFilters({
       location: locationFilter,
       company: companyFilter,
+      previousCompany: previousCompanyFilter,
       experience: experienceFilter,
       skills: skillsFilter
     });
@@ -186,11 +204,13 @@ const Candidates = () => {
   const handleResetFilters = () => {
     setLocationFilter('');
     setCompanyFilter('');
+    setPreviousCompanyFilter('');
     setExperienceFilter('');
     setSkillsFilter([]);
     setActiveFilters({
       location: '',
       company: '',
+      previousCompany: '',
       experience: '',
       skills: []
     });
@@ -292,12 +312,14 @@ const Candidates = () => {
           showFilters={showFilters}
           onLocationChange={setLocationFilter}
           onCompanyChange={setCompanyFilter}
+          onPreviousCompanyChange={setPreviousCompanyFilter}
           onExperienceChange={setExperienceFilter}
           onSkillsChange={setSkillsFilter}
           onApplyFilters={handleApplyFilters}
           onResetFilters={handleResetFilters}
           location={locationFilter}
           company={companyFilter}
+          previousCompany={previousCompanyFilter}
           experience={experienceFilter}
           selectedSkills={skillsFilter}
         />

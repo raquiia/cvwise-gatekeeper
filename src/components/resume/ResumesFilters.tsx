@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Calendar, ChevronDown, CheckSquare } from 'lucide-react';
+import { Calendar, ChevronDown, CheckSquare, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 
 interface ResumesFiltersProps {
   searchQuery: string;
@@ -17,6 +18,8 @@ interface ResumesFiltersProps {
   resumesCount: number;
   onEnableSelection: () => void;
   selectionMode: boolean;
+  companyFilter?: string;
+  setCompanyFilter?: (company: string) => void;
 }
 
 const ResumesFilters: React.FC<ResumesFiltersProps> = ({
@@ -26,11 +29,14 @@ const ResumesFilters: React.FC<ResumesFiltersProps> = ({
   setSelectedStatus,
   resumesCount,
   onEnableSelection,
-  selectionMode
+  selectionMode,
+  companyFilter = '',
+  setCompanyFilter = () => {}
 }) => {
   const handleReset = () => {
     setSearchQuery('');
     setSelectedStatus(null);
+    if (setCompanyFilter) setCompanyFilter('');
   };
 
   return (
@@ -78,6 +84,20 @@ const ResumesFilters: React.FC<ResumesFiltersProps> = ({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      
+      {setCompanyFilter && (
+        <div className="flex-1 min-w-[200px] max-w-xs">
+          <div className="relative">
+            <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+            <Input
+              placeholder="Filtrer par entreprise..."
+              className="h-9 pl-10"
+              value={companyFilter}
+              onChange={(e) => setCompanyFilter(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
       
       <div className="ml-auto flex gap-2">
         {!selectionMode && (
