@@ -223,22 +223,28 @@ export const candidateDataService = {
         throw new Error("Non authentifié");
       }
       
-      // Prepare job offer data
-      const jobOfferData = {
-        ...jobOffer,
-        user_id: user.id
-      };
-      
-      // Use the secure RPC function
-      const { data, error } = await supabase.rpc('create_job_offer', {
-        p_job_offer: jobOfferData
+      // Use direct fetch for the API call since rpc is not in types
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/create_job_offer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+        },
+        body: JSON.stringify({
+          p_job_offer: {
+            ...jobOffer,
+            user_id: user.id
+          }
+        }),
       });
-      
-      if (error) {
-        console.error("Error creating job offer:", error.message);
-        throw new Error(`Erreur lors de la création de l'offre d'emploi: ${error.message}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error creating job offer: ${errorText}`);
       }
-      
+
+      const data = await response.json();
       console.log("Job offer created successfully:", data);
       
       // Cast data to JobOffer type
@@ -263,17 +269,26 @@ export const candidateDataService = {
     try {
       console.log(`Updating job offer with ID: ${jobOfferId}`);
       
-      // Use the secure RPC function
-      const { data, error } = await supabase.rpc('update_job_offer', {
-        p_job_offer_id: jobOfferId,
-        p_updates: updates
+      // Use direct fetch for the API call
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/update_job_offer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+        },
+        body: JSON.stringify({
+          p_job_offer_id: jobOfferId,
+          p_updates: updates
+        }),
       });
-      
-      if (error) {
-        console.error("Error updating job offer:", error.message);
-        throw new Error(`Erreur lors de la mise à jour de l'offre d'emploi: ${error.message}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error updating job offer: ${errorText}`);
       }
-      
+
+      const data = await response.json();
       console.log("Job offer updated successfully:", data);
       
       // Cast data to JobOffer type
@@ -298,18 +313,27 @@ export const candidateDataService = {
     try {
       console.log(`Deleting job offer with ID: ${jobOfferId}`);
       
-      // Use the secure RPC function
-      const { data, error } = await supabase.rpc('delete_job_offer', {
-        p_job_offer_id: jobOfferId
+      // Use direct fetch for the API call
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/delete_job_offer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+        },
+        body: JSON.stringify({
+          p_job_offer_id: jobOfferId
+        }),
       });
-      
-      if (error) {
-        console.error("Error deleting job offer:", error.message);
-        throw new Error(`Erreur lors de la suppression de l'offre d'emploi: ${error.message}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error deleting job offer: ${errorText}`);
       }
-      
+
+      const result = await response.json();
       console.log(`Job offer ${jobOfferId} deleted successfully`);
-      return data as boolean;
+      return result as boolean;
     } catch (error: any) {
       console.error("Exception in deleteJobOffer:", error);
       throw new Error(error.message || "Impossible de supprimer l'offre d'emploi");
@@ -323,13 +347,22 @@ export const candidateDataService = {
     try {
       console.log("Fetching job offers for current user");
       
-      // Use the secure RPC function
-      const { data, error } = await supabase.rpc('get_user_job_offers');
-      
-      if (error) {
-        console.error("Error fetching job offers:", error.message);
-        throw new Error(`Erreur lors de la récupération des offres d'emploi: ${error.message}`);
+      // Use direct fetch for the API call
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/get_user_job_offers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error fetching job offers: ${errorText}`);
       }
+
+      const data = await response.json();
       
       // Cast data to JobOffer[] type
       const typedData = (data || []) as JobOffer[];
@@ -349,15 +382,25 @@ export const candidateDataService = {
     try {
       console.log(`Fetching job offer with ID: ${jobOfferId}`);
       
-      // Use the secure RPC function
-      const { data, error } = await supabase.rpc('get_job_offer_by_id', {
-        p_job_offer_id: jobOfferId
+      // Use direct fetch for the API call
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/get_job_offer_by_id`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+        },
+        body: JSON.stringify({
+          p_job_offer_id: jobOfferId
+        }),
       });
-      
-      if (error) {
-        console.error("Error fetching job offer:", error.message);
-        throw new Error(`Erreur lors de la récupération de l'offre d'emploi: ${error.message}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error fetching job offer: ${errorText}`);
       }
+
+      const data = await response.json();
       
       if (!data) {
         console.log(`No job offer found with ID: ${jobOfferId}`);
@@ -382,14 +425,25 @@ export const candidateDataService = {
     try {
       console.log(`Calculating matches for job offer ID: ${jobOfferId}`);
       
-      const { data, error } = await supabase.rpc('calculate_all_candidates_job_matches', {
-        p_job_offer_id: jobOfferId
+      // Use direct fetch for the API call
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/calculate_all_candidates_job_matches`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+        },
+        body: JSON.stringify({
+          p_job_offer_id: jobOfferId
+        }),
       });
-      
-      if (error) {
-        console.error("Error calculating matches:", error.message);
-        throw new Error(`Erreur lors du calcul des correspondances: ${error.message}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error calculating matches: ${errorText}`);
       }
+
+      const data = await response.json();
       
       // Cast data to string[] type
       const typedData = (data || []) as string[];
@@ -409,16 +463,26 @@ export const candidateDataService = {
     try {
       console.log(`Fetching match between candidate ${candidateId} and job offer ${jobOfferId}`);
       
-      // Use the secure RPC function
-      const { data, error } = await supabase.rpc('get_candidate_job_match', {
-        p_candidate_id: candidateId,
-        p_job_offer_id: jobOfferId
+      // Use direct fetch for the API call
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/get_candidate_job_match`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+        },
+        body: JSON.stringify({
+          p_candidate_id: candidateId,
+          p_job_offer_id: jobOfferId
+        }),
       });
-      
-      if (error) {
-        console.error("Error fetching candidate-job match:", error.message);
-        throw new Error(`Erreur lors de la récupération du matching: ${error.message}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error fetching candidate-job match: ${errorText}`);
       }
+
+      const data = await response.json();
       
       if (!data) {
         console.log(`No match found between candidate ${candidateId} and job offer ${jobOfferId}`);
@@ -443,15 +507,25 @@ export const candidateDataService = {
     try {
       console.log(`Fetching all matches for job offer: ${jobOfferId}`);
       
-      // Use the secure RPC function
-      const { data, error } = await supabase.rpc('get_matches_for_job_offer', {
-        p_job_offer_id: jobOfferId
+      // Use direct fetch for the API call
+      const response = await fetch(`${supabase.supabaseUrl}/rest/v1/rpc/get_matches_for_job_offer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabase.supabaseKey,
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+        },
+        body: JSON.stringify({
+          p_job_offer_id: jobOfferId
+        }),
       });
-      
-      if (error) {
-        console.error("Error fetching matches for job offer:", error.message);
-        throw new Error(`Erreur lors de la récupération des matchings: ${error.message}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error fetching matches for job offer: ${errorText}`);
       }
+
+      const data = await response.json();
       
       // Si aucune donnée n'est retournée, renvoyer un tableau vide
       if (!data || !Array.isArray(data)) {
