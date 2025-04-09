@@ -310,21 +310,25 @@ export const candidateMatchingService = {
     try {
       console.log(`Getting matches for job offer ID: ${jobOfferId}`);
       
-      // First, try to use the special RPC function to avoid recursion issues
+      // First, try using the function query directly instead of RPC to avoid TypeScript issues
       try {
-        const { data: matchData, error: matchError } = await supabase.rpc('get_matches_for_job_offer', {
-          p_job_offer_id: jobOfferId
-        });
+        const { data: matchData, error: matchError } = await supabase
+          .from('candidate_job_matches')
+          .select(`
+            *,
+            candidate:candidates(*)
+          `)
+          .eq('job_offer_id', jobOfferId);
         
         if (matchError) {
           throw matchError;
         }
         
         if (matchData && Array.isArray(matchData) && matchData.length > 0) {
-          // The RPC function already returns the combined data
+          // Process the data from the join query
           const typedMatches: CandidateMatch[] = matchData.map((item: any) => {
+            const match = item;
             const candidate = item.candidate;
-            const match = item.match;
             
             const matchDetails = convertJsonToMatchDetails(match.match_details);
             
@@ -350,13 +354,13 @@ export const candidateMatchingService = {
           return typedMatches;
         }
         
-        // If no data was returned, fall back to the direct query approach
-      } catch (rpcError) {
-        console.error("Error using RPC function:", rpcError);
+        // If no data was returned or there was an issue, fall back to the direct query approach
+      } catch (joinError) {
+        console.error("Error using join query:", joinError);
         // Fall through to the direct query approach
       }
       
-      // Direct query approach as fallback
+      // Original direct query approach as fallback
       const { data: matchesData, error: matchesError } = await supabase
         .from('candidate_job_matches')
         .select('*')
