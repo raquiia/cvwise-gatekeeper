@@ -100,7 +100,7 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
           <Input
             placeholder="Ex: chef de projet ferroviaire, développeur fullstack santé..."
-            className="input-field pl-10"
+            className="pl-10"
             value={semanticSearch}
             onChange={(e) => onSemanticSearchChange(e.target.value)}
           />
@@ -117,7 +117,7 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
             <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
             <Input
               placeholder="Ville, pays..."
-              className="input-field pl-10"
+              className="pl-10"
               value={location}
               onChange={(e) => onLocationChange(e.target.value)}
             />
@@ -130,7 +130,7 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
             <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
             <Input
               placeholder="Nom de l'entreprise actuelle..."
-              className="input-field pl-10"
+              className="pl-10"
               value={company}
               onChange={(e) => onCompanyChange(e.target.value)}
             />
@@ -166,7 +166,7 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
           <History className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
           <Input
             placeholder="Nom d'une entreprise précédente..."
-            className="input-field pl-10"
+            className="pl-10"
             value={previousCompany}
             onChange={(e) => onPreviousCompanyChange(e.target.value)}
           />
