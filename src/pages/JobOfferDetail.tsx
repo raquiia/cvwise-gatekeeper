@@ -27,7 +27,6 @@ const JobOfferDetail = () => {
   const [usingMockData, setUsingMockData] = useState(false);
   const navigate = useNavigate();
   
-  // Correction: Ajout d'une vérification pour s'assurer que jobOfferId est défini
   useEffect(() => {
     if (!jobOfferId) {
       setError("ID d'offre d'emploi manquant");
@@ -55,10 +54,8 @@ const JobOfferDetail = () => {
       
       setJobOffer(data);
       
-      // Correction: Déplacer fetchCandidateMatches ici pour éviter une boucle infinie
       await fetchCandidateMatches();
       
-      // Correction: S'assurer que loading est mis à false même en cas de succès
       setLoading(false);
     } catch (error: any) {
       console.error('Error fetching job offer:', error);
@@ -80,7 +77,6 @@ const JobOfferDetail = () => {
     try {
       setUsingMockData(false);
       
-      // Correction: Ajouter un try-catch plus robuste
       try {
         const matches = await candidateMatchingService.getMatchesForJobOffer(jobOfferId);
         
@@ -180,7 +176,9 @@ const JobOfferDetail = () => {
   };
   
   const renderMatchedSkills = (match: CandidateJobMatch) => {
-    const matchedSkills = match.match_details?.skills_details?.matchedSkills || [];
+    const matchedSkills = match.match_details?.matchedSkills || 
+                          match.match_details?.skills_details?.matchedSkills || 
+                          [];
     
     if (matchedSkills.length > 0) {
       return matchedSkills.map((skill, index) => (
@@ -194,7 +192,9 @@ const JobOfferDetail = () => {
   };
   
   const renderMissingSkills = (match: CandidateJobMatch) => {
-    const missingSkills = match.match_details?.skills_details?.missingSkills || [];
+    const missingSkills = match.match_details?.missingSkills || 
+                          match.match_details?.skills_details?.missingSkills || 
+                          [];
     
     if (missingSkills.length > 0) {
       return missingSkills.map((skill, index) => (

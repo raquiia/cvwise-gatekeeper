@@ -105,7 +105,13 @@ const generateRandomMatch = (candidateId: string, jobOfferId: string): Candidate
     skillsScore: skillsScore
   };
   
+  // Update to conform to the MatchDetails interface
   const matchDetails: MatchDetails = {
+    skillsMatch: skillsScore,
+    experienceMatch: experienceScore,
+    otherFactorsMatch: educationScore,
+    matchedSkills: matchedSkills,
+    missingSkills: missingSkills,
     skills_details: skillsDetails
   };
   

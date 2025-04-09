@@ -1,3 +1,4 @@
+
 // Full implementation of candidate matching service with job offer suggestions
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -44,6 +45,8 @@ export interface MatchDetails {
   otherFactorsMatch: number;
   matchedSkills: string[];
   missingSkills: string[];
+  // Add the skills_details property to match what's being used in the code
+  skills_details?: SkillsDetails;
 }
 
 export interface CandidateJobMatch {
@@ -76,7 +79,15 @@ const convertJsonToMatchDetails = (jsonData: Json | null): MatchDetails | undefi
     // If jsonData is already an object, use it directly
     const details = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
     
-    return details as MatchDetails;
+    // Ensure we return an object that conforms to the MatchDetails interface
+    return {
+      skillsMatch: details.skillsMatch || 0,
+      experienceMatch: details.experienceMatch || 0,
+      otherFactorsMatch: details.otherFactorsMatch || 0,
+      matchedSkills: details.matchedSkills || [],
+      missingSkills: details.missingSkills || [],
+      skills_details: details.skills_details || undefined
+    };
   } catch (error) {
     console.error("Error converting JSON to MatchDetails:", error);
     return undefined;
@@ -315,20 +326,23 @@ export const candidateMatchingService = {
         // Convert match_details from Json to MatchDetails
         const matchDetails = convertJsonToMatchDetails(match.match_details);
         
+        // Fix TypeScript error by explicitly constructing a CandidateJobMatch object
+        const typedMatch: CandidateJobMatch = {
+          candidate_id: match.candidate_id,
+          job_offer_id: match.job_offer_id,
+          match_score: match.match_score || 0,
+          skills_match_score: match.skills_match_score || 0,
+          experience_match_score: match.experience_match_score || 0,
+          education_match_score: match.education_match_score || 0,
+          location_match_score: match.location_match_score || 0,
+          match_details: matchDetails,
+          created_at: match.created_at,
+          updated_at: match.updated_at
+        };
+        
         return {
           candidate,
-          match: {
-            candidate_id: match.candidate_id,
-            job_offer_id: match.job_offer_id,
-            match_score: match.match_score,
-            skills_match_score: match.skills_match_score,
-            experience_match_score: match.experience_match_score,
-            education_match_score: match.education_match_score,
-            location_match_score: match.location_match_score,
-            match_details: matchDetails,
-            created_at: match.created_at,
-            updated_at: match.updated_at
-          }
+          match: typedMatch
         };
       }).filter(item => item.candidate !== null);
       
