@@ -310,6 +310,53 @@ export const candidateMatchingService = {
     try {
       console.log(`Getting matches for job offer ID: ${jobOfferId}`);
       
+      // First, try to use the special RPC function to avoid recursion issues
+      try {
+        const { data: matchData, error: matchError } = await supabase.rpc('get_matches_for_job_offer', {
+          p_job_offer_id: jobOfferId
+        });
+        
+        if (matchError) {
+          throw matchError;
+        }
+        
+        if (matchData && Array.isArray(matchData) && matchData.length > 0) {
+          // The RPC function already returns the combined data
+          const typedMatches: CandidateMatch[] = matchData.map((item: any) => {
+            const candidate = item.candidate;
+            const match = item.match;
+            
+            const matchDetails = convertJsonToMatchDetails(match.match_details);
+            
+            const typedMatch: CandidateJobMatch = {
+              candidate_id: match.candidate_id,
+              job_offer_id: match.job_offer_id,
+              match_score: match.match_score || 0,
+              skills_match_score: match.skills_match_score || 0,
+              experience_match_score: match.experience_match_score || 0,
+              education_match_score: match.education_match_score || 0,
+              location_match_score: match.location_match_score || 0,
+              match_details: matchDetails,
+              created_at: match.created_at,
+              updated_at: match.updated_at
+            };
+            
+            return {
+              candidate,
+              match: typedMatch
+            };
+          });
+          
+          return typedMatches;
+        }
+        
+        // If no data was returned, fall back to the direct query approach
+      } catch (rpcError) {
+        console.error("Error using RPC function:", rpcError);
+        // Fall through to the direct query approach
+      }
+      
+      // Direct query approach as fallback
       const { data: matchesData, error: matchesError } = await supabase
         .from('candidate_job_matches')
         .select('*')
