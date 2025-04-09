@@ -540,6 +540,10 @@ export type Database = {
           years_experience: number | null
         }[]
       }
+      get_matches_for_job_offer: {
+        Args: { p_job_offer_id: string }
+        Returns: Json[]
+      }
       get_profile_by_id: {
         Args: { _id: string }
         Returns: {

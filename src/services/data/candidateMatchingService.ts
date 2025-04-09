@@ -1,4 +1,3 @@
-
 // Full implementation of candidate matching service with job offer suggestions
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -310,93 +309,20 @@ export const candidateMatchingService = {
     try {
       console.log(`Getting matches for job offer ID: ${jobOfferId}`);
       
-      // First, try using the function query directly instead of RPC to avoid TypeScript issues
-      try {
-        const { data: matchData, error: matchError } = await supabase
-          .from('candidate_job_matches')
-          .select(`
-            *,
-            candidate:candidates(*)
-          `)
-          .eq('job_offer_id', jobOfferId);
-        
-        if (matchError) {
-          throw matchError;
-        }
-        
-        if (matchData && Array.isArray(matchData) && matchData.length > 0) {
-          // Process the data from the join query
-          const typedMatches: CandidateMatch[] = matchData.map((item: any) => {
-            const match = item;
-            const candidate = item.candidate;
-            
-            const matchDetails = convertJsonToMatchDetails(match.match_details);
-            
-            const typedMatch: CandidateJobMatch = {
-              candidate_id: match.candidate_id,
-              job_offer_id: match.job_offer_id,
-              match_score: match.match_score || 0,
-              skills_match_score: match.skills_match_score || 0,
-              experience_match_score: match.experience_match_score || 0,
-              education_match_score: match.education_match_score || 0,
-              location_match_score: match.location_match_score || 0,
-              match_details: matchDetails,
-              created_at: match.created_at,
-              updated_at: match.updated_at
-            };
-            
-            return {
-              candidate,
-              match: typedMatch
-            };
-          });
+      const { data, error } = await supabase.functions.invoke('get_matches_for_job_offer', {
+        body: { jobOfferId }
+      });
+      
+      if (error) {
+        console.error("Error calling get_matches_for_job_offer function:", error);
+        throw error;
+      }
+      
+      if (data && Array.isArray(data) && data.length > 0) {
+        const typedMatches: CandidateMatch[] = data.map((item: any) => {
+          const candidate = item.candidate;
+          const match = item.match;
           
-          return typedMatches;
-        }
-        
-        // If no data was returned or there was an issue, fall back to the direct query approach
-      } catch (joinError) {
-        console.error("Error using join query:", joinError);
-        // Fall through to the direct query approach
-      }
-      
-      // Original direct query approach as fallback
-      const { data: matchesData, error: matchesError } = await supabase
-        .from('candidate_job_matches')
-        .select('*')
-        .eq('job_offer_id', jobOfferId);
-      
-      if (matchesError) {
-        console.error("Error fetching matches:", matchesError);
-        throw matchesError;
-      }
-      
-      if (!matchesData || matchesData.length === 0) {
-        console.log("No matches found for this job offer");
-        return [];
-      }
-      
-      const candidateIds = matchesData.map(match => match.candidate_id);
-      
-      // Instead of using RPC, use a direct query with the IN operator
-      const { data: candidatesData, error: candidatesError } = await supabase
-        .from('candidates')
-        .select('*')
-        .in('id', candidateIds);
-      
-      if (candidatesError) {
-        console.error("Error fetching candidates:", candidatesError);
-        throw candidatesError;
-      }
-      
-      const combinedData: CandidateMatch[] = [];
-      
-      for (const match of matchesData) {
-        if (!candidatesData || !Array.isArray(candidatesData)) continue;
-        
-        const candidate = candidatesData.find(c => c.id === match.candidate_id);
-        
-        if (candidate) {
           const matchDetails = convertJsonToMatchDetails(match.match_details);
           
           const typedMatch: CandidateJobMatch = {
@@ -412,14 +338,62 @@ export const candidateMatchingService = {
             updated_at: match.updated_at
           };
           
-          combinedData.push({
+          return {
             candidate,
             match: typedMatch
-          });
-        }
+          };
+        });
+        
+        console.log(`Retrieved ${typedMatches.length} matches for job offer`);
+        return typedMatches;
       }
       
-      return combinedData;
+      console.log("No matches returned from the function, trying direct query");
+      const { data: directData, error: directError } = await supabase
+        .from('candidate_job_matches')
+        .select(`
+          *,
+          candidate:candidates(*)
+        `)
+        .eq('job_offer_id', jobOfferId);
+      
+      if (directError) {
+        console.error("Error with direct query:", directError);
+        return [];
+      }
+      
+      if (directData && Array.isArray(directData) && directData.length > 0) {
+        const typedMatches: CandidateMatch[] = directData.map((item: any) => {
+          const match = item;
+          const candidate = item.candidate;
+          
+          const matchDetails = convertJsonToMatchDetails(match.match_details);
+          
+          const typedMatch: CandidateJobMatch = {
+            candidate_id: match.candidate_id,
+            job_offer_id: match.job_offer_id,
+            match_score: match.match_score || 0,
+            skills_match_score: match.skills_match_score || 0,
+            experience_match_score: match.experience_match_score || 0,
+            education_match_score: match.education_match_score || 0,
+            location_match_score: match.location_match_score || 0,
+            match_details: matchDetails,
+            created_at: match.created_at,
+            updated_at: match.updated_at
+          };
+          
+          return {
+            candidate,
+            match: typedMatch
+          };
+        });
+        
+        console.log(`Retrieved ${typedMatches.length} matches via direct query`);
+        return typedMatches;
+      }
+      
+      console.log("No matches found for this job offer");
+      return [];
     } catch (error: any) {
       console.error("Error fetching matches for job offer:", error);
       toast({
