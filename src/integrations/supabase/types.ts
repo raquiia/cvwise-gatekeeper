@@ -9,6 +9,63 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      candidate_job_matches: {
+        Row: {
+          candidate_id: string
+          created_at: string | null
+          education_match_score: number | null
+          experience_match_score: number | null
+          id: string
+          job_offer_id: string
+          location_match_score: number | null
+          match_details: Json | null
+          match_score: number | null
+          skills_match_score: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string | null
+          education_match_score?: number | null
+          experience_match_score?: number | null
+          id?: string
+          job_offer_id: string
+          location_match_score?: number | null
+          match_details?: Json | null
+          match_score?: number | null
+          skills_match_score?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string | null
+          education_match_score?: number | null
+          experience_match_score?: number | null
+          id?: string
+          job_offer_id?: string
+          location_match_score?: number | null
+          match_details?: Json | null
+          match_score?: number | null
+          skills_match_score?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_job_matches_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_job_matches_job_offer_id_fkey"
+            columns: ["job_offer_id"]
+            isOneToOne: false
+            referencedRelation: "job_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidates: {
         Row: {
           availability: string | null
@@ -143,6 +200,96 @@ export type Database = {
           },
         ]
       }
+      job_offers: {
+        Row: {
+          benefits: string[] | null
+          company: string | null
+          contract_type: string | null
+          created_at: string | null
+          description: string | null
+          education_level: string | null
+          experience_years_max: number | null
+          experience_years_min: number | null
+          id: string
+          industry_sectors: string[] | null
+          location: string | null
+          mobility: string | null
+          preferred_companies: string[] | null
+          preferred_skills: Json | null
+          remote_preference: string | null
+          required_degrees: string[] | null
+          required_languages: Json | null
+          required_schools: string[] | null
+          required_skills: Json | null
+          salary_currency: string | null
+          salary_max: number | null
+          salary_min: number | null
+          status: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+          valid_until: string | null
+        }
+        Insert: {
+          benefits?: string[] | null
+          company?: string | null
+          contract_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          education_level?: string | null
+          experience_years_max?: number | null
+          experience_years_min?: number | null
+          id?: string
+          industry_sectors?: string[] | null
+          location?: string | null
+          mobility?: string | null
+          preferred_companies?: string[] | null
+          preferred_skills?: Json | null
+          remote_preference?: string | null
+          required_degrees?: string[] | null
+          required_languages?: Json | null
+          required_schools?: string[] | null
+          required_skills?: Json | null
+          salary_currency?: string | null
+          salary_max?: number | null
+          salary_min?: number | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+          valid_until?: string | null
+        }
+        Update: {
+          benefits?: string[] | null
+          company?: string | null
+          contract_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          education_level?: string | null
+          experience_years_max?: number | null
+          experience_years_min?: number | null
+          id?: string
+          industry_sectors?: string[] | null
+          location?: string | null
+          mobility?: string | null
+          preferred_companies?: string[] | null
+          preferred_skills?: Json | null
+          remote_preference?: string | null
+          required_degrees?: string[] | null
+          required_languages?: Json | null
+          required_schools?: string[] | null
+          required_skills?: Json | null
+          salary_currency?: string | null
+          salary_max?: number | null
+          salary_min?: number | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       job_positions: {
         Row: {
           created_at: string | null
@@ -253,6 +400,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_all_candidates_job_matches: {
+        Args: { p_job_offer_id: string }
+        Returns: string[]
+      }
+      calculate_candidate_job_match: {
+        Args: { p_candidate_id: string; p_job_offer_id: string }
+        Returns: string
+      }
       check_duplicate_resume: {
         Args: { p_file_name: string; p_user_id: string }
         Returns: boolean

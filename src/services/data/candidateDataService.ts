@@ -1,8 +1,62 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { resumeDataService } from './resumeDataService';
 import { CandidateData } from './resumeDataService';
 import { Json } from '@/integrations/supabase/types';
+
+/**
+ * Interface pour les offres d'emploi
+ */
+export interface JobOffer {
+  id: string;
+  user_id: string;
+  title: string;
+  company?: string;
+  location?: string;
+  description?: string;
+  contract_type?: string;
+  remote_preference?: string;
+  experience_years_min?: number;
+  experience_years_max?: number;
+  education_level?: string;
+  required_degrees?: string[];
+  required_schools?: string[];
+  required_skills?: any[];
+  preferred_skills?: any[];
+  industry_sectors?: string[];
+  preferred_companies?: string[];
+  required_languages?: any[];
+  mobility?: string;
+  salary_min?: number;
+  salary_max?: number;
+  salary_currency?: string;
+  benefits?: string[];
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+  valid_until?: string;
+}
+
+/**
+ * Interface pour les résultats de matching
+ */
+export interface CandidateJobMatch {
+  id: string;
+  candidate_id: string;
+  job_offer_id: string;
+  match_score: number;
+  skills_match_score: number;
+  experience_match_score: number;
+  education_match_score: number;
+  location_match_score: number;
+  match_details: {
+    skills_details: { score: number };
+    experience_details: { score: number };
+    education_details: { score: number };
+    location_details: { score: number };
+  };
+  created_at?: string;
+  updated_at?: string;
+}
 
 /**
  * Service responsable de la gestion des données des candidats
@@ -153,6 +207,413 @@ export const candidateDataService = {
     } catch (error: any) {
       console.error("Exception in deleteCandidate:", error);
       throw new Error(error.message || "Impossible de supprimer le candidat");
+    }
+  },
+  
+  /**
+   * Créer une nouvelle offre d'emploi
+   */
+  createJobOffer: async (jobOffer: Omit<JobOffer, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<JobOffer> => {
+    try {
+      console.log("Creating new job offer:", jobOffer.title);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Non authentifié");
+      }
+      
+      const { data, error } = await supabase
+        .from('job_offers')
+        .insert({
+          ...jobOffer,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Error creating job offer:", error.message);
+        throw new Error(`Erreur lors de la création de l'offre d'emploi: ${error.message}`);
+      }
+      
+      console.log("Job offer created successfully:", data);
+      
+      // Calculer automatiquement les scores de matching pour tous les candidats de l'utilisateur
+      await candidateDataService.calculateMatchesForJobOffer(data.id);
+      
+      return data;
+    } catch (error: any) {
+      console.error("Exception in createJobOffer:", error);
+      throw new Error(error.message || "Impossible de créer l'offre d'emploi");
+    }
+  },
+  
+  /**
+   * Mettre à jour une offre d'emploi existante
+   */
+  updateJobOffer: async (jobOfferId: string, updates: Partial<JobOffer>): Promise<JobOffer> => {
+    try {
+      console.log(`Updating job offer with ID: ${jobOfferId}`);
+      
+      const { data, error } = await supabase
+        .from('job_offers')
+        .update(updates)
+        .eq('id', jobOfferId)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Error updating job offer:", error.message);
+        throw new Error(`Erreur lors de la mise à jour de l'offre d'emploi: ${error.message}`);
+      }
+      
+      console.log("Job offer updated successfully:", data);
+      
+      // Recalculer les scores de matching pour tous les candidats
+      await candidateDataService.calculateMatchesForJobOffer(jobOfferId);
+      
+      return data;
+    } catch (error: any) {
+      console.error("Exception in updateJobOffer:", error);
+      throw new Error(error.message || "Impossible de mettre à jour l'offre d'emploi");
+    }
+  },
+  
+  /**
+   * Supprimer une offre d'emploi
+   */
+  deleteJobOffer: async (jobOfferId: string): Promise<boolean> => {
+    try {
+      console.log(`Deleting job offer with ID: ${jobOfferId}`);
+      
+      // Les matches associés seront automatiquement supprimés grâce à la contrainte ON DELETE CASCADE
+      const { error } = await supabase
+        .from('job_offers')
+        .delete()
+        .eq('id', jobOfferId);
+      
+      if (error) {
+        console.error("Error deleting job offer:", error.message);
+        throw new Error(`Erreur lors de la suppression de l'offre d'emploi: ${error.message}`);
+      }
+      
+      console.log(`Job offer ${jobOfferId} deleted successfully`);
+      return true;
+    } catch (error: any) {
+      console.error("Exception in deleteJobOffer:", error);
+      throw new Error(error.message || "Impossible de supprimer l'offre d'emploi");
+    }
+  },
+  
+  /**
+   * Récupérer toutes les offres d'emploi d'un utilisateur
+   */
+  getUserJobOffers: async (): Promise<JobOffer[]> => {
+    try {
+      console.log("Fetching job offers for current user");
+      
+      const { data, error } = await supabase
+        .from('job_offers')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching job offers:", error.message);
+        throw new Error(`Erreur lors de la récupération des offres d'emploi: ${error.message}`);
+      }
+      
+      console.log(`Retrieved ${data.length} job offers`);
+      return data || [];
+    } catch (error: any) {
+      console.error("Exception in getUserJobOffers:", error);
+      throw new Error(error.message || "Impossible de récupérer les offres d'emploi");
+    }
+  },
+  
+  /**
+   * Récupérer une offre d'emploi par son ID
+   */
+  getJobOfferById: async (jobOfferId: string): Promise<JobOffer | null> => {
+    try {
+      console.log(`Fetching job offer with ID: ${jobOfferId}`);
+      
+      const { data, error } = await supabase
+        .from('job_offers')
+        .select('*')
+        .eq('id', jobOfferId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Error fetching job offer:", error.message);
+        throw new Error(`Erreur lors de la récupération de l'offre d'emploi: ${error.message}`);
+      }
+      
+      if (!data) {
+        console.log(`No job offer found with ID: ${jobOfferId}`);
+        return null;
+      }
+      
+      console.log("Job offer retrieved successfully:", data);
+      return data;
+    } catch (error: any) {
+      console.error("Exception in getJobOfferById:", error);
+      throw new Error(error.message || "Impossible de récupérer l'offre d'emploi");
+    }
+  },
+  
+  /**
+   * Calculer les scores de matching pour tous les candidats d'un utilisateur par rapport à une offre d'emploi
+   */
+  calculateMatchesForJobOffer: async (jobOfferId: string): Promise<string[]> => {
+    try {
+      console.log(`Calculating matches for job offer ID: ${jobOfferId}`);
+      
+      const { data, error } = await supabase.rpc('calculate_all_candidates_job_matches', {
+        p_job_offer_id: jobOfferId
+      });
+      
+      if (error) {
+        console.error("Error calculating matches:", error.message);
+        throw new Error(`Erreur lors du calcul des correspondances: ${error.message}`);
+      }
+      
+      console.log(`Calculated matches for ${data?.length || 0} candidates`);
+      return data || [];
+    } catch (error: any) {
+      console.error("Exception in calculateMatchesForJobOffer:", error);
+      throw new Error(error.message || "Impossible de calculer les correspondances");
+    }
+  },
+  
+  /**
+   * Récupérer les résultats de matching pour un candidat et une offre d'emploi spécifiques
+   */
+  getCandidateJobMatch: async (candidateId: string, jobOfferId: string): Promise<CandidateJobMatch | null> => {
+    try {
+      console.log(`Fetching match between candidate ${candidateId} and job offer ${jobOfferId}`);
+      
+      const { data, error } = await supabase
+        .from('candidate_job_matches')
+        .select('*')
+        .eq('candidate_id', candidateId)
+        .eq('job_offer_id', jobOfferId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Error fetching candidate-job match:", error.message);
+        throw new Error(`Erreur lors de la récupération du matching: ${error.message}`);
+      }
+      
+      if (!data) {
+        console.log(`No match found between candidate ${candidateId} and job offer ${jobOfferId}`);
+        return null;
+      }
+      
+      console.log("Match retrieved successfully:", data);
+      return data;
+    } catch (error: any) {
+      console.error("Exception in getCandidateJobMatch:", error);
+      throw new Error(error.message || "Impossible de récupérer le matching");
+    }
+  },
+  
+  /**
+   * Récupérer tous les matchs pour une offre d'emploi spécifique, avec détails des candidats
+   */
+  getMatchesForJobOffer: async (jobOfferId: string): Promise<{candidate: CandidateData; match: CandidateJobMatch}[]> => {
+    try {
+      console.log(`Fetching all matches for job offer: ${jobOfferId}`);
+      
+      // Récupérer tous les candidats de l'utilisateur
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Non authentifié");
+      }
+      
+      const candidates = await candidateDataService.getUserCandidates(user.id);
+      
+      // Récupérer tous les matchs pour cette offre d'emploi
+      const { data: matches, error } = await supabase
+        .from('candidate_job_matches')
+        .select('*')
+        .eq('job_offer_id', jobOfferId);
+      
+      if (error) {
+        console.error("Error fetching matches for job offer:", error.message);
+        throw new Error(`Erreur lors de la récupération des matchings: ${error.message}`);
+      }
+      
+      // Combiner les données des candidats avec leurs scores de matching
+      const candidatesWithMatches = matches
+        .map(match => {
+          const candidate = candidates.find(c => c.id === match.candidate_id);
+          if (!candidate) return null;
+          
+          return {
+            candidate,
+            match
+          };
+        })
+        .filter(item => item !== null) as {candidate: CandidateData; match: CandidateJobMatch}[];
+      
+      // Trier par score de matching (du plus élevé au plus bas)
+      candidatesWithMatches.sort((a, b) => b.match.match_score - a.match.match_score);
+      
+      console.log(`Retrieved ${candidatesWithMatches.length} matches for job offer ${jobOfferId}`);
+      return candidatesWithMatches;
+    } catch (error: any) {
+      console.error("Exception in getMatchesForJobOffer:", error);
+      throw new Error(error.message || "Impossible de récupérer les matchings");
+    }
+  },
+  
+  /**
+   * Récupérer les meilleurs candidats pour une offre d'emploi spécifique
+   */
+  getTopCandidatesForJobOffer: async (jobOfferId: string, limit: number = 10): Promise<{candidate: CandidateData; match: CandidateJobMatch}[]> => {
+    try {
+      const allMatches = await candidateDataService.getMatchesForJobOffer(jobOfferId);
+      return allMatches.slice(0, limit);
+    } catch (error: any) {
+      console.error("Exception in getTopCandidatesForJobOffer:", error);
+      throw new Error(error.message || "Impossible de récupérer les meilleurs candidats");
+    }
+  },
+  
+  /**
+   * Filtrer les candidats selon des critères spécifiques
+   */
+  filterCandidates: async (
+    filters: {
+      companies?: string[];
+      locations?: string[];
+      schools?: string[];
+      degrees?: string[];
+      skills?: string[];
+      experienceMin?: number;
+      experienceMax?: number;
+      industries?: string[];
+    }
+  ): Promise<CandidateData[]> => {
+    try {
+      console.log("Filtering candidates with criteria:", filters);
+      
+      // Récupérer tous les candidats de l'utilisateur
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Non authentifié");
+      }
+      
+      const allCandidates = await candidateDataService.getUserCandidates(user.id);
+      
+      // Appliquer les filtres
+      const filteredCandidates = allCandidates.filter(candidate => {
+        // Filtrer par entreprises
+        if (filters.companies && filters.companies.length > 0) {
+          const candidateCompanies = Array.isArray(candidate.experiences) 
+            ? candidate.experiences.map((exp: any) => exp.company?.toLowerCase())
+            : [];
+          
+          if (!filters.companies.some(company => 
+            candidateCompanies.some(candidateCompany => 
+              candidateCompany?.includes(company.toLowerCase())
+            )
+          )) {
+            return false;
+          }
+        }
+        
+        // Filtrer par localisation
+        if (filters.locations && filters.locations.length > 0) {
+          if (!candidate.location || 
+              !filters.locations.some(location => 
+                candidate.location?.toLowerCase().includes(location.toLowerCase())
+              )) {
+            return false;
+          }
+        }
+        
+        // Filtrer par écoles
+        if (filters.schools && filters.schools.length > 0) {
+          const candidateSchools = Array.isArray(candidate.education)
+            ? candidate.education.map((edu: any) => edu.school?.toLowerCase())
+            : [];
+          
+          if (!filters.schools.some(school => 
+            candidateSchools.some(candidateSchool => 
+              candidateSchool?.includes(school.toLowerCase())
+            )
+          )) {
+            return false;
+          }
+        }
+        
+        // Filtrer par diplômes
+        if (filters.degrees && filters.degrees.length > 0) {
+          const candidateDegrees = Array.isArray(candidate.education)
+            ? candidate.education.map((edu: any) => edu.degree?.toLowerCase())
+            : [];
+          
+          if (!filters.degrees.some(degree => 
+            candidateDegrees.some(candidateDegree => 
+              candidateDegree?.includes(degree.toLowerCase())
+            )
+          )) {
+            return false;
+          }
+        }
+        
+        // Filtrer par compétences
+        if (filters.skills && filters.skills.length > 0) {
+          const candidateSkills = Array.isArray(candidate.skills)
+            ? candidate.skills.map(skill => typeof skill === 'string' ? skill.toLowerCase() : '')
+            : [];
+          
+          if (!filters.skills.some(skill => 
+            candidateSkills.some(candidateSkill => 
+              candidateSkill?.includes(skill.toLowerCase())
+            )
+          )) {
+            return false;
+          }
+        }
+        
+        // Filtrer par expérience
+        if (filters.experienceMin !== undefined && candidate.years_experience !== undefined && 
+            candidate.years_experience < filters.experienceMin) {
+          return false;
+        }
+        
+        if (filters.experienceMax !== undefined && candidate.years_experience !== undefined && 
+            candidate.years_experience > filters.experienceMax) {
+          return false;
+        }
+        
+        // Filtrer par secteurs d'activité
+        if (filters.industries && filters.industries.length > 0) {
+          const candidateIndustries = Array.isArray(candidate.industries)
+            ? candidate.industries.map((industry: any) => 
+                typeof industry === 'string' ? industry.toLowerCase() : ''
+              )
+            : [];
+          
+          if (!filters.industries.some(industry => 
+            candidateIndustries.some(candidateIndustry => 
+              candidateIndustry?.includes(industry.toLowerCase())
+            )
+          )) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+      
+      console.log(`Filtered candidates: ${filteredCandidates.length} out of ${allCandidates.length}`);
+      return filteredCandidates;
+    } catch (error: any) {
+      console.error("Exception in filterCandidates:", error);
+      throw new Error(error.message || "Impossible de filtrer les candidats");
     }
   }
 };
