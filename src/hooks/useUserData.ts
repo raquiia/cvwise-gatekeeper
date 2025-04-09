@@ -31,9 +31,10 @@ export const useUserData = () => {
       try {
         setLoading(true);
         
-        // Using our secure function to get profile data
+        // Get all profiles directly without using RPC
         const { data: profilesData, error } = await supabase
-          .rpc('get_all_profiles_secure');
+          .from('profiles')
+          .select('*');
         
         if (error) {
           console.error('Erreur lors de la récupération des utilisateurs:', error);
@@ -46,7 +47,7 @@ export const useUserData = () => {
           return;
         }
         
-        if (profilesData) {
+        if (profilesData && profilesData.length > 0) {
           console.log("Profils utilisateurs chargés:", profilesData);
           
           // Map the profiles data to match the RealUser interface
@@ -57,6 +58,7 @@ export const useUserData = () => {
             last_name: profile.last_name || undefined,
             company: profile.company || undefined,
             created_at: profile.created_at || new Date().toISOString(),
+            last_sign_in_at: profile.updated_at,
             avatar_url: profile.avatar_url || undefined,
             profile: {
               first_name: profile.first_name || undefined,
@@ -71,7 +73,7 @@ export const useUserData = () => {
         } else {
           console.error('Aucune donnée d\'utilisateur reçue');
           
-          // Fallback to Edge Function if RPC method fails
+          // Fallback to Edge Function if profiles query returns no data
           try {
             const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke('list-users');
             

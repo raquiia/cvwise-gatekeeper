@@ -63,21 +63,155 @@ const Dashboard = () => {
       try {
         setLoading(true);
         
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error("User not authenticated");
+        }
+        
         // Fetch real stats data
-        const realStats = await fetchStats();
-        setStats(realStats);
-        
-        // Fetch recent candidates
-        const candidates = await fetchRecentCandidates();
-        setRecentCandidates(candidates);
-        
-        // Fetch top skills
-        const skills = await fetchTopSkills();
-        setTopSkills(skills);
-        
-        // Fetch recent activity
-        const activity = await fetchRecentActivity();
-        setRecentActivity(activity);
+        try {
+          // Fetch candidates count
+          const candidates = await candidateService.getUserCandidates(user.id);
+          const candidatesCount = candidates.length;
+          
+          // Fetch resumes count
+          const { data: resumesData, error: resumesError } = await supabase
+            .from('resumes')
+            .select('id')
+            .eq('user_id', user.id);
+            
+          if (resumesError) throw resumesError;
+          const resumesCount = resumesData?.length || 0;
+          
+          // Fetch job offers count
+          const jobOffers = await jobOfferService.getUserJobOffers();
+          const jobOffersCount = jobOffers.length;
+          
+          // Fetch pending candidates count
+          const pendingCandidates = candidates.filter(c => c.status === 'pending');
+          const pendingCount = pendingCandidates.length;
+          
+          // Calculate growth (in a real app, this would compare to previous period)
+          // For now, we'll use random values between -10 and +20
+          const getRandomGrowth = () => Math.floor(Math.random() * 30) - 10;
+          
+          const realStats: DashboardStats = {
+            candidatesCount,
+            resumesCount,
+            jobOffersCount,
+            pendingCount,
+            candidatesGrowth: getRandomGrowth(),
+            resumesGrowth: getRandomGrowth(),
+            jobOffersGrowth: getRandomGrowth(),
+            pendingGrowth: getRandomGrowth() * -1, // Negative is good for pending
+          };
+          
+          setStats(realStats);
+          setUsingMockData(false);
+          
+          // Fetch recent candidates
+          const sortedCandidates = [...candidates].sort((a, b) => {
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          });
+          
+          // Take the 5 most recent candidates
+          const recentCandidatesData = sortedCandidates.slice(0, 5).map(candidate => {
+            // Determine status based on score
+            const score = candidate.score || Math.floor(Math.random() * 100);
+            let status: 'high' | 'medium' | 'low' = 'medium';
+            if (score >= 85) status = 'high';
+            else if (score < 65) status = 'low';
+            
+            return {
+              id: candidate.id,
+              name: `${candidate.first_name} ${candidate.last_name}`,
+              position: candidate.position || 'Non spécifié',
+              score,
+              date: new Date(candidate.created_at).toLocaleDateString('fr-FR'),
+              status
+            };
+          });
+          
+          setRecentCandidates(recentCandidatesData);
+          
+          // Extract all skills from candidates for top skills section
+          const allSkills: string[] = [];
+          candidates.forEach(candidate => {
+            if (candidate.skills && Array.isArray(candidate.skills)) {
+              candidate.skills.forEach((skill: any) => {
+                if (typeof skill === 'string') {
+                  allSkills.push(skill);
+                } else if (skill && typeof skill.name === 'string') {
+                  allSkills.push(skill.name);
+                }
+              });
+            }
+          });
+          
+          // Count occurrences of each skill
+          const skillCounts: Record<string, number> = {};
+          allSkills.forEach(skill => {
+            skillCounts[skill] = (skillCounts[skill] || 0) + 1;
+          });
+          
+          // Convert to array and sort by count (descending)
+          const sortedSkills = Object.entries(skillCounts)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
+          
+          // Take top 5 skills
+          const maxCount = Math.max(...sortedSkills.map(s => s.count), 1);
+          
+          const topSkillsData = sortedSkills.slice(0, 5).map(skill => ({
+            name: skill.name,
+            count: skill.count,
+            percentage: Math.round((skill.count / maxCount) * 100)
+          }));
+          
+          setTopSkills(topSkillsData.length > 0 ? topSkillsData : getMockTopSkills());
+          
+          // Generate recent activity based on real data
+          const allItems = [
+            ...candidates.map(c => ({ 
+              type: 'candidate', 
+              name: `${c.first_name} ${c.last_name}`, 
+              date: new Date(c.created_at)
+            })),
+            ...jobOffers.map(j => ({ 
+              type: 'jobOffer', 
+              name: j.title, 
+              date: new Date(j.created_at)
+            }))
+          ].sort((a, b) => b.date.getTime() - a.date.getTime());
+          
+          // Take most recent 4 items
+          const recentActivityData = allItems.slice(0, 4).map(item => {
+            const timeAgo = getTimeAgo(item.date);
+            
+            if (item.type === 'candidate') {
+              return {
+                action: "CV uploadé",
+                user: item.name,
+                time: timeAgo,
+                icon: <Upload size={16} className="text-emerald-500" />
+              };
+            } else {
+              return {
+                action: "Offre créée",
+                user: item.name,
+                time: timeAgo,
+                icon: <FileText size={16} className="text-blue-500" />
+              };
+            }
+          });
+          
+          setRecentActivity(recentActivityData.length > 0 ? recentActivityData : getMockRecentActivity());
+          
+        } catch (dataError) {
+          console.error('Error fetching dashboard data:', dataError);
+          throw dataError;
+        }
         
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -99,189 +233,7 @@ const Dashboard = () => {
     };
     
     fetchDashboardData();
-  }, []);
-  
-  const fetchStats = async (): Promise<DashboardStats> => {
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
-      
-      // Fetch candidates count
-      const candidates = await candidateService.getUserCandidates(user.id);
-      const candidatesCount = candidates.length;
-      
-      // Fetch resumes count - using RPC function
-      const { data: resumesData, error: resumesError } = await supabase
-        .from('resumes')
-        .select('id')
-        .eq('user_id', user.id);
-        
-      if (resumesError) throw resumesError;
-      const resumesCount = resumesData?.length || 0;
-      
-      // Fetch job offers count
-      const jobOffers = await jobOfferService.getUserJobOffers();
-      const jobOffersCount = jobOffers.length;
-      
-      // Fetch pending candidates count
-      const pendingCandidates = candidates.filter(c => c.status === 'pending');
-      const pendingCount = pendingCandidates.length;
-      
-      // Calculate growth (in a real app, this would compare to previous period)
-      // For now, we'll use random values between -10 and +20
-      const getRandomGrowth = () => Math.floor(Math.random() * 30) - 10;
-      
-      return {
-        candidatesCount,
-        resumesCount,
-        jobOffersCount,
-        pendingCount,
-        candidatesGrowth: getRandomGrowth(),
-        resumesGrowth: getRandomGrowth(),
-        jobOffersGrowth: getRandomGrowth(),
-        pendingGrowth: getRandomGrowth() * -1, // Negative is good for pending
-      };
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-      throw error;
-    }
-  };
-  
-  const fetchRecentCandidates = async (): Promise<RecentCandidate[]> => {
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
-      
-      const candidates = await candidateService.getUserCandidates(user.id);
-      
-      // Sort by creation date, most recent first
-      const sortedCandidates = [...candidates].sort((a, b) => {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-      
-      // Take the 5 most recent candidates
-      return sortedCandidates.slice(0, 5).map(candidate => {
-        // Determine status based on score
-        const score = candidate.score || Math.floor(Math.random() * 100);
-        let status: 'high' | 'medium' | 'low' = 'medium';
-        if (score >= 85) status = 'high';
-        else if (score < 65) status = 'low';
-        
-        return {
-          id: candidate.id,
-          name: `${candidate.first_name} ${candidate.last_name}`,
-          position: candidate.position || 'Non spécifié',
-          score,
-          date: new Date(candidate.created_at).toLocaleDateString('fr-FR'),
-          status
-        };
-      });
-    } catch (error) {
-      console.error('Error fetching recent candidates:', error);
-      return [];
-    }
-  };
-  
-  const fetchTopSkills = async (): Promise<TopSkill[]> => {
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
-      
-      const candidates = await candidateService.getUserCandidates(user.id);
-      
-      // Extract all skills from candidates
-      const allSkills: string[] = [];
-      candidates.forEach(candidate => {
-        if (candidate.skills && Array.isArray(candidate.skills)) {
-          candidate.skills.forEach((skill: any) => {
-            if (typeof skill === 'string') {
-              allSkills.push(skill);
-            } else if (skill && typeof skill.name === 'string') {
-              allSkills.push(skill.name);
-            }
-          });
-        }
-      });
-      
-      // Count occurrences of each skill
-      const skillCounts: Record<string, number> = {};
-      allSkills.forEach(skill => {
-        skillCounts[skill] = (skillCounts[skill] || 0) + 1;
-      });
-      
-      // Convert to array and sort by count (descending)
-      const sortedSkills = Object.entries(skillCounts)
-        .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count);
-      
-      // Take top 5 skills
-      const maxCount = Math.max(...sortedSkills.map(s => s.count));
-      
-      return sortedSkills.slice(0, 5).map(skill => ({
-        name: skill.name,
-        count: skill.count,
-        percentage: Math.round((skill.count / maxCount) * 100)
-      }));
-    } catch (error) {
-      console.error('Error fetching top skills:', error);
-      return [];
-    }
-  };
-  
-  const fetchRecentActivity = async (): Promise<RecentActivity[]> => {
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
-      
-      // In a real app, you would fetch from an activity log table
-      // For now, we'll generate based on recent candidates and job offers
-      
-      const candidates = await candidateService.getUserCandidates(user.id);
-      const jobOffers = await jobOfferService.getUserJobOffers();
-      
-      // Sort all items by date
-      const allItems = [
-        ...candidates.map(c => ({ 
-          type: 'candidate', 
-          name: `${c.first_name} ${c.last_name}`, 
-          date: new Date(c.created_at)
-        })),
-        ...jobOffers.map(j => ({ 
-          type: 'jobOffer', 
-          name: j.title, 
-          date: new Date(j.created_at)
-        }))
-      ].sort((a, b) => b.date.getTime() - a.date.getTime());
-      
-      // Take most recent 4 items
-      return allItems.slice(0, 4).map(item => {
-        const timeAgo = getTimeAgo(item.date);
-        
-        if (item.type === 'candidate') {
-          return {
-            action: "CV uploadé",
-            user: item.name,
-            time: timeAgo,
-            icon: <Upload size={16} className="text-emerald-500" />
-          };
-        } else {
-          return {
-            action: "Offre créée",
-            user: item.name,
-            time: timeAgo,
-            icon: <FileText size={16} className="text-blue-500" />
-          };
-        }
-      });
-    } catch (error) {
-      console.error('Error fetching recent activity:', error);
-      return [];
-    }
-  };
+  }, [toast]);
   
   const getTimeAgo = (date: Date): string => {
     const now = new Date();
@@ -546,33 +498,29 @@ const Dashboard = () => {
               </div>
               <div className="p-5">
                 {loading ? (
-                  <div className="space-y-4">
-                    {Array(4).fill(0).map((_, idx) => (
-                      <div key={idx} className="flex items-start">
-                        <Skeleton className="w-8 h-8 rounded-full mr-3" />
-                        <div className="flex-1">
-                          <Skeleton className="h-4 w-32 mb-1" />
-                          <Skeleton className="h-3 w-24" />
-                        </div>
+                  Array(4).fill(0).map((_, idx) => (
+                    <div key={idx} className="flex items-start">
+                      <Skeleton className="w-8 h-8 rounded-full mr-3" />
+                      <div className="flex-1">
+                        <Skeleton className="h-4 w-32 mb-1" />
+                        <Skeleton className="h-3 w-24" />
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))
                 ) : recentActivity.length > 0 ? (
-                  <div className="space-y-4">
-                    {recentActivity.map((activity, idx) => (
-                      <div key={idx} className="flex items-start">
-                        <div className="w-8 h-8 rounded-full bg-navy/10 flex items-center justify-center mr-3">
-                          {activity.icon}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-navy-dark">{activity.action}</p>
-                          <p className="text-xs text-muted-foreground">
-                            <span className="font-medium">{activity.user}</span> • {activity.time}
-                          </p>
-                        </div>
+                  recentActivity.map((activity, idx) => (
+                    <div key={idx} className="flex items-start">
+                      <div className="w-8 h-8 rounded-full bg-navy/10 flex items-center justify-center mr-3">
+                        {activity.icon}
                       </div>
-                    ))}
-                  </div>
+                      <div>
+                        <p className="text-sm font-medium text-navy-dark">{activity.action}</p>
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-medium">{activity.user}</span> • {activity.time}
+                        </p>
+                      </div>
+                    </div>
+                  ))
                 ) : (
                   <p className="text-sm text-muted-foreground">Aucune activité récente</p>
                 )}
@@ -590,29 +538,25 @@ const Dashboard = () => {
               </div>
               <div className="p-5">
                 {loading ? (
-                  <div className="space-y-4">
-                    {Array(5).fill(0).map((_, idx) => (
-                      <div key={idx}>
-                        <div className="flex justify-between mb-1">
-                          <Skeleton className="h-4 w-32" />
-                          <Skeleton className="h-4 w-16" />
-                        </div>
-                        <Skeleton className="h-2 w-full" />
+                  Array(5).fill(0).map((_, idx) => (
+                    <div key={idx}>
+                      <div className="flex justify-between mb-1">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-4 w-16" />
                       </div>
-                    ))}
-                  </div>
+                      <Skeleton className="h-2 w-full" />
+                    </div>
+                  ))
                 ) : topSkills.length > 0 ? (
-                  <div className="space-y-4">
-                    {topSkills.map((skill, idx) => (
-                      <div key={idx}>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium text-navy-dark">{skill.name}</span>
-                          <span className="text-xs text-muted-foreground">{skill.count} candidats</span>
-                        </div>
-                        <Progress value={skill.percentage} className="h-2" />
+                  topSkills.map((skill, idx) => (
+                    <div key={idx}>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm font-medium text-navy-dark">{skill.name}</span>
+                        <span className="text-xs text-muted-foreground">{skill.count} candidats</span>
                       </div>
-                    ))}
-                  </div>
+                      <Progress value={skill.percentage} className="h-2" />
+                    </div>
+                  ))
                 ) : (
                   <p className="text-sm text-muted-foreground">Aucune compétence trouvée</p>
                 )}
