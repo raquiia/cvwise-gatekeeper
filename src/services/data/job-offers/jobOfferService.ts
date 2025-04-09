@@ -47,6 +47,9 @@ export const jobOfferService = {
       // Calculer automatiquement les scores de matching pour tous les candidats de l'utilisateur
       if (typedData && typedData.id) {
         await candidateMatchingService.calculateMatchesForJobOffer(typedData.id);
+        
+        // Set this as the active job offer
+        await candidateMatchingService.setActiveJobOffer(typedData.id);
       }
       
       return typedData;
@@ -84,6 +87,11 @@ export const jobOfferService = {
       // Recalculer les scores de matching pour tous les candidats
       if (typedData && typedData.id) {
         await candidateMatchingService.calculateMatchesForJobOffer(jobOfferId);
+        
+        // If this is the active job offer, update the cached version
+        if (candidateMatchingService.getActiveJobOfferId() === jobOfferId) {
+          await candidateMatchingService.setActiveJobOffer(jobOfferId);
+        }
       }
       
       return typedData;
@@ -99,6 +107,11 @@ export const jobOfferService = {
   deleteJobOffer: async (jobOfferId: string): Promise<boolean> => {
     try {
       console.log(`Deleting job offer with ID: ${jobOfferId}`);
+      
+      // If this is the active job offer, clear it
+      if (candidateMatchingService.getActiveJobOfferId() === jobOfferId) {
+        await candidateMatchingService.setActiveJobOffer(null);
+      }
       
       // Utiliser directement les opérations de suppression de Supabase
       const { error } = await supabase
@@ -116,6 +129,18 @@ export const jobOfferService = {
     } catch (error: any) {
       console.error("Exception in deleteJobOffer:", error);
       throw new Error(error.message || "Impossible de supprimer l'offre d'emploi");
+    }
+  },
+  
+  /**
+   * Activer une offre d'emploi (la définir comme contexte actif pour le scoring)
+   */
+  activateJobOffer: async (jobOfferId: string): Promise<boolean> => {
+    try {
+      return await candidateMatchingService.setActiveJobOffer(jobOfferId);
+    } catch (error: any) {
+      console.error("Exception in activateJobOffer:", error);
+      return false;
     }
   },
   

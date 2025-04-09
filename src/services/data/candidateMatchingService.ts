@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { generateMockMatches } from './mocks/candidateMatchMocks';
 import { Json } from '@/integrations/supabase/types';
+import { calculateOverallMatch } from '@/services/analysis/matchingUtils';
 
 export interface Experience {
   min?: number;
@@ -63,6 +64,10 @@ export interface CandidateMatch {
   match: CandidateJobMatch;
 }
 
+// Track currently active job offer (for context-based scoring)
+let activeJobOfferId: string | null = null;
+let activeJobOffer: any = null;
+
 // Helper function to safely convert Json to MatchDetails
 const convertJsonToMatchDetails = (jsonData: Json | null): MatchDetails | undefined => {
   if (!jsonData) return undefined;
@@ -105,6 +110,55 @@ const convertJsonToMatchDetails = (jsonData: Json | null): MatchDetails | undefi
 
 // Full service that includes both job offer suggestions and candidate matching functionality
 export const candidateMatchingService = {
+  // Get currently active job offer ID
+  getActiveJobOfferId: () => activeJobOfferId,
+  
+  // Set active job offer (which will be used for candidate scoring)
+  setActiveJobOffer: async (jobOfferId: string | null) => {
+    activeJobOfferId = jobOfferId;
+    
+    if (jobOfferId) {
+      try {
+        // Fetch the job offer details
+        const { data, error } = await supabase
+          .from('job_offers')
+          .select('*')
+          .eq('id', jobOfferId)
+          .single();
+          
+        if (error) throw error;
+        
+        activeJobOffer = data;
+        
+        console.log("Active job offer set:", activeJobOffer.title);
+        return true;
+      } catch (error) {
+        console.error("Error setting active job offer:", error);
+        activeJobOffer = null;
+        return false;
+      }
+    } else {
+      activeJobOffer = null;
+      return true;
+    }
+  },
+  
+  // Calculate a candidate's match score against the active job offer
+  calculateCandidateActiveJobScore: async (candidate: any) => {
+    if (!activeJobOffer || !candidate) {
+      return { score: 0, details: null };
+    }
+    
+    try {
+      // Use the matching utility function
+      const matchResult = calculateOverallMatch(candidate, activeJobOffer);
+      return matchResult;
+    } catch (error) {
+      console.error("Error calculating active job score:", error);
+      return { score: 0, details: null };
+    }
+  },
+  
   // Generate job offer suggestions using the Edge Function
   async generateJobOfferSuggestions(
     jobTitle: string,

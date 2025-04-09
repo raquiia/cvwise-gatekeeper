@@ -1,4 +1,3 @@
-
 /**
  * Utilities for matching candidates to job positions
  */
@@ -43,7 +42,7 @@ export function calculateOverallMatch(
   candidateData: any, 
   jobPosition: any
 ): { score: number; details: MatchDetails } {
-  // Initialize scoring factors
+  // Initialize scoring factors with weighted importance
   const skillsWeight = 0.5;     // 50% of the score comes from skills match
   const experienceWeight = 0.3; // 30% from experience
   const otherWeight = 0.2;      // 20% from other factors
@@ -51,18 +50,59 @@ export function calculateOverallMatch(
   // Calculate skills match
   const skillsMatch = calculateSkillMatch(
     candidateData.skills || [], 
-    jobPosition.skills || []
+    jobPosition.skills || jobPosition.required_skills || []
   );
   
   // Experience match - if job requires X years, candidate should have at least X years
-  const requiredYears = jobPosition.required_years_experience || 0;
+  const requiredYearsMin = jobPosition.experience_years_min || jobPosition.required_years_experience || 0;
+  const requiredYearsMax = jobPosition.experience_years_max || requiredYearsMin + 3 || 0;
   const candidateYears = candidateData.years_experience || 0;
-  const experienceMatch = requiredYears <= 0 
-    ? 100 
-    : Math.min(100, Math.round((candidateYears / requiredYears) * 100));
   
-  // For now, other factors are just a bonus score based on candidate's general score
-  const otherFactorsMatch = candidateData.score || 75;
+  let experienceMatch = 0;
+  
+  if (requiredYearsMin <= 0) {
+    experienceMatch = 100; // No experience required
+  } else if (candidateYears >= requiredYearsMin && candidateYears <= requiredYearsMax) {
+    experienceMatch = 100; // Perfect match
+  } else if (candidateYears > requiredYearsMax) {
+    // Over-qualified but still a good match
+    experienceMatch = Math.max(70, 100 - ((candidateYears - requiredYearsMax) * 5));
+  } else if (candidateYears > 0) {
+    // Some experience but under the minimum
+    experienceMatch = Math.round((candidateYears / requiredYearsMin) * 100);
+  }
+  
+  // For location match (new feature)
+  let locationMatch = 50; // Default
+  
+  if (jobPosition.location && candidateData.location) {
+    // Simple match - checks if locations contain each other
+    const jobLocation = jobPosition.location.toLowerCase();
+    const candidateLocation = candidateData.location.toLowerCase();
+    
+    if (jobLocation === candidateLocation) {
+      locationMatch = 100; // Exact match
+    } else if (jobLocation.includes(candidateLocation) || candidateLocation.includes(jobLocation)) {
+      locationMatch = 85; // Partial match
+    } else {
+      // Check for major cities/regions in the same country
+      // This is simplistic - in a real system you'd use geography APIs
+      const locationParts = jobLocation.split(/[,\s]+/).filter(Boolean);
+      const candidateLocationParts = candidateLocation.split(/[,\s]+/).filter(Boolean);
+      
+      for (const part of locationParts) {
+        if (candidateLocationParts.includes(part) && part.length > 2) {
+          locationMatch = 70; // Same region/country
+          break;
+        }
+      }
+    }
+  }
+  
+  // Other factors match - consider education & cultural fit
+  const otherFactorsMatch = 
+    calculateEducationMatch(candidateData.education || [], jobPosition.education_level) * 0.7 + 
+    (candidateData.score || 75) * 0.3; // Base candidate quality still matters
   
   // Calculate weighted score
   const overallScore = Math.round(
@@ -77,10 +117,67 @@ export function calculateOverallMatch(
       skillsMatch: skillsMatch,
       experienceMatch: experienceMatch,
       otherFactorsMatch: otherFactorsMatch,
-      matchedSkills: findMatchedSkills(candidateData.skills || [], jobPosition.skills || []),
-      missingSkills: findMissingSkills(candidateData.skills || [], jobPosition.skills || [])
+      matchedSkills: findMatchedSkills(candidateData.skills || [], jobPosition.skills || jobPosition.required_skills || []),
+      missingSkills: findMissingSkills(candidateData.skills || [], jobPosition.skills || jobPosition.required_skills || [])
     }
   };
+}
+
+/**
+ * Calculate education match score
+ */
+function calculateEducationMatch(candidateEducation: any[], jobEducationLevel: string | null): number {
+  if (!jobEducationLevel || !candidateEducation || candidateEducation.length === 0) {
+    return 50; // Default match when no specific requirements
+  }
+  
+  // Education levels in ascending order
+  const educationLevels = [
+    'high school', 'secondary', 
+    'associate', 'bachelor', 'license', 'undergraduate',
+    'master', 'mba', 'graduate',
+    'phd', 'doctorate', 'doctoral'
+  ];
+  
+  // Determine required education level index
+  const normalizedJobLevel = jobEducationLevel.toLowerCase();
+  let requiredLevelIndex = -1;
+  
+  for (let i = 0; i < educationLevels.length; i++) {
+    if (normalizedJobLevel.includes(educationLevels[i])) {
+      requiredLevelIndex = i;
+      break;
+    }
+  }
+  
+  if (requiredLevelIndex === -1) {
+    return 50; // Could not determine level
+  }
+  
+  // Find candidate's highest education level
+  let highestLevelIndex = -1;
+  
+  for (const edu of candidateEducation) {
+    const degree = (edu.degree || '').toLowerCase();
+    
+    for (let i = 0; i < educationLevels.length; i++) {
+      if (degree.includes(educationLevels[i]) && i > highestLevelIndex) {
+        highestLevelIndex = i;
+      }
+    }
+  }
+  
+  if (highestLevelIndex === -1) {
+    return 30; // No recognized education
+  }
+  
+  // Calculate match based on difference between required and actual level
+  if (highestLevelIndex >= requiredLevelIndex) {
+    return 100; // Meets or exceeds requirements
+  } else {
+    // Partial match based on how close the candidate is to required level
+    return Math.round((highestLevelIndex / requiredLevelIndex) * 100);
+  }
 }
 
 /**
