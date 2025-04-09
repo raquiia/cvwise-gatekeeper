@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 import { calculateCandidateQualityScore } from '../analysis/matchingUtils';
@@ -8,7 +7,7 @@ export interface CandidateData {
   first_name?: string;
   last_name?: string;
   position?: string;
-  user_id?: string;
+  user_id: string;
   score?: number;
   skills?: string[];
   location?: string;
@@ -20,7 +19,7 @@ export interface CandidateData {
   experiences?: Json;
   education?: Json;
   languages?: Json;
-  matchDetails?: any; // Add this property
+  matchDetails?: any; // Add this property to support match details
 }
 
 export interface CandidateMinimal {
@@ -83,14 +82,40 @@ export const candidateService = {
         throw error;
       }
       
-      // Update candidate scores based on quality algorithm
-      const candidatesWithUpdatedScores = (data || []).map((candidate: CandidateData) => {
-        // Only recalculate if score is missing or null
-        if (candidate.score === null || candidate.score === undefined) {
-          const qualityScore = calculateCandidateQualityScore(candidate);
-          return { ...candidate, score: qualityScore };
+      // Update candidate scores based on quality algorithm and ensure skills are properly formatted
+      const candidatesWithUpdatedScores = (data || []).map((candidate: any) => {
+        // Convert skills from JSON to array of strings if needed
+        let skills = candidate.skills;
+        if (skills) {
+          if (typeof skills === 'string') {
+            try {
+              skills = JSON.parse(skills);
+            } catch (e) {
+              skills = [skills];
+            }
+          } else if (!Array.isArray(skills)) {
+            // If it's an object but not an array, try to extract values
+            skills = Object.values(skills).filter(Boolean).map(String);
+          }
+        } else {
+          skills = [];
         }
-        return candidate;
+
+        // Only recalculate if score is missing or null
+        let score = candidate.score;
+        if (score === null || score === undefined) {
+          score = calculateCandidateQualityScore({
+            ...candidate,
+            skills
+          });
+        }
+        
+        return {
+          ...candidate,
+          skills,
+          score,
+          user_id: candidate.user_id || user.id // Ensure user_id is present
+        } as CandidateData;
       });
       
       return candidatesWithUpdatedScores;
@@ -121,7 +146,29 @@ export const candidateService = {
         throw new Error("Candidate not found");
       }
       
-      return data as CandidateData;
+      // Process the data to ensure proper types
+      let candidateData = data as any;
+      
+      // Normalize skills to be an array
+      let skills = candidateData.skills;
+      if (skills) {
+        if (typeof skills === 'string') {
+          try {
+            skills = JSON.parse(skills);
+          } catch (e) {
+            skills = [skills];
+          }
+        } else if (!Array.isArray(skills)) {
+          skills = Object.values(skills).filter(Boolean).map(String);
+        }
+      } else {
+        skills = [];
+      }
+
+      return {
+        ...candidateData,
+        skills
+      } as CandidateData;
     } catch (error: any) {
       console.error("Error in getCandidateById:", error.message);
       throw error;
@@ -280,7 +327,7 @@ export const candidateService = {
   },
   
   /**
-   * Filter candidates function (stub)
+   * Filter candidates function
    */
   filterCandidates: async () => {
     console.log("Filter candidates function called, but not implemented yet");

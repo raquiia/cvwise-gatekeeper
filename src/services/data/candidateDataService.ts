@@ -19,7 +19,6 @@ export const candidateDataService = {
   getUserCandidates: candidateService.getUserCandidates,
   getCandidateById: candidateService.getCandidateById,
   deleteCandidate: candidateService.deleteCandidate,
-  filterCandidates: candidateService.filterCandidates,
   
   // Re-export job offer services
   createJobOffer: jobOfferService.createJobOffer,
@@ -37,7 +36,7 @@ export const candidateDataService = {
 };
 
 // Re-export types to maintain backward compatibility
-export { 
+export type { 
   CandidateData,
   JobOffer, 
   CandidateJobMatch, 
