@@ -18,12 +18,23 @@ export const CandidateCard = ({
   onViewCandidate, 
   renderMatchedSkills 
 }: CandidateCardProps) => {
+  // Safe access for score values with fallbacks
+  const overallScore = candidate.match?.match_score || candidate.score || 0;
+  const skillsScore = candidate.match?.skills_match_score || 
+                     (candidate.details?.skills?.matchPercentage || 0);
+  const experienceScore = candidate.match?.experience_match_score || 
+                         (candidate.details?.experienceLevel?.match ? 100 : 50);
+  const educationScore = candidate.match?.education_match_score || 
+                        (candidate.details?.educationLevel?.match ? 100 : 0);
+  const locationScore = candidate.match?.location_match_score || 
+                       (candidate.details?.location?.match ? 100 : 0);
+                       
   return (
     <Card key={candidate.candidateId} className="overflow-hidden">
       <div className="flex">
         <div className="w-24 bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-2xl font-bold text-white">{candidate.match?.match_score || candidate.score}%</div>
+            <div className="text-2xl font-bold text-white">{overallScore}%</div>
             <div className="text-xs text-blue-100">Match</div>
           </div>
         </div>
@@ -53,32 +64,32 @@ export const CandidateCard = ({
                 <div>
                   <div className="text-sm text-gray-500">Compétences</div>
                   <div className="flex items-center mt-1">
-                    <Progress value={candidate.match?.skills_match_score || candidate.details?.skills.matchPercentage || 0} className="h-2 flex-1 mr-2" />
-                    <span className="text-sm font-medium">{candidate.match?.skills_match_score || candidate.details?.skills.matchPercentage || 0}%</span>
+                    <Progress value={skillsScore} className="h-2 flex-1 mr-2" />
+                    <span className="text-sm font-medium">{skillsScore}%</span>
                   </div>
                 </div>
                 
                 <div>
                   <div className="text-sm text-gray-500">Expérience</div>
                   <div className="flex items-center mt-1">
-                    <Progress value={candidate.match?.experience_match_score || (candidate.details?.experienceLevel.match ? 100 : 50)} className="h-2 flex-1 mr-2" />
-                    <span className="text-sm font-medium">{candidate.match?.experience_match_score || (candidate.details?.experienceLevel.match ? 100 : 50)}%</span>
+                    <Progress value={experienceScore} className="h-2 flex-1 mr-2" />
+                    <span className="text-sm font-medium">{experienceScore}%</span>
                   </div>
                 </div>
                 
                 <div>
                   <div className="text-sm text-gray-500">Éducation</div>
                   <div className="flex items-center mt-1">
-                    <Progress value={candidate.match?.education_match_score || (candidate.details?.educationLevel.match ? 100 : 0)} className="h-2 flex-1 mr-2" />
-                    <span className="text-sm font-medium">{candidate.match?.education_match_score || (candidate.details?.educationLevel.match ? 100 : 0)}%</span>
+                    <Progress value={educationScore} className="h-2 flex-1 mr-2" />
+                    <span className="text-sm font-medium">{educationScore}%</span>
                   </div>
                 </div>
                 
                 <div>
                   <div className="text-sm text-gray-500">Localisation</div>
                   <div className="flex items-center mt-1">
-                    <Progress value={candidate.match?.location_match_score || (candidate.details?.location.match ? 100 : 0)} className="h-2 flex-1 mr-2" />
-                    <span className="text-sm font-medium">{candidate.match?.location_match_score || (candidate.details?.location.match ? 100 : 0)}%</span>
+                    <Progress value={locationScore} className="h-2 flex-1 mr-2" />
+                    <span className="text-sm font-medium">{locationScore}%</span>
                   </div>
                 </div>
               </div>

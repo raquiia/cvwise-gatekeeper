@@ -96,6 +96,36 @@ export function processJobOfferData(jobOffer: any) {
 }
 
 /**
+ * Makes sure that match details have the correct structure, regardless of where they come from
+ */
+export function ensureMatchDetails(match: any) {
+  if (!match) return null;
+  
+  // Ensure the match_details property exists and has the correct shape
+  const matchDetails = match.match_details || match.details || {};
+  
+  // Ensure skills has the correct shape
+  const skills = matchDetails.skills || {};
+  
+  return {
+    ...match,
+    match_details: {
+      ...matchDetails,
+      skills: {
+        matched: ensureArray(skills.matched || []),
+        missing: ensureArray(skills.missing || []),
+        additional: ensureArray(skills.additional || []),
+        matchPercentage: skills.matchPercentage || 0
+      },
+      experienceLevel: matchDetails.experienceLevel || { required: 0, candidate: 0, match: false },
+      location: matchDetails.location || { required: '', candidate: '', match: false },
+      educationLevel: matchDetails.educationLevel || { required: '', candidate: '', match: false },
+      overall: matchDetails.overall || 0
+    }
+  };
+}
+
+/**
  * Process candidate data to ensure type consistency
  */
 export function processCandidateData(candidate: any) {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +10,6 @@ import { ensureArray, processCandidateData } from '@/utils/candidateUtils';
 import type { JobOffer } from '@/services/data/job-offers/types';
 import type { ExtendedCandidateMatch } from './types/candidateTypes';
 
-// Import the component parts
 import JobOfferHeader from '@/components/job-offers/detail/JobOfferHeader';
 import JobOfferDetails from '@/components/job-offers/detail/JobOfferDetails';
 import MatchingStats from '@/components/job-offers/detail/MatchingStats';
@@ -80,14 +78,12 @@ const JobOfferDetail = () => {
       let matches;
       
       try {
-        // First try getting matches from RPC function
         const { data, error } = await supabase
           .rpc('get_matches_for_job_offer', { p_job_offer_id: jobOfferId });
         
         if (error) throw error;
         
         if (data && data.length > 0) {
-          // Process data from RPC
           const processedMatches = data.map((item: any) => {
             const candidate = processCandidateData(item.candidate || {});
             const match = item.match || {};
@@ -126,11 +122,9 @@ const JobOfferDetail = () => {
         console.error('Error using RPC for matches, falling back to service:', rpcError);
       }
       
-      // Fall back to service if RPC fails
       matches = await candidateMatchingService.getMatchesForJobOffer(jobOfferId);
       
       if (matches && matches.length > 0) {
-        // Fetch additional candidate details for each match
         const enhancedMatches = await Promise.all(
           matches.map(async (match) => {
             try {
@@ -144,7 +138,6 @@ const JobOfferDetail = () => {
                 return match as ExtendedCandidateMatch;
               }
               
-              // Process candidate data to ensure arrays
               const candidate = processCandidateData(candidateData);
               
               return {
@@ -228,9 +221,10 @@ const JobOfferDetail = () => {
   };
   
   const renderMatchedSkills = (item: ExtendedCandidateMatch) => {
-    const matchedSkills = item.details?.skills.matched || 
-                          item.match?.match_details?.skills?.matched || 
-                          [];
+    const matchedSkills = 
+      (item.details?.skills?.matched || 
+      item.match?.match_details?.skills?.matched || 
+      []);
     
     if (matchedSkills.length > 0) {
       return matchedSkills.map((skill: string, index: number) => (
@@ -244,9 +238,10 @@ const JobOfferDetail = () => {
   };
   
   const renderMissingSkills = (item: ExtendedCandidateMatch) => {
-    const missingSkills = item.details?.skills.missing || 
-                          item.match?.match_details?.skills?.missing || 
-                          [];
+    const missingSkills = 
+      (item.details?.skills?.missing || 
+      item.match?.match_details?.skills?.missing || 
+      []);
     
     if (missingSkills.length > 0) {
       return missingSkills.map((skill: string, index: number) => (

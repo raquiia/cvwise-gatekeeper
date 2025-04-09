@@ -19,6 +19,15 @@ const SkillsMatchCandidateCard = ({
   renderMatchedSkills,
   renderMissingSkills
 }: SkillsMatchCandidateCardProps) => {
+  // Safe access with fallbacks
+  const skillsScore = candidate.match?.skills_match_score || 
+                     (candidate.details?.skills?.matchPercentage || 0);
+  const overallScore = candidate.match?.match_score || candidate.score || 0;
+  const experienceScore = candidate.match?.experience_match_score || 
+                         (candidate.details?.experienceLevel?.match ? 100 : 50);
+  const educationScore = candidate.match?.education_match_score || 
+                        (candidate.details?.educationLevel?.match ? 100 : 0);
+  
   return (
     <Card key={candidate.candidateId}>
       <CardContent className="p-4">
@@ -45,9 +54,9 @@ const SkillsMatchCandidateCard = ({
             <div className="mb-4">
               <div className="flex justify-between items-center mb-1">
                 <span className="font-medium">Match de compétences</span>
-                <span className="font-bold text-lg">{candidate.match?.skills_match_score || candidate.details?.skills.matchPercentage || 0}%</span>
+                <span className="font-bold text-lg">{skillsScore}%</span>
               </div>
-              <Progress value={candidate.match?.skills_match_score || candidate.details?.skills.matchPercentage || 0} className="h-2" />
+              <Progress value={skillsScore} className="h-2" />
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -70,16 +79,16 @@ const SkillsMatchCandidateCard = ({
               <h4 className="text-sm font-semibold mb-1">Autres scores:</h4>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <div className="text-xs text-gray-500">Global: {candidate.match?.match_score || candidate.score}%</div>
-                  <Progress value={candidate.match?.match_score || candidate.score} className="h-1 mt-1" />
+                  <div className="text-xs text-gray-500">Global: {overallScore}%</div>
+                  <Progress value={overallScore} className="h-1 mt-1" />
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Expérience: {candidate.match?.experience_match_score || (candidate.details?.experienceLevel.match ? 100 : 50)}%</div>
-                  <Progress value={candidate.match?.experience_match_score || (candidate.details?.experienceLevel.match ? 100 : 50)} className="h-1 mt-1" />
+                  <div className="text-xs text-gray-500">Expérience: {experienceScore}%</div>
+                  <Progress value={experienceScore} className="h-1 mt-1" />
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500">Éducation: {candidate.match?.education_match_score || (candidate.details?.educationLevel.match ? 100 : 0)}%</div>
-                  <Progress value={candidate.match?.education_match_score || (candidate.details?.educationLevel.match ? 100 : 0)} className="h-1 mt-1" />
+                  <div className="text-xs text-gray-500">Éducation: {educationScore}%</div>
+                  <Progress value={educationScore} className="h-1 mt-1" />
                 </div>
               </div>
             </div>

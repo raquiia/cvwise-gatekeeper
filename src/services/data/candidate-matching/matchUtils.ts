@@ -2,7 +2,7 @@
 import type { JobOffer } from '../job-offers/types';
 import type { CandidateData } from '../candidateService';
 import { semanticMatchingService } from '../../semantic/semanticMatchingService';
-import { ensureArray, ensureStringArray, hasProperty } from '@/utils/candidateUtils';
+import { ensureArray, ensureStringArray, hasProperty, isUndefinedObject } from '@/utils/candidateUtils';
 import { CandidateJobMatch, MatchDetails } from './types';
 
 /**
@@ -17,9 +17,13 @@ export function calculateSkillsMatch(
   additionalSkills: string[];
   matchPercentage: number;
 } {
+  // Ensure inputs are valid arrays
+  const safeJobSkills = Array.isArray(jobSkills) ? jobSkills : [];
+  const safeCandidateSkills = Array.isArray(candidateSkills) ? candidateSkills : [];
+  
   // Match skills
-  const matchedSkills = candidateSkills.filter(skill => 
-    jobSkills.some(jobSkill => {
+  const matchedSkills = safeCandidateSkills.filter(skill => 
+    safeJobSkills.some(jobSkill => {
       // Direct match
       if (jobSkill === skill) return true;
       
@@ -34,7 +38,7 @@ export function calculateSkillsMatch(
     })
   );
   
-  const missingSkills = jobSkills.filter(skill => 
+  const missingSkills = safeJobSkills.filter(skill => 
     !matchedSkills.some(matched => 
       matched === skill || 
       matched.includes(skill) || 
@@ -42,23 +46,23 @@ export function calculateSkillsMatch(
     )
   );
   
-  const additionalSkills = candidateSkills.filter(skill => 
-    !jobSkills.some(jobSkill => 
+  const additionalSkills = safeCandidateSkills.filter(skill => 
+    !safeJobSkills.some(jobSkill => 
       jobSkill === skill || 
       jobSkill.includes(skill) || 
       skill.includes(jobSkill)
     )
   );
   
-  const matchPercentage = jobSkills.length > 0
-    ? (matchedSkills.length / jobSkills.length) * 100
+  const matchPercentage = safeJobSkills.length > 0
+    ? (matchedSkills.length / safeJobSkills.length) * 100
     : 0;
 
   return {
     matchedSkills,
     missingSkills,
     additionalSkills,
-    matchPercentage
+    matchPercentage: Math.round(matchPercentage) // Round to nearest integer
   };
 }
 
