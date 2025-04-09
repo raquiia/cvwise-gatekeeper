@@ -1,4 +1,3 @@
-
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from '@/services/data/resumeDataService';
@@ -11,42 +10,41 @@ export const checkResumeAlreadyAnalyzed = async (resumeId: string): Promise<{ an
   try {
     console.log('Checking if resume has already been analyzed:', resumeId);
     
-    // Vérifier si le CV est marqué comme analysé
+    // Utiliser une requête directe au lieu d'une requête qui pourrait déclencher la récursion RLS
     const { data: resume, error: resumeError } = await supabase
-      .from('resumes')
-      .select('parsed')
-      .eq('id', resumeId)
-      .single();
+      .rpc('get_resume_by_id', { p_resume_id: resumeId });
     
     if (resumeError) {
       console.error('Error checking resume parsed status:', resumeError);
       throw new Error(`Erreur lors de la vérification du statut du CV: ${resumeError.message}`);
     }
     
-    if (!resume.parsed) {
+    if (!resume || !resume.parsed) {
       return { analyzed: false };
     }
     
-    // Récupérer le candidat associé à ce CV
-    const { data: candidate, error: candidateError } = await supabase
+    // Récupérer le candidat associé à ce CV sans utiliser une requête directe
+    const { data: candidates, error: candidateError } = await supabase
       .from('candidates')
       .select('id')
       .eq('resume_id', resumeId)
-      .single();
+      .limit(1);
     
-    if (candidateError && candidateError.code !== 'PGRST116') { // PGRST116 = not found
+    if (candidateError) {
       console.error('Error checking candidate for resume:', candidateError);
       throw new Error(`Erreur lors de la vérification du candidat: ${candidateError.message}`);
     }
     
-    if (candidate) {
-      return { analyzed: true, candidateId: candidate.id };
+    if (candidates && candidates.length > 0) {
+      return { analyzed: true, candidateId: candidates[0].id };
     }
     
     return { analyzed: true }; // Le CV est marqué comme analysé mais aucun candidat trouvé
   } catch (error: any) {
     console.error('Exception in checkResumeAlreadyAnalyzed:', error);
-    throw error;
+    
+    // En cas d'erreur, on considère que le CV n'a pas été analysé pour permettre une nouvelle analyse
+    return { analyzed: false };
   }
 };
 
@@ -120,14 +118,19 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
     
     // Vérifier si le CV a déjà été analysé (si overwriteExisting est false)
     if (!overwriteExisting) {
-      const { analyzed, candidateId } = await checkResumeAlreadyAnalyzed(resumeId);
-      if (analyzed) {
-        console.log('Resume has already been analyzed, returning existing candidateId:', candidateId);
-        return { 
-          success: true, 
-          message: "Ce CV a déjà été analysé",
-          candidateId: candidateId
-        };
+      try {
+        const { analyzed, candidateId } = await checkResumeAlreadyAnalyzed(resumeId);
+        if (analyzed) {
+          console.log('Resume has already been analyzed, returning existing candidateId:', candidateId);
+          return { 
+            success: true, 
+            message: "Ce CV a déjà été analysé",
+            candidateId: candidateId
+          };
+        }
+      } catch (checkError) {
+        // En cas d'erreur dans la vérification, on continue avec l'analyse
+        console.warn("Error checking resume analysis status, proceeding with analysis:", checkError);
       }
     }
     
@@ -167,16 +170,6 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
       console.log('Languages:', typeof data.candidate.languages, Array.isArray(data.candidate.languages) ? data.candidate.languages.length : 'Not an array');
       console.log('Certifications:', typeof data.candidate.certifications, Array.isArray(data.candidate.certifications) ? data.candidate.certifications.length : 'Not an array');
       console.log('Projects:', typeof data.candidate.projects, Array.isArray(data.candidate.projects) ? data.candidate.projects.length : 'Not an array');
-      
-      // Afficher un échantillon des données d'expérience si disponibles
-      if (Array.isArray(data.candidate.experiences) && data.candidate.experiences.length > 0) {
-        console.log('Sample experience:', JSON.stringify(data.candidate.experiences[0]));
-      }
-      
-      // Afficher un échantillon des données d'éducation si disponibles
-      if (Array.isArray(data.candidate.education) && data.candidate.education.length > 0) {
-        console.log('Sample education:', JSON.stringify(data.candidate.education[0]));
-      }
     }
     
     const successMessage = overwriteExisting 
