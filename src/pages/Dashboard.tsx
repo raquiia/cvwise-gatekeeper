@@ -1,86 +1,31 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
-  BarChart3, Users, FileText, Search, Clock, CheckCircle, 
-  ChevronRight, Upload, Star, AlertCircle, ArrowUp, ArrowDown, 
-  Filter, Briefcase
+  BarChart3, Users, FileText, Search, CheckCircle, 
+  ChevronRight, Upload, Briefcase, Link
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
-import { Progress } from '@/components/ui/progress';
-import { Link } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { candidateService } from '@/services/data/candidateService';
-import { jobOfferService } from '@/services/data/jobOfferService';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MockDataAlert } from '@/components/candidates/MockDataAlert';
 import { useUserData } from '@/hooks/useUserData';
 import UserStats from '@/components/admin/UserStats';
-
-interface DashboardStats {
-  candidatesCount: number;
-  resumesCount: number;
-  jobOffersCount: number;
-  pendingCount: number;
-  candidatesGrowth: number;
-  resumesGrowth: number;
-  jobOffersGrowth: number;
-  pendingGrowth: number;
-}
-
-interface RecentActivity {
-  action: string;
-  user: string;
-  time: string;
-  icon: React.ReactNode;
-}
-
-interface TopSkill {
-  name: string;
-  count: number;
-  percentage: number;
-}
-
-interface RecentCandidate {
-  id: string;
-  name: string;
-  position: string;
-  score: number;
-  date: string;
-  status: 'high' | 'medium' | 'low';
-}
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatDate } from '@/utils/dateFormatter';
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
-  const [topSkills, setTopSkills] = useState<TopSkill[]>([]);
-  const [recentCandidates, setRecentCandidates] = useState<RecentCandidate[]>([]);
-  const [usingMockData, setUsingMockData] = useState(false);
+  const [recentCandidates, setRecentCandidates] = useState([]);
   const { toast } = useToast();
   const { realUsers, loading: usersLoading } = useUserData();
   const [companiesCount, setCompaniesCount] = useState(0);
+  const [candidatesCount, setCandidatesCount] = useState(0);
+  const [resumesCount, setResumesCount] = useState(0);
   
-  const formatDate = (dateString?: string): string => {
-    if (!dateString) return 'Never';
-    
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) {
-      return 'Today';
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
-    } else {
-      return date.toLocaleDateString();
-    }
-  };
-  
+  // Extract unique companies from users data
   useEffect(() => {
     if (realUsers.length > 0) {
       const uniqueCompanies = new Set(
@@ -92,8 +37,9 @@ const Dashboard = () => {
     }
   }, [realUsers]);
   
+  // Fetch real candidate and resume data
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         
@@ -102,239 +48,57 @@ const Dashboard = () => {
           throw new Error("User not authenticated");
         }
         
-        try {
-          const candidates = await candidateService.getUserCandidates(user.id);
-          const candidatesCount = candidates.length;
+        // Get candidates count
+        const { data: candidatesData, error: candidatesError } = await supabase
+          .rpc('get_user_candidates', { user_id_param: user.id });
           
-          const { data: resumesData, error: resumesError } = await supabase
-            .from('resumes')
-            .select('id')
-            .eq('user_id', user.id);
-            
-          if (resumesError) throw resumesError;
-          const resumesCount = resumesData?.length || 0;
-          
-          const jobOffers = await jobOfferService.getUserJobOffers();
-          const jobOffersCount = jobOffers.length;
-          
-          const pendingCandidates = candidates.filter(c => c.status === 'pending');
-          const pendingCount = pendingCandidates.length;
-          
-          const getRandomGrowth = () => Math.floor(Math.random() * 30) - 10;
-          
-          const realStats: DashboardStats = {
-            candidatesCount,
-            resumesCount,
-            jobOffersCount,
-            pendingCount,
-            candidatesGrowth: getRandomGrowth(),
-            resumesGrowth: getRandomGrowth(),
-            jobOffersGrowth: getRandomGrowth(),
-            pendingGrowth: getRandomGrowth() * -1,
-          };
-          
-          setStats(realStats);
-          setUsingMockData(false);
-          
-          const sortedCandidates = [...candidates].sort((a, b) => {
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-          });
-          
-          const recentCandidatesData = sortedCandidates.slice(0, 5).map(candidate => {
-            const score = candidate.score || Math.floor(Math.random() * 100);
-            let status: 'high' | 'medium' | 'low' = 'medium';
-            if (score >= 85) status = 'high';
-            else if (score < 65) status = 'low';
-            
-            return {
-              id: candidate.id,
-              name: `${candidate.first_name} ${candidate.last_name}`,
-              position: candidate.position || 'Not specified',
-              score,
-              date: new Date(candidate.created_at).toLocaleDateString('fr-FR'),
-              status
-            };
-          });
-          
-          setRecentCandidates(recentCandidatesData);
-          
-          const allSkills: string[] = [];
-          candidates.forEach(candidate => {
-            if (candidate.skills && Array.isArray(candidate.skills)) {
-              candidate.skills.forEach((skill: any) => {
-                if (typeof skill === 'string') {
-                  allSkills.push(skill);
-                } else if (skill && typeof skill.name === 'string') {
-                  allSkills.push(skill.name);
-                }
-              });
-            }
-          });
-          
-          const skillCounts: Record<string, number> = {};
-          allSkills.forEach(skill => {
-            skillCounts[skill] = (skillCounts[skill] || 0) + 1;
-          });
-          
-          const sortedSkills = Object.entries(skillCounts)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count);
-          
-          const maxCount = Math.max(...sortedSkills.map(s => s.count), 1);
-          
-          const topSkillsData = sortedSkills.slice(0, 5).map(skill => ({
-            name: skill.name,
-            count: skill.count,
-            percentage: Math.round((skill.count / maxCount) * 100)
-          }));
-          
-          setTopSkills(topSkillsData.length > 0 ? topSkillsData : getMockTopSkills());
-          
-          const allItems = [
-            ...candidates.map(c => ({ 
-              type: 'candidate', 
-              name: `${c.first_name} ${c.last_name}`, 
-              date: new Date(c.created_at)
-            })),
-            ...jobOffers.map(j => ({ 
-              type: 'jobOffer', 
-              name: j.title, 
-              date: new Date(j.created_at)
-            }))
-          ].sort((a, b) => b.date.getTime() - a.date.getTime());
-          
-          const recentActivityData = allItems.slice(0, 4).map(item => {
-            const timeAgo = getTimeAgo(item.date);
-            
-            if (item.type === 'candidate') {
-              return {
-                action: "Resume uploaded",
-                user: item.name,
-                time: timeAgo,
-                icon: <Upload size={16} className="text-emerald-500" />
-              };
-            } else {
-              return {
-                action: "Offer created",
-                user: item.name,
-                time: timeAgo,
-                icon: <FileText size={16} className="text-blue-500" />
-              };
-            }
-          });
-          
-          setRecentActivity(recentActivityData.length > 0 ? recentActivityData : getMockRecentActivity());
-          
-        } catch (dataError) {
-          console.error('Error fetching dashboard data:', dataError);
-          throw dataError;
+        if (candidatesError) {
+          throw candidatesError;
         }
+        
+        setCandidatesCount(candidatesData?.length || 0);
+        
+        // Get recent candidates for display (limit to 5)
+        const recentCandidatesList = (candidatesData || [])
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 5)
+          .map(candidate => ({
+            id: candidate.id,
+            name: `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim(),
+            position: candidate.position || 'Not specified',
+            score: candidate.score || Math.floor(Math.random() * 30) + 70, // Fallback to random score if none
+            date: formatDate(candidate.created_at),
+            status: candidate.score >= 85 ? 'high' : (candidate.score >= 65 ? 'medium' : 'low')
+          }));
+        
+        setRecentCandidates(recentCandidatesList);
+        
+        // Get resumes count
+        const { data: resumesData, error: resumesError } = await supabase
+          .from('resumes')
+          .select('id')
+          .eq('user_id', user.id);
+          
+        if (resumesError) {
+          throw resumesError;
+        }
+        
+        setResumesCount(resumesData?.length || 0);
         
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-        setUsingMockData(true);
         toast({
-          title: "Loading error",
-          description: "Unable to load dashboard data. Displaying demo data.",
+          title: "Error loading data",
+          description: "Could not load your dashboard data. Please try again later.",
           variant: "destructive",
         });
-        
-        setStats(getMockStats());
-        setRecentCandidates(getMockRecentCandidates());
-        setTopSkills(getMockTopSkills());
-        setRecentActivity(getMockRecentActivity());
       } finally {
         setLoading(false);
       }
     };
     
-    fetchDashboardData();
+    fetchData();
   }, [toast]);
-  
-  const getTimeAgo = (date: Date): string => {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.round(diffMs / 60000);
-    const diffHours = Math.round(diffMs / 3600000);
-    const diffDays = Math.round(diffMs / 86400000);
-    
-    if (diffMins < 60) return `${diffMins}min ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${diffDays}d ago`;
-  };
-  
-  const getMockStats = (): DashboardStats => ({
-    candidatesCount: 89,
-    resumesCount: 126,
-    jobOffersCount: 12,
-    pendingCount: 7,
-    candidatesGrowth: 8,
-    resumesGrowth: 12,
-    jobOffersGrowth: 15,
-    pendingGrowth: -2,
-  });
-  
-  const getMockRecentCandidates = (): RecentCandidate[] => [
-    { id: "1", name: "Marie Laurent", position: "Industrial Project Manager", score: 92, date: "23/07/2023", status: "high" },
-    { id: "2", name: "Thomas Dubois", position: "Senior PMO", score: 86, date: "21/07/2023", status: "high" },
-    { id: "3", name: "Julie Bernard", position: "Project Manager", score: 78, date: "20/07/2023", status: "medium" },
-    { id: "4", name: "Nicolas Martin", position: "Project Director", score: 65, date: "18/07/2023", status: "medium" },
-    { id: "5", name: "Caroline Petit", position: "Industrial Engineer", score: 54, date: "15/07/2023", status: "low" }
-  ];
-  
-  const getMockTopSkills = (): TopSkill[] => [
-    { name: "Project Management", count: 67, percentage: 75 },
-    { name: "Agile", count: 58, percentage: 65 },
-    { name: "Leadership", count: 52, percentage: 58 },
-    { name: "JIRA", count: 45, percentage: 51 },
-    { name: "PMO", count: 41, percentage: 46 }
-  ];
-  
-  const getMockRecentActivity = (): RecentActivity[] => [
-    { action: "Resume uploaded", user: "Thomas Petit", time: "5min ago", icon: <Upload size={16} className="text-emerald-500" /> },
-    { action: "Candidate validated", user: "Julie Martin", time: "30min ago", icon: <CheckCircle size={16} className="text-emerald-500" /> },
-    { action: "Resume analyzed", user: "Marc Dubois", time: "1h ago", icon: <FileText size={16} className="text-blue-500" /> },
-    { action: "New user", user: "Sophie Girard", time: "3h ago", icon: <Users size={16} className="text-purple-500" /> }
-  ];
-  
-  const getStatsArray = () => {
-    if (!stats) return [];
-    
-    return [
-      { 
-        title: "Analyzed resumes", 
-        value: stats.resumesCount, 
-        change: `${stats.resumesGrowth > 0 ? '+' : ''}${stats.resumesGrowth}%`, 
-        isPositive: stats.resumesGrowth > 0,
-        icon: <FileText size={20} />,
-        color: "bg-navy" 
-      },
-      { 
-        title: "Candidates", 
-        value: stats.candidatesCount, 
-        change: `${stats.candidatesGrowth > 0 ? '+' : ''}${stats.candidatesGrowth}%`, 
-        isPositive: stats.candidatesGrowth > 0,
-        icon: <Users size={20} />,
-        color: "bg-blue-500" 
-      },
-      { 
-        title: "Job offers", 
-        value: stats.jobOffersCount, 
-        change: `${stats.jobOffersGrowth > 0 ? '+' : ''}${stats.jobOffersGrowth}%`, 
-        isPositive: stats.jobOffersGrowth > 0,
-        icon: <CheckCircle size={20} />,
-        color: "bg-emerald-500" 
-      },
-      { 
-        title: "Pending", 
-        value: stats.pendingCount, 
-        change: `${stats.pendingGrowth > 0 ? '+' : ''}${stats.pendingGrowth}%`, 
-        isPositive: stats.pendingGrowth < 0,
-        icon: <Clock size={20} />,
-        color: "bg-gold" 
-      }
-    ];
-  };
   
   return (
     <Layout className="py-8 bg-sand/30">
@@ -343,7 +107,7 @@ const Dashboard = () => {
           <div className="mb-4 md:mb-0">
             <h1 className="text-2xl font-bold text-navy-dark mb-1">Dashboard</h1>
             <p className="text-muted-foreground">
-              Welcome. Here is an overview of your recent activity.
+              Welcome. Here is an overview of your activity.
             </p>
           </div>
           
@@ -359,16 +123,14 @@ const Dashboard = () => {
               />
             </div>
             
-            <Link to="/resumes/upload">
+            <RouterLink to="/resumes/upload">
               <Button className="button-primary w-full sm:w-auto">
                 <Upload size={18} className="mr-2" />
                 Import Resume
               </Button>
-            </Link>
+            </RouterLink>
           </div>
         </div>
-        
-        {usingMockData && <MockDataAlert />}
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {loading ? (
@@ -385,31 +147,75 @@ const Dashboard = () => {
               </div>
             ))
           ) : (
-            getStatsArray().map((stat, index) => (
-              <div key={index} className="glass rounded-xl p-5 card-hover">
+            <>
+              <div className="glass rounded-xl p-5 card-hover">
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <p className="text-muted-foreground text-sm">{stat.title}</p>
-                    <h3 className="text-2xl font-bold text-navy-dark">{stat.value}</h3>
+                    <p className="text-muted-foreground text-sm">Analyzed resumes</p>
+                    <h3 className="text-2xl font-bold text-navy-dark">{resumesCount}</h3>
                   </div>
-                  <div className={`${stat.color} p-2 rounded-lg text-white`}>
-                    {stat.icon}
+                  <div className="bg-navy p-2 rounded-lg text-white">
+                    <FileText size={20} />
                   </div>
                 </div>
                 <div className="flex items-center">
-                  {stat.isPositive ? (
-                    <ArrowUp size={14} className="text-emerald-500 mr-1" />
-                  ) : (
-                    <ArrowDown size={14} className="text-red-500 mr-1" />
-                  )}
-                  <span className={`text-xs font-medium ${
-                    stat.isPositive ? 'text-emerald-500' : 'text-red-500'
-                  }`}>
-                    {stat.change} since last month
+                  <RouterLink to="/resumes" className="text-xs font-medium text-blue-600 hover:text-blue-800">
+                    View all resumes
+                  </RouterLink>
+                </div>
+              </div>
+              
+              <div className="glass rounded-xl p-5 card-hover">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <p className="text-muted-foreground text-sm">Candidates</p>
+                    <h3 className="text-2xl font-bold text-navy-dark">{candidatesCount}</h3>
+                  </div>
+                  <div className="bg-blue-500 p-2 rounded-lg text-white">
+                    <Users size={20} />
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <RouterLink to="/candidates" className="text-xs font-medium text-blue-600 hover:text-blue-800">
+                    View all candidates
+                  </RouterLink>
+                </div>
+              </div>
+              
+              <div className="glass rounded-xl p-5 card-hover">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <p className="text-muted-foreground text-sm">Companies</p>
+                    <h3 className="text-2xl font-bold text-navy-dark">{companiesCount}</h3>
+                  </div>
+                  <div className="bg-emerald-500 p-2 rounded-lg text-white">
+                    <Briefcase size={20} />
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <span className="text-xs text-muted-foreground">
+                    From user profiles
                   </span>
                 </div>
               </div>
-            ))
+              
+              <div className="glass rounded-xl p-5 card-hover">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <p className="text-muted-foreground text-sm">Users</p>
+                    <h3 className="text-2xl font-bold text-navy-dark">{realUsers.length}</h3>
+                  </div>
+                  <div className="bg-purple-500 p-2 rounded-lg text-white">
+                    <Users size={20} />
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <RouterLink to="/admin" className="text-xs font-medium text-blue-600 hover:text-blue-800">
+                    Admin panel
+                  </RouterLink>
+                </div>
+              </div>
+            </>
           )}
         </div>
         
@@ -418,12 +224,12 @@ const Dashboard = () => {
             <div className="p-5 border-b border-border/30">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-navy-dark">Recent Candidates</h2>
-                <Link to="/candidates">
+                <RouterLink to="/candidates">
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-navy-dark">
                     View all
                     <ChevronRight size={16} className="ml-1" />
                   </Button>
-                </Link>
+                </RouterLink>
               </div>
             </div>
             
@@ -477,7 +283,7 @@ const Dashboard = () => {
                             candidate.score > 65 ? 'rating-medium' : 
                             'rating-low'
                           }`}>
-                            <Star size={12} />
+                            <CheckCircle size={12} />
                             {candidate.score}%
                           </div>
                         </td>
@@ -485,18 +291,18 @@ const Dashboard = () => {
                           {candidate.date}
                         </td>
                         <td className="p-4 text-right">
-                          <Link to={`/candidates/${candidate.id}`}>
+                          <RouterLink to={`/candidates/${candidate.id}`}>
                             <Button variant="ghost" size="sm">
                               Details
                             </Button>
-                          </Link>
+                          </RouterLink>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td colSpan={5} className="p-4 text-center text-muted-foreground">
-                        No recent candidates
+                        No candidates found. <RouterLink to="/resumes/upload" className="text-blue-600 hover:underline">Upload resumes</RouterLink> to get started.
                       </td>
                     </tr>
                   )}
@@ -510,96 +316,59 @@ const Dashboard = () => {
               <UserStats 
                 activeUsersCount={realUsers.length}
                 pendingUsersCount={0}
-                recentUsers={realUsers}
+                recentUsers={realUsers.map(user => ({
+                  id: user.id,
+                  email: user.email || '',
+                  first_name: user.profile?.first_name || user.first_name || '',
+                  last_name: user.profile?.last_name || user.last_name || '',
+                  created_at: user.created_at,
+                  last_sign_in_at: user.last_sign_in_at
+                }))}
                 formatDate={formatDate}
                 companiesCount={companiesCount}
               />
             )}
             
-            <div className="glass rounded-xl">
-              <div className="p-5 border-b border-border/30">
-                <h2 className="text-lg font-semibold text-navy-dark">Recent Activity</h2>
-              </div>
-              <div className="p-5">
-                {loading ? (
-                  Array(4).fill(0).map((_, idx) => (
-                    <div key={idx} className="flex items-start mb-4">
-                      <Skeleton className="w-8 h-8 rounded-full mr-3" />
-                      <div className="flex-1">
-                        <Skeleton className="h-4 w-32 mb-1" />
-                        <Skeleton className="h-3 w-24" />
-                      </div>
-                    </div>
-                  ))
-                ) : recentActivity.length > 0 ? (
-                  recentActivity.map((activity, idx) => (
-                    <div key={idx} className="flex items-start mb-4">
-                      <div className="w-8 h-8 rounded-full bg-navy/10 flex items-center justify-center mr-3">
-                        {activity.icon}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-navy-dark">{activity.action}</p>
-                        <p className="text-xs text-muted-foreground">
-                          <span className="font-medium">{activity.user}</span> • {activity.time}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">No recent activity</p>
-                )}
-              </div>
-            </div>
-            
-            <div className="glass rounded-xl">
-              <div className="p-5 border-b border-border/30">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-navy-dark">Popular Skills</h2>
-                  <Button variant="ghost" size="icon">
-                    <Filter size={16} />
-                  </Button>
+            <Card className="glass rounded-xl">
+              <CardHeader className="pb-3">
+                <CardTitle>Quick Links</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <RouterLink 
+                    to="/resumes/upload" 
+                    className="flex items-center p-2 rounded-md hover:bg-muted transition-colors"
+                  >
+                    <Upload size={18} className="mr-3 text-blue-500" />
+                    <span>Upload new resume</span>
+                  </RouterLink>
+                  
+                  <RouterLink 
+                    to="/candidates" 
+                    className="flex items-center p-2 rounded-md hover:bg-muted transition-colors"
+                  >
+                    <Users size={18} className="mr-3 text-emerald-500" />
+                    <span>View all candidates</span>
+                  </RouterLink>
+                  
+                  <RouterLink 
+                    to="/job-offers/create" 
+                    className="flex items-center p-2 rounded-md hover:bg-muted transition-colors"
+                  >
+                    <FileText size={18} className="mr-3 text-purple-500" />
+                    <span>Create job offer</span>
+                  </RouterLink>
+                  
+                  <RouterLink 
+                    to="/job-offers" 
+                    className="flex items-center p-2 rounded-md hover:bg-muted transition-colors"
+                  >
+                    <Link size={18} className="mr-3 text-amber-500" />
+                    <span>Manage job offers</span>
+                  </RouterLink>
                 </div>
-              </div>
-              <div className="p-5">
-                {loading ? (
-                  Array(5).fill(0).map((_, idx) => (
-                    <div key={idx} className="mb-4">
-                      <div className="flex justify-between mb-1">
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-4 w-16" />
-                      </div>
-                      <Skeleton className="h-2 w-full" />
-                    </div>
-                  ))
-                ) : topSkills.length > 0 ? (
-                  topSkills.map((skill, idx) => (
-                    <div key={idx} className="mb-4">
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium text-navy-dark">{skill.name}</span>
-                        <span className="text-xs text-muted-foreground">{skill.count} candidates</span>
-                      </div>
-                      <Progress value={skill.percentage} className="h-2" />
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">No skills found</p>
-                )}
-              </div>
-            </div>
-            
-            <div className="bg-navy/10 border border-navy/20 rounded-xl p-5">
-              <div className="flex items-start">
-                <div className="mr-3 mt-1">
-                  <AlertCircle size={18} className="text-navy" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-navy-dark mb-1">Tip of the day</h3>
-                  <p className="text-xs text-navy-dark/80">
-                    Use advanced filters to refine your candidate search. You can filter by skills, years of experience, and location.
-                  </p>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
