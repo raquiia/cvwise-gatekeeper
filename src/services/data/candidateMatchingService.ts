@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { JobOffer } from './job-offers/types';
 import type { CandidateData } from './candidateService';
 import { semanticMatchingService } from '../semantic/semanticMatchingService';
-import { ensureArray, hasProperty, safeGet } from '@/utils/candidateUtils';
+import { ensureArray, ensureStringArray, hasProperty, safeGet, processJobOfferData, processCandidateData } from '@/utils/candidateUtils';
 
 // Define types for matching
 export interface SkillsDetails {
@@ -155,10 +155,7 @@ export const candidateMatchingService = {
         throw new Error('Job offer not found');
       }
       
-      const jobOffer = {
-        ...rawJobOffer,
-        required_skills: ensureArray(rawJobOffer.required_skills)
-      };
+      const jobOffer = processJobOfferData(rawJobOffer);
       
       // Calculate match details between the candidate and job offer
       return await candidateMatchingService.getCandidateJobMatch(candidate, jobOffer);
@@ -201,11 +198,8 @@ export const candidateMatchingService = {
         candidate.id, jobOffer.id);
       
       // Extract skills, ensuring they are arrays
-      const candidateSkills = ensureArray<string>(candidate.skills)
-        .map(s => typeof s === 'string' ? s.toLowerCase() : '');
-        
-      const jobSkills = ensureArray<string>(jobOffer.required_skills)
-        .map(s => typeof s === 'string' ? s.toLowerCase() : '');
+      const candidateSkills = ensureStringArray(candidate.skills);
+      const jobSkills = ensureStringArray(jobOffer.required_skills);
       
       // Match skills
       const matchedSkills = candidateSkills.filter(skill => 
@@ -359,12 +353,7 @@ export const candidateMatchingService = {
         return [];
       }
       
-      const candidates = rawCandidates ? rawCandidates.map(c => ({
-        ...c,
-        skills: ensureArray(c.skills),
-        education: ensureArray(c.education),
-        experiences: ensureArray(c.experiences)
-      })) : [];
+      const candidates = rawCandidates.map(processCandidateData);
       
       // Fetch the job offer
       const { data: rawJobOffer, error: jobOfferError } = await supabase
@@ -378,16 +367,13 @@ export const candidateMatchingService = {
         throw new Error('Job offer not found');
       }
       
-      const jobOffer = {
-        ...rawJobOffer,
-        required_skills: ensureArray(rawJobOffer.required_skills)
-      };
+      const jobOffer = processJobOfferData(rawJobOffer);
       
       // Calculate match scores for each candidate
       const matches: CandidateMatch[] = [];
       
       for (const candidate of candidates) {
-        const match = await candidateMatchingService.getCandidateJobMatch(candidate, jobOffer);
+        const match = await candidateMatchingService.getCandidateJobMatch(candidate as CandidateData, jobOffer as JobOffer);
         
         matches.push({
           candidateId: candidate.id,

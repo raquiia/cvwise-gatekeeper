@@ -1,8 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { candidateMatchingService } from '../candidateMatchingService';
 import { JobOffer } from './types';
-import { ensureArray } from '@/utils/candidateUtils';
+import { ensureArray, processJobOfferData } from '@/utils/candidateUtils';
 import { Json } from '@/integrations/supabase/types';
 
 /**
@@ -24,16 +23,15 @@ export const jobOfferService = {
       }
       
       // Pre-process the job offer to ensure types are correct for the database
-      const processedJobOffer = {
+      const dataToInsert = {
         ...jobOffer,
-        required_skills: jobOffer.required_skills ? jobOffer.required_skills : [],
         user_id: user.id
       };
       
       // Insérer directement dans la table job_offers
       const { data, error } = await supabase
         .from('job_offers')
-        .insert(processedJobOffer as any) // Use type assertion to bypass TS checking
+        .insert(dataToInsert)
         .select()
         .single();
       
@@ -44,24 +42,16 @@ export const jobOfferService = {
       
       console.log("Job offer created successfully:", data);
       
-      // Process response to ensure required_skills is an array
-      const processedData = {
-        ...data,
-        required_skills: ensureArray(data.required_skills)
-      };
+      // Process the response to ensure correct types
+      const processedData = processJobOfferData(data);
       
-      // Cast data to JobOffer type
-      const typedData = processedData as JobOffer;
-      
-      // Calculer automatiquement les scores de matching pour tous les candidats de l'utilisateur
-      if (typedData && typedData.id) {
-        await candidateMatchingService.calculateMatchesForJobOffer(typedData.id);
-        
-        // Set this as the active job offer
-        await candidateMatchingService.setActiveJobOffer(typedData.id);
+      // Set this as the active job offer
+      if (processedData && processedData.id) {
+        await candidateMatchingService.calculateMatchesForJobOffer(processedData.id);
+        await candidateMatchingService.setActiveJobOffer(processedData.id);
       }
       
-      return typedData;
+      return processedData as JobOffer;
     } catch (error: any) {
       console.error("Exception in createJobOffer:", error);
       throw new Error(error.message || "Impossible de créer l'offre d'emploi");
@@ -75,16 +65,10 @@ export const jobOfferService = {
     try {
       console.log(`Updating job offer with ID: ${jobOfferId}`);
       
-      // Process updates to ensure required_skills is in the correct format
-      const processedUpdates = {
-        ...updates,
-        required_skills: updates.required_skills ? updates.required_skills : undefined
-      };
-      
       // Utiliser directement les opérations de mise à jour de Supabase
       const { data, error } = await supabase
         .from('job_offers')
-        .update(processedUpdates as any) // Use type assertion to bypass TS checking
+        .update(updates)
         .eq('id', jobOfferId)
         .select()
         .single();
@@ -96,17 +80,11 @@ export const jobOfferService = {
       
       console.log("Job offer updated successfully:", data);
       
-      // Process response to ensure required_skills is an array
-      const processedData = {
-        ...data,
-        required_skills: ensureArray(data.required_skills)
-      };
-      
-      // Cast data to JobOffer type
-      const typedData = processedData as JobOffer;
+      // Process the response to ensure correct types
+      const processedData = processJobOfferData(data);
       
       // Recalculer les scores de matching pour tous les candidats
-      if (typedData && typedData.id) {
+      if (processedData && processedData.id) {
         await candidateMatchingService.calculateMatchesForJobOffer(jobOfferId);
         
         // If this is the active job offer, update the cached version
@@ -115,7 +93,7 @@ export const jobOfferService = {
         }
       }
       
-      return typedData;
+      return processedData as JobOffer;
     } catch (error: any) {
       console.error("Exception in updateJobOffer:", error);
       throw new Error(error.message || "Impossible de mettre à jour l'offre d'emploi");
@@ -191,17 +169,11 @@ export const jobOfferService = {
         throw new Error(`Error fetching job offers: ${error.message}`);
       }
       
-      // Process response to ensure required_skills is an array for each job offer
-      const processedData = data?.map(item => ({
-        ...item,
-        required_skills: ensureArray(item.required_skills)
-      })) || [];
+      // Process each job offer to ensure correct types
+      const processedData = (data || []).map(processJobOfferData);
       
-      // Cast data to JobOffer[] type
-      const typedData = processedData as JobOffer[];
-      
-      console.log(`Retrieved ${typedData.length} job offers`);
-      return typedData;
+      console.log(`Retrieved ${processedData.length} job offers`);
+      return processedData as JobOffer[];
     } catch (error: any) {
       console.error("Exception in getUserJobOffers:", error);
       throw new Error(error.message || "Impossible de récupérer les offres d'emploi");
@@ -237,17 +209,11 @@ export const jobOfferService = {
         return null;
       }
       
-      // Process response to ensure required_skills is an array
-      const processedData = {
-        ...data,
-        required_skills: ensureArray(data.required_skills)
-      };
+      // Process the response to ensure correct types
+      const processedData = processJobOfferData(data);
       
-      // Cast data to JobOffer type
-      const typedData = processedData as JobOffer;
-      
-      console.log("Job offer retrieved successfully:", typedData);
-      return typedData;
+      console.log("Job offer retrieved successfully:", processedData);
+      return processedData as JobOffer;
     } catch (error: any) {
       console.error("Exception in getJobOfferById:", error);
       throw new Error(error.message || "Impossible de récupérer l'offre d'emploi");
