@@ -100,18 +100,30 @@ const JobOfferDetail = () => {
       
       if (matches && matches.length > 0) {
         // Fetch additional candidate details for each match
-        const enhancedMatches: ExtendedCandidateMatch[] = await Promise.all(
+        const enhancedMatches = await Promise.all(
           matches.map(async (match) => {
             try {
-              const { data: candidate } = await supabase
+              const { data: candidateData } = await supabase
                 .from('candidates')
                 .select('*')
                 .eq('id', match.candidateId)
                 .single();
               
+              if (!candidateData) {
+                return match as ExtendedCandidateMatch;
+              }
+              
+              // Process candidate data to ensure arrays
+              const candidate = {
+                ...candidateData,
+                experiences: ensureArray(candidateData.experiences),
+                education: ensureArray(candidateData.education),
+                skills: ensureArray(candidateData.skills)
+              };
+              
               return {
                 ...match,
-                candidate: candidate || undefined,
+                candidate: candidate,
                 match: {
                   match_score: match.score,
                   skills_match_score: match.details?.skills.matchPercentage || 0,
@@ -122,7 +134,7 @@ const JobOfferDetail = () => {
                   location_match_score: match.details?.location.match ? 100 : 0,
                   match_details: match.details
                 }
-              };
+              } as ExtendedCandidateMatch;
             } catch (error) {
               console.error(`Error fetching candidate details for ${match.candidateId}:`, error);
               return match as ExtendedCandidateMatch;

@@ -24,3 +24,20 @@ export function ensureArray<T>(value: Json | null | undefined): T[] {
   // For objects that aren't arrays
   return [value as unknown as T];
 }
+
+/**
+ * Type guard to check if an object has specific properties
+ */
+export function hasProperty<K extends string>(obj: unknown, property: K): obj is Record<K, unknown> {
+  return typeof obj === 'object' && obj !== null && property in obj;
+}
+
+/**
+ * Safely extracts a property from an object if it exists
+ */
+export function safeGet<T>(obj: unknown, key: string, defaultValue: T): T {
+  if (hasProperty(obj, key)) {
+    return obj[key] as unknown as T;
+  }
+  return defaultValue;
+}

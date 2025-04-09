@@ -1,157 +1,161 @@
 
 import { CandidateMatch, MatchDetails, SkillsDetails } from '../candidateMatchingService';
 
-// Génère des compétences correspondantes aléatoires
-const generateRandomSkills = (count: number): string[] => {
-  const allSkills = [
-    "Gestion de projet", "Planification stratégique", "Gestion des risques", 
-    "Analyse de données", "Connaissance des normes ferroviaires", 
-    "Ms Project", "JIRA", "PMO", "Communication", "Leadership",
-    "Scrum", "Agile", "Kanban", "SAFe", "Gestion budgétaire",
-    "Reporting", "Suivi de performance", "Stakeholder management",
-    "Change management", "Process optimization"
-  ];
-  
-  const shuffled = [...allSkills].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, count);
-};
-
-// Génère des compétences manquantes aléatoires
-const generateRandomMissingSkills = (count: number): string[] => {
-  const allMissingSkills = [
-    "Prince2", "PMP", "Six Sigma", "Lean Management", "ITIL",
-    "DevOps", "Cloud Architecture", "Machine Learning", 
-    "Product Management", "UX Design", "Certification ferroviaire",
-    "Normes ISO", "Gestion de la qualité", "SAP", "BI Tools",
-    "Power BI", "Tableau", "SQL", "Python", "Secteur énergie"
-  ];
-  
-  const shuffled = [...allMissingSkills].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, count);
-};
-
-// Génère des localisations aléatoires
-const generateRandomLocation = (): string => {
-  const locations = [
-    "Paris, France", "Lyon, France", "Marseille, France", 
-    "Bordeaux, France", "Lille, France", "Toulouse, France",
-    "Nantes, France", "Strasbourg, France", "Montpellier, France",
-    "Nice, France"
-  ];
-  
-  return locations[Math.floor(Math.random() * locations.length)];
-};
-
-// Génère un score aléatoire dans une plage donnée
-const generateRandomScore = (min: number, max: number): number => {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-};
-
-// Génère un nom aléatoire
-const generateRandomName = (): { firstName: string, lastName: string } => {
-  const firstNames = ["Thomas", "Julie", "Antoine", "Sophie", "Nicolas", "Émilie", "Alexandre", "Céline", "Maxime", "Laura"];
-  const lastNames = ["Martin", "Bernard", "Dubois", "Moreau", "Petit", "Leroy", "Durand", "Lefebvre", "Garcia", "Roux"];
-  
-  return {
-    firstName: firstNames[Math.floor(Math.random() * firstNames.length)],
-    lastName: lastNames[Math.floor(Math.random() * lastNames.length)]
-  };
-};
-
-// Génère un poste aléatoire
-const generateRandomPosition = (): string => {
-  const positions = [
-    "Chef de Projet", "Chef de Projet PMO", "Project Manager",
-    "Program Manager", "Chef de Projet Ferroviaire", "Directeur de Projet",
-    "Product Owner", "Scrum Master", "Project Coordinator",
-    "PMO Analyst"
-  ];
-  
-  return positions[Math.floor(Math.random() * positions.length)];
-};
-
-// Génère des entreprises aléatoires
-const generateRandomCompany = (): string => {
-  const companies = [
-    "SNCF", "Alstom", "Bombardier", "Siemens", "Thales",
-    "Airbus", "Safran", "EDF", "Engie", "Vinci",
-    "Eiffage", "Bouygues", "Capgemini", "Atos", "Sopra Steria"
-  ];
-  
-  return companies[Math.floor(Math.random() * companies.length)];
-};
-
-// Génère un match aléatoire
-const generateRandomMatch = (candidateId: string, jobOfferId: string): CandidateMatch => {
-  const skillsScore = generateRandomScore(40, 95);
-  const experienceScore = generateRandomScore(30, 95);
-  const educationScore = generateRandomScore(50, 95);
-  const locationScore = generateRandomScore(60, 100);
-  
-  const globalScore = Math.round(
-    skillsScore * 0.4 + experienceScore * 0.3 + educationScore * 0.2 + locationScore * 0.1
-  );
-  
-  const matchedSkills = generateRandomSkills(Math.floor(Math.random() * 5) + 2);
-  const missingSkills = generateRandomMissingSkills(Math.floor(Math.random() * 4) + 1);
-  
-  const name = generateRandomName();
-  
-  // Create properly typed match details
-  const skillsDetails: SkillsDetails = {
-    matchedSkills: matchedSkills,
-    missingSkills: missingSkills,
-    additionalSkills: [],
-    skillsScore: skillsScore
-  };
-  
-  // Update to conform to the MatchDetails interface
-  const matchDetails: MatchDetails = {
-    skillsMatch: skillsScore,
-    experienceMatch: experienceScore,
-    otherFactorsMatch: educationScore,
-    matchedSkills: matchedSkills,
-    missingSkills: missingSkills,
-    skills_details: skillsDetails
-  };
-  
-  const match: CandidateMatch = {
-    candidate: {
-      id: candidateId,
-      first_name: name.firstName,
-      last_name: name.lastName,
-      position: generateRandomPosition(),
-      years_experience: Math.floor(Math.random() * 15) + 2,
-      location: generateRandomLocation(),
-      company: generateRandomCompany(),
-      email: `${name.firstName.toLowerCase()}.${name.lastName.toLowerCase()}@example.com`,
-    },
-    match: {
-      candidate_id: candidateId,
-      job_offer_id: jobOfferId,
-      match_score: globalScore,
-      skills_match_score: skillsScore,
-      experience_match_score: experienceScore,
-      education_match_score: educationScore,
-      location_match_score: locationScore,
-      match_details: matchDetails,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+// Mock data for candidate matching
+export const mockCandidateMatches: CandidateMatch[] = [
+  {
+    candidateId: "1",
+    firstName: "Jean",
+    lastName: "Dupont",
+    position: "Développeur Frontend",
+    company: "Tech Solutions",
+    score: 89,
+    details: {
+      skills: {
+        matched: ["JavaScript", "React", "HTML", "CSS"],
+        missing: ["Vue.js", "Angular"],
+        additional: ["TypeScript", "Node.js"],
+        matchPercentage: 75
+      },
+      experienceLevel: {
+        required: 3,
+        candidate: 5,
+        match: true
+      },
+      location: {
+        required: "Paris",
+        candidate: "Paris",
+        match: true
+      },
+      educationLevel: {
+        required: "Master",
+        candidate: "Master en informatique",
+        match: true
+      },
+      overall: 89
     }
-  };
-  
-  return match;
-};
+  },
+  {
+    candidateId: "2",
+    firstName: "Marie",
+    lastName: "Martin",
+    position: "UX Designer",
+    company: "Design Studio",
+    score: 72,
+    details: {
+      skills: {
+        matched: ["Figma", "Adobe XD", "UI Design"],
+        missing: ["Sketch", "Prototyping"],
+        additional: ["Illustration", "Photoshop"],
+        matchPercentage: 60
+      },
+      experienceLevel: {
+        required: 2,
+        candidate: 3,
+        match: true
+      },
+      location: {
+        required: "Lyon",
+        candidate: "Paris",
+        match: false
+      },
+      educationLevel: {
+        required: "Bachelor",
+        candidate: "Master en design",
+        match: true
+      },
+      overall: 72
+    }
+  },
+  {
+    candidateId: "3",
+    firstName: "Pierre",
+    lastName: "Dubois",
+    position: "Backend Developer",
+    company: "Data Systems",
+    score: 65,
+    details: {
+      skills: {
+        matched: ["Java", "Spring", "SQL"],
+        missing: ["Microservices", "Kubernetes", "Docker"],
+        additional: ["Python", "Django"],
+        matchPercentage: 50
+      },
+      experienceLevel: {
+        required: 5,
+        candidate: 4,
+        match: false
+      },
+      location: {
+        required: "Paris",
+        candidate: "Paris",
+        match: true
+      },
+      educationLevel: {
+        required: "Master",
+        candidate: "Bachelor en informatique",
+        match: false
+      },
+      overall: 65
+    }
+  }
+];
 
-// Génère des matches pour un job offer donné
-export const generateMockMatches = (jobOfferId: string, count: number = 10): CandidateMatch[] => {
-  const matches: CandidateMatch[] = [];
+export const generateMockCandidateMatches = (count: number = 10): CandidateMatch[] => {
+  const skills = ["JavaScript", "TypeScript", "React", "Vue.js", "Angular", "Node.js", "Express", "Python", "Django", "Flask", "Java", "Spring", "C#", ".NET", "PHP", "Laravel", "Ruby", "Rails", "Go", "Rust", "Swift", "Kotlin", "SQL", "MongoDB", "PostgreSQL", "MySQL", "Redis", "Docker", "Kubernetes", "AWS", "GCP", "Azure", "CI/CD", "Git", "RESTful API", "GraphQL", "HTML", "CSS", "Sass", "LESS", "Bootstrap", "Tailwind", "Material UI", "Figma", "Adobe XD", "Sketch", "UI Design", "UX Design", "Responsive Design"];
+  const companies = ["Tech Solutions", "Digital Innovation", "Data Systems", "Web Experts", "Software House", "Mobile Apps Inc", "Cloud Services", "Design Studio", "AI Research", "Blockchain Solutions"];
+  const positions = ["Frontend Developer", "Backend Developer", "Full-Stack Developer", "Mobile Developer", "DevOps Engineer", "UX/UI Designer", "Product Manager", "Data Scientist", "Data Engineer", "QA Engineer", "Project Manager"];
+  const locations = ["Paris", "Lyon", "Marseille", "Toulouse", "Bordeaux", "Lille", "Nantes", "Strasbourg", "Montpellier", "Nice"];
+  
+  const results: CandidateMatch[] = [];
   
   for (let i = 0; i < count; i++) {
-    const candidateId = `mock-candidate-${i}`;
-    matches.push(generateRandomMatch(candidateId, jobOfferId));
+    const randomSkillsCount = Math.floor(Math.random() * 8) + 3; // 3-10 skills
+    const randomSkills = [...skills].sort(() => 0.5 - Math.random()).slice(0, randomSkillsCount);
+    
+    // Choose random skills for matched, missing and additional
+    const matchedCount = Math.floor(Math.random() * randomSkillsCount) + 1;
+    const matchedSkills = randomSkills.slice(0, matchedCount);
+    const availableSkills = skills.filter(s => !matchedSkills.includes(s));
+    const missingSkills = availableSkills.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 5) + 1);
+    const additionalSkills = availableSkills.filter(s => !missingSkills.includes(s)).sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 1);
+    
+    const score = Math.floor(Math.random() * 100);
+    
+    results.push({
+      candidateId: `mock-${i + 1}`,
+      firstName: `Prénom${i+1}`,
+      lastName: `Nom${i+1}`,
+      position: positions[Math.floor(Math.random() * positions.length)],
+      company: companies[Math.floor(Math.random() * companies.length)],
+      score: score,
+      details: {
+        skills: {
+          matched: matchedSkills,
+          missing: missingSkills,
+          additional: additionalSkills,
+          matchPercentage: Math.round((matchedSkills.length / (matchedSkills.length + missingSkills.length)) * 100)
+        },
+        experienceLevel: {
+          required: Math.floor(Math.random() * 5) + 1,
+          candidate: Math.floor(Math.random() * 10) + 1,
+          match: Math.random() > 0.3
+        },
+        location: {
+          required: locations[Math.floor(Math.random() * locations.length)],
+          candidate: locations[Math.floor(Math.random() * locations.length)],
+          match: Math.random() > 0.3
+        },
+        educationLevel: {
+          required: Math.random() > 0.5 ? "Master" : "Bachelor",
+          candidate: Math.random() > 0.5 ? "Master en informatique" : "Bachelor en informatique",
+          match: Math.random() > 0.3
+        },
+        overall: score
+      }
+    });
   }
   
-  // Trier par score
-  return matches.sort((a, b) => b.match.match_score - a.match.match_score);
+  // Sort by score
+  return results.sort((a, b) => b.score - a.score);
 };

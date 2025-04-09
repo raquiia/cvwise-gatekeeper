@@ -1,9 +1,8 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { JobOffer } from './job-offers/types';
 import type { CandidateData } from './candidateService';
 import { semanticMatchingService } from '../semantic/semanticMatchingService';
-import { ensureArray } from '@/utils/candidateUtils';
+import { ensureArray, hasProperty, safeGet } from '@/utils/candidateUtils';
 
 // Define types for matching
 export interface SkillsDetails {
@@ -145,16 +144,21 @@ export const candidateMatchingService = {
       }
       
       // Fetch the job offer
-      const { data: jobOffer, error: jobOfferError } = await supabase
+      const { data: rawJobOffer, error: jobOfferError } = await supabase
         .from('job_offers')
         .select('*')
         .eq('id', jobOfferId)
         .single();
         
-      if (jobOfferError || !jobOffer) {
+      if (jobOfferError || !rawJobOffer) {
         console.error('Error fetching job offer:', jobOfferError);
         throw new Error('Job offer not found');
       }
+      
+      const jobOffer = {
+        ...rawJobOffer,
+        required_skills: ensureArray(rawJobOffer.required_skills)
+      };
       
       // Calculate match details between the candidate and job offer
       return await candidateMatchingService.getCandidateJobMatch(candidate, jobOffer);
@@ -196,7 +200,7 @@ export const candidateMatchingService = {
       console.log('Calculating match between candidate and job offer:', 
         candidate.id, jobOffer.id);
       
-      // Extract skills
+      // Extract skills, ensuring they are arrays
       const candidateSkills = ensureArray<string>(candidate.skills)
         .map(s => typeof s === 'string' ? s.toLowerCase() : '');
         
@@ -279,7 +283,9 @@ export const candidateMatchingService = {
         // Extract highest education level from candidate
         const candidateEduString = candidateEducation.map(edu => {
           if (typeof edu === 'string') return edu;
-          return edu.degree || edu.diploma || '';
+          if (hasProperty(edu, 'degree') && typeof edu.degree === 'string') return edu.degree;
+          if (hasProperty(edu, 'diploma') && typeof edu.diploma === 'string') return edu.diploma;
+          return '';
         }).join(' ');
         
         educationMatch.candidate = candidateEduString;
@@ -340,7 +346,7 @@ export const candidateMatchingService = {
       console.log('Calculating matches for job offer:', jobOfferId);
       
       // Fetch all candidates
-      const { data: candidates, error: candidatesError } = await supabase
+      const { data: rawCandidates, error: candidatesError } = await supabase
         .from('candidates')
         .select('*');
         
@@ -349,21 +355,33 @@ export const candidateMatchingService = {
         throw candidatesError;
       }
       
-      if (!candidates || candidates.length === 0) {
+      if (!rawCandidates || rawCandidates.length === 0) {
         return [];
       }
       
+      const candidates = rawCandidates ? rawCandidates.map(c => ({
+        ...c,
+        skills: ensureArray(c.skills),
+        education: ensureArray(c.education),
+        experiences: ensureArray(c.experiences)
+      })) : [];
+      
       // Fetch the job offer
-      const { data: jobOffer, error: jobOfferError } = await supabase
+      const { data: rawJobOffer, error: jobOfferError } = await supabase
         .from('job_offers')
         .select('*')
         .eq('id', jobOfferId)
         .single();
         
-      if (jobOfferError || !jobOffer) {
+      if (jobOfferError || !rawJobOffer) {
         console.error('Error fetching job offer:', jobOfferError);
         throw new Error('Job offer not found');
       }
+      
+      const jobOffer = {
+        ...rawJobOffer,
+        required_skills: ensureArray(rawJobOffer.required_skills)
+      };
       
       // Calculate match scores for each candidate
       const matches: CandidateMatch[] = [];
