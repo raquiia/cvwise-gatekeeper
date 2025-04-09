@@ -281,6 +281,9 @@ export const candidateMatchingService = {
               for (const candidate of candidates) {
                 const matchResult = calculateOverallMatch(candidate, jobOffer);
                 
+                // Convert MatchDetails to a proper Json object before inserting
+                const matchDetailsJson = JSON.parse(JSON.stringify(matchResult.details)) as Json;
+                
                 // Insert or update the match in the database
                 const { error: insertError } = await supabase
                   .from('candidate_job_matches')
@@ -292,7 +295,7 @@ export const candidateMatchingService = {
                     experience_match_score: Math.round(matchResult.details.experienceMatch),
                     education_match_score: 50, // Default value
                     location_match_score: 50, // Default value
-                    match_details: matchResult.details as Json // Cast to Json type
+                    match_details: matchDetailsJson
                   });
                   
                 if (insertError) {
