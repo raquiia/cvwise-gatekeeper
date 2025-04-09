@@ -1,0 +1,294 @@
+
+import { supabase, SUPABASE_API_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
+import { resumeDataService } from './resumeDataService';
+import { CandidateData } from './resumeDataService';
+
+/**
+ * Service responsable de la gestion des données des candidats
+ */
+export const candidateService = {
+  /**
+   * Récupérer tous les candidats d'un utilisateur
+   */
+  getUserCandidates: async (userId: string): Promise<CandidateData[]> => {
+    try {
+      console.log("Fetching candidates for user:", userId);
+      
+      // Using the secure RPC function to get all candidates
+      const { data, error } = await supabase.rpc('get_user_candidates', {
+        user_id_param: userId
+      });
+      
+      if (error) {
+        console.error("Error fetching candidates:", error.message);
+        throw new Error(`Erreur lors de la récupération des candidats: ${error.message}`);
+      }
+      
+      if (!data) {
+        console.log("No candidates found for user:", userId);
+        return [];
+      }
+      
+      console.log(`Retrieved ${data.length} candidates`);
+      
+      // Transform the skills field from Json to string[] to match the CandidateData interface
+      const transformedData = data.map(candidate => ({
+        ...candidate,
+        // Convert skills from Json to string[]
+        skills: Array.isArray(candidate.skills) ? candidate.skills : 
+                (typeof candidate.skills === 'string' ? [candidate.skills] : [])
+      })) as CandidateData[];
+      
+      return transformedData;
+    } catch (error: any) {
+      console.error("Exception in getUserCandidates:", error);
+      throw new Error(error.message || "Impossible de récupérer les candidats");
+    }
+  },
+  
+  /**
+   * Récupérer un candidat par son ID
+   */
+  getCandidateById: async (candidateId: string): Promise<CandidateData | null> => {
+    try {
+      console.log("Fetching candidate with ID:", candidateId);
+      
+      // Get the current user's ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Non authentifié");
+      }
+      
+      // Fetch all candidates and find the matching one
+      const candidates = await candidateService.getUserCandidates(user.id);
+      
+      // Find the candidate with the matching ID
+      const candidate = candidates.find(c => c.id === candidateId);
+      
+      if (!candidate) {
+        console.log("No candidate found with ID:", candidateId);
+        return null;
+      }
+      
+      console.log("Successfully retrieved candidate data:", candidate);
+      
+      return candidate;
+    } catch (error: any) {
+      console.error("Exception in getCandidateById:", error);
+      throw new Error(error.message || "Impossible de récupérer le candidat");
+    }
+  },
+  
+  /**
+   * Supprimer un candidat par son ID et le CV associé
+   */
+  deleteCandidate: async (candidateId: string): Promise<boolean> => {
+    try {
+      console.log(`Starting deletion of candidate with ID: ${candidateId}`);
+      
+      // 1. Récupérer d'abord le candidat pour obtenir le resume_id
+      const { data: candidateData, error: candidateFetchError } = await supabase
+        .from('candidates')
+        .select('resume_id')
+        .eq('id', candidateId)
+        .maybeSingle();
+      
+      if (candidateFetchError) {
+        console.error("Error fetching candidate for deletion:", candidateFetchError.message);
+        throw new Error(`Erreur lors de la récupération du candidat: ${candidateFetchError.message}`);
+      }
+      
+      // Store resume_id for later use if found
+      const resumeId = candidateData?.resume_id;
+      
+      // 2. Supprimer le candidat
+      const { error: deleteError } = await supabase
+        .from('candidates')
+        .delete()
+        .eq('id', candidateId);
+      
+      if (deleteError) {
+        console.error("Error deleting candidate:", deleteError.message);
+        throw new Error(`Erreur lors de la suppression du candidat: ${deleteError.message}`);
+      }
+      
+      console.log(`Candidate ${candidateId} deleted successfully`);
+      
+      // 3. Si le candidat avait un resume_id, supprimer également le CV
+      if (resumeId) {
+        console.log(`Associated resume found: ${resumeId}, proceeding with resume deletion`);
+        
+        try {
+          // Récupérer le CV pour obtenir le file_path
+          const { data: resume, error: resumeError } = await supabase
+            .from('resumes')
+            .select('file_path')
+            .eq('id', resumeId)
+            .maybeSingle();
+          
+          if (resumeError) {
+            console.error("Error fetching resume for deletion:", resumeError.message);
+            // Ne pas bloquer le processus si la récupération du CV échoue
+            return true;
+          }
+          
+          if (resume && resume.file_path) {
+            // Utiliser la fonction de suppression de CV qui gère à la fois le fichier et l'enregistrement
+            const { deleteResume } = await import('../resume/fileOperations');
+            await deleteResume(resumeId, resume.file_path);
+            console.log(`Associated resume ${resumeId} deleted successfully`);
+          }
+        } catch (resumeDeleteError: any) {
+          console.error("Error while deleting associated resume:", resumeDeleteError);
+          // Le candidat a été supprimé avec succès, donc considérons l'opération comme réussie
+          // même si la suppression du CV associé a échoué
+          return true;
+        }
+      } else {
+        console.log(`No associated resume found for candidate ${candidateId}, skipping resume deletion`);
+      }
+      
+      return true;
+    } catch (error: any) {
+      console.error("Exception in deleteCandidate:", error);
+      throw new Error(error.message || "Impossible de supprimer le candidat");
+    }
+  },
+  
+  /**
+   * Filtrer les candidats selon des critères spécifiques
+   */
+  filterCandidates: async (
+    filters: {
+      companies?: string[];
+      locations?: string[];
+      schools?: string[];
+      degrees?: string[];
+      skills?: string[];
+      experienceMin?: number;
+      experienceMax?: number;
+      industries?: string[];
+    }
+  ): Promise<CandidateData[]> => {
+    try {
+      console.log("Filtering candidates with criteria:", filters);
+      
+      // Récupérer tous les candidats de l'utilisateur
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Non authentifié");
+      }
+      
+      const allCandidates = await candidateService.getUserCandidates(user.id);
+      
+      // Appliquer les filtres
+      const filteredCandidates = allCandidates.filter(candidate => {
+        // Filtrer par entreprises
+        if (filters.companies && filters.companies.length > 0) {
+          const candidateCompanies = Array.isArray(candidate.experiences) 
+            ? candidate.experiences.map((exp: any) => exp.company?.toLowerCase())
+            : [];
+          
+          if (!filters.companies.some(company => 
+            candidateCompanies.some(candidateCompany => 
+              candidateCompany?.includes(company.toLowerCase())
+            )
+          )) {
+            return false;
+          }
+        }
+        
+        // Filtrer par localisation
+        if (filters.locations && filters.locations.length > 0) {
+          if (!candidate.location || 
+              !filters.locations.some(location => 
+                candidate.location?.toLowerCase().includes(location.toLowerCase())
+              )) {
+            return false;
+          }
+        }
+        
+        // Filtrer par écoles
+        if (filters.schools && filters.schools.length > 0) {
+          const candidateSchools = Array.isArray(candidate.education)
+            ? candidate.education.map((edu: any) => edu.school?.toLowerCase())
+            : [];
+          
+          if (!filters.schools.some(school => 
+            candidateSchools.some(candidateSchool => 
+              candidateSchool?.includes(school.toLowerCase())
+            )
+          )) {
+            return false;
+          }
+        }
+        
+        // Filtrer par diplômes
+        if (filters.degrees && filters.degrees.length > 0) {
+          const candidateDegrees = Array.isArray(candidate.education)
+            ? candidate.education.map((edu: any) => edu.degree?.toLowerCase())
+            : [];
+          
+          if (!filters.degrees.some(degree => 
+            candidateDegrees.some(candidateDegree => 
+              candidateDegree?.includes(degree.toLowerCase())
+            )
+          )) {
+            return false;
+          }
+        }
+        
+        // Filtrer par compétences
+        if (filters.skills && filters.skills.length > 0) {
+          const candidateSkills = Array.isArray(candidate.skills)
+            ? candidate.skills.map(skill => typeof skill === 'string' ? skill.toLowerCase() : '')
+            : [];
+          
+          if (!filters.skills.some(skill => 
+            candidateSkills.some(candidateSkill => 
+              candidateSkill?.includes(skill.toLowerCase())
+            )
+          )) {
+            return false;
+          }
+        }
+        
+        // Filtrer par expérience
+        if (filters.experienceMin !== undefined && candidate.years_experience !== undefined && 
+            candidate.years_experience < filters.experienceMin) {
+          return false;
+        }
+        
+        if (filters.experienceMax !== undefined && candidate.years_experience !== undefined && 
+            candidate.years_experience > filters.experienceMax) {
+          return false;
+        }
+        
+        // Filtrer par secteurs d'activité
+        if (filters.industries && filters.industries.length > 0) {
+          const candidateIndustries = Array.isArray(candidate.industries)
+            ? candidate.industries.map((industry: any) => 
+                typeof industry === 'string' ? industry.toLowerCase() : ''
+              )
+            : [];
+          
+          if (!filters.industries.some(industry => 
+            candidateIndustries.some(candidateIndustry => 
+              candidateIndustry?.includes(industry.toLowerCase())
+            )
+          )) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+      
+      console.log(`Filtered candidates: ${filteredCandidates.length} out of ${allCandidates.length}`);
+      return filteredCandidates;
+    } catch (error: any) {
+      console.error("Exception in filterCandidates:", error);
+      throw new Error(error.message || "Impossible de filtrer les candidats");
+    }
+  }
+};
