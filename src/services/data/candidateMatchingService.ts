@@ -1,3 +1,4 @@
+
 // Full implementation of candidate matching service with job offer suggestions
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -222,6 +223,7 @@ export const candidateMatchingService = {
     try {
       console.log(`Calculating matches for job offer ID: ${jobOfferId}`);
       
+      // First attempt: Try the Edge Function
       try {
         const { data, error } = await supabase.functions.invoke('calculate-job-matches', {
           body: { jobOfferId }
@@ -232,10 +234,12 @@ export const candidateMatchingService = {
           throw error;
         }
         
+        console.log("Successfully calculated matches using Edge Function");
         return true;
       } catch (edgeFunctionError) {
-        console.error("Error with Edge Function:", edgeFunctionError);
+        console.error("Error with Edge Function, falling back to RPC:", edgeFunctionError);
         
+        // Second attempt: Try the RPC function
         try {
           const { data, error } = await supabase.rpc('calculate_all_candidates_job_matches', {
             p_job_offer_id: jobOfferId
@@ -246,17 +250,75 @@ export const candidateMatchingService = {
             throw error;
           }
           
+          console.log("Successfully calculated matches using RPC function");
           return true;
         } catch (rpcError) {
-          console.error("Error with RPC function:", rpcError);
+          console.error("Error with RPC function, falling back to direct calculation:", rpcError);
           
-          toast({
-            title: "Problème de calcul des correspondances",
-            description: "Le système n'a pas pu calculer les correspondances. Veuillez réessayer plus tard.",
-            variant: "destructive",
-          });
-          
-          return false;
+          // Third attempt: Calculate matches directly in the database
+          try {
+            // Get the job offer
+            const { data: jobOffer, error: jobOfferError } = await supabase
+              .from('job_offers')
+              .select('*')
+              .eq('id', jobOfferId)
+              .single();
+            
+            if (jobOfferError) throw jobOfferError;
+            
+            // Get all candidates for the current user
+            const { data: candidates, error: candidatesError } = await supabase
+              .from('candidates')
+              .select('*');
+              
+            if (candidatesError) throw candidatesError;
+            
+            if (candidates && candidates.length > 0) {
+              console.log(`Found ${candidates.length} candidates to match against job offer`);
+              
+              // For each candidate, calculate a match score and insert/update in the database
+              for (const candidate of candidates) {
+                const matchResult = calculateOverallMatch(candidate, jobOffer);
+                
+                // Insert or update the match in the database
+                const { error: insertError } = await supabase
+                  .from('candidate_job_matches')
+                  .upsert({
+                    candidate_id: candidate.id,
+                    job_offer_id: jobOfferId,
+                    match_score: matchResult.score,
+                    skills_match_score: Math.round(matchResult.details.skillsMatch),
+                    experience_match_score: Math.round(matchResult.details.experienceMatch),
+                    education_match_score: 50, // Default value
+                    location_match_score: 50, // Default value
+                    match_details: matchResult.details
+                  });
+                  
+                if (insertError) {
+                  console.error(`Error inserting match for candidate ${candidate.id}:`, insertError);
+                }
+              }
+              
+              console.log("Successfully calculated matches directly");
+              return true;
+            } else {
+              console.log("No candidates found to match against job offer");
+              toast({
+                title: "Aucun candidat trouvé",
+                description: "Vous devez d'abord ajouter des candidats avant de pouvoir calculer des correspondances.",
+                variant: "warning",
+              });
+              return false;
+            }
+          } catch (directError) {
+            console.error("Error with direct calculation:", directError);
+            toast({
+              title: "Problème de calcul des correspondances",
+              description: "Le système n'a pas pu calculer les correspondances. Veuillez réessayer plus tard.",
+              variant: "destructive",
+            });
+            return false;
+          }
         }
       }
     } catch (error: any) {
@@ -308,6 +370,7 @@ export const candidateMatchingService = {
     try {
       console.log(`Getting matches for job offer ID: ${jobOfferId}`);
       
+      // First, try to get matches directly from the database
       const { data: matchesData, error: matchesError } = await supabase
         .from('candidate_job_matches')
         .select(`
@@ -352,9 +415,12 @@ export const candidateMatchingService = {
         return typedMatches;
       }
       
+      // If no matches are found, try to calculate them
       console.log("No matches found, attempting to calculate them now");
-      await this.calculateMatchesForJobOffer(jobOfferId);
+      const calculationSuccess = await this.calculateMatchesForJobOffer(jobOfferId);
+      console.log(`Match calculation ${calculationSuccess ? 'succeeded' : 'failed'}`);
       
+      // Try fetching matches again after calculation
       const { data: recalculatedData, error: recalculatedError } = await supabase
         .from('candidate_job_matches')
         .select(`
@@ -365,7 +431,7 @@ export const candidateMatchingService = {
       
       if (recalculatedError) {
         console.error("Error with recalculated matches query:", recalculatedError);
-        return [];
+        throw recalculatedError;
       }
       
       if (recalculatedData && Array.isArray(recalculatedData) && recalculatedData.length > 0) {
@@ -399,7 +465,14 @@ export const candidateMatchingService = {
         return typedMatches;
       }
       
+      // Still no matches? Let the user know
       console.log("No matches found for this job offer after calculation");
+      toast({
+        title: "Aucune correspondance trouvée",
+        description: "Aucun candidat ne correspond à cette offre d'emploi. Essayez d'ajouter des candidats ou de modifier les critères de l'offre.",
+        variant: "warning",
+      });
+      
       return [];
     } catch (error: any) {
       console.error("Error fetching matches for job offer:", error);

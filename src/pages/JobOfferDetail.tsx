@@ -5,7 +5,6 @@ import { toast } from '@/hooks/use-toast';
 import Layout from '@/components/Layout';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
 import { candidateMatchingService } from '@/services/data/candidateMatchingService';
-import { generateMockMatches } from '@/services/data/mocks/candidateMatchMocks';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -13,7 +12,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import MockDataAlert from '@/components/candidates/MockDataAlert';
 import type { JobOffer } from '@/services/data/job-offers/types';
 import type { CandidateJobMatch, CandidateMatch } from '@/services/data/candidateMatchingService';
 
@@ -24,7 +22,6 @@ const JobOfferDetail = () => {
   const [loading, setLoading] = useState(true);
   const [matchLoading, setMatchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [usingMockData, setUsingMockData] = useState(false);
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -75,37 +72,24 @@ const JobOfferDetail = () => {
     if (!jobOfferId) return;
     
     try {
-      setUsingMockData(false);
+      const matches = await candidateMatchingService.getMatchesForJobOffer(jobOfferId);
       
-      try {
-        const matches = await candidateMatchingService.getMatchesForJobOffer(jobOfferId);
-        
-        if (matches && matches.length > 0) {
-          setCandidateMatches(matches);
-        } else {
-          console.log("No real matches found, using mock data");
-          const mockMatches = generateMockMatches(jobOfferId, 8);
-          setCandidateMatches(mockMatches);
-          setUsingMockData(true);
-        }
-      } catch (error) {
-        console.error('Error fetching candidate matches:', error);
-        console.log("Error fetching matches, using mock data");
-        const mockMatches = generateMockMatches(jobOfferId, 8);
-        setCandidateMatches(mockMatches);
-        setUsingMockData(true);
-        
-        toast({
-          title: "Note",
-          description: "Données de correspondance simulées affichées en raison d'un problème technique",
-          variant: "default",
-        });
+      if (matches && matches.length > 0) {
+        setCandidateMatches(matches);
+        console.log("Real candidate matches loaded:", matches.length);
+      } else {
+        setCandidateMatches([]);
+        console.log("No candidate matches found");
       }
-    } catch (outerError: any) {
-      console.error('Outer error fetching candidate matches:', outerError);
-      const mockMatches = generateMockMatches(jobOfferId, 8);
-      setCandidateMatches(mockMatches);
-      setUsingMockData(true);
+    } catch (error) {
+      console.error('Error fetching candidate matches:', error);
+      setCandidateMatches([]);
+      
+      toast({
+        title: "Problème de récupération des correspondances",
+        description: "Une erreur s'est produite lors de la récupération des correspondances. Veuillez réessayer.",
+        variant: "destructive",
+      });
     }
   };
   
@@ -123,25 +107,16 @@ const JobOfferDetail = () => {
           description: "Les correspondances ont été recalculées avec succès",
         });
       } else {
-        console.log("Match calculation failed, using mock data");
-        const mockMatches = generateMockMatches(jobOfferId, 8);
-        setCandidateMatches(mockMatches);
-        setUsingMockData(true);
-        
         toast({
-          title: "Note",
-          description: "Données de correspondance simulées affichées en raison d'un problème technique",
-          variant: "default",
+          title: "Problème de calcul",
+          description: "Le calcul des correspondances a échoué. Veuillez vous assurer que vous avez des candidats dans votre base de données.",
+          variant: "warning",
         });
       }
       
       await fetchCandidateMatches();
     } catch (error: any) {
       console.error('Error recalculating matches:', error);
-      
-      const mockMatches = generateMockMatches(jobOfferId, 8);
-      setCandidateMatches(mockMatches);
-      setUsingMockData(true);
       
       toast({
         title: "Erreur",
@@ -159,14 +134,6 @@ const JobOfferDetail = () => {
   };
   
   const handleViewCandidate = (candidateId: string) => {
-    if (usingMockData) {
-      toast({
-        title: "Données de démonstration",
-        description: "Ce candidat est fictif et sert à démontrer l'interface utilisateur.",
-        variant: "default",
-      });
-      return;
-    }
     navigate(`/candidates/${candidateId}`);
   };
   
@@ -274,7 +241,15 @@ const JobOfferDetail = () => {
           </div>
         </div>
         
-        {usingMockData && <MockDataAlert />}
+        {candidateMatches.length === 0 && (
+          <Alert className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Aucun candidat correspondant</AlertTitle>
+            <AlertDescription>
+              Aucun candidat ne correspond à cette offre d'emploi. Assurez-vous d'avoir importé des CV et créé des profils candidats avant de calculer les correspondances.
+            </AlertDescription>
+          </Alert>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="md:col-span-2">
