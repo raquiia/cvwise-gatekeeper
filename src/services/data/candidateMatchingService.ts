@@ -126,10 +126,13 @@ export const candidateMatchingService = {
     try {
       console.log(`Getting match for candidate ${candidateId} and job offer ${jobOfferId}`);
       
-      const { data, error } = await supabase.rpc('get_candidate_job_match', {
-        p_candidate_id: candidateId,
-        p_job_offer_id: jobOfferId
-      });
+      // Using direct query instead of RPC since the function doesn't exist
+      const { data, error } = await supabase
+        .from('candidate_job_matches')
+        .select('*')
+        .eq('candidate_id', candidateId)
+        .eq('job_offer_id', jobOfferId)
+        .single();
       
       if (error) throw error;
       
@@ -145,13 +148,33 @@ export const candidateMatchingService = {
     try {
       console.log(`Getting matches for job offer ID: ${jobOfferId}`);
       
-      const { data, error } = await supabase.rpc('get_matches_for_job_offer', {
-        p_job_offer_id: jobOfferId
-      });
+      // Using a direct join query instead of RPC
+      const { data, error } = await supabase
+        .from('candidate_job_matches')
+        .select(`
+          *,
+          candidate:candidate_id(*)
+        `)
+        .eq('job_offer_id', jobOfferId);
       
       if (error) throw error;
       
-      return data as CandidateMatch[];
+      // Transform the data to match the expected CandidateMatch structure
+      return (data || []).map(item => ({
+        candidate: item.candidate,
+        match: {
+          candidate_id: item.candidate_id,
+          job_offer_id: item.job_offer_id,
+          match_score: item.match_score,
+          skills_match_score: item.skills_match_score,
+          experience_match_score: item.experience_match_score,
+          education_match_score: item.education_match_score,
+          location_match_score: item.location_match_score,
+          match_details: item.match_details,
+          created_at: item.created_at,
+          updated_at: item.updated_at
+        }
+      })) as CandidateMatch[];
     } catch (error: any) {
       console.error("Error fetching matches for job offer:", error);
       return [];
