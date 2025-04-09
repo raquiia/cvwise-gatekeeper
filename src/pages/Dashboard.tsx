@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Users, FileText, Search, Clock, CheckCircle, 
@@ -108,7 +107,7 @@ const Dashboard = () => {
     if (!user) throw new Error("User not authenticated");
     
     // Fetch candidates count
-    const candidates = await candidateService.getUserCandidates();
+    const candidates = await candidateService.getUserCandidates(user.id);
     const candidatesCount = candidates.length;
     
     // Fetch resumes count - using RPC function
@@ -121,7 +120,7 @@ const Dashboard = () => {
     const resumesCount = resumesData?.length || 0;
     
     // Fetch job offers count
-    const jobOffers = await jobOfferService.getUserJobOffers();
+    const jobOffers = await jobOfferService.getUserJobOffers(user.id);
     const jobOffersCount = jobOffers.length;
     
     // Fetch pending candidates count
@@ -146,7 +145,11 @@ const Dashboard = () => {
   
   const fetchRecentCandidates = async (): Promise<RecentCandidate[]> => {
     try {
-      const candidates = await candidateService.getUserCandidates();
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+      
+      const candidates = await candidateService.getUserCandidates(user.id);
       
       // Sort by creation date, most recent first
       const sortedCandidates = [...candidates].sort((a, b) => {
@@ -178,7 +181,11 @@ const Dashboard = () => {
   
   const fetchTopSkills = async (): Promise<TopSkill[]> => {
     try {
-      const candidates = await candidateService.getUserCandidates();
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+      
+      const candidates = await candidateService.getUserCandidates(user.id);
       
       // Extract all skills from candidates
       const allSkills: string[] = [];
@@ -221,11 +228,15 @@ const Dashboard = () => {
   
   const fetchRecentActivity = async (): Promise<RecentActivity[]> => {
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+      
       // In a real app, you would fetch from an activity log table
       // For now, we'll generate based on recent candidates and job offers
       
-      const candidates = await candidateService.getUserCandidates();
-      const jobOffers = await jobOfferService.getUserJobOffers();
+      const candidates = await candidateService.getUserCandidates(user.id);
+      const jobOffers = await jobOfferService.getUserJobOffers(user.id);
       
       // Sort all items by date
       const allItems = [
@@ -267,7 +278,6 @@ const Dashboard = () => {
     }
   };
   
-  // Helper function to format time ago
   const getTimeAgo = (date: Date): string => {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -280,7 +290,6 @@ const Dashboard = () => {
     return `il y a ${diffDays}j`;
   };
   
-  // Mock data generators for fallback
   const getMockStats = (): DashboardStats => ({
     candidatesCount: 89,
     resumesCount: 126,
@@ -315,7 +324,6 @@ const Dashboard = () => {
     { action: "Nouvel utilisateur", user: "Sophie Girard", time: "il y a 3h", icon: <Users size={16} className="text-purple-500" /> }
   ];
   
-  // Convert stats to array format for rendering
   const getStatsArray = () => {
     if (!stats) return [];
     
@@ -358,7 +366,6 @@ const Dashboard = () => {
   return (
     <Layout className="py-8 bg-sand/30">
       <div className="container mx-auto px-4">
-        {/* Header & Search */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
           <div className="mb-4 md:mb-0">
             <h1 className="text-2xl font-bold text-navy-dark mb-1">Tableau de bord</h1>
@@ -392,10 +399,8 @@ const Dashboard = () => {
           <MockDataAlert />
         )}
         
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {loading ? (
-            // Show skeletons while loading
             Array(4).fill(0).map((_, index) => (
               <div key={index} className="glass rounded-xl p-5">
                 <div className="flex justify-between items-start mb-3">
@@ -437,9 +442,7 @@ const Dashboard = () => {
           )}
         </div>
         
-        {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent Candidates */}
           <div className="lg:col-span-2 glass rounded-xl overflow-hidden">
             <div className="p-5 border-b border-border/30">
               <div className="flex items-center justify-between">
@@ -466,7 +469,6 @@ const Dashboard = () => {
                 </thead>
                 <tbody>
                   {loading ? (
-                    // Show skeletons while loading
                     Array(5).fill(0).map((_, idx) => (
                       <tr key={idx} className="border-b border-border/10">
                         <td className="p-4">
@@ -532,9 +534,7 @@ const Dashboard = () => {
             </div>
           </div>
           
-          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Activity */}
             <div className="glass rounded-xl">
               <div className="p-5 border-b border-border/30">
                 <h2 className="text-lg font-semibold text-navy-dark">Activité récente</h2>
@@ -574,7 +574,6 @@ const Dashboard = () => {
               </div>
             </div>
             
-            {/* Top Skills */}
             <div className="glass rounded-xl">
               <div className="p-5 border-b border-border/30">
                 <div className="flex items-center justify-between">
@@ -615,7 +614,6 @@ const Dashboard = () => {
               </div>
             </div>
             
-            {/* Quick Tips */}
             <div className="bg-navy/10 border border-navy/20 rounded-xl p-5">
               <div className="flex items-start">
                 <div className="mr-3 mt-1">
