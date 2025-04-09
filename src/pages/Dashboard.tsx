@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Users, FileText, Search, CheckCircle, 
@@ -97,7 +98,7 @@ const Dashboard = () => {
   
   return (
     <Layout className="py-8 bg-sand/30">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 pb-16">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
           <div className="mb-4 md:mb-0">
             <h1 className="text-2xl font-bold text-navy-dark mb-1">Dashboard</h1>
@@ -214,7 +215,7 @@ const Dashboard = () => {
           )}
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-2 glass rounded-xl overflow-hidden">
             <div className="p-5 border-b border-border/30">
               <div className="flex items-center justify-between">
@@ -324,7 +325,7 @@ const Dashboard = () => {
               />
             )}
             
-            <Card className="bg-white dark:bg-navy-dark rounded-xl">
+            <Card className="bg-white dark:bg-navy-dark/90 shadow-md border border-gray-200 dark:border-navy/20 rounded-xl">
               <CardHeader className="pb-3">
                 <CardTitle>Quick Links</CardTitle>
               </CardHeader>
