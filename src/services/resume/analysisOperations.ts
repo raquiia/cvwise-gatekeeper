@@ -1,3 +1,4 @@
+
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from '@/services/data/resumeDataService';
@@ -11,7 +12,7 @@ export const checkResumeAlreadyAnalyzed = async (resumeId: string): Promise<{ an
     console.log('Checking if resume has already been analyzed:', resumeId);
     
     // Utiliser une requête directe au lieu d'une requête qui pourrait déclencher la récursion RLS
-    const { data: resume, error: resumeError } = await supabase
+    const { data: resumeData, error: resumeError } = await supabase
       .rpc('get_resume_by_id', { p_resume_id: resumeId });
     
     if (resumeError) {
@@ -19,7 +20,8 @@ export const checkResumeAlreadyAnalyzed = async (resumeId: string): Promise<{ an
       throw new Error(`Erreur lors de la vérification du statut du CV: ${resumeError.message}`);
     }
     
-    if (!resume || !resume.parsed) {
+    // Handle array response - check if we have any data and if the first item is parsed
+    if (!resumeData || resumeData.length === 0 || !resumeData[0].parsed) {
       return { analyzed: false };
     }
     
