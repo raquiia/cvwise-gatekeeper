@@ -380,11 +380,9 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
       
       setShowSuggestionDialog(true);
       
-      setActiveTab('standard');
-      
       toast({
         title: "Analyse terminée",
-        description: "Les suggestions ont été générées et appliquées à partir de votre description."
+        description: "Les suggestions ont été générées à partir de votre description."
       });
     } catch (error: any) {
       console.error('Error generating suggestions from freeform input:', error);
@@ -398,6 +396,62 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     }
   };
   
+  const isSoftSkill = (skill: string): boolean => {
+    const softSkills = [
+      "Communication", "Travail d'équipe", "Teamwork", "Leadership", "Adaptabilité", "Adaptability",
+      "Résolution de problèmes", "Problem Solving", "Créativité", "Creativity", "Organisation",
+      "Gestion du temps", "Time Management", "Esprit critique", "Critical Thinking", "Négociation",
+      "Negotiation", "Empathie", "Empathy", "Résilience", "Resilience", "Prise de décision",
+      "Decision Making", "Gestion du stress", "Stress Management", "Autonomie", "Autonomy",
+      "Flexibilité", "Flexibility", "Collaboration", "Collaboration", "Écoute active", "Active Listening",
+      "Intelligence émotionnelle", "Emotional Intelligence", "Sens des responsabilités", "Responsibility",
+      "Capacité d'analyse", "Analytical Skills", "Curiosité", "Curiosity", "Proactivité", "Proactivity",
+      "Persévérance", "Perseverance", "Rigueur", "Rigor", "Diplomatie", "Diplomacy", "Motivation",
+      "Motivation", "Pédagogie", "Pedagogy", "Assertivité", "Assertiveness", "Confiance en soi",
+      "Self-confidence", "Sens de l'initiative", "Initiative", "Apprentissage continu", "Continuous Learning",
+      "Polyvalence", "Versatility", "Sens du détail", "Attention to Detail", "Ponctualité", "Punctuality"
+    ];
+
+    return softSkills.some(softSkill => 
+      skill.toLowerCase().includes(softSkill.toLowerCase()) || 
+      softSkill.toLowerCase().includes(skill.toLowerCase())
+    );
+  };
+
+  const getToolsAndTechnologies = (description?: string): string[] => {
+    if (!description) return [];
+    
+    const techToolsPatterns = [
+      // Common technologies
+      /\b(React|Angular|Vue\.js|Node\.js|Express|Django|Flask|Laravel|Spring|ASP\.NET|Rails)\b/g,
+      // Programming languages
+      /\b(JavaScript|TypeScript|Python|Java|C#|C\+\+|PHP|Ruby|Swift|Kotlin|Go|Rust)\b/g,
+      // Databases
+      /\b(MySQL|PostgreSQL|MongoDB|SQL Server|Oracle|SQLite|Firebase|Cassandra|Redis|Elasticsearch)\b/g,
+      // Cloud platforms
+      /\b(AWS|Azure|Google Cloud|GCP|Heroku|Netlify|Vercel|DigitalOcean)\b/g,
+      // DevOps tools
+      /\b(Docker|Kubernetes|Jenkins|Travis CI|CircleCI|Git|GitHub|GitLab|Bitbucket)\b/g,
+      // Design tools
+      /\b(Figma|Sketch|Adobe XD|Photoshop|Illustrator|InDesign)\b/g,
+      // Project management tools
+      /\b(Jira|Trello|Asana|Monday|Notion|Confluence|Slack|Teams|Zoom)\b/g,
+      // Other common tools
+      /\b(Excel|PowerPoint|Word|Outlook|Salesforce|SAP|Tableau|Power BI|WordPress)\b/g
+    ];
+    
+    const tools = new Set<string>();
+    
+    techToolsPatterns.forEach(pattern => {
+      const matches = description.match(pattern);
+      if (matches) {
+        matches.forEach(match => tools.add(match));
+      }
+    });
+    
+    return Array.from(tools);
+  };
+
   if (initialLoading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -460,7 +514,7 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
                 <Textarea
                   placeholder="Décrivez le poste, les responsabilités, compétences requises, localisation, type de contrat, expérience souhaitée, etc. 
                   
-Exemple: Recherche développeur React senior à Paris, 5 ans d'expérience minimum, télétravail partiel possible, maîtrise de TypeScript et NextJS requise. Salaire entre 55K et 65K."
+Exemple: Recherche développeur React senior à Paris, 5 ans d'expérience minimum, télétravail partiel possible, maîtrise de TypeScript et NextJS requise. Besoin de bonnes compétences en communication et résolution de problèmes. Salaire entre 55K et 65K."
                   rows={12}
                   value={freeformInput}
                   onChange={(e) => setFreeformInput(e.target.value)}
@@ -480,11 +534,11 @@ Exemple: Recherche développeur React senior à Paris, 5 ans d'expérience minim
                   </li>
                   <li className="flex gap-1.5">
                     <span>•</span> 
-                    <span>Indiquez les <strong>compétences techniques</strong> essentielles pour le poste</span>
+                    <span>Incluez les <strong>compétences techniques</strong> (hard skills) et <strong>comportementales</strong> (soft skills)</span>
                   </li>
                   <li className="flex gap-1.5">
                     <span>•</span> 
-                    <span>Précisez le <strong>type de contrat</strong> et les <strong>années d'expérience</strong> requises</span>
+                    <span>Précisez les <strong>outils</strong> et <strong>technologies</strong> utilisés dans le poste</span>
                   </li>
                   <li className="flex gap-1.5">
                     <span>•</span> 
@@ -928,27 +982,78 @@ Exemple: Recherche développeur React senior à Paris, 5 ans d'expérience minim
           <div className="space-y-6 mt-4">
             {suggestion && (
               <>
-                <div>
-                  <h3 className="font-semibold text-navy text-lg">Description suggérée</h3>
-                  <div className="bg-muted/30 p-4 rounded-md mt-2 whitespace-pre-wrap prose prose-sm max-w-none">
-                    {suggestion.description}
+                {suggestion.title && (
+                  <div>
+                    <h3 className="font-semibold text-navy text-lg">Titre suggéré</h3>
+                    <div className="bg-muted/30 p-3 rounded-md mt-1 font-medium text-lg">
+                      {suggestion.title}
+                    </div>
                   </div>
-                </div>
+                )}
+                
+                {suggestion.location && (
+                  <div>
+                    <h3 className="font-semibold text-navy text-lg">Localisation suggérée</h3>
+                    <div className="bg-muted/30 p-3 rounded-md mt-1">
+                      {suggestion.location}
+                    </div>
+                  </div>
+                )}
+
+                {suggestion.description && (
+                  <div>
+                    <h3 className="font-semibold text-navy text-lg">Description du poste</h3>
+                    <div className="bg-muted/30 p-4 rounded-md mt-2 whitespace-pre-wrap prose prose-sm max-w-none">
+                      {suggestion.description}
+                    </div>
+                  </div>
+                )}
 
                 {suggestion.requiredSkills && suggestion.requiredSkills.length > 0 && (
                   <div>
-                    <h3 className="font-semibold text-navy text-lg">Compétences techniques suggérées</h3>
+                    <h3 className="font-semibold text-navy text-lg">Compétences techniques (Hard skills)</h3>
                     <div className="mt-2 space-y-3">
                       <div className="flex flex-wrap gap-1.5">
-                        {suggestion.requiredSkills.map((skill, index) => (
-                          <Badge key={index} variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 px-2 py-1">
-                            {skill}
+                        {suggestion.requiredSkills
+                          .filter(skill => !isSoftSkill(skill))
+                          .map((skill, index) => (
+                            <Badge key={index} variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 px-2 py-1">
+                              {skill}
+                            </Badge>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {suggestion.requiredSkills && suggestion.requiredSkills.some(skill => isSoftSkill(skill)) && (
+                  <div>
+                    <h3 className="font-semibold text-navy text-lg">Compétences comportementales (Soft skills)</h3>
+                    <div className="mt-2 space-y-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        {suggestion.requiredSkills
+                          .filter(skill => isSoftSkill(skill))
+                          .map((skill, index) => (
+                            <Badge key={index} variant="secondary" className="bg-green-50 text-green-700 border-green-200 px-2 py-1">
+                              {skill}
+                            </Badge>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {getToolsAndTechnologies(suggestion.description).length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-navy text-lg">Outils et technologies</h3>
+                    <div className="mt-2 space-y-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        {getToolsAndTechnologies(suggestion.description).map((tool, index) => (
+                          <Badge key={index} variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200 px-2 py-1">
+                            {tool}
                           </Badge>
                         ))}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        Ces compétences sont cruciales pour un matching optimal avec les candidats qualifiés.
-                      </p>
                     </div>
                   </div>
                 )}
