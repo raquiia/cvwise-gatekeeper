@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2, RefreshCw, Bug, Filter } from 'lucide-react';
@@ -248,35 +247,34 @@ const Candidates = () => {
   return (
     <Layout className="py-8 bg-sand/30">
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center mb-4">
-          <CandidatesHeader 
-            searchQuery={searchQuery}
-            onSearchChange={handleSearchChange}
-            onToggleFilters={handleToggleFilters}
-          />
-          
-          <div className="flex items-center gap-2">
-            {activeFilterCount > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-1"
-                onClick={handleResetFilters}
-              >
-                <Filter size={16} />
-                {activeFilterCount} filtre{activeFilterCount > 1 ? 's' : ''} actif{activeFilterCount > 1 ? 's' : ''}
-              </Button>
-            )}
-            
+        <CandidatesHeader 
+          searchQuery={searchQuery}
+          onSearchChange={handleSearchChange}
+          onToggleFilters={handleToggleFilters}
+          showFilters={showFilters}
+        />
+        
+        <div className="flex justify-end items-center gap-2 mb-4">
+          {activeFilterCount > 0 && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={toggleDebug}
-              title="Mode Debug"
+              className="flex items-center gap-1"
+              onClick={handleResetFilters}
             >
-              <Bug size={16} />
+              <Filter size={16} />
+              {activeFilterCount} filtre{activeFilterCount > 1 ? 's' : ''} actif{activeFilterCount > 1 ? 's' : ''}
             </Button>
-          </div>
+          )}
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleDebug}
+            title="Mode Debug"
+          >
+            <Bug size={16} />
+          </Button>
         </div>
         
         {showDebug && (
