@@ -44,6 +44,7 @@ export interface MatchDetails {
   matchedSkills: string[];
   missingSkills: string[];
   skills_details?: SkillsDetails;
+  [key: string]: any; // Add index signature to make it compatible with Json type
 }
 
 export interface CandidateJobMatch {
@@ -291,7 +292,7 @@ export const candidateMatchingService = {
                     experience_match_score: Math.round(matchResult.details.experienceMatch),
                     education_match_score: 50, // Default value
                     location_match_score: 50, // Default value
-                    match_details: matchResult.details
+                    match_details: matchResult.details as Json // Cast to Json type
                   });
                   
                 if (insertError) {
@@ -306,7 +307,7 @@ export const candidateMatchingService = {
               toast({
                 title: "Aucun candidat trouvé",
                 description: "Vous devez d'abord ajouter des candidats avant de pouvoir calculer des correspondances.",
-                variant: "warning",
+                variant: "default",
               });
               return false;
             }
@@ -470,7 +471,7 @@ export const candidateMatchingService = {
       toast({
         title: "Aucune correspondance trouvée",
         description: "Aucun candidat ne correspond à cette offre d'emploi. Essayez d'ajouter des candidats ou de modifier les critères de l'offre.",
-        variant: "warning",
+        variant: "default",
       });
       
       return [];
