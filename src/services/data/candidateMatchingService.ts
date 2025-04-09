@@ -1,16 +1,16 @@
-
 // Import the necessary libraries and services
 import { JobOffer } from "./jobOfferService";
 import { jobOfferService } from "./jobOfferService";
+import { candidateService } from "./candidateService";
 import type { CandidateData } from "./resumeDataService";
 
 /**
  * Interface for JobOfferSuggestion
  */
-export interface JobOfferSuggestion extends Partial<JobOffer> {
+export interface JobOfferSuggestion {
+  title?: string;
   description?: string;
   requiredSkills?: string[];
-  preferredSkills?: string[];
   education?: string;
   experience?: {
     min?: number;
@@ -18,13 +18,12 @@ export interface JobOfferSuggestion extends Partial<JobOffer> {
   };
   contractType?: string;
   remotePreference?: string;
+  location?: string;
   salary?: {
     min?: number;
     max?: number;
     currency?: string;
   };
-  benefits?: string[];
-  industrySectors?: string[];
 }
 
 /**
@@ -50,9 +49,9 @@ export interface MatchDetails {
  * Interface for CandidateJobMatch
  */
 export interface CandidateJobMatch {
-  id: string;
-  candidate_id: string;
-  job_offer_id: string;
+  id?: string;
+  candidate_id?: string;
+  job_offer_id?: string;
   match_score: number;
   skills_match_score: number;
   experience_match_score: number;
@@ -64,7 +63,7 @@ export interface CandidateJobMatch {
 }
 
 /**
- * Interface for CandidateMatch (combination of candidate and match data)
+ * Interface for CandidateMatch
  */
 export interface CandidateMatch {
   candidate: CandidateData;
@@ -79,14 +78,18 @@ export const candidateMatchingService = {
    * Calculate matches for a job offer
    */
   calculateMatchesForJobOffer: async (jobOfferId: string): Promise<boolean> => {
-    // Implementation would be here
-    console.log(`Calculating matches for job offer: ${jobOfferId}`);
-    // Mock implementation for now
-    return true;
+    try {
+      console.log(`Calculating matches for job offer: ${jobOfferId}`);
+      // Implementation would involve comparing candidates to the job offer
+      return true;
+    } catch (error) {
+      console.error("Error calculating matches:", error);
+      throw error;
+    }
   },
 
   /**
-   * Get match details between a candidate and job offer
+   * Get specific candidate-job match
    */
   getCandidateJobMatch: async (candidateId: string, jobOfferId: string): Promise<CandidateJobMatch | null> => {
     console.log(`Getting match between candidate ${candidateId} and job offer ${jobOfferId}`);
@@ -95,7 +98,7 @@ export const candidateMatchingService = {
   },
 
   /**
-   * Get all candidate matches for a job offer
+   * Get all matches for a job offer
    */
   getMatchesForJobOffer: async (jobOfferId: string): Promise<CandidateMatch[]> => {
     console.log(`Getting all candidate matches for job offer: ${jobOfferId}`);
@@ -113,451 +116,578 @@ export const candidateMatchingService = {
   },
 
   /**
-   * Generate job offer suggestions based on title and location
+   * Generate suggestions for job offer based on title and location
+   * @param title Job title
+   * @param location Job location (optional)
+   * @param freeformText Free-form description text (optional)
+   * @returns Suggestions for the job offer
    */
-  generateJobOfferSuggestions: async (title: string, location?: string): Promise<JobOfferSuggestion> => {
-    console.log(`Generating job offer suggestions for: ${title} in ${location || 'unspecified location'}`);
+  generateJobOfferSuggestions: async (title: string, location?: string, freeformText?: string): Promise<JobOfferSuggestion> => {
+    console.log(`Generating suggestions for job offer: ${title}, ${location || 'No location'}`);
+    console.log(`Freeform text provided: ${freeformText ? 'Yes' : 'No'}`);
     
-    let country = 'France'; // Default country
-    let currency = 'EUR';   // Default currency
-    
-    // Determine country and currency based on location
-    if (location) {
-      country = jobOfferService.getCountryFromLocation(location);
-      currency = jobOfferService.getCurrencyFromCountry(country);
+    try {
+      // Default assumptions
+      let suggestedExperienceMin = 2;
+      let suggestedExperienceMax = 5;
+      let suggestedEducation = "Bac+5";
+      let suggestedSkills: string[] = [];
+      let suggestedContractType = "CDI";
+      let suggestedRemotePreference = "Hybride";
+      let suggestedDescription = "";
+      let suggestedLocation = location || "";
+      let suggestedTitle = title || "";
+      let suggestedSalaryMin = 0;
+      let suggestedSalaryMax = 0;
+      let suggestedSalaryCurrency = "EUR";
+      
+      // Process freeform text if provided
+      if (freeformText) {
+        console.log("Analyzing freeform text...");
+        
+        // Extract experience information
+        const experienceRegex = /(\d+)[ -]*(?:à|to|-|et)[ -]*(\d+)\s*ans|(\d+)\s*ans?\s*(?:d'expérience|d'exp|expérience|exp|minimum|min|maximum|max)/gi;
+        const experienceMatches = [...freeformText.matchAll(experienceRegex)];
+        
+        if (experienceMatches.length > 0) {
+          const match = experienceMatches[0];
+          if (match[1] && match[2]) {
+            // Range format: "X à Y ans"
+            suggestedExperienceMin = parseInt(match[1]);
+            suggestedExperienceMax = parseInt(match[2]);
+          } else if (match[3]) {
+            // Single value format: "X ans d'expérience"
+            if (freeformText.toLowerCase().includes("minimum") || freeformText.toLowerCase().includes("min")) {
+              suggestedExperienceMin = parseInt(match[3]);
+              suggestedExperienceMax = parseInt(match[3]) + 3; // Assume a range
+            } else if (freeformText.toLowerCase().includes("maximum") || freeformText.toLowerCase().includes("max")) {
+              suggestedExperienceMax = parseInt(match[3]);
+              suggestedExperienceMin = Math.max(0, parseInt(match[3]) - 2); // Assume a range
+            } else {
+              suggestedExperienceMin = parseInt(match[3]);
+              suggestedExperienceMax = parseInt(match[3]) + 2; // Assume a range
+            }
+          }
+        }
+        
+        // Extract education information
+        const educationRegex = /bac\s*\+\s*(\d+)|bac|master|licence|doctorat|diplôme|diplome|ingénieur|ingenieur/i;
+        const educationMatch = freeformText.match(educationRegex);
+        
+        if (educationMatch) {
+          const educationText = educationMatch[0].toLowerCase();
+          if (educationText.includes("bac+5") || educationText.includes("bac +5") || educationText.includes("master") || educationText.includes("ingenieur") || educationText.includes("ingénieur")) {
+            suggestedEducation = "Bac+5";
+          } else if (educationText.includes("bac+3") || educationText.includes("bac +3") || educationText.includes("licence")) {
+            suggestedEducation = "Bac+3";
+          } else if (educationText.includes("bac+2") || educationText.includes("bac +2")) {
+            suggestedEducation = "Bac+2";
+          } else if (educationText.includes("doctorat")) {
+            suggestedEducation = "Doctorat";
+          } else if (educationText.includes("bac") && !educationText.includes("+")) {
+            suggestedEducation = "Bac";
+          }
+        }
+        
+        // Extract contract type
+        const contractRegex = /cdi|cdd|intérim|interim|stage|alternance|freelance|consultant/i;
+        const contractMatch = freeformText.match(contractRegex);
+        
+        if (contractMatch) {
+          const contractText = contractMatch[0].toLowerCase();
+          if (contractText.includes("cdi")) {
+            suggestedContractType = "CDI";
+          } else if (contractText.includes("cdd")) {
+            suggestedContractType = "CDD";
+          } else if (contractText.includes("intérim") || contractText.includes("interim")) {
+            suggestedContractType = "Intérim";
+          } else if (contractText.includes("stage")) {
+            suggestedContractType = "Stage";
+          } else if (contractText.includes("alternance")) {
+            suggestedContractType = "Alternance";
+          } else if (contractText.includes("freelance") || contractText.includes("consultant")) {
+            suggestedContractType = "Freelance";
+          }
+        }
+        
+        // Extract remote preference
+        const remoteRegex = /télétravail|teletravail|remote|à distance|a distance|sur site|présentiel|presentiel|hybride|hybrid/i;
+        const remoteMatch = freeformText.match(remoteRegex);
+        
+        if (remoteMatch) {
+          const remoteText = remoteMatch[0].toLowerCase();
+          if ((remoteText.includes("télétravail") || remoteText.includes("teletravail") || remoteText.includes("remote") || 
+               remoteText.includes("à distance") || remoteText.includes("a distance")) && 
+              (remoteText.includes("total") || remoteText.includes("complet") || remoteText.includes("full"))) {
+            suggestedRemotePreference = "Full remote";
+          } else if (remoteText.includes("hybride") || remoteText.includes("hybrid") || 
+                    (remoteText.includes("télétravail") || remoteText.includes("teletravail")) && 
+                    (remoteText.includes("partiel") || remoteText.includes("possible"))) {
+            suggestedRemotePreference = "Hybride";
+          } else if (remoteText.includes("sur site") || remoteText.includes("présentiel") || remoteText.includes("presentiel")) {
+            suggestedRemotePreference = "Sur site";
+          }
+        }
+        
+        // Extract salary information
+        const salaryRegex = /(\d+[\s\.,]?(?:\d+)?)\s*(?:k€|k\s*€|k|€|euros|euro|EUR|CHF|£|GBP|USD|\$)(?:\s*[-à]\s*(\d+[\s\.,]?(?:\d+)?)\s*(?:k€|k\s*€|k|€|euros|euro|EUR|CHF|£|GBP|USD|\$))?/i;
+        const salaryMatch = freeformText.match(salaryRegex);
+        
+        if (salaryMatch) {
+          const fullMatch = salaryMatch[0].toLowerCase();
+          const min = salaryMatch[1]?.replace(/[\s\.]/g, '').replace(',', '');
+          const max = salaryMatch[2]?.replace(/[\s\.]/g, '').replace(',', '');
+          
+          // Determine currency
+          if (fullMatch.includes('chf')) {
+            suggestedSalaryCurrency = "CHF";
+          } else if (fullMatch.includes('£') || fullMatch.includes('gbp')) {
+            suggestedSalaryCurrency = "GBP";
+          } else if (fullMatch.includes('$') || fullMatch.includes('usd')) {
+            suggestedSalaryCurrency = "USD";
+          } else {
+            suggestedSalaryCurrency = "EUR";
+          }
+          
+          // Determine if it's K (thousands)
+          const isK = fullMatch.includes('k');
+          const multiplier = isK ? 1000 : 1;
+          
+          if (min) {
+            suggestedSalaryMin = parseInt(min) * multiplier;
+          }
+          
+          if (max) {
+            suggestedSalaryMax = parseInt(max) * multiplier;
+          } else if (min) {
+            // If only min is provided, set max to min + 20%
+            suggestedSalaryMax = suggestedSalaryMin * 1.2;
+          }
+        }
+        
+        // Extract location if not provided
+        if (!suggestedLocation) {
+          const locationRegex = /\b(?:à|a|en|au|dans|près de|proche de)\s+([A-Z][a-zÀ-ÿ-]+(?:\s+[A-Z][a-zÀ-ÿ-]+)*)/;
+          const locationMatch = freeformText.match(locationRegex);
+          
+          if (locationMatch && locationMatch[1]) {
+            suggestedLocation = locationMatch[1];
+            
+            // Try to determine country if not explicitly mentioned
+            if (!suggestedLocation.includes(",")) {
+              // List of major cities and their countries
+              const cityToCountry: Record<string, string> = {
+                "Paris": "France",
+                "Lyon": "France",
+                "Marseille": "France",
+                "Toulouse": "France",
+                "Bordeaux": "France",
+                "Lille": "France",
+                "Nice": "France",
+                "Nantes": "France",
+                "Strasbourg": "France",
+                "London": "UK",
+                "Londres": "UK",
+                "Manchester": "UK",
+                "Liverpool": "UK",
+                "Birmingham": "UK",
+                "Geneva": "Switzerland",
+                "Genève": "Suisse",
+                "Zurich": "Switzerland",
+                "Zurich": "Suisse",
+                "Basel": "Switzerland",
+                "Bâle": "Suisse",
+                "Bern": "Switzerland",
+                "Berne": "Suisse",
+                "Brussels": "Belgium",
+                "Bruxelles": "Belgique",
+                "Antwerp": "Belgium",
+                "Anvers": "Belgique",
+                "Ghent": "Belgium",
+                "Gand": "Belgique",
+                "Luxembourg": "Luxembourg",
+                "Madrid": "Spain",
+                "Madrid": "Espagne",
+                "Barcelona": "Spain",
+                "Barcelone": "Espagne",
+                "Berlin": "Germany",
+                "Berlin": "Allemagne",
+                "Munich": "Germany",
+                "Munich": "Allemagne",
+                "Frankfort": "Germany",
+                "Francfort": "Allemagne",
+                "Hamburg": "Germany",
+                "Hambourg": "Allemagne",
+                "Rome": "Italy",
+                "Rome": "Italie",
+                "Milan": "Italy",
+                "Milan": "Italie",
+                "Amsterdam": "Netherlands",
+                "Amsterdam": "Pays-Bas",
+                "Rotterdam": "Netherlands",
+                "Rotterdam": "Pays-Bas"
+              };
+              
+              // Check if city is in our known list
+              const cityName = suggestedLocation.split(" ")[0]; // Take just the first word
+              if (cityToCountry[cityName]) {
+                suggestedLocation = `${suggestedLocation}, ${cityToCountry[cityName]}`;
+              }
+            }
+          }
+        }
+        
+        // Extract job title if not provided
+        if (!suggestedTitle) {
+          // Try to extract a job title from the first sentence
+          const firstSentence = freeformText.split(/[.!?]/)[0].trim();
+          const commonTitlePatterns = [
+            /recherche\s+(?:d['']un|d['']une|de|du|des)\s+([^,\.]+)/i,
+            /offre\s+(?:d['']un|d['']une|de|du|des)\s+([^,\.]+)/i,
+            /poste\s+(?:d['']un|d['']une|de|du|des)\s+([^,\.]+)/i,
+            /(?:^|\s+)([a-zÀ-ÿ]+(?:\s+[a-zÀ-ÿ]+){0,3}(?:\s+senior|\s+junior|\s+confirmé|\s+débutant)?)/i
+          ];
+          
+          for (const pattern of commonTitlePatterns) {
+            const match = firstSentence.match(pattern);
+            if (match && match[1]) {
+              suggestedTitle = match[1].trim();
+              // Capitalize first letter of each word
+              suggestedTitle = suggestedTitle.replace(/\b\w/g, c => c.toUpperCase());
+              break;
+            }
+          }
+          
+          // If still no title, use first few words
+          if (!suggestedTitle && firstSentence.length < 50) {
+            suggestedTitle = firstSentence;
+          } else if (!suggestedTitle) {
+            suggestedTitle = firstSentence.split(" ").slice(0, 5).join(" ") + "...";
+          }
+        }
+        
+        // Extract skills from text
+        const techSkillsList = [
+          // Programming languages
+          "Java", "JavaScript", "TypeScript", "Python", "C#", "C++", "C", "Go", "Golang", "Ruby", "PHP", "Swift", 
+          "Kotlin", "Rust", "Scala", "Perl", "Shell", "Bash", "PowerShell", "SQL", "PL/SQL", "T-SQL", "R", 
+          "MATLAB", "Objective-C", "Assembly", "Dart", "F#", "Visual Basic", "VB.NET", "COBOL", "Fortran",
+          
+          // Web technologies
+          "HTML", "CSS", "SASS", "SCSS", "Less", "XML", "JSON", "AJAX", "REST", "GraphQL", "gRPC", "WebSockets",
+          "Web Services", "API", "HTTP", "HTTPS", "OAuth", "JWT", "SOAP", "WebRTC", "PWA", "Web Components",
+          
+          // Frameworks & libraries
+          "React", "Angular", "Vue.js", "Svelte", "Next.js", "Nuxt.js", "Gatsby", "Express", "Node.js", "Django",
+          "Flask", "Spring", "Spring Boot", "Hibernate", "JPA", ".NET", "ASP.NET", "ASP.NET Core", "Rails", "Laravel",
+          "Symfony", "CodeIgniter", "Bootstrap", "Tailwind CSS", "Material UI", "jQuery", "Backbone.js", "Ember.js",
+          "Redux", "MobX", "Vue Router", "React Router", "Jest", "Mocha", "Chai", "Cypress", "Playwright", "Selenium",
+          "TensorFlow", "PyTorch", "Keras", "scikit-learn", "pandas", "NumPy", "SciPy", "Redux Toolkit", "Vuex",
+          
+          // DevOps & infrastructure
+          "Docker", "Kubernetes", "Helm", "Jenkins", "Travis CI", "CircleCI", "GitHub Actions", "GitLab CI/CD",
+          "AWS", "Azure", "GCP", "Google Cloud", "Terraform", "Ansible", "Chef", "Puppet", "Vagrant", "Prometheus",
+          "Grafana", "ELK Stack", "Elastic Stack", "Nginx", "Apache", "IIS", "Traefik", "HAProxy", "Linux", "Unix",
+          "Windows Server", "CI/CD", "DevOps", "SRE", "Serverless", "Microservices", "Service Mesh", "Istio", 
+          "Consul", "Envoy", "Vault", "Artifactory", "Nexus", "Git", "Subversion", "SVN", "Mercurial",
+          
+          // Databases
+          "MySQL", "PostgreSQL", "SQL Server", "Oracle", "SQLite", "MongoDB", "Cassandra", "Redis", "Elasticsearch",
+          "DynamoDB", "Firebase", "Neo4j", "MariaDB", "CouchDB", "RethinkDB", "InfluxDB", "Fauna", "MS SQL", "NoSQL",
+          
+          // Cloud services
+          "S3", "EC2", "Lambda", "ECS", "EKS", "RDS", "DynamoDB", "SQS", "SNS", "CloudFront", "API Gateway",
+          "App Engine", "Cloud Functions", "Cloud Run", "BigQuery", "Cloud Storage", "Azure Functions", "Azure SQL",
+          "Cosmos DB", "Blob Storage", "App Service", "IAM", "Cognito", "Active Directory", "Heroku", "Netlify", "Vercel",
+          
+          // Mobile development
+          "iOS", "Android", "React Native", "Flutter", "Xamarin", "Ionic", "Cordova", "Swift UI", "Jetpack Compose",
+          "Kotlin Multiplatform", "Mobile Development", "Progressive Web Apps", "PWA", "Mobile-First Design",
+          
+          // Data & analytics
+          "Big Data", "Hadoop", "Spark", "Kafka", "Airflow", "ETL", "Data Warehouse", "Data Lake", "Business Intelligence",
+          "BI", "Tableau", "Power BI", "Looker", "QlikView", "Qlik Sense", "OLAP", "Data Mining", "Data Visualization",
+          
+          // Other skills & tools
+          "JIRA", "Confluence", "Trello", "Asana", "Notion", "Slack", "Teams", "Agile", "Scrum", "Kanban", "SAFe",
+          "Waterfall", "MS Office", "Excel", "SharePoint", "WordPress", "Drupal", "Magento", "Shopify", "Adobe Creative Suite",
+          "Figma", "Sketch", "Adobe XD", "InVision", "Photoshop", "Illustrator", "UX", "UI", "UX/UI", "Design Thinking",
+          "SEO", "A/B Testing", "Accessibility", "WCAG", "W3C", "Responsive Design", "Mobile-First Design", "Usability Testing",
+          "SaaS", "CRM", "ERP", "CMS", "Sales Force", "HubSpot", "Zendesk"
+        ];
+        
+        // Match skills in the text
+        const extractedSkills = new Set<string>();
+        for (const skill of techSkillsList) {
+          const skillRegex = new RegExp(`\\b${skill}\\b`, 'i');
+          if (skillRegex.test(freeformText)) {
+            extractedSkills.add(skill);
+          }
+        }
+        
+        // Fix casing of skills
+        suggestedSkills = Array.from(extractedSkills);
+        
+        // Create a default description from the information we have
+        if (suggestedTitle && suggestedSkills.length > 0) {
+          suggestedDescription = `# ${suggestedTitle}\n\n`;
+          
+          // Add location if available
+          if (suggestedLocation) {
+            suggestedDescription += `## Localisation\n${suggestedLocation}\n\n`;
+          }
+          
+          // Introduction
+          suggestedDescription += `## Description du poste\nNous recherchons un${suggestedTitle.match(/^[aeiouyéèêAEIOUYÉÈÊ]/i) ? "'" : " "}${suggestedTitle} `;
+          suggestedDescription += `${suggestedExperienceMin > 0 ? `avec au moins ${suggestedExperienceMin} ans d'expérience ` : ""}`;
+          suggestedDescription += `pour rejoindre notre équipe `;
+          suggestedDescription += `${suggestedRemotePreference === "Sur site" ? "sur site" : 
+                                    suggestedRemotePreference === "Hybride" ? "en mode hybride" : "en full remote"}.\n\n`;
+          
+          // Add random responsibilities based on title
+          suggestedDescription += "### Responsabilités\n";
+          const responsibilities = [
+            "Concevoir et développer des solutions innovantes",
+            "Collaborer avec l'équipe pour atteindre les objectifs du projet",
+            "Participer aux réunions d'équipe et aux revues de code",
+            "Assurer la qualité et la maintenabilité du code",
+            "Résoudre les problèmes techniques et optimiser les performances",
+            "Participer à l'architecture technique des solutions",
+            "Rester à la pointe des dernières technologies et tendances"
+          ];
+          
+          // Add 3-5 random responsibilities
+          const selectedResponsibilities = responsibilities.sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 3);
+          suggestedDescription += selectedResponsibilities.map(r => `- ${r}`).join("\n") + "\n\n";
+          
+          // Add skills section
+          suggestedDescription += "### Compétences requises\n";
+          suggestedDescription += suggestedSkills.map(skill => `- ${skill}`).join("\n") + "\n\n";
+          
+          // Add education and experience
+          suggestedDescription += "### Profil recherché\n";
+          suggestedDescription += `- Formation : ${suggestedEducation}\n`;
+          if (suggestedExperienceMin === suggestedExperienceMax) {
+            suggestedDescription += `- Expérience : ${suggestedExperienceMin} ans\n`;
+          } else {
+            suggestedDescription += `- Expérience : ${suggestedExperienceMin} à ${suggestedExperienceMax} ans\n`;
+          }
+          suggestedDescription += `- Type de contrat : ${suggestedContractType}\n`;
+          suggestedDescription += `- Mode de travail : ${suggestedRemotePreference}\n`;
+          
+          // Add salary if available
+          if (suggestedSalaryMin > 0 || suggestedSalaryMax > 0) {
+            suggestedDescription += "\n### Rémunération\n";
+            if (suggestedSalaryMin > 0 && suggestedSalaryMax > 0) {
+              suggestedDescription += `Salaire : ${suggestedSalaryMin.toLocaleString()} à ${suggestedSalaryMax.toLocaleString()} ${suggestedSalaryCurrency} par an\n`;
+            } else if (suggestedSalaryMin > 0) {
+              suggestedDescription += `Salaire : À partir de ${suggestedSalaryMin.toLocaleString()} ${suggestedSalaryCurrency} par an\n`;
+            } else if (suggestedSalaryMax > 0) {
+              suggestedDescription += `Salaire : Jusqu'à ${suggestedSalaryMax.toLocaleString()} ${suggestedSalaryCurrency} par an\n`;
+            }
+          }
+        } else {
+          // If we couldn't extract enough information, use the freeform text directly
+          suggestedDescription = freeformText;
+        }
+      } else {
+        // If no freeform text, create suggestions based on title and location
+        // Process title to determine suggested skills and other parameters
+        const titleLower = title.toLowerCase();
+        
+        // Developer roles
+        if (titleLower.includes('développeur') || titleLower.includes('developer') || titleLower.includes('dev')) {
+          if (titleLower.includes('front') || titleLower.includes('frontend') || titleLower.includes('front-end')) {
+            suggestedSkills = ['JavaScript', 'HTML', 'CSS', 'React', 'Vue.js', 'Angular', 'TypeScript', 'Responsive Design'];
+          } else if (titleLower.includes('back') || titleLower.includes('backend') || titleLower.includes('back-end')) {
+            suggestedSkills = ['Java', 'Spring', 'Python', 'Node.js', 'SQL', 'API', 'Microservices', 'AWS'];
+          } else if (titleLower.includes('full') || titleLower.includes('fullstack') || titleLower.includes('full-stack')) {
+            suggestedSkills = ['JavaScript', 'TypeScript', 'React', 'Node.js', 'SQL', 'MongoDB', 'REST API', 'Git'];
+          } else if (titleLower.includes('mobile')) {
+            suggestedSkills = ['Swift', 'Kotlin', 'Java', 'React Native', 'Android', 'iOS', 'Mobile UI/UX', 'API Integration'];
+          } else if (titleLower.includes('web')) {
+            suggestedSkills = ['JavaScript', 'HTML', 'CSS', 'React', 'Node.js', 'SEO', 'Performance Optimization', 'Responsive Design'];
+          } else {
+            suggestedSkills = ['JavaScript', 'Java', 'Python', 'SQL', 'Cloud', 'Git', 'Agile', 'Problem Solving'];
+          }
+        }
+        // Data roles
+        else if (titleLower.includes('data')) {
+          if (titleLower.includes('scientist')) {
+            suggestedSkills = ['Python', 'R', 'Machine Learning', 'SQL', 'Statistics', 'TensorFlow', 'scikit-learn', 'Data Visualization'];
+            suggestedExperienceMin = 3;
+            suggestedExperienceMax = 8;
+          } else if (titleLower.includes('analyst')) {
+            suggestedSkills = ['SQL', 'Excel', 'BI Tools', 'Tableau', 'Power BI', 'Data Visualization', 'Statistical Analysis', 'Reporting'];
+          } else if (titleLower.includes('engineer')) {
+            suggestedSkills = ['Python', 'SQL', 'ETL', 'Spark', 'Hadoop', 'Cloud Platforms', 'Data Pipelines', 'Big Data'];
+            suggestedExperienceMin = 3;
+            suggestedExperienceMax = 7;
+          } else {
+            suggestedSkills = ['SQL', 'Python', 'Data Analysis', 'Data Modeling', 'ETL', 'Reporting', 'BI Tools', 'Problem Solving'];
+          }
+        }
+        // DevOps roles
+        else if (titleLower.includes('devops') || titleLower.includes('sre') || titleLower.includes('reliability')) {
+          suggestedSkills = ['Docker', 'Kubernetes', 'CI/CD', 'AWS', 'Linux', 'Terraform', 'Scripting', 'Monitoring'];
+          suggestedExperienceMin = 3;
+          suggestedExperienceMax = 8;
+        }
+        // Product roles
+        else if (titleLower.includes('product')) {
+          if (titleLower.includes('manager')) {
+            suggestedSkills = ['Product Strategy', 'Roadmapping', 'User Stories', 'Agile', 'Stakeholder Management', 'Market Research', 'Analytics', 'UX'];
+            suggestedExperienceMin = 4;
+            suggestedExperienceMax = 10;
+          } else if (titleLower.includes('owner')) {
+            suggestedSkills = ['Agile', 'Scrum', 'Backlog Management', 'User Stories', 'Roadmapping', 'Stakeholder Management', 'Jira', 'Requirements Gathering'];
+            suggestedExperienceMin = 3;
+            suggestedExperienceMax = 8;
+          } else {
+            suggestedSkills = ['Product Development', 'Agile', 'Roadmapping', 'User Research', 'Analytics', 'Stakeholder Management', 'Market Analysis', 'Communication'];
+          }
+        }
+        // Designer roles
+        else if (titleLower.includes('design') || titleLower.includes('ux') || titleLower.includes('ui')) {
+          suggestedSkills = ['Figma', 'Adobe XD', 'UI Design', 'UX Research', 'Wireframing', 'Prototyping', 'User Testing', 'Visual Design'];
+        }
+        // Project management roles
+        else if (titleLower.includes('project') || titleLower.includes('program') || (titleLower.includes('manager') && !titleLower.includes('product'))) {
+          suggestedSkills = ['Project Planning', 'Agile', 'Scrum', 'Stakeholder Management', 'Risk Management', 'Budgeting', 'Team Leadership', 'MS Project'];
+          suggestedExperienceMin = 3;
+          suggestedExperienceMax = 10;
+        }
+        // Security roles
+        else if (titleLower.includes('security') || titleLower.includes('cyber')) {
+          suggestedSkills = ['Network Security', 'Cyber Security', 'Penetration Testing', 'Security Audits', 'SIEM', 'Risk Assessment', 'Compliance', 'Incident Response'];
+          suggestedExperienceMin = 3;
+          suggestedExperienceMax = 8;
+        }
+        // Cloud roles
+        else if (titleLower.includes('cloud') || titleLower.includes('aws') || titleLower.includes('azure') || titleLower.includes('gcp')) {
+          suggestedSkills = ['AWS', 'Azure', 'GCP', 'IaC', 'Terraform', 'Cloud Architecture', 'Containers', 'Serverless'];
+          suggestedExperienceMin = 3;
+          suggestedExperienceMax = 8;
+        }
+        // Default for other roles
+        else {
+          suggestedSkills = ['Communication', 'Problem Solving', 'Teamwork', 'Adaptability', 'Time Management', 'Collaboration', 'Technical Skills', 'Industry Knowledge'];
+        }
+        
+        // Generate salary based on location and experience
+        if (location) {
+          const locationLower = location.toLowerCase();
+          
+          // Switzerland locations (higher salaries)
+          if (locationLower.includes('suisse') || locationLower.includes('switzerland') || 
+              locationLower.includes('genève') || locationLower.includes('geneva') || 
+              locationLower.includes('zurich') || locationLower.includes('bern') || 
+              locationLower.includes('basel') || locationLower.includes('lausanne')) {
+            suggestedSalaryMin = 70000 + (suggestedExperienceMin * 5000);
+            suggestedSalaryMax = 100000 + (suggestedExperienceMax * 7000);
+            suggestedSalaryCurrency = "CHF";
+          }
+          // UK locations
+          else if (locationLower.includes('uk') || locationLower.includes('united kingdom') || 
+                  locationLower.includes('london') || locationLower.includes('londres') || 
+                  locationLower.includes('manchester') || locationLower.includes('birmingham')) {
+            suggestedSalaryMin = 35000 + (suggestedExperienceMin * 3000);
+            suggestedSalaryMax = 50000 + (suggestedExperienceMax * 5000);
+            suggestedSalaryCurrency = "GBP";
+          }
+          // France locations
+          else if (locationLower.includes('france') || locationLower.includes('paris') || 
+                  locationLower.includes('lyon') || locationLower.includes('marseille') || 
+                  locationLower.includes('toulouse') || locationLower.includes('nice')) {
+            suggestedSalaryMin = 35000 + (suggestedExperienceMin * 2000);
+            suggestedSalaryMax = 45000 + (suggestedExperienceMax * 3000);
+            suggestedSalaryCurrency = "EUR";
+            
+            // Paris has higher salaries
+            if (locationLower.includes('paris')) {
+              suggestedSalaryMin += 5000;
+              suggestedSalaryMax += 10000;
+            }
+          }
+          // USA locations (higher salaries)
+          else if (locationLower.includes('usa') || locationLower.includes('united states') || 
+                  locationLower.includes('us') || locationLower.includes('états-unis') || 
+                  locationLower.includes('new york') || locationLower.includes('san francisco') || 
+                  locationLower.includes('seattle') || locationLower.includes('boston')) {
+            suggestedSalaryMin = 70000 + (suggestedExperienceMin * 5000);
+            suggestedSalaryMax = 100000 + (suggestedExperienceMax * 10000);
+            suggestedSalaryCurrency = "USD";
+            
+            // Adjust for tech hubs
+            if (locationLower.includes('san francisco') || locationLower.includes('silicon valley') || 
+                locationLower.includes('new york') || locationLower.includes('seattle')) {
+              suggestedSalaryMin += 20000;
+              suggestedSalaryMax += 50000;
+            }
+          }
+          // Default to EUR with moderate salaries
+          else {
+            suggestedSalaryMin = 30000 + (suggestedExperienceMin * 2000);
+            suggestedSalaryMax = 45000 + (suggestedExperienceMax * 2500);
+            suggestedSalaryCurrency = "EUR";
+          }
+        }
+        
+        // Generate a default description
+        suggestedDescription = `# ${title}\n\n`;
+        if (location) {
+          suggestedDescription += `## Localisation\n${location}\n\n`;
+        }
+        
+        suggestedDescription += `## Description du poste\nNous recherchons un${title.match(/^[aeiouyéèêAEIOUYÉÈÊ]/i) ? "'" : " "}${title} `;
+        suggestedDescription += `avec au moins ${suggestedExperienceMin} ans d'expérience `;
+        suggestedDescription += `pour rejoindre notre équipe. `;
+        suggestedDescription += `Vous travaillerez sur des projets passionnants dans un environnement `;
+        suggestedDescription += `${suggestedRemotePreference === "Sur site" ? "collaboratif sur site" : 
+                               suggestedRemotePreference === "Hybride" ? "flexible en mode hybride" : "entièrement en télétravail"}.\n\n`;
+        
+        suggestedDescription += "### Responsabilités\n";
+        suggestedDescription += "- Concevoir et développer des solutions innovantes\n";
+        suggestedDescription += "- Collaborer avec l'équipe pour atteindre les objectifs du projet\n";
+        suggestedDescription += "- Participer aux réunions d'équipe et aux revues de code\n";
+        suggestedDescription += "- Assurer la qualité et la maintenabilité du code\n";
+        suggestedDescription += "- Résoudre les problèmes techniques et optimiser les performances\n\n";
+        
+        suggestedDescription += "### Compétences requises\n";
+        suggestedDescription += suggestedSkills.map(skill => `- ${skill}`).join("\n") + "\n\n";
+        
+        suggestedDescription += "### Profil recherché\n";
+        suggestedDescription += `- Formation : ${suggestedEducation}\n`;
+        suggestedDescription += `- Expérience : ${suggestedExperienceMin} à ${suggestedExperienceMax} ans\n`;
+        suggestedDescription += `- Type de contrat : ${suggestedContractType}\n`;
+        suggestedDescription += `- Mode de travail : ${suggestedRemotePreference}\n\n`;
+        
+        suggestedDescription += "### Rémunération\n";
+        suggestedDescription += `Salaire : ${suggestedSalaryMin.toLocaleString()} à ${suggestedSalaryMax.toLocaleString()} ${suggestedSalaryCurrency} par an\n`;
+      }
+      
+      // Construct the suggestion object
+      return {
+        title: suggestedTitle,
+        description: suggestedDescription,
+        requiredSkills: suggestedSkills,
+        education: suggestedEducation,
+        experience: {
+          min: suggestedExperienceMin,
+          max: suggestedExperienceMax
+        },
+        contractType: suggestedContractType,
+        remotePreference: suggestedRemotePreference,
+        location: suggestedLocation,
+        salary: {
+          min: suggestedSalaryMin,
+          max: suggestedSalaryMax,
+          currency: suggestedSalaryCurrency
+        }
+      };
+    } catch (error) {
+      console.error("Error generating job offer suggestions:", error);
+      throw error;
     }
-    
-    // Default salary ranges by country/currency
-    const salarySuggestions: Record<string, { min: number, max: number }> = {
-      'EUR': { min: 45000, max: 65000 },
-      'CHF': { min: 90000, max: 120000 },
-      'GBP': { min: 40000, max: 60000 },
-      'USD': { min: 70000, max: 110000 }
-    };
-    
-    // Career level adjectives to detect in the title
-    const juniorKeywords = ['junior', 'débutant', 'assistant', 'stagiaire'];
-    const seniorKeywords = ['senior', 'expert', 'lead', 'principal', 'chef', 'responsable', 'manager', 'directeur'];
-    
-    // Adjust salary based on career level suggested in the title
-    let salaryMultiplier = 1;
-    const titleLower = title.toLowerCase();
-    
-    if (juniorKeywords.some(word => titleLower.includes(word))) {
-      salaryMultiplier = 0.8; // 20% lower for junior positions
-    } else if (seniorKeywords.some(word => titleLower.includes(word))) {
-      salaryMultiplier = 1.3; // 30% higher for senior positions
-    }
-    
-    // Apply the multiplier to the salary range
-    const baseSalary = salarySuggestions[currency] || salarySuggestions['EUR'];
-    const salaryMin = Math.round(baseSalary.min * salaryMultiplier);
-    const salaryMax = Math.round(baseSalary.max * salaryMultiplier);
-    
-    // Generate skills and other suggestions based on job title
-    const suggestions = generateSuggestionsBasedOnJobTitle(title);
-    
-    // Combine everything into the job offer suggestion
-    return {
-      title: title,
-      description: suggestions.description,
-      requiredSkills: suggestions.requiredSkills,
-      preferredSkills: suggestions.preferredSkills,
-      experience: {
-        min: suggestions.experienceYearsMin,
-        max: suggestions.experienceYearsMax
-      },
-      education: suggestions.educationLevel,
-      salary: {
-        min: salaryMin,
-        max: salaryMax,
-        currency: currency
-      },
-      contractType: suggestions.contractType,
-      remotePreference: suggestions.remotePreference,
-      benefits: suggestions.benefits,
-      industrySectors: suggestions.industrySectors
-    };
   }
 };
-
-/**
- * Helper function to generate suggestions based on job title
- */
-function generateSuggestionsBasedOnJobTitle(title: string): any {
-  const titleLower = title.toLowerCase();
-  
-  // Base template
-  const baseSuggestion = {
-    description: `Nous recherchons un(e) ${title} talentueux(se) pour rejoindre notre équipe.`,
-    requiredSkills: [],
-    preferredSkills: [],
-    experienceYearsMin: 2,
-    experienceYearsMax: 5,
-    educationLevel: "Bac+5",
-    contractType: "CDI",
-    remotePreference: "Hybride",
-    benefits: ["Tickets restaurant", "Mutuelle d'entreprise", "RTT"],
-    industrySectors: ["Conseil"]
-  };
-
-  // Developer/Engineer roles
-  if (titleLower.includes('développeur') || titleLower.includes('developpeur') || 
-      titleLower.includes('developer') || titleLower.includes('ingénieur') || 
-      titleLower.includes('ingenieur') || titleLower.includes('engineer')) {
-    
-    baseSuggestion.description = `Nous recherchons un(e) ${title} talentueux(se) pour concevoir, développer et maintenir des applications innovantes. Le/la candidat(e) idéal(e) devra avoir une solide expérience en développement logiciel, une bonne compréhension des principes de conception et être à l'aise pour travailler en équipe dans un environnement agile.`;
-    
-    // Add general development skills
-    baseSuggestion.requiredSkills = [
-      { name: "Algorithmes et structures de données", level: "Confirmé" },
-      { name: "Git", level: "Confirmé" },
-      { name: "Tests unitaires", level: "Intermédiaire" },
-      { name: "Méthodologies Agile/Scrum", level: "Intermédiaire" }
-    ];
-    
-    baseSuggestion.preferredSkills = [
-      { name: "DevOps", level: "Notions" },
-      { name: "Architecture logicielle", level: "Intermédiaire" }
-    ];
-    
-    // Frontend developer
-    if (titleLower.includes('front') || titleLower.includes('web') || titleLower.includes('ui')) {
-      baseSuggestion.description = `Nous recherchons un(e) ${title} talentueux(se) pour concevoir et développer des interfaces utilisateur modernes et réactives. Le/la candidat(e) idéal(e) possède une solide expérience en développement frontend, maîtrise HTML, CSS et JavaScript, et a travaillé avec des frameworks modernes comme React ou Vue.js.`;
-      
-      baseSuggestion.requiredSkills.push(
-        { name: "HTML5", level: "Confirmé" },
-        { name: "CSS3/SASS", level: "Confirmé" },
-        { name: "JavaScript", level: "Confirmé" },
-        { name: "React", level: "Confirmé" },
-        { name: "Responsive Design", level: "Confirmé" }
-      );
-      
-      baseSuggestion.preferredSkills.push(
-        { name: "TypeScript", level: "Intermédiaire" },
-        { name: "Redux", level: "Intermédiaire" },
-        { name: "Next.js", level: "Intermédiaire" },
-        { name: "UX/UI Design", level: "Notions" },
-        { name: "Jest", level: "Intermédiaire" }
-      );
-    }
-    
-    // Backend developer
-    if (titleLower.includes('back') || titleLower.includes('api') || titleLower.includes('server')) {
-      baseSuggestion.description = `Nous recherchons un(e) ${title} expérimenté(e) pour concevoir, développer et maintenir nos systèmes backend et APIs. Le/la candidat(e) idéal(e) doit avoir une solide expérience dans le développement de services backend performants, sécurisés et évolutifs.`;
-      
-      baseSuggestion.requiredSkills.push(
-        { name: "Conception d'API RESTful", level: "Confirmé" },
-        { name: "SQL", level: "Confirmé" },
-        { name: "Node.js", level: "Confirmé" },
-        { name: "Express.js", level: "Confirmé" }
-      );
-      
-      baseSuggestion.preferredSkills.push(
-        { name: "MongoDB", level: "Intermédiaire" },
-        { name: "GraphQL", level: "Intermédiaire" },
-        { name: "Docker", level: "Intermédiaire" },
-        { name: "Microservices", level: "Intermédiaire" },
-        { name: "AWS/Azure/GCP", level: "Intermédiaire" }
-      );
-    }
-    
-    // Fullstack developer
-    if (titleLower.includes('full') || titleLower.includes('stack')) {
-      baseSuggestion.description = `Nous recherchons un(e) ${title} polyvalent(e) capable de travailler à la fois sur le frontend et le backend de nos applications. Le/la candidat(e) idéal(e) doit avoir une solide expérience dans le développement web complet, avec la capacité de passer d'une couche à l'autre de l'application en fonction des besoins du projet.`;
-      
-      baseSuggestion.requiredSkills.push(
-        { name: "HTML5/CSS3", level: "Confirmé" },
-        { name: "JavaScript", level: "Confirmé" },
-        { name: "React ou Angular", level: "Confirmé" },
-        { name: "Node.js", level: "Confirmé" },
-        { name: "SQL", level: "Confirmé" },
-        { name: "Conception d'API RESTful", level: "Confirmé" }
-      );
-      
-      baseSuggestion.preferredSkills.push(
-        { name: "TypeScript", level: "Intermédiaire" },
-        { name: "MongoDB", level: "Intermédiaire" },
-        { name: "Docker", level: "Intermédiaire" },
-        { name: "CI/CD", level: "Intermédiaire" },
-        { name: "AWS/Azure/GCP", level: "Intermédiaire" }
-      );
-    }
-    
-    // Java developer
-    if (titleLower.includes('java') && !titleLower.includes('javascript')) {
-      baseSuggestion.description = `Nous recherchons un(e) ${title} expérimenté(e) pour concevoir, développer et maintenir nos applications Java. Le/la candidat(e) idéal(e) doit avoir une solide connaissance de l'écosystème Java et de ses frameworks, ainsi qu'une bonne compréhension des principes de conception orientée objet.`;
-      
-      baseSuggestion.requiredSkills.push(
-        { name: "Java SE", level: "Confirmé" },
-        { name: "Spring Boot", level: "Confirmé" },
-        { name: "Hibernate/JPA", level: "Confirmé" },
-        { name: "SQL", level: "Confirmé" },
-        { name: "Maven/Gradle", level: "Confirmé" }
-      );
-      
-      baseSuggestion.preferredSkills.push(
-        { name: "Microservices", level: "Intermédiaire" },
-        { name: "Docker", level: "Intermédiaire" },
-        { name: "Kubernetes", level: "Notions" },
-        { name: "JUnit", level: "Intermédiaire" },
-        { name: "CI/CD", level: "Intermédiaire" }
-      );
-    }
-    
-    // .NET developer
-    if (titleLower.includes('.net') || titleLower.includes('c#') || titleLower.includes('asp.net')) {
-      baseSuggestion.description = `Nous recherchons un(e) ${title} expérimenté(e) pour concevoir, développer et maintenir nos applications .NET. Le/la candidat(e) idéal(e) doit avoir une solide expérience avec l'écosystème Microsoft et une bonne compréhension des principes de conception orientée objet.`;
-      
-      baseSuggestion.requiredSkills.push(
-        { name: "C#", level: "Confirmé" },
-        { name: "ASP.NET Core", level: "Confirmé" },
-        { name: "Entity Framework", level: "Confirmé" },
-        { name: "SQL Server", level: "Confirmé" },
-        { name: "LINQ", level: "Confirmé" }
-      );
-      
-      baseSuggestion.preferredSkills.push(
-        { name: "Azure", level: "Intermédiaire" },
-        { name: "Microservices", level: "Intermédiaire" },
-        { name: "Docker", level: "Intermédiaire" },
-        { name: "Xamarin/MAUI", level: "Notions" },
-        { name: "CI/CD", level: "Intermédiaire" }
-      );
-    }
-    
-    // Python developer
-    if (titleLower.includes('python') || titleLower.includes('django') || titleLower.includes('flask')) {
-      baseSuggestion.description = `Nous recherchons un(e) ${title} expérimenté(e) pour développer et maintenir nos applications Python. Le/la candidat(e) idéal(e) doit avoir une solide expérience en développement Python et une bonne connaissance des frameworks comme Django ou Flask.`;
-      
-      baseSuggestion.requiredSkills.push(
-        { name: "Python", level: "Confirmé" },
-        { name: "Django/Flask", level: "Confirmé" },
-        { name: "SQL", level: "Confirmé" },
-        { name: "API RESTful", level: "Confirmé" }
-      );
-      
-      baseSuggestion.preferredSkills.push(
-        { name: "Docker", level: "Intermédiaire" },
-        { name: "Pandas/NumPy", level: "Intermédiaire" },
-        { name: "Pytest", level: "Intermédiaire" },
-        { name: "CI/CD", level: "Intermédiaire" },
-        { name: "AWS/Azure/GCP", level: "Intermédiaire" }
-      );
-    }
-  }
-  
-  // Data roles (Data Scientist, Data Analyst, etc.)
-  else if (titleLower.includes('data')) {
-    baseSuggestion.description = `Nous recherchons un(e) ${title} talentueux(se) pour rejoindre notre équipe. Le/la candidat(e) idéal(e) aura une solide compréhension des méthodes d'analyse de données et des technologies associées, avec la capacité de traduire des données complexes en insights actionnables.`;
-    
-    // Common data skills
-    baseSuggestion.requiredSkills = [
-      { name: "SQL", level: "Confirmé" },
-      { name: "Excel avancé", level: "Confirmé" },
-      { name: "Visualisation de données", level: "Confirmé" }
-    ];
-    
-    // Data Scientist
-    if (titleLower.includes('scientist') || titleLower.includes('machine learning') || 
-        titleLower.includes('ml') || titleLower.includes('ai')) {
-      
-      baseSuggestion.description = `Nous recherchons un(e) ${title} expérimenté(e) pour développer des modèles d'apprentissage automatique et d'intelligence artificielle innovants. Le/la candidat(e) idéal(e) possède une solide formation en statistiques, mathématiques et informatique, avec une expérience pratique dans le développement et le déploiement de modèles de machine learning.`;
-      
-      baseSuggestion.requiredSkills.push(
-        { name: "Python", level: "Confirmé" },
-        { name: "Scikit-learn", level: "Confirmé" },
-        { name: "TensorFlow/PyTorch", level: "Confirmé" },
-        { name: "Pandas/NumPy", level: "Confirmé" },
-        { name: "Machine Learning", level: "Confirmé" },
-        { name: "Statistiques", level: "Confirmé" }
-      );
-      
-      baseSuggestion.preferredSkills.push(
-        { name: "Deep Learning", level: "Intermédiaire" },
-        { name: "NLP", level: "Intermédiaire" },
-        { name: "Computer Vision", level: "Notions" },
-        { name: "MLOps", level: "Intermédiaire" },
-        { name: "Big Data (Spark)", level: "Intermédiaire" }
-      );
-      
-      baseSuggestion.educationLevel = "Bac+5/Doctorat";
-    }
-    
-    // Data Analyst
-    else if (titleLower.includes('analyst') || titleLower.includes('analyste')) {
-      baseSuggestion.description = `Nous recherchons un(e) ${title} expérimenté(e) pour analyser et interpréter des ensembles de données complexes afin d'en extraire des insights pertinents pour l'entreprise. Le/la candidat(e) idéal(e) possède de solides compétences analytiques, une maîtrise des outils d'analyse de données et d'excellentes capacités de communication.`;
-      
-      baseSuggestion.requiredSkills.push(
-        { name: "Python/R", level: "Intermédiaire" },
-        { name: "Tableau/Power BI", level: "Confirmé" },
-        { name: "Analyse statistique", level: "Confirmé" },
-        { name: "Reporting", level: "Confirmé" }
-      );
-      
-      baseSuggestion.preferredSkills.push(
-        { name: "ETL", level: "Notions" },
-        { name: "A/B Testing", level: "Intermédiaire" },
-        { name: "Google Analytics", level: "Intermédiaire" }
-      );
-    }
-    
-    // Data Engineer
-    else if (titleLower.includes('engineer') || titleLower.includes('ingénieur') || 
-             titleLower.includes('ingenieur')) {
-      baseSuggestion.description = `Nous recherchons un(e) ${title} expérimenté(e) pour concevoir, construire et maintenir nos infrastructures de données. Le/la candidat(e) idéal(e) possède une solide expérience dans la création de pipelines de données robustes, évolutifs et efficaces, avec une bonne compréhension des technologies big data.`;
-      
-      baseSuggestion.requiredSkills.push(
-        { name: "Python", level: "Confirmé" },
-        { name: "ETL/ELT", level: "Confirmé" },
-        { name: "Big Data (Hadoop, Spark)", level: "Confirmé" },
-        { name: "Data Warehousing", level: "Confirmé" },
-        { name: "Cloud (AWS/Azure/GCP)", level: "Confirmé" }
-      );
-      
-      baseSuggestion.preferredSkills.push(
-        { name: "Kafka/RabbitMQ", level: "Intermédiaire" },
-        { name: "Airflow", level: "Intermédiaire" },
-        { name: "Docker/Kubernetes", level: "Intermédiaire" },
-        { name: "NoSQL", level: "Intermédiaire" }
-      );
-    }
-  }
-  
-  // Project Manager / Product Owner
-  else if (titleLower.includes('project manager') || titleLower.includes('chef de projet') || 
-           titleLower.includes('product owner') || titleLower.includes('scrum master')) {
-    
-    if (titleLower.includes('product owner')) {
-      baseSuggestion.description = `Nous recherchons un(e) ${title} expérimenté(e) pour gérer le backlog produit et assurer la liaison entre les parties prenantes et l'équipe de développement. Le/la candidat(e) idéal(e) doit avoir une solide expérience en gestion de produits agiles, avec d'excellentes compétences en communication et une bonne compréhension technique.`;
-      
-      baseSuggestion.requiredSkills = [
-        { name: "Méthodologies Agile/Scrum", level: "Confirmé" },
-        { name: "Gestion de backlog", level: "Confirmé" },
-        { name: "User Stories", level: "Confirmé" },
-        { name: "Jira", level: "Confirmé" },
-        { name: "Communication", level: "Confirmé" }
-      ];
-      
-      baseSuggestion.preferredSkills = [
-        { name: "Certification Scrum Product Owner", level: "Confirmé" },
-        { name: "UX/UI", level: "Intermédiaire" },
-        { name: "Analyse de données", level: "Intermédiaire" },
-        { name: "Présentation", level: "Confirmé" },
-        { name: "Connaissances techniques", level: "Intermédiaire" }
-      ];
-    } else if (titleLower.includes('scrum master')) {
-      baseSuggestion.description = `Nous recherchons un(e) ${title} expérimenté(e) pour faciliter les processus Agile/Scrum au sein de nos équipes de développement. Le/la candidat(e) idéal(e) doit avoir une solide connaissance des méthodologies agiles, d'excellentes compétences en facilitation et la capacité d'aider l'équipe à s'améliorer continuellement.`;
-      
-      baseSuggestion.requiredSkills = [
-        { name: "Méthodologies Agile/Scrum", level: "Confirmé" },
-        { name: "Facilitation d'équipe", level: "Confirmé" },
-        { name: "Résolution de problèmes", level: "Confirmé" },
-        { name: "Jira", level: "Confirmé" },
-        { name: "Communication", level: "Confirmé" }
-      ];
-      
-      baseSuggestion.preferredSkills = [
-        { name: "Certification Scrum Master", level: "Confirmé" },
-        { name: "Kanban", level: "Intermédiaire" },
-        { name: "Coaching", level: "Intermédiaire" },
-        { name: "Connaissances techniques", level: "Intermédiaire" }
-      ];
-    } else {
-      baseSuggestion.description = `Nous recherchons un(e) ${title} expérimenté(e) pour diriger et coordonner nos projets de bout en bout. Le/la candidat(e) idéal(e) possède une solide expérience en gestion de projet, d'excellentes compétences en communication et en coordination, et la capacité de mener des projets à bien dans les délais et le budget impartis.`;
-      
-      baseSuggestion.requiredSkills = [
-        { name: "Méthodologies de gestion de projet", level: "Confirmé" },
-        { name: "MS Project/Jira/Trello", level: "Confirmé" },
-        { name: "Gestion des parties prenantes", level: "Confirmé" },
-        { name: "Planification et budgétisation", level: "Confirmé" },
-        { name: "Communication", level: "Confirmé" }
-      ];
-      
-      baseSuggestion.preferredSkills = [
-        { name: "Certification PMP/Prince2", level: "Intermédiaire" },
-        { name: "Méthodologies Agile/Scrum", level: "Intermédiaire" },
-        { name: "Gestion des risques", level: "Intermédiaire" },
-        { name: "Présentation", level: "Confirmé" },
-        { name: "Connaissances techniques", level: "Intermédiaire" }
-      ];
-    }
-    
-    baseSuggestion.experienceYearsMin = 3;
-    baseSuggestion.experienceYearsMax = 8;
-  }
-  
-  // Consultant
-  else if (titleLower.includes('consultant')) {
-    baseSuggestion.description = `Nous recherchons un(e) ${title} expérimenté(e) pour accompagner nos clients dans leurs projets de transformation. Le/la candidat(e) idéal(e) possède une solide expertise dans son domaine, d'excellentes compétences en communication et en résolution de problèmes, ainsi que la capacité de travailler efficacement avec les clients.`;
-    
-    baseSuggestion.requiredSkills = [
-      { name: "Analyse de besoins", level: "Confirmé" },
-      { name: "Résolution de problèmes", level: "Confirmé" },
-      { name: "Communication", level: "Confirmé" },
-      { name: "Présentation", level: "Confirmé" },
-      { name: "Microsoft Office", level: "Confirmé" }
-    ];
-    
-    baseSuggestion.preferredSkills = [
-      { name: "Gestion de projet", level: "Intermédiaire" },
-      { name: "Méthodologies Agile", level: "Intermédiaire" },
-      { name: "Analyse de données", level: "Intermédiaire" }
-    ];
-    
-    baseSuggestion.experienceYearsMin = 3;
-    baseSuggestion.experienceYearsMax = 8;
-    
-    // Management consultant
-    if (titleLower.includes('management')) {
-      baseSuggestion.description = `Nous recherchons un(e) ${title} expérimenté(e) pour accompagner nos clients dans l'amélioration de leurs performances organisationnelles et opérationnelles. Le/la candidat(e) idéal(e) possède une solide expertise en stratégie d'entreprise, en optimisation des processus et en gestion du changement.`;
-      
-      baseSuggestion.requiredSkills.push(
-        { name: "Stratégie d'entreprise", level: "Confirmé" },
-        { name: "Optimisation des processus", level: "Confirmé" },
-        { name: "Gestion du changement", level: "Confirmé" }
-      );
-      
-      baseSuggestion.preferredSkills.push(
-        { name: "Lean/Six Sigma", level: "Intermédiaire" },
-        { name: "Business Analysis", level: "Confirmé" },
-        { name: "Modélisation financière", level: "Intermédiaire" }
-      );
-    }
-    
-    // IT consultant
-    if (titleLower.includes('it') || titleLower.includes('système') || titleLower.includes('technologie')) {
-      baseSuggestion.description = `Nous recherchons un(e) ${title} expérimenté(e) pour accompagner nos clients dans leurs projets de transformation digitale et d'optimisation des systèmes d'information. Le/la candidat(e) idéal(e) possède une solide expertise technique et une bonne compréhension des enjeux business.`;
-      
-      baseSuggestion.requiredSkills.push(
-        { name: "Architecture IT", level: "Confirmé" },
-        { name: "Analyse de systèmes", level: "Confirmé" },
-        { name: "Cloud (AWS/Azure/GCP)", level: "Confirmé" }
-      );
-      
-      baseSuggestion.preferredSkills.push(
-        { name: "DevOps", level: "Intermédiaire" },
-        { name: "Cybersécurité", level: "Intermédiaire" },
-        { name: "ITIL", level: "Intermédiaire" }
-      );
-    }
-  }
-  
-  // If no specific role was matched, keep the default template
-  
-  // Set more appropriate experience years for senior roles
-  if (title.toLowerCase().includes('senior') || title.toLowerCase().includes('lead') || 
-      title.toLowerCase().includes('principal') || title.toLowerCase().includes('manager')) {
-    baseSuggestion.experienceYearsMin = 5;
-    baseSuggestion.experienceYearsMax = 10;
-  }
-  
-  // Set more appropriate experience years for junior roles
-  if (title.toLowerCase().includes('junior') || title.toLowerCase().includes('assistant') || 
-      title.toLowerCase().includes('débutant')) {
-    baseSuggestion.experienceYearsMin = 0;
-    baseSuggestion.experienceYearsMax = 2;
-  }
-  
-  return baseSuggestion;
-}

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Sparkles, Info, Plus } from 'lucide-react';
+import { Loader2, Sparkles, Info, Plus, Wand2 } from 'lucide-react';
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/jobOfferService';
-import { candidateMatchingService, JobOfferSuggestion } from '@/services/data/candidateMatchingService';
+import { candidateMatchingService } from '@/services/data/candidateMatchingService';
+import { JobOfferSuggestion } from '@/services/data/candidateMatchingService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,6 +23,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import type { JobOffer } from '@/services/data/jobOfferService';
 
 const jobOfferSchema = z.object({
@@ -69,6 +72,9 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
   const [suggestion, setSuggestion] = useState<JobOfferSuggestion | null>(null);
   const [showSuggestionDialog, setShowSuggestionDialog] = useState(false);
   const [isCustomCompany, setIsCustomCompany] = useState(false);
+  const [freeformInput, setFreeformInput] = useState('');
+  const [activeTab, setActiveTab] = useState<string>('standard');
+  
   const navigate = useNavigate();
   
   const form = useForm<JobOfferFormValues>({
@@ -301,6 +307,97 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     });
   };
   
+  const generateFromFreeform = async () => {
+    if (!freeformInput || freeformInput.trim().length < 10) {
+      toast({
+        title: "Information insuffisante",
+        description: "Veuillez saisir plus d'informations pour générer des suggestions pertinentes.",
+      });
+      return;
+    }
+    
+    try {
+      setLoadingAiSuggestions(true);
+      
+      const firstLine = freeformInput.split('\n')[0].trim();
+      const possibleTitle = firstLine.length < 100 ? firstLine : freeformInput.split('.')[0].trim();
+      const jobTitle = possibleTitle.length < 100 ? possibleTitle : "Offre d'emploi";
+      
+      const locationMatch = freeformInput.match(/\b(?:à|en|sur|dans|près de|proche de)\s+([A-Z][a-zÀ-ÿ-]+(?:\s+[A-Z][a-zÀ-ÿ-]+)*)/);
+      const location = locationMatch ? locationMatch[1] : "";
+      
+      const suggestions = await candidateMatchingService.generateJobOfferSuggestions(jobTitle, location, freeformInput);
+      setSuggestion(suggestions);
+      
+      if (suggestions.title) {
+        form.setValue('title', suggestions.title);
+      }
+      
+      if (suggestions.location) {
+        form.setValue('location', suggestions.location);
+      }
+      
+      if (suggestions.description) {
+        form.setValue('description', suggestions.description);
+      }
+      
+      if (suggestions.requiredSkills && suggestions.requiredSkills.length > 0) {
+        form.setValue('required_skills', suggestions.requiredSkills);
+      }
+      
+      if (suggestions.education) {
+        form.setValue('education_level', suggestions.education);
+      }
+      
+      if (suggestions.experience) {
+        if (suggestion.experience.min !== undefined) {
+          form.setValue('experience_years_min', suggestions.experience.min);
+        }
+        if (suggestion.experience.max !== undefined) {
+          form.setValue('experience_years_max', suggestions.experience.max);
+        }
+      }
+      
+      if (suggestion.contractType) {
+        form.setValue('contract_type', suggestions.contractType);
+      }
+      
+      if (suggestion.remotePreference) {
+        form.setValue('remote_preference', suggestions.remotePreference);
+      }
+      
+      if (suggestion.salary) {
+        if (suggestion.salary.min !== undefined) {
+          form.setValue('salary_min', suggestions.salary.min);
+        }
+        if (suggestion.salary.max !== undefined) {
+          form.setValue('salary_max', suggestions.salary.max);
+        }
+        if (suggestion.salary.currency) {
+          form.setValue('salary_currency', suggestions.salary.currency);
+        }
+      }
+      
+      setShowSuggestionDialog(true);
+      
+      setActiveTab('standard');
+      
+      toast({
+        title: "Analyse terminée",
+        description: "Les suggestions ont été générées et appliquées à partir de votre description."
+      });
+    } catch (error: any) {
+      console.error('Error generating suggestions from freeform input:', error);
+      toast({
+        title: "Erreur",
+        description: error?.message || "Impossible de générer des suggestions à partir de votre description",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingAiSuggestions(false);
+    }
+  };
+  
   if (initialLoading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -311,10 +408,15 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
   }
   
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-navy">Détails de l'offre</h2>
+    <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold text-navy">Détails de l'offre</h2>
+        <div className="flex gap-2">
+          <TabsList>
+            <TabsTrigger value="standard">Formulaire Standard</TabsTrigger>
+            <TabsTrigger value="freeform">Mode Libre</TabsTrigger>
+          </TabsList>
+          
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -322,7 +424,7 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
                   type="button" 
                   variant="outline" 
                   className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:bg-blue-100"
-                  onClick={generateSuggestions}
+                  onClick={activeTab === 'standard' ? generateSuggestions : generateFromFreeform}
                   disabled={loadingAiSuggestions}
                 >
                   {loadingAiSuggestions ? (
@@ -339,398 +441,477 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
             </Tooltip>
           </TooltipProvider>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-6">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Titre du poste *</FormLabel>
-                  <div className="flex gap-2">
-                    <FormControl>
-                      <Input placeholder="ex: Développeur Frontend React" {...field} />
-                    </FormControl>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button type="button" variant="ghost" size="icon">
-                            <Info className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Un titre précis améliore la qualité du matching avec les candidats</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="company"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Entreprise</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner une entreprise" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {PREDEFINED_COMPANIES.map((company) => (
-                          <SelectItem key={company} value={company}>
-                            {company}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+      </div>
+      
+      <TabsContent value="freeform">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wand2 className="h-5 w-5 text-blue-500" />
+              Mode description libre
+            </CardTitle>
+            <CardDescription>
+              Décrivez librement le poste avec vos propres mots. Notre IA analysera votre texte pour générer une offre d'emploi complète.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <Textarea
+                  placeholder="Décrivez le poste, les responsabilités, compétences requises, localisation, type de contrat, expérience souhaitée, etc. 
+                  
+Exemple: Recherche développeur React senior à Paris, 5 ans d'expérience minimum, télétravail partiel possible, maîtrise de TypeScript et NextJS requise. Salaire entre 55K et 65K."
+                  rows={12}
+                  value={freeformInput}
+                  onChange={(e) => setFreeformInput(e.target.value)}
+                  className="font-medium"
+                />
+              </div>
               
-              {isCustomCompany && (
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h3 className="text-blue-700 font-medium mb-2 flex items-center gap-1.5">
+                  <Info className="h-4 w-4" />
+                  Conseils pour obtenir les meilleures suggestions
+                </h3>
+                <ul className="space-y-1.5 text-blue-600 text-sm">
+                  <li className="flex gap-1.5">
+                    <span>•</span> 
+                    <span>Mentionnez le <strong>titre du poste</strong> et la <strong>localisation précise</strong> (ville, pays)</span>
+                  </li>
+                  <li className="flex gap-1.5">
+                    <span>•</span> 
+                    <span>Indiquez les <strong>compétences techniques</strong> essentielles pour le poste</span>
+                  </li>
+                  <li className="flex gap-1.5">
+                    <span>•</span> 
+                    <span>Précisez le <strong>type de contrat</strong> et les <strong>années d'expérience</strong> requises</span>
+                  </li>
+                  <li className="flex gap-1.5">
+                    <span>•</span> 
+                    <span>Ajoutez vos attentes en termes de <strong>télétravail</strong> et <strong>salaire</strong></span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-end">
+            <Button 
+              onClick={generateFromFreeform}
+              disabled={loadingAiSuggestions || freeformInput.trim().length < 10}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {loadingAiSuggestions ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Génération en cours...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="mr-2 h-4 w-4" />
+                  Générer l'offre complète
+                </>
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+      </TabsContent>
+      
+      <TabsContent value="standard">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-6">
                 <FormField
                   control={form.control}
-                  name="custom_company"
+                  name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nom de l'entreprise</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Saisir le nom de l'entreprise" {...field} />
-                      </FormControl>
+                      <FormLabel>Titre du poste *</FormLabel>
+                      <div className="flex gap-2">
+                        <FormControl>
+                          <Input placeholder="ex: Développeur Frontend React" {...field} />
+                        </FormControl>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button type="button" variant="ghost" size="icon">
+                                <Info className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Un titre précis améliore la qualité du matching avec les candidats</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              )}
-              
-              {!isCustomCompany && (
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="company"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Entreprise</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Sélectionner une entreprise" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {PREDEFINED_COMPANIES.map((company) => (
+                              <SelectItem key={company} value={company}>
+                                {company}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  {isCustomCompany && (
+                    <FormField
+                      control={form.control}
+                      name="custom_company"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nom de l'entreprise</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Saisir le nom de l'entreprise" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  
+                  {!isCustomCompany && (
+                    <FormField
+                      control={form.control}
+                      name="location"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Localisation</FormLabel>
+                          <FormControl>
+                            <Input placeholder="ex: Paris, France" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Important pour le matching géographique
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+                
+                {isCustomCompany && (
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Localisation</FormLabel>
+                        <FormControl>
+                          <Input placeholder="ex: Paris, France" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Important pour le matching géographique
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                
                 <FormField
                   control={form.control}
-                  name="location"
+                  name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Localisation</FormLabel>
-                      <FormControl>
-                        <Input placeholder="ex: Paris, France" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        Important pour le matching géographique
+                      <FormLabel>Description du poste</FormLabel>
+                      <div className="flex flex-col">
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Décrivez le poste, les responsabilités, etc."
+                            rows={5}
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription className="mt-1 flex items-center gap-1">
+                          <Info className="h-3 w-3" />
+                          Une description détaillée améliore la qualité du matching
+                        </FormDescription>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="contract_type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type de contrat</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Type de contrat" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="CDI">CDI</SelectItem>
+                            <SelectItem value="CDD">CDD</SelectItem>
+                            <SelectItem value="Intérim">Intérim</SelectItem>
+                            <SelectItem value="Stage">Stage</SelectItem>
+                            <SelectItem value="Alternance">Alternance</SelectItem>
+                            <SelectItem value="Freelance">Freelance</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="remote_preference"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Télétravail</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Politique de télétravail" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Sur site">Sur site</SelectItem>
+                            <SelectItem value="Hybride">Hybride</SelectItem>
+                            <SelectItem value="Full remote">Full remote</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="experience_years_min"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Expérience min. (années)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="0" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="experience_years_max"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Expérience max. (années)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="0" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="required_skills"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Compétences requises</FormLabel>
+                      <div className="flex gap-2">
+                        <FormControl>
+                          <Input
+                            placeholder="ex: JavaScript"
+                            value={skillInput}
+                            onChange={(e) => setSkillInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                addRequiredSkill();
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <Button type="button" onClick={addRequiredSkill}>
+                          Ajouter
+                        </Button>
+                      </div>
+                      <FormDescription className="mt-1 flex items-center gap-1">
+                        <Info className="h-3 w-3" />
+                        Les compétences sont essentielles pour un bon matching avec les candidats
                       </FormDescription>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {field.value?.map((skill, index) => (
+                          <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                            {skill}
+                            <button
+                              type="button"
+                              onClick={() => removeRequiredSkill(skill)}
+                              className="ml-1 hover:text-red-500"
+                            >
+                              ×
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              )}
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="education_level"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Niveau d'éducation</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Niveau d'études requis" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Bac">Bac</SelectItem>
+                            <SelectItem value="Bac+2">Bac+2</SelectItem>
+                            <SelectItem value="Bac+3">Bac+3</SelectItem>
+                            <SelectItem value="Bac+5">Bac+5</SelectItem>
+                            <SelectItem value="Doctorat">Doctorat</SelectItem>
+                            <SelectItem value="Pas de diplôme requis">Pas de diplôme requis</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Statut de l'offre</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Statut" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                            <SelectItem value="draft">Brouillon</SelectItem>
+                            <SelectItem value="closed">Fermée</SelectItem>
+                            <SelectItem value="filled">Pourvue</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="salary_min"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Salaire min.</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="0" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="salary_max"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Salaire max.</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="0" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="salary_currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Devise</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Devise" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="GBP">GBP</SelectItem>
+                            <SelectItem value="CHF">CHF</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             </div>
             
-            {isCustomCompany && (
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Localisation</FormLabel>
-                    <FormControl>
-                      <Input placeholder="ex: Paris, France" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Important pour le matching géographique
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <Separator />
             
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description du poste</FormLabel>
-                  <div className="flex flex-col">
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Décrivez le poste, les responsabilités, etc."
-                        rows={5}
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormDescription className="mt-1 flex items-center gap-1">
-                      <Info className="h-3 w-3" />
-                      Une description détaillée améliore la qualité du matching
-                    </FormDescription>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="contract_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type de contrat</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Type de contrat" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="CDI">CDI</SelectItem>
-                        <SelectItem value="CDD">CDD</SelectItem>
-                        <SelectItem value="Intérim">Intérim</SelectItem>
-                        <SelectItem value="Stage">Stage</SelectItem>
-                        <SelectItem value="Alternance">Alternance</SelectItem>
-                        <SelectItem value="Freelance">Freelance</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="flex justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/job-offers')}
+              >
+                Annuler
+              </Button>
               
-              <FormField
-                control={form.control}
-                name="remote_preference"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Télétravail</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Politique de télétravail" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Sur site">Sur site</SelectItem>
-                        <SelectItem value="Hybride">Hybride</SelectItem>
-                        <SelectItem value="Full remote">Full remote</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <Button type="submit" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isEditing ? "Mettre à jour" : "Créer l'offre"}
+              </Button>
             </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="experience_years_min"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Expérience min. (années)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="0" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="experience_years_max"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Expérience max. (années)</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="0" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
-          
-          <div className="space-y-6">
-            <FormField
-              control={form.control}
-              name="required_skills"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Compétences requises</FormLabel>
-                  <div className="flex gap-2">
-                    <FormControl>
-                      <Input
-                        placeholder="ex: JavaScript"
-                        value={skillInput}
-                        onChange={(e) => setSkillInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addRequiredSkill();
-                          }
-                        }}
-                      />
-                    </FormControl>
-                    <Button type="button" onClick={addRequiredSkill}>
-                      Ajouter
-                    </Button>
-                  </div>
-                  <FormDescription className="mt-1 flex items-center gap-1">
-                    <Info className="h-3 w-3" />
-                    Les compétences sont essentielles pour un bon matching avec les candidats
-                  </FormDescription>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {field.value?.map((skill, index) => (
-                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                        {skill}
-                        <button
-                          type="button"
-                          onClick={() => removeRequiredSkill(skill)}
-                          className="ml-1 hover:text-red-500"
-                        >
-                          ×
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="education_level"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Niveau d'éducation</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Niveau d'études requis" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Bac">Bac</SelectItem>
-                        <SelectItem value="Bac+2">Bac+2</SelectItem>
-                        <SelectItem value="Bac+3">Bac+3</SelectItem>
-                        <SelectItem value="Bac+5">Bac+5</SelectItem>
-                        <SelectItem value="Doctorat">Doctorat</SelectItem>
-                        <SelectItem value="Pas de diplôme requis">Pas de diplôme requis</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Statut de l'offre</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Statut" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                        <SelectItem value="draft">Brouillon</SelectItem>
-                        <SelectItem value="closed">Fermée</SelectItem>
-                        <SelectItem value="filled">Pourvue</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            <div className="grid grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="salary_min"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Salaire min.</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="0" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="salary_max"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Salaire max.</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="0" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="salary_currency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Devise</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Devise" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="GBP">GBP</SelectItem>
-                        <SelectItem value="CHF">CHF</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
-        </div>
-        
-        <Separator />
-        
-        <div className="flex justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate('/job-offers')}
-          >
-            Annuler
-          </Button>
-          
-          <Button type="submit" disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEditing ? "Mettre à jour" : "Créer l'offre"}
-          </Button>
-        </div>
-      </form>
+          </form>
+        </Form>
+      </TabsContent>
 
       <Dialog open={showSuggestionDialog} onOpenChange={setShowSuggestionDialog}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -840,7 +1021,7 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
           </div>
         </DialogContent>
       </Dialog>
-    </Form>
+    </Tabs>
   );
 };
 
