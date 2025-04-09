@@ -4,7 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { candidateDataService, CandidateData } from '@/services/data/candidateDataService';
+import { candidateDataService } from '@/services/data/candidateDataService';
+import { CandidateData } from '@/services/data/candidateService';
 import { ArrowLeft, Briefcase, FileText } from 'lucide-react';
 
 // Import the component tabs

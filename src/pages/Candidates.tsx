@@ -102,7 +102,7 @@ const Candidates = () => {
               onPreviousCompanyChange={() => {}}
               onSkillsChange={() => {}}
               onExperienceChange={() => {}}
-              onEducationChange={() => {}}
+              onEducationLevelChange={() => {}}
               onCertificationChange={() => {}}
               onLanguageChange={() => {}}
               onAvailabilityChange={() => {}}

@@ -1,37 +1,10 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
-import { calculateCandidateQualityScore } from '../analysis/matchingUtils';
 
+// Defining the complete CandidateData interface with all properties
 export interface CandidateData {
-  id: string;
-  first_name?: string;
-  last_name?: string;
-  position?: string;
-  user_id: string;
-  score?: number;
-  skills?: string[];
-  location?: string;
-  company?: string;
-  years_experience?: number;
-  status?: string;
-  updated_at?: string;
-  resume_id?: string;
-  experiences?: Json;
-  education?: Json;
-  languages?: Json;
-  matchDetails?: any; // Add this property to support match details
-}
-
-export interface CandidateMinimal {
-  id: string;
-  first_name?: string;
-  last_name?: string;
-  position?: string;
-  user_id?: string;
-  score?: number;
-}
-
-export interface CreateCandidateOptions {
+  id?: string;
   user_id: string;
   resume_id?: string;
   first_name: string;
@@ -39,207 +12,188 @@ export interface CreateCandidateOptions {
   email?: string;
   phone?: string;
   position?: string;
-  location?: string;
-  company?: string;
   years_experience?: number;
+  location?: string;
   skills?: string[];
-  experiences?: Json;
-  education?: Json;
-  languages?: Json;
   score?: number;
+  status?: string;
+  company?: string;
+  created_at?: string;
+  updated_at?: string;
+  
+  // Additional candidate fields for detailed view
+  experiences?: any[];
+  education?: any[];
+  certifications?: any[];
+  languages?: any[];
+  publications?: any[];
+  interests?: string;
+  professional_references?: any[];
+  availability?: string;
+  salary_expectations?: string;
+  mobility?: string;
+  contract_type?: string;
+  remote_preference?: string;
+  travel_willingness?: string;
+  professional_networks?: any[];
+  continuous_training?: any[];
+  career_objectives?: string;
+  professional_values?: string;
+  work_authorization?: string;
+  special_permits?: string[];
+  industries?: any[];
+  projects?: any[];
+  profile_completeness?: number;
+  last_updated_at?: string;
+  matchDetails?: any; // For matching functionality
 }
 
-export interface UpdateCandidateOptions {
+// Define options for creating and updating candidates
+export interface CreateCandidateOptions extends Omit<CandidateData, 'id'> {}
+export interface UpdateCandidateOptions extends Partial<Omit<CandidateData, 'id'>> {
   id: string;
-  [key: string]: any;
 }
 
-/**
- * Service for candidate management operations
- */
-export const candidateService = {
-  /**
-   * Get all candidates for the current user
-   */
-  async getUserCandidates(): Promise<CandidateData[]> {
-    try {
-      console.log("Fetching user candidates");
-      
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error("User not authenticated");
+// Format candidate data from DB to our application format
+const formatCandidateData = (candidate: any): CandidateData => {
+  if (!candidate) return null as unknown as CandidateData;
+  
+  // Convert JSON fields to arrays if they're strings or ensure they're arrays
+  const ensureArray = (field: Json | null): any[] => {
+    if (!field) return [];
+    if (typeof field === 'string') {
+      try {
+        return JSON.parse(field);
+      } catch (e) {
+        return [field];
       }
-      
-      // Use the RPC function that avoids recursion
-      const { data, error } = await supabase.rpc('get_user_candidates', {
-        user_id_param: user.id
-      });
-      
-      if (error) {
-        console.error("Error fetching candidates:", error);
-        throw error;
-      }
-      
-      // Update candidate scores based on quality algorithm and ensure skills are properly formatted
-      const candidatesWithUpdatedScores = (data || []).map((candidate: any) => {
-        // Convert skills from JSON to array of strings if needed
-        let skills = candidate.skills;
-        if (skills) {
-          if (typeof skills === 'string') {
-            try {
-              skills = JSON.parse(skills);
-            } catch (e) {
-              skills = [skills];
-            }
-          } else if (!Array.isArray(skills)) {
-            // If it's an object but not an array, try to extract values
-            skills = Object.values(skills).filter(Boolean).map(String);
-          }
-        } else {
-          skills = [];
-        }
+    }
+    return Array.isArray(field) ? field : [field];
+  };
 
-        // Only recalculate if score is missing or null
-        let score = candidate.score;
-        if (score === null || score === undefined) {
-          score = calculateCandidateQualityScore({
-            ...candidate,
-            skills
-          });
-        }
-        
-        return {
-          ...candidate,
-          skills,
-          score,
-          user_id: candidate.user_id || user.id // Ensure user_id is present
-        } as CandidateData;
+  return {
+    id: candidate.id,
+    user_id: candidate.user_id,
+    resume_id: candidate.resume_id,
+    first_name: candidate.first_name,
+    last_name: candidate.last_name,
+    email: candidate.email,
+    phone: candidate.phone,
+    position: candidate.position,
+    years_experience: candidate.years_experience,
+    location: candidate.location,
+    skills: ensureArray(candidate.skills),
+    score: candidate.score,
+    status: candidate.status,
+    company: candidate.company,
+    created_at: candidate.created_at,
+    updated_at: candidate.updated_at,
+    experiences: ensureArray(candidate.experiences),
+    education: ensureArray(candidate.education),
+    certifications: ensureArray(candidate.certifications),
+    languages: ensureArray(candidate.languages),
+    publications: ensureArray(candidate.publications),
+    interests: candidate.interests,
+    professional_references: ensureArray(candidate.professional_references),
+    availability: candidate.availability,
+    salary_expectations: candidate.salary_expectations,
+    mobility: candidate.mobility,
+    contract_type: candidate.contract_type,
+    remote_preference: candidate.remote_preference,
+    travel_willingness: candidate.travel_willingness,
+    professional_networks: ensureArray(candidate.professional_networks),
+    continuous_training: ensureArray(candidate.continuous_training),
+    career_objectives: candidate.career_objectives,
+    professional_values: candidate.professional_values,
+    work_authorization: candidate.work_authorization,
+    special_permits: ensureArray(candidate.special_permits),
+    industries: ensureArray(candidate.industries),
+    projects: ensureArray(candidate.projects),
+    profile_completeness: candidate.profile_completeness,
+    last_updated_at: candidate.last_updated_at
+  };
+};
+
+// Define the candidate service with all CRUD operations
+export const candidateService = {
+  getUserCandidates: async (): Promise<CandidateData[]> => {
+    try {
+      const { data, error } = await supabase.rpc('get_user_candidates', {
+        user_id_param: (await supabase.auth.getUser()).data.user?.id
       });
       
-      return candidatesWithUpdatedScores;
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        return [];
+      }
+      
+      return data.map(formatCandidateData);
     } catch (error: any) {
-      console.error("Error in getUserCandidates:", error.message);
-      throw error;
+      console.error('Error in getUserCandidates:', error);
+      throw new Error(`Failed to get candidates: ${error.message}`);
     }
   },
-  
-  /**
-   * Get a candidate by ID
-   */
-  async getCandidateById(candidateId: string): Promise<CandidateData> {
+
+  getCandidateById: async (candidateId: string): Promise<CandidateData> => {
     try {
-      console.log(`Fetching candidate with ID: ${candidateId}`);
-      
-      // Use the RPC function that avoids recursion
-      const { data, error } = await supabase.rpc('get_candidate_by_id_bypassing_rls', {
+      const { data, error } = await supabase.rpc('get_candidate_by_id', {
         candidate_id_param: candidateId
       });
       
-      if (error) {
-        console.error("Error fetching candidate:", error);
-        throw error;
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        throw new Error('Candidate not found');
       }
       
-      if (!data) {
-        throw new Error("Candidate not found");
-      }
-      
-      // Process the data to ensure proper types
-      let candidateData = data as any;
-      
-      // Normalize skills to be an array
-      let skills = candidateData.skills;
-      if (skills) {
-        if (typeof skills === 'string') {
-          try {
-            skills = JSON.parse(skills);
-          } catch (e) {
-            skills = [skills];
-          }
-        } else if (!Array.isArray(skills)) {
-          skills = Object.values(skills).filter(Boolean).map(String);
-        }
-      } else {
-        skills = [];
-      }
-
-      return {
-        ...candidateData,
-        skills
-      } as CandidateData;
+      // This should be formatted as a single CandidateData object
+      return formatCandidateData(data[0]);
     } catch (error: any) {
-      console.error("Error in getCandidateById:", error.message);
-      throw error;
+      console.error('Error in getCandidateById:', error);
+      throw new Error(`Failed to get candidate: ${error.message}`);
     }
   },
   
-  /**
-   * Create a new candidate
-   */
-  async createCandidate(options: CreateCandidateOptions): Promise<string> {
+  createCandidate: async (options: CreateCandidateOptions): Promise<CandidateData> => {
     try {
-      console.log("Creating new candidate:", options.first_name, options.last_name);
-      
       const { data, error } = await supabase
         .from('candidates')
-        .insert([options])
-        .select()
+        .insert(options)
+        .select('*')
         .single();
       
-      if (error) {
-        console.error("Error creating candidate:", error);
-        throw error;
-      }
-      
-      return data.id;
+      if (error) throw error;
+      return formatCandidateData(data);
     } catch (error: any) {
-      console.error("Error in createCandidate:", error.message);
-      throw error;
+      console.error('Error in createCandidate:', error);
+      throw new Error(`Failed to create candidate: ${error.message}`);
     }
   },
   
-  /**
-   * Update an existing candidate
-   */
-  async updateCandidate(options: UpdateCandidateOptions): Promise<CandidateData> {
+  updateCandidate: async (options: UpdateCandidateOptions): Promise<CandidateData> => {
     try {
-      console.log(`Updating candidate with ID: ${options.id}`);
-      
-      const { id, ...updates } = options;
-      
-      // Add last_updated_at timestamp
-      updates.last_updated_at = new Date().toISOString();
+      const { id, ...updateData } = options;
       
       const { data, error } = await supabase
         .from('candidates')
-        .update(updates)
+        .update(updateData)
         .eq('id', id)
-        .select()
+        .select('*')
         .single();
       
-      if (error) {
-        console.error("Error updating candidate:", error);
-        throw error;
-      }
-      
-      return data as CandidateData;
+      if (error) throw error;
+      return formatCandidateData(data);
     } catch (error: any) {
-      console.error("Error in updateCandidate:", error.message);
-      throw error;
+      console.error('Error in updateCandidate:', error);
+      throw new Error(`Failed to update candidate: ${error.message}`);
     }
   },
   
-  /**
-   * Delete a candidate and optionally its associated resume
-   */
-  async deleteCandidate(candidateId: string, deleteResume: boolean = false): Promise<boolean> {
+  deleteCandidate: async (candidateId: string, deleteResume: boolean = false): Promise<boolean> => {
     try {
-      console.log(`Deleting candidate with ID: ${candidateId}`);
-      
-      // First get the candidate to check if it has a resume
-      let resumeId = null;
+      // First, get the candidate to check if it has a resume
+      let resumeId: string | null = null;
       
       if (deleteResume) {
         const { data, error } = await supabase
@@ -248,89 +202,50 @@ export const candidateService = {
           .eq('id', candidateId)
           .single();
         
-        if (error) {
-          console.error("Error fetching candidate resume ID:", error);
-        } else if (data && data.resume_id) {
-          resumeId = data.resume_id;
-        }
+        if (error) throw error;
+        resumeId = data?.resume_id;
       }
       
       // Delete the candidate
-      const { error } = await supabase
+      const { error: deleteError } = await supabase
         .from('candidates')
         .delete()
         .eq('id', candidateId);
       
-      if (error) {
-        console.error("Error deleting candidate:", error);
-        throw error;
-      }
+      if (deleteError) throw deleteError;
       
       // If requested and resume exists, delete it too
       if (deleteResume && resumeId) {
-        console.log(`Also deleting associated resume with ID: ${resumeId}`);
-        
         const { error: resumeError } = await supabase
           .rpc('delete_resume_by_id', { resume_id_param: resumeId });
         
         if (resumeError) {
-          console.error("Error deleting associated resume:", resumeError);
-          // We don't throw here as the candidate was successfully deleted
+          console.error('Error deleting resume:', resumeError);
+          // Don't fail the operation if resume delete fails
         }
       }
       
       return true;
     } catch (error: any) {
-      console.error("Error in deleteCandidate:", error.message);
-      throw error;
+      console.error('Error in deleteCandidate:', error);
+      throw new Error(`Failed to delete candidate: ${error.message}`);
     }
   },
   
-  /**
-   * Update the score for a candidate
-   */
-  async updateCandidateScore(candidateId: string): Promise<number> {
+  updateCandidateStatus: async (candidateId: string, status: string): Promise<CandidateData> => {
     try {
-      console.log(`Updating score for candidate with ID: ${candidateId}`);
-      
-      // First get the candidate data
       const { data, error } = await supabase
         .from('candidates')
-        .select('*')
+        .update({ status })
         .eq('id', candidateId)
+        .select('*')
         .single();
       
-      if (error) {
-        console.error("Error fetching candidate for score update:", error);
-        throw error;
-      }
-      
-      // Calculate new quality score
-      const newScore = calculateCandidateQualityScore(data);
-      
-      // Update the candidate with the new score
-      const { error: updateError } = await supabase
-        .from('candidates')
-        .update({ score: newScore })
-        .eq('id', candidateId);
-      
-      if (updateError) {
-        console.error("Error updating candidate score:", updateError);
-        throw updateError;
-      }
-      
-      return newScore;
+      if (error) throw error;
+      return formatCandidateData(data);
     } catch (error: any) {
-      console.error("Error in updateCandidateScore:", error.message);
-      throw error;
+      console.error('Error in updateCandidateStatus:', error);
+      throw new Error(`Failed to update candidate status: ${error.message}`);
     }
-  },
-  
-  /**
-   * Filter candidates function
-   */
-  filterCandidates: async () => {
-    console.log("Filter candidates function called, but not implemented yet");
-    return [];
   }
 };
