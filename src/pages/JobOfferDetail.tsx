@@ -27,6 +27,17 @@ const JobOfferDetail = () => {
   const [usingMockData, setUsingMockData] = useState(false);
   const navigate = useNavigate();
   
+  // Correction: Ajout d'une vérification pour s'assurer que jobOfferId est défini
+  useEffect(() => {
+    if (!jobOfferId) {
+      setError("ID d'offre d'emploi manquant");
+      setLoading(false);
+      return;
+    }
+    
+    fetchJobOffer();
+  }, [jobOfferId]);
+  
   const fetchJobOffer = async () => {
     if (!jobOfferId) return;
     
@@ -35,9 +46,20 @@ const JobOfferDetail = () => {
       setError(null);
       
       const data = await jobOfferService.getJobOfferById(jobOfferId);
+      
+      if (!data) {
+        setError("Offre d'emploi non trouvée");
+        setLoading(false);
+        return;
+      }
+      
       setJobOffer(data);
       
+      // Correction: Déplacer fetchCandidateMatches ici pour éviter une boucle infinie
       await fetchCandidateMatches();
+      
+      // Correction: S'assurer que loading est mis à false même en cas de succès
+      setLoading(false);
     } catch (error: any) {
       console.error('Error fetching job offer:', error);
       setError(error?.message || "Impossible de récupérer l'offre d'emploi");
@@ -47,7 +69,7 @@ const JobOfferDetail = () => {
         description: error?.message || "Impossible de récupérer l'offre d'emploi",
         variant: "destructive",
       });
-    } finally {
+      
       setLoading(false);
     }
   };
@@ -57,28 +79,37 @@ const JobOfferDetail = () => {
     
     try {
       setUsingMockData(false);
-      const matches = await candidateMatchingService.getMatchesForJobOffer(jobOfferId);
       
-      if (matches && matches.length > 0) {
-        setCandidateMatches(matches);
-      } else {
-        console.log("No real matches found, using mock data");
+      // Correction: Ajouter un try-catch plus robuste
+      try {
+        const matches = await candidateMatchingService.getMatchesForJobOffer(jobOfferId);
+        
+        if (matches && matches.length > 0) {
+          setCandidateMatches(matches);
+        } else {
+          console.log("No real matches found, using mock data");
+          const mockMatches = generateMockMatches(jobOfferId, 8);
+          setCandidateMatches(mockMatches);
+          setUsingMockData(true);
+        }
+      } catch (error) {
+        console.error('Error fetching candidate matches:', error);
+        console.log("Error fetching matches, using mock data");
         const mockMatches = generateMockMatches(jobOfferId, 8);
         setCandidateMatches(mockMatches);
         setUsingMockData(true);
+        
+        toast({
+          title: "Note",
+          description: "Données de correspondance simulées affichées en raison d'un problème technique",
+          variant: "default",
+        });
       }
-    } catch (error: any) {
-      console.error('Error fetching candidate matches:', error);
-      console.log("Error fetching matches, using mock data");
+    } catch (outerError: any) {
+      console.error('Outer error fetching candidate matches:', outerError);
       const mockMatches = generateMockMatches(jobOfferId, 8);
       setCandidateMatches(mockMatches);
       setUsingMockData(true);
-      
-      toast({
-        title: "Note",
-        description: "Données de correspondance simulées affichées en raison d'un problème technique",
-        variant: "default",
-      });
     }
   };
   

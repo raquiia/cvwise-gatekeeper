@@ -1,3 +1,4 @@
+
 // Full implementation of candidate matching service with job offer suggestions
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
