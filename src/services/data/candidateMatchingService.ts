@@ -1,3 +1,4 @@
+
 // Import the necessary libraries and services
 import { JobOffer } from "./jobOfferService";
 import { jobOfferService } from "./jobOfferService";
@@ -360,7 +361,7 @@ export const candidateMatchingService = {
         // Extract skills from text
         const techSkillsList = [
           // Programming languages
-          "Java", "JavaScript", "TypeScript", "Python", "C#", "C++", "C", "Go", "Golang", "Ruby", "PHP", "Swift", 
+          "Java", "JavaScript", "TypeScript", "Python", "C#", "C\\+\\+", "C", "Go", "Golang", "Ruby", "PHP", "Swift", 
           "Kotlin", "Rust", "Scala", "Perl", "Shell", "Bash", "PowerShell", "SQL", "PL/SQL", "T-SQL", "R", 
           "MATLAB", "Objective-C", "Assembly", "Dart", "F#", "Visual Basic", "VB.NET", "COBOL", "Fortran",
           
