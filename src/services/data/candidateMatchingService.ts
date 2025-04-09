@@ -303,7 +303,28 @@ export const candidateMatchingService = {
       
       if (error) throw error;
       
-      return data as CandidateJobMatch;
+      // Convert the raw database result to CandidateJobMatch type
+      if (data) {
+        const matchDetails = convertJsonToMatchDetails(data.match_details);
+        
+        // Cast as unknown first, then to CandidateJobMatch
+        const typedMatch: CandidateJobMatch = {
+          candidate_id: data.candidate_id,
+          job_offer_id: data.job_offer_id,
+          match_score: data.match_score || 0,
+          skills_match_score: data.skills_match_score || 0,
+          experience_match_score: data.experience_match_score || 0,
+          education_match_score: data.education_match_score || 0,
+          location_match_score: data.location_match_score || 0,
+          match_details: matchDetails,
+          created_at: data.created_at,
+          updated_at: data.updated_at
+        };
+        
+        return typedMatch;
+      }
+      
+      return null;
     } catch (error: any) {
       console.error("Error fetching candidate-job match:", error);
       return null;
