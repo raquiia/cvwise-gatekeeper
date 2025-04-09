@@ -31,10 +31,8 @@ export const useUserData = () => {
       try {
         setLoading(true);
         
-        // Using direct query to the profiles table with our secure function
+        // Using our secure function to get profile data
         const { data: userData, error } = await supabase
-          .from('profiles')
-          .select('*')
           .rpc('get_all_profiles_secure');
         
         if (error) {
