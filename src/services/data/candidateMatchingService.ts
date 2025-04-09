@@ -1,3 +1,4 @@
+
 // Full implementation of candidate matching service with job offer suggestions
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -331,12 +332,13 @@ export const candidateMatchingService = {
     }
   },
   
-  // Get all matches for a job offer with a fixed query that avoids recursive issues
+  // Get all matches for a job offer - FIXED to avoid recursion issues
   async getMatchesForJobOffer(jobOfferId: string): Promise<CandidateMatch[]> {
     try {
       console.log(`Getting matches for job offer ID: ${jobOfferId}`);
       
-      // Step 1: Get all matches for the job offer
+      // Avoid profiles table recursion by using a different approach
+      // First get all candidate_job_matches
       const { data: matchesData, error: matchesError } = await supabase
         .from('candidate_job_matches')
         .select('*')
@@ -348,49 +350,55 @@ export const candidateMatchingService = {
       }
       
       if (!matchesData || matchesData.length === 0) {
-        console.log("No matches found in database");
+        console.log("No matches found for this job offer");
         return [];
       }
       
-      // Step 2: Get candidate details separately to avoid recursion issues
+      // Then, get candidate IDs and fetch them separately via the secure RPC function
       const candidateIds = matchesData.map(match => match.candidate_id);
       
       const { data: candidatesData, error: candidatesError } = await supabase
-        .from('candidates')
-        .select('*')
-        .in('id', candidateIds);
+        .rpc('get_candidates_by_ids', {
+          candidate_ids: candidateIds
+        });
       
       if (candidatesError) {
         console.error("Error fetching candidates:", candidatesError);
         throw candidatesError;
       }
       
-      // Step 3: Combine the data, ensuring proper type conversion
-      const combinedData: CandidateMatch[] = matchesData.map(match => {
-        const candidate = candidatesData.find(c => c.id === match.candidate_id) || null;
+      // Now combine the data safely
+      const combinedData: CandidateMatch[] = [];
+      
+      for (const match of matchesData) {
+        // Find corresponding candidate
+        const candidate = candidatesData?.find(c => c.id === match.candidate_id);
         
-        // Convert match_details from Json to MatchDetails using our helper function
-        const matchDetails = convertJsonToMatchDetails(match.match_details);
-        
-        // Fix TypeScript error by explicitly constructing a CandidateJobMatch object
-        const typedMatch: CandidateJobMatch = {
-          candidate_id: match.candidate_id,
-          job_offer_id: match.job_offer_id,
-          match_score: match.match_score || 0,
-          skills_match_score: match.skills_match_score || 0,
-          experience_match_score: match.experience_match_score || 0,
-          education_match_score: match.education_match_score || 0,
-          location_match_score: match.location_match_score || 0,
-          match_details: matchDetails,
-          created_at: match.created_at,
-          updated_at: match.updated_at
-        };
-        
-        return {
-          candidate,
-          match: typedMatch
-        };
-      }).filter(item => item.candidate !== null);
+        if (candidate) {
+          // Convert match_details from Json to MatchDetails
+          const matchDetails = convertJsonToMatchDetails(match.match_details);
+          
+          // Create properly typed CandidateJobMatch object
+          const typedMatch: CandidateJobMatch = {
+            candidate_id: match.candidate_id,
+            job_offer_id: match.job_offer_id,
+            match_score: match.match_score || 0,
+            skills_match_score: match.skills_match_score || 0,
+            experience_match_score: match.experience_match_score || 0,
+            education_match_score: match.education_match_score || 0,
+            location_match_score: match.location_match_score || 0,
+            match_details: matchDetails,
+            created_at: match.created_at,
+            updated_at: match.updated_at
+          };
+          
+          // Add to combined result
+          combinedData.push({
+            candidate,
+            match: typedMatch
+          });
+        }
+      }
       
       return combinedData;
     } catch (error: any) {
