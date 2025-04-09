@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Languages, Globe } from 'lucide-react';
-import { CandidateData } from '@/services/data/candidateDataService';
+import { CandidateData } from '@/services/data/candidateService';
 import { ensureArray, safeString } from '@/utils/candidateUtils';
 
 interface DetailsTabProps {
@@ -10,6 +10,12 @@ interface DetailsTabProps {
 }
 
 const DetailsTab: React.FC<DetailsTabProps> = ({ candidate }) => {
+  console.log("DetailsTab - candidate data:", {
+    languages: candidate.languages,
+    professional_references: candidate.professional_references,
+    professional_networks: candidate.professional_networks
+  });
+  
   const languages = ensureArray<any>(candidate.languages);
   const professional_references = ensureArray<any>(candidate.professional_references);
   const professional_networks = ensureArray<any>(candidate.professional_networks);
@@ -21,6 +27,14 @@ const DetailsTab: React.FC<DetailsTabProps> = ({ candidate }) => {
   // Check if strings have valid content
   const hasValidProfessionalValues = professional_values.trim().length > 0;
   const hasValidWorkAuthorization = work_authorization.trim().length > 0;
+  
+  console.log("DetailsTab - processed data:", {
+    languages,
+    professional_references,
+    professional_networks,
+    professional_values,
+    work_authorization
+  });
 
   return (
     <div className="space-y-6">

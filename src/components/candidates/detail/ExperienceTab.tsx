@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Globe } from 'lucide-react';
-import { CandidateData } from '@/services/data/candidateDataService';
+import { CandidateData } from '@/services/data/candidateService';
 import { ensureArray, isUndefinedObject } from '@/utils/candidateUtils';
 
 interface ExperienceTabProps {
@@ -10,9 +10,14 @@ interface ExperienceTabProps {
 }
 
 const ExperienceTab: React.FC<ExperienceTabProps> = ({ candidate }) => {
+  console.log("ExperienceTab - candidate.experiences:", candidate.experiences);
+  
   // Filter out any undefined objects
   const experiences = ensureArray<any>(candidate.experiences);
   const projects = ensureArray<any>(candidate.projects);
+  
+  console.log("ExperienceTab - processed experiences:", experiences);
+  console.log("ExperienceTab - processed projects:", projects);
 
   return (
     <div className="space-y-6">

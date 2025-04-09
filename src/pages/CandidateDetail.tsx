@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { candidateDataService } from '@/services/data/candidateDataService';
+import { candidateService } from '@/services/data/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
 import { ArrowLeft, Briefcase, FileText } from 'lucide-react';
 import { processCandidateData } from '@/utils/candidateUtils';
@@ -36,16 +37,42 @@ const CandidateDetail = () => {
       try {
         setLoading(true);
         console.log("Fetching candidate with ID:", candidateId);
-        const data = await candidateDataService.getCandidateById(candidateId);
+        
+        // Use candidateService instead of candidateDataService
+        const data = await candidateService.getCandidateById(candidateId);
         
         if (!data) {
           console.log("Candidate not found:", candidateId);
           setError("Candidat non trouvé");
         } else {
           console.log("Candidate data retrieved successfully:", data);
+          console.log("Raw data type:", typeof data);
+          
+          if (typeof data === 'object') {
+            console.log("Data has experiences:", Boolean(data.experiences));
+            console.log("Data has education:", Boolean(data.education));
+            
+            if (data.experiences) {
+              console.log("Experiences type:", typeof data.experiences);
+              console.log("Experiences sample:", JSON.stringify(data.experiences).substring(0, 100) + "...");
+            }
+            
+            if (data.education) {
+              console.log("Education type:", typeof data.education);
+              console.log("Education sample:", JSON.stringify(data.education).substring(0, 100) + "...");
+            }
+          }
+          
           // Process the data to ensure arrays and properties are correctly formatted
           const processedData = processCandidateData(data);
           console.log("Processed candidate data:", processedData);
+          
+          // Additional logging to help debug
+          console.log("Processed experiences:", processedData.experiences);
+          console.log("Processed education:", processedData.education);
+          console.log("Processed languages:", processedData.languages);
+          console.log("Processed certifications:", processedData.certifications);
+          
           setCandidate(processedData);
         }
       } catch (err: any) {

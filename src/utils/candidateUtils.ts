@@ -97,6 +97,17 @@ export function processJobOfferData(jobOffer: any) {
 export function processCandidateData(candidate: any) {
   if (!candidate) return {};
   
+  // Handle the case where candidate data might be nested in a data property
+  // This happens in some API responses
+  if (candidate.data && typeof candidate.data === 'object') {
+    return processCandidateData(candidate.data);
+  }
+  
+  // Handle array case (should be rare, but just in case)
+  if (Array.isArray(candidate) && candidate.length > 0) {
+    return processCandidateData(candidate[0]);
+  }
+  
   return {
     ...candidate,
     skills: ensureStringArray(candidate.skills || []),

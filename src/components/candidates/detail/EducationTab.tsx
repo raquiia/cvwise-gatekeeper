@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Award } from 'lucide-react';
-import { CandidateData } from '@/services/data/candidateDataService';
+import { CandidateData } from '@/services/data/candidateService';
 import { ensureArray, isUndefinedObject } from '@/utils/candidateUtils';
 
 interface EducationTabProps {
@@ -10,9 +10,14 @@ interface EducationTabProps {
 }
 
 const EducationTab: React.FC<EducationTabProps> = ({ candidate }) => {
+  console.log("EducationTab - candidate.education:", candidate.education);
+  
   // Filter out any undefined objects
   const education = ensureArray<any>(candidate.education);
   const certifications = ensureArray<any>(candidate.certifications);
+  
+  console.log("EducationTab - processed education:", education);
+  console.log("EducationTab - processed certifications:", certifications);
 
   return (
     <div className="space-y-6">
