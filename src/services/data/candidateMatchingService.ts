@@ -15,7 +15,11 @@ export interface CandidateJobMatch {
   education_match_score: number;
   location_match_score: number;
   match_details: {
-    skills_details: { score: number };
+    skills_details: { 
+      score: number;
+      matchedSkills?: string[];
+      missingSkills?: string[];
+    };
     experience_details: { score: number };
     education_details: { score: number };
     location_details: { score: number };

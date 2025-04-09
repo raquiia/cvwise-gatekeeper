@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, Edit, RefreshCw, FileText, User, Briefcase } from 'lucide-react';
@@ -16,9 +15,24 @@ import type { JobOffer } from '@/services/data/jobOfferService';
 import type { CandidateData } from '@/services/data/resumeDataService';
 import type { CandidateJobMatch } from '@/services/data/candidateMatchingService';
 
+interface ExtendedSkillsDetails {
+  score: number;
+  matchedSkills?: string[];
+  missingSkills?: string[];
+}
+
+interface ExtendedCandidateJobMatch extends CandidateJobMatch {
+  match_details: {
+    skills_details: ExtendedSkillsDetails;
+    experience_details: { score: number };
+    education_details: { score: number };
+    location_details: { score: number };
+  };
+}
+
 interface CandidateMatch {
   candidate: CandidateData;
-  match: CandidateJobMatch;
+  match: ExtendedCandidateJobMatch;
 }
 
 const JobOfferDetail = () => {
@@ -30,7 +44,6 @@ const JobOfferDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   
-  // Fonction pour charger les données de l'offre d'emploi
   const fetchJobOffer = async () => {
     if (!jobOfferId) return;
     
@@ -41,7 +54,6 @@ const JobOfferDetail = () => {
       const data = await jobOfferService.getJobOfferById(jobOfferId);
       setJobOffer(data);
       
-      // Charger les correspondances de candidats
       await fetchCandidateMatches();
     } catch (error: any) {
       console.error('Error fetching job offer:', error);
@@ -57,7 +69,6 @@ const JobOfferDetail = () => {
     }
   };
   
-  // Fonction pour charger les correspondances de candidats
   const fetchCandidateMatches = async () => {
     if (!jobOfferId) return;
     
@@ -74,14 +85,12 @@ const JobOfferDetail = () => {
     }
   };
   
-  // Fonction pour recalculer les correspondances
   const handleRecalculateMatches = async () => {
     if (!jobOfferId) return;
     
     try {
       setMatchLoading(true);
       
-      // Appeler le service pour recalculer les correspondances
       await candidateMatchingService.calculateMatchesForJobOffer(jobOfferId);
       
       toast({
@@ -89,7 +98,6 @@ const JobOfferDetail = () => {
         description: "Les correspondances ont été recalculées avec succès",
       });
       
-      // Recharger les correspondances
       await fetchCandidateMatches();
     } catch (error: any) {
       console.error('Error recalculating matches:', error);
@@ -103,26 +111,50 @@ const JobOfferDetail = () => {
     }
   };
   
-  // Charger les données au chargement de la page
   useEffect(() => {
     fetchJobOffer();
   }, [jobOfferId]);
   
-  // Fonction pour formater une date
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('fr-FR');
   };
   
-  // Fonction pour naviguer vers le profil d'un candidat
   const handleViewCandidate = (candidateId: string) => {
     navigate(`/candidates/${candidateId}`);
   };
   
-  // Fonction pour éditer l'offre d'emploi
   const handleEditJobOffer = () => {
     if (!jobOfferId) return;
     navigate(`/job-offers/${jobOfferId}/edit`);
+  };
+  
+  const renderMatchedSkills = (match: ExtendedCandidateJobMatch) => {
+    const matchedSkills = match.match_details?.skills_details?.matchedSkills || [];
+    
+    if (matchedSkills.length > 0) {
+      return matchedSkills.map((skill, index) => (
+        <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800 border-green-200">
+          {skill}
+        </Badge>
+      ));
+    } else {
+      return <span className="text-xs text-gray-500 italic">Aucune compétence correspondante</span>;
+    }
+  };
+  
+  const renderMissingSkills = (match: ExtendedCandidateJobMatch) => {
+    const missingSkills = match.match_details?.skills_details?.missingSkills || [];
+    
+    if (missingSkills.length > 0) {
+      return missingSkills.map((skill, index) => (
+        <Badge key={index} variant="outline" className="text-xs bg-red-50 text-red-800 border-red-200">
+          {skill}
+        </Badge>
+      ));
+    } else {
+      return <span className="text-xs text-gray-500 italic">Aucune compétence manquante</span>;
+    }
   };
   
   if (loading) {
@@ -462,15 +494,7 @@ const JobOfferDetail = () => {
                                 <div className="mt-3">
                                   <h4 className="text-sm font-semibold mb-1">Compétences correspondantes:</h4>
                                   <div className="flex flex-wrap gap-1">
-                                    {item.match.match_details?.skills_details?.matchedSkills?.length > 0 ? (
-                                      item.match.match_details.skills_details.matchedSkills.map((skill, index) => (
-                                        <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800 border-green-200">
-                                          {skill}
-                                        </Badge>
-                                      ))
-                                    ) : (
-                                      <span className="text-xs text-gray-500 italic">Aucune compétence correspondante</span>
-                                    )}
+                                    {renderMatchedSkills(item.match)}
                                   </div>
                                 </div>
                               </div>
@@ -534,30 +558,14 @@ const JobOfferDetail = () => {
                                 <div>
                                   <h4 className="text-sm font-semibold mb-2">Compétences correspondantes:</h4>
                                   <div className="flex flex-wrap gap-1">
-                                    {item.match.match_details?.skills_details?.matchedSkills?.length > 0 ? (
-                                      item.match.match_details.skills_details.matchedSkills.map((skill, index) => (
-                                        <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-800 border-green-200">
-                                          {skill}
-                                        </Badge>
-                                      ))
-                                    ) : (
-                                      <span className="text-xs text-gray-500 italic">Aucune compétence correspondante</span>
-                                    )}
+                                    {renderMatchedSkills(item.match)}
                                   </div>
                                 </div>
                                 
                                 <div>
                                   <h4 className="text-sm font-semibold mb-2">Compétences manquantes:</h4>
                                   <div className="flex flex-wrap gap-1">
-                                    {item.match.match_details?.skills_details?.missingSkills?.length > 0 ? (
-                                      item.match.match_details.skills_details.missingSkills.map((skill, index) => (
-                                        <Badge key={index} variant="outline" className="text-xs bg-red-50 text-red-800 border-red-200">
-                                          {skill}
-                                        </Badge>
-                                      ))
-                                    ) : (
-                                      <span className="text-xs text-gray-500 italic">Aucune compétence manquante</span>
-                                    )}
+                                    {renderMissingSkills(item.match)}
                                   </div>
                                 </div>
                               </div>

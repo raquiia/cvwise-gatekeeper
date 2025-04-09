@@ -128,6 +128,11 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     try {
       setLoading(true);
       
+      // Nous nous assurons que title est présent dans values
+      if (!values.title) {
+        throw new Error("Le titre est requis");
+      }
+      
       if (isEditing && jobOfferId) {
         // Mettre à jour l'offre d'emploi existante
         await jobOfferService.updateJobOffer(jobOfferId, values);
@@ -137,7 +142,7 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
         });
       } else {
         // Créer une nouvelle offre d'emploi
-        const newJobOffer = await jobOfferService.createJobOffer(values);
+        const newJobOffer = await jobOfferService.createJobOffer(values as Omit<JobOffer, 'id' | 'user_id' | 'created_at' | 'updated_at'>);
         toast({
           title: "Offre d'emploi créée",
           description: "L'offre d'emploi a été créée avec succès",
