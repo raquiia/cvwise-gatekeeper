@@ -67,13 +67,21 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
       if (activeJobOfferId) {
         setIsLoading(true);
         try {
+          console.log("Active job offer ID:", activeJobOfferId);
+          console.log("Calculating scores for", candidates.length, "candidates");
+          
           // Copy candidates to avoid mutation issues
           const updatedCandidates = [...candidates];
           
           // Calculate match scores for each candidate against the active job
           for (let i = 0; i < updatedCandidates.length; i++) {
             const candidate = updatedCandidates[i];
+            console.log(`Calculating score for candidate: ${candidate.first_name} ${candidate.last_name}`);
+            
             const matchResult = await candidateMatchingService.calculateCandidateActiveJobScore(candidate);
+            
+            // Log match result for debugging
+            console.log(`Match result for ${candidate.first_name} ${candidate.last_name}:`, matchResult);
             
             // Update the candidate score with the match score
             updatedCandidates[i] = {
@@ -88,6 +96,12 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
           console.error("Error updating candidate scores:", error);
           // Fall back to regular candidates if there's an error
           setCandidatesWithScores(candidates);
+          
+          toast({
+            title: "Erreur de calcul des scores",
+            description: "Impossible de calculer les scores pour le poste sélectionné. Utilisation des scores de base.",
+            variant: "destructive",
+          });
         } finally {
           setIsLoading(false);
         }
@@ -105,13 +119,19 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     setIsLoading(true);
     try {
       if (jobOfferId) {
-        await jobOfferService.activateJobOffer(jobOfferId);
-        setActiveJobOfferId(jobOfferId);
+        console.log("Activating job offer:", jobOfferId);
+        const success = await candidateMatchingService.setActiveJobOffer(jobOfferId);
         
-        toast({
-          title: "Offre d'emploi activée",
-          description: "Les scores des candidats sont maintenant relatifs à cette offre d'emploi",
-        });
+        if (success) {
+          setActiveJobOfferId(jobOfferId);
+          
+          toast({
+            title: "Offre d'emploi activée",
+            description: "Les scores des candidats sont maintenant relatifs à cette offre d'emploi",
+          });
+        } else {
+          throw new Error("Failed to activate job offer");
+        }
       } else {
         await candidateMatchingService.setActiveJobOffer(null);
         setActiveJobOfferId(null);

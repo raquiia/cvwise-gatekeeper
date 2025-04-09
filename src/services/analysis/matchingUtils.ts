@@ -1,3 +1,4 @@
+
 /**
  * Utilities for matching candidates to job positions
  */
@@ -9,12 +10,16 @@ export function calculateSkillMatch(candidateSkills: string[], jobSkills: string
   if (!jobSkills || jobSkills.length === 0) return 100;
   if (!candidateSkills || candidateSkills.length === 0) return 0;
 
+  // Ensure we're working with arrays
+  const normCandidateSkills = Array.isArray(candidateSkills) ? candidateSkills : [candidateSkills];
+  const normJobSkills = Array.isArray(jobSkills) ? jobSkills : [jobSkills];
+
   // Normalize skills for comparison (lowercase)
-  const normalizedCandidateSkills = candidateSkills.map(skill => 
+  const normalizedCandidateSkills = normCandidateSkills.map(skill => 
     typeof skill === 'string' ? skill.toLowerCase() : String(skill).toLowerCase()
   );
   
-  const normalizedJobSkills = jobSkills.map(skill => 
+  const normalizedJobSkills = normJobSkills.map(skill => 
     typeof skill === 'string' ? skill.toLowerCase() : String(skill).toLowerCase()
   );
   
@@ -42,16 +47,42 @@ export function calculateOverallMatch(
   candidateData: any, 
   jobPosition: any
 ): { score: number; details: MatchDetails } {
+  // Log the inputs for debugging
+  console.log("Calculating match with:", { 
+    candidateSkills: candidateData?.skills, 
+    jobSkills: jobPosition?.required_skills 
+  });
+
   // Initialize scoring factors with weighted importance
   const skillsWeight = 0.5;     // 50% of the score comes from skills match
   const experienceWeight = 0.3; // 30% from experience
   const otherWeight = 0.2;      // 20% from other factors
 
+  // Check for required data
+  if (!candidateData || !jobPosition) {
+    console.error("Missing candidate or job position data for match calculation");
+    return {
+      score: 0,
+      details: {
+        skillsMatch: 0,
+        experienceMatch: 0,
+        otherFactorsMatch: 0,
+        matchedSkills: [],
+        missingSkills: []
+      }
+    };
+  }
+
+  // Ensure skills are arrays
+  const candidateSkills = Array.isArray(candidateData.skills) ? candidateData.skills : [];
+  const jobSkills = Array.isArray(jobPosition.required_skills) ? 
+    jobPosition.required_skills : 
+    (typeof jobPosition.required_skills === 'object' && jobPosition.required_skills !== null ? 
+      Object.values(jobPosition.required_skills) : 
+      []);
+
   // Calculate skills match
-  const skillsMatch = calculateSkillMatch(
-    candidateData.skills || [], 
-    jobPosition.skills || jobPosition.required_skills || []
-  );
+  const skillsMatch = calculateSkillMatch(candidateSkills, jobSkills);
   
   // Experience match - if job requires X years, candidate should have at least X years
   const requiredYearsMin = jobPosition.experience_years_min || jobPosition.required_years_experience || 0;
@@ -72,7 +103,7 @@ export function calculateOverallMatch(
     experienceMatch = Math.round((candidateYears / requiredYearsMin) * 100);
   }
   
-  // For location match (new feature)
+  // For location match
   let locationMatch = 50; // Default
   
   if (jobPosition.location && candidateData.location) {
@@ -101,7 +132,10 @@ export function calculateOverallMatch(
   
   // Other factors match - consider education & cultural fit
   const otherFactorsMatch = 
-    calculateEducationMatch(candidateData.education || [], jobPosition.education_level) * 0.7 + 
+    calculateEducationMatch(
+      Array.isArray(candidateData.education) ? candidateData.education : [], 
+      jobPosition.education_level
+    ) * 0.7 + 
     (candidateData.score || 75) * 0.3; // Base candidate quality still matters
   
   // Calculate weighted score
@@ -111,14 +145,22 @@ export function calculateOverallMatch(
     (otherFactorsMatch * otherWeight)
   );
   
+  // Log the calculated scores for debugging
+  console.log("Match calculation results:", {
+    skillsMatch,
+    experienceMatch,
+    otherFactorsMatch,
+    overallScore
+  });
+  
   return {
     score: overallScore,
     details: {
       skillsMatch: skillsMatch,
       experienceMatch: experienceMatch,
       otherFactorsMatch: otherFactorsMatch,
-      matchedSkills: findMatchedSkills(candidateData.skills || [], jobPosition.skills || jobPosition.required_skills || []),
-      missingSkills: findMissingSkills(candidateData.skills || [], jobPosition.skills || jobPosition.required_skills || [])
+      matchedSkills: findMatchedSkills(candidateSkills, jobSkills),
+      missingSkills: findMissingSkills(candidateSkills, jobSkills)
     }
   };
 }
@@ -188,17 +230,21 @@ export function findMatchedSkills(candidateSkills: string[], jobSkills: string[]
     return [];
   }
   
+  // Ensure we're working with arrays
+  const normCandidateSkills = Array.isArray(candidateSkills) ? candidateSkills : [candidateSkills];
+  const normJobSkills = Array.isArray(jobSkills) ? jobSkills : [jobSkills];
+  
   // Normalize skills
-  const normalizedCandidateSkills = candidateSkills.map(skill => 
+  const normalizedCandidateSkills = normCandidateSkills.map(skill => 
     typeof skill === 'string' ? skill.toLowerCase() : String(skill).toLowerCase()
   );
   
-  const normalizedJobSkills = jobSkills.map(skill => 
+  const normalizedJobSkills = normJobSkills.map(skill => 
     typeof skill === 'string' ? skill.toLowerCase() : String(skill).toLowerCase()
   );
   
   // Find matching job skills (using original format)
-  return jobSkills.filter((skill, index) => 
+  return normJobSkills.filter((skill, index) => 
     normalizedCandidateSkills.some(candidateSkill => 
       candidateSkill === normalizedJobSkills[index] ||
       candidateSkill.includes(normalizedJobSkills[index]) || 
@@ -215,21 +261,25 @@ export function findMissingSkills(candidateSkills: string[], jobSkills: string[]
     return [];
   }
   
-  if (!candidateSkills || candidateSkills.length === 0) {
-    return [...jobSkills];
+  // Ensure we're working with arrays
+  const normCandidateSkills = Array.isArray(candidateSkills) ? candidateSkills : [candidateSkills];
+  const normJobSkills = Array.isArray(jobSkills) ? jobSkills : [jobSkills];
+  
+  if (normCandidateSkills.length === 0) {
+    return [...normJobSkills];
   }
   
   // Normalize skills
-  const normalizedCandidateSkills = candidateSkills.map(skill => 
+  const normalizedCandidateSkills = normCandidateSkills.map(skill => 
     typeof skill === 'string' ? skill.toLowerCase() : String(skill).toLowerCase()
   );
   
-  const normalizedJobSkills = jobSkills.map(skill => 
+  const normalizedJobSkills = normJobSkills.map(skill => 
     typeof skill === 'string' ? skill.toLowerCase() : String(skill).toLowerCase()
   );
   
   // Find missing skills (using original format)
-  return jobSkills.filter((skill, index) => 
+  return normJobSkills.filter((skill, index) => 
     !normalizedCandidateSkills.some(candidateSkill => 
       candidateSkill === normalizedJobSkills[index] ||
       candidateSkill.includes(normalizedJobSkills[index]) || 

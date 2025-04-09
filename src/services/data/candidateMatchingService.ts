@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { generateMockMatches } from './mocks/candidateMatchMocks';
 import { Json } from '@/integrations/supabase/types';
-import { calculateOverallMatch } from '@/services/analysis/matchingUtils';
+import { calculateOverallMatch, MatchResult } from '@/services/analysis/matchingUtils';
 
 export interface Experience {
   min?: number;
@@ -39,10 +39,11 @@ export interface SkillsDetails {
 }
 
 export interface MatchDetails {
-  skills_details?: SkillsDetails;
-  experience_details?: any;
-  education_details?: any;
-  location_details?: any;
+  skillsMatch: number;
+  experienceMatch: number;
+  otherFactorsMatch: number;
+  matchedSkills: string[];
+  missingSkills: string[];
 }
 
 export interface CandidateJobMatch {
@@ -74,31 +75,6 @@ const convertJsonToMatchDetails = (jsonData: Json | null): MatchDetails | undefi
   try {
     // If jsonData is already an object, use it directly
     const details = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
-    
-    // Ensure skills_details is properly structured
-    if (details.skills_details) {
-      const skillsDetails: SkillsDetails = {
-        matchedSkills: Array.isArray(details.skills_details.matchedSkills) 
-          ? details.skills_details.matchedSkills 
-          : [],
-        missingSkills: Array.isArray(details.skills_details.missingSkills) 
-          ? details.skills_details.missingSkills 
-          : [],
-        additionalSkills: Array.isArray(details.skills_details.additionalSkills) 
-          ? details.skills_details.additionalSkills 
-          : [],
-        skillsScore: typeof details.skills_details.skillsScore === 'number' 
-          ? details.skills_details.skillsScore 
-          : 0
-      };
-      
-      return {
-        skills_details: skillsDetails,
-        experience_details: details.experience_details,
-        education_details: details.education_details,
-        location_details: details.location_details
-      };
-    }
     
     return details as MatchDetails;
   } catch (error) {
@@ -143,18 +119,47 @@ export const candidateMatchingService = {
   },
   
   // Calculate a candidate's match score against the active job offer
-  calculateCandidateActiveJobScore: async (candidate: any) => {
+  calculateCandidateActiveJobScore: async (candidate: any): Promise<MatchResult> => {
     if (!activeJobOffer || !candidate) {
-      return { score: 0, details: null };
+      // Return default score when no active job offer or candidate
+      return { 
+        score: candidate?.score || 0, 
+        details: {
+          skillsMatch: 0,
+          experienceMatch: 0,
+          otherFactorsMatch: 0,
+          matchedSkills: [],
+          missingSkills: []
+        } 
+      };
     }
     
     try {
+      // Debug logs to track calculation inputs
+      console.log("Calculating match for candidate:", candidate.first_name, candidate.last_name);
+      console.log("Against job offer:", activeJobOffer.title);
+      console.log("Candidate skills:", candidate.skills);
+      console.log("Job required skills:", activeJobOffer.required_skills);
+      
       // Use the matching utility function
       const matchResult = calculateOverallMatch(candidate, activeJobOffer);
+      
+      // Debug the result
+      console.log("Match result:", matchResult);
+      
       return matchResult;
     } catch (error) {
       console.error("Error calculating active job score:", error);
-      return { score: 0, details: null };
+      return { 
+        score: 0, 
+        details: {
+          skillsMatch: 0,
+          experienceMatch: 0,
+          otherFactorsMatch: 0,
+          matchedSkills: [],
+          missingSkills: []
+        } 
+      };
     }
   },
   
@@ -287,7 +292,6 @@ export const candidateMatchingService = {
       
       if (!matchesData || matchesData.length === 0) {
         console.log("No matches found in database");
-        // Nous ne retournons plus de données fictives, mais un tableau vide
         return [];
       }
       
@@ -337,7 +341,6 @@ export const candidateMatchingService = {
         variant: "destructive",
       });
       
-      // Retourner un tableau vide en cas d'erreur au lieu de données fictives
       return [];
     }
   },
