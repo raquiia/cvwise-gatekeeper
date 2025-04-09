@@ -1,31 +1,26 @@
 
+import { Json } from '@/integrations/supabase/types';
+
 /**
- * Assure qu'un champ possiblement JSON, array ou string est transformé en tableau
+ * Ensures that a value is always returned as an array
+ * Handles string JSON, objects, or already-arrays
  */
-export function ensureArray<T>(data: unknown): T[] {
-  if (!data) return [];
+export function ensureArray<T>(value: Json | null | undefined): T[] {
+  if (!value) return [];
   
-  // Si c'est déjà un tableau, le retourner
-  if (Array.isArray(data)) {
-    return data as T[];
+  if (Array.isArray(value)) {
+    return value as T[];
   }
   
-  // Si c'est une string, essayer de la parser comme JSON
-  if (typeof data === 'string') {
+  if (typeof value === 'string') {
     try {
-      const parsed = JSON.parse(data);
-      return Array.isArray(parsed) ? parsed as T[] : [data as T];
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [value as unknown as T];
     } catch (e) {
-      // Si le parsing échoue, retourner la string comme élément unique du tableau
-      return [data as T];
+      return [value as unknown as T];
     }
   }
   
-  // Si c'est un objet JSON, le retourner comme élément unique du tableau
-  if (typeof data === 'object' && data !== null) {
-    return [data as T];
-  }
-  
-  // Pour les valeurs primitives (number, boolean), les retourner comme élément unique
-  return [data as T];
+  // For objects that aren't arrays
+  return [value as unknown as T];
 }
