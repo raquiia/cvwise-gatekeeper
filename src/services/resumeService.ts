@@ -10,7 +10,7 @@ import { downloadResume, deleteResume } from './resume/fileOperations';
 import { 
   analyzeResume, 
   extractResumeText, 
-  checkResumeAlreadyAnalyzed, 
+  checkResumeAlreadyAnalyzed,
   analyzeBatchResumes 
 } from './resume/analysisOperations';
 

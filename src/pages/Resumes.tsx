@@ -330,23 +330,33 @@ const Resumes = () => {
         description: `L'analyse de ${selectedResumes.length} CV a commencé...`,
       });
       
+      console.log(`Starting batch analysis of ${selectedResumes.length} CVs`);
       const itemsToAnalyze = [];
       
       for (const resumeId of selectedResumes) {
         const resume = resumes.find(r => r.id === resumeId);
         
-        if (!resume) continue;
+        if (!resume) {
+          console.error(`Resume with ID ${resumeId} not found`);
+          continue;
+        }
+        
+        console.log(`Processing resume: ${resume.file_name} (${resumeId})`);
         
         if (resumesWithExtractedText[resumeId]) {
+          console.log(`Using cached text for resume ${resumeId}, length: ${resumesWithExtractedText[resumeId].length}`);
           itemsToAnalyze.push({
             resumeId,
             text: resumesWithExtractedText[resumeId]
           });
         } else {
           try {
+            console.log(`Extracting text for resume ${resumeId}, file path: ${resume.file_path}`);
             const extractResult = await extractResumeText(resumeId, resume.file_path);
             
             if (extractResult.success && extractResult.text) {
+              console.log(`Text extraction successful for resume ${resumeId}, text length: ${extractResult.text.length}`);
+              
               const newExtractedTexts = {
                 ...resumesWithExtractedText,
                 [resumeId]: extractResult.text
@@ -358,6 +368,8 @@ const Resumes = () => {
                 resumeId,
                 text: extractResult.text
               });
+            } else {
+              console.error(`Text extraction failed for resume ${resumeId}: ${extractResult.message}`);
             }
           } catch (error) {
             console.error(`Error extracting text for resume ${resumeId}:`, error);
@@ -365,7 +377,14 @@ const Resumes = () => {
         }
       }
       
+      console.log(`Ready to analyze ${itemsToAnalyze.length} resumes with text out of ${selectedResumes.length} selected`);
+      
+      if (itemsToAnalyze.length === 0) {
+        throw new Error("Aucun texte n'a pu être extrait des CV sélectionnés");
+      }
+      
       const result = await analyzeBatchResumes(itemsToAnalyze, (current, total, resumeId, success) => {
+        console.log(`Batch progress: ${current}/${total}, resume ${resumeId}, success: ${success}`);
         const percent = Math.round((current / total) * 100);
         setBatchProgress({ current, total, percent });
         
@@ -377,6 +396,8 @@ const Resumes = () => {
           );
         }
       });
+      
+      console.log('Batch analysis result:', result);
       
       toast({
         title: "Analyse en lot terminée",

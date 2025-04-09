@@ -1,3 +1,4 @@
+
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from '@/services/data/resumeDataService';
@@ -229,8 +230,20 @@ export const analyzeBatchResumes = async (
         // Vérifier si le CV a déjà été analysé
         const { analyzed } = await checkResumeAlreadyAnalyzed(resumeId);
         
-        // Analyser le CV (ne pas écraser s'il existe déjà)
+        // Analyser le CV (si pas déjà analysé)
         if (!analyzed) {
+          if (!text || text.trim() === '') {
+            console.error(`Empty text for resume ${resumeId}, skipping`);
+            failedResumes.push(resumeId);
+            
+            // Notifier de la progression, même en cas d'erreur
+            if (onProgress) {
+              onProgress(i + 1, resumeItems.length, resumeId, false);
+            }
+            continue;
+          }
+          
+          console.log(`Sending resume ${resumeId} to OpenAI for analysis, text length: ${text.length}`);
           const result = await analyzeResume(resumeId, text);
           
           if (result.success) {
@@ -245,7 +258,7 @@ export const analyzeBatchResumes = async (
           successCount++;
           console.log(`Resume ${resumeId} was already analyzed, skipping`);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error analyzing resume ${resumeId}:`, error);
         failedResumes.push(resumeId);
       }
