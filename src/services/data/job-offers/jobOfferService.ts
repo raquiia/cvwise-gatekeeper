@@ -1,5 +1,6 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { candidateMatchingService } from '../candidateMatchingService';
+import { candidateMatchingService } from '../candidate-matching/candidateMatchingService';
 import { JobOffer } from './types';
 import { ensureArray, processJobOfferData } from '@/utils/candidateUtils';
 import { Json } from '@/integrations/supabase/types';

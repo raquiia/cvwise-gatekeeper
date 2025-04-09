@@ -5,7 +5,7 @@ import { Loader2, Edit, RefreshCw, FileText, User, Briefcase, AlertTriangle } fr
 import { toast } from '@/hooks/use-toast';
 import Layout from '@/components/Layout';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
-import { candidateMatchingService } from '@/services/data/candidateMatchingService';
+import { candidateMatchingService } from '@/services/data/candidate-matching';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { JobOffer } from '@/services/data/job-offers/types';
-import type { CandidateJobMatch, CandidateMatch } from '@/services/data/candidateMatchingService';
+import type { CandidateJobMatch, CandidateMatch } from '@/services/data/candidate-matching';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureArray } from '@/utils/candidateUtils';
 
