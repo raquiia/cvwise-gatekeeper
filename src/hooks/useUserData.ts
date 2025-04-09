@@ -31,7 +31,10 @@ export const useUserData = () => {
       try {
         setLoading(true);
         
-        const { data, error } = await supabase.functions.invoke('list-users');
+        // Using RPC function to get profile data to avoid the recursion issue
+        const { data: userData, error } = await supabase
+          .rpc('get_all_profiles_secure')
+          .select('*');
         
         if (error) {
           console.error('Erreur lors de la récupération des utilisateurs:', error);
@@ -44,11 +47,27 @@ export const useUserData = () => {
           return;
         }
         
-        if (data && data.users) {
-          console.log("Utilisateurs réels chargés:", data.users);
-          setRealUsers(data.users);
+        if (userData) {
+          console.log("Utilisateurs réels chargés:", userData);
+          setRealUsers(userData);
         } else {
-          console.error('Aucune donnée d\'utilisateur reçue de l\'Edge Function');
+          console.error('Aucune donnée d\'utilisateur reçue');
+          
+          // Fallback to Edge Function if RPC method fails
+          try {
+            const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke('list-users');
+            
+            if (edgeFunctionError) {
+              throw edgeFunctionError;
+            }
+            
+            if (edgeFunctionData && edgeFunctionData.users) {
+              console.log("Utilisateurs réels chargés via Edge Function:", edgeFunctionData.users);
+              setRealUsers(edgeFunctionData.users);
+            }
+          } catch (fallbackError) {
+            console.error('Erreur lors de la récupération des utilisateurs via Edge Function:', fallbackError);
+          }
         }
         
         setLoading(false);

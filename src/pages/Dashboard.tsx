@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Users, FileText, Search, Clock, CheckCircle, 
@@ -103,45 +102,50 @@ const Dashboard = () => {
   }, []);
   
   const fetchStats = async (): Promise<DashboardStats> => {
-    // Get current user
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("User not authenticated");
-    
-    // Fetch candidates count
-    const candidates = await candidateService.getUserCandidates(user.id);
-    const candidatesCount = candidates.length;
-    
-    // Fetch resumes count - using RPC function
-    const { data: resumesData, error: resumesError } = await supabase
-      .from('resumes')
-      .select('id')
-      .eq('user_id', user.id);
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
       
-    if (resumesError) throw resumesError;
-    const resumesCount = resumesData?.length || 0;
-    
-    // Fetch job offers count
-    const jobOffers = await jobOfferService.getUserJobOffers();
-    const jobOffersCount = jobOffers.length;
-    
-    // Fetch pending candidates count
-    const pendingCandidates = candidates.filter(c => c.status === 'pending');
-    const pendingCount = pendingCandidates.length;
-    
-    // Calculate growth (in a real app, this would compare to previous period)
-    // For now, we'll use random values between -10 and +20
-    const getRandomGrowth = () => Math.floor(Math.random() * 30) - 10;
-    
-    return {
-      candidatesCount,
-      resumesCount,
-      jobOffersCount,
-      pendingCount,
-      candidatesGrowth: getRandomGrowth(),
-      resumesGrowth: getRandomGrowth(),
-      jobOffersGrowth: getRandomGrowth(),
-      pendingGrowth: getRandomGrowth() * -1, // Negative is good for pending
-    };
+      // Fetch candidates count
+      const candidates = await candidateService.getUserCandidates(user.id);
+      const candidatesCount = candidates.length;
+      
+      // Fetch resumes count - using RPC function
+      const { data: resumesData, error: resumesError } = await supabase
+        .from('resumes')
+        .select('id')
+        .eq('user_id', user.id);
+        
+      if (resumesError) throw resumesError;
+      const resumesCount = resumesData?.length || 0;
+      
+      // Fetch job offers count
+      const jobOffers = await jobOfferService.getUserJobOffers();
+      const jobOffersCount = jobOffers.length;
+      
+      // Fetch pending candidates count
+      const pendingCandidates = candidates.filter(c => c.status === 'pending');
+      const pendingCount = pendingCandidates.length;
+      
+      // Calculate growth (in a real app, this would compare to previous period)
+      // For now, we'll use random values between -10 and +20
+      const getRandomGrowth = () => Math.floor(Math.random() * 30) - 10;
+      
+      return {
+        candidatesCount,
+        resumesCount,
+        jobOffersCount,
+        pendingCount,
+        candidatesGrowth: getRandomGrowth(),
+        resumesGrowth: getRandomGrowth(),
+        jobOffersGrowth: getRandomGrowth(),
+        pendingGrowth: getRandomGrowth() * -1, // Negative is good for pending
+      };
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      throw error;
+    }
   };
   
   const fetchRecentCandidates = async (): Promise<RecentCandidate[]> => {
