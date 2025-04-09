@@ -19,19 +19,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { CandidateData } from '@/services/data/resumeDataService';
+import { CandidateData } from '@/services/data/candidateService';
 import { candidateDataService } from '@/services/data/candidateDataService';
 
 interface CandidateTableRowProps {
   candidate: CandidateData;
   onViewCandidate: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
+  scoreIsMatchScore?: boolean;
+  matchDetails?: any;
 }
 
 const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ 
   candidate, 
   onViewCandidate,
-  onCandidateDeleted 
+  onCandidateDeleted,
+  scoreIsMatchScore = false,
+  matchDetails = null
 }) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -212,6 +216,9 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
             }`}>
               <Star size={12} />
               {score}%
+              {scoreIsMatchScore && (
+                <span className="ml-1 text-xs">match</span>
+              )}
             </div>
           ) : (
             <span className="text-muted-foreground text-xs">N/A</span>

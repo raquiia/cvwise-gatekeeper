@@ -1,8 +1,8 @@
 
-import { candidateService } from './candidateService';
-import { jobOfferService } from './jobOfferService';
+import { candidateService, CandidateData } from './candidateService';
+import { jobOfferService } from './job-offers/jobOfferService';
 import { candidateMatchingService } from './candidateMatchingService';
-import type { JobOffer } from './jobOfferService';
+import type { JobOffer } from './job-offers/types';
 import type { 
   CandidateJobMatch, 
   CandidateMatch, 
@@ -38,6 +38,7 @@ export const candidateDataService = {
 
 // Re-export types to maintain backward compatibility
 export { 
+  CandidateData,
   JobOffer, 
   CandidateJobMatch, 
   CandidateMatch, 

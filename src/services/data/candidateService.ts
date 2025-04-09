@@ -1,8 +1,27 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { CandidateData } from './candidateDataService';
 import { Json } from '@/integrations/supabase/types';
 import { calculateCandidateQualityScore } from '../analysis/matchingUtils';
+
+export interface CandidateData {
+  id: string;
+  first_name?: string;
+  last_name?: string;
+  position?: string;
+  user_id?: string;
+  score?: number;
+  skills?: string[];
+  location?: string;
+  company?: string;
+  years_experience?: number;
+  status?: string;
+  updated_at?: string;
+  resume_id?: string;
+  experiences?: Json;
+  education?: Json;
+  languages?: Json;
+  matchDetails?: any; // Add this property
+}
 
 export interface CandidateMinimal {
   id: string;
@@ -258,5 +277,13 @@ export const candidateService = {
       console.error("Error in updateCandidateScore:", error.message);
       throw error;
     }
+  },
+  
+  /**
+   * Filter candidates function (stub)
+   */
+  filterCandidates: async () => {
+    console.log("Filter candidates function called, but not implemented yet");
+    return [];
   }
 };

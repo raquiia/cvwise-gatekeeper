@@ -9,7 +9,7 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { CandidateData } from '@/services/data/resumeDataService';
+import { CandidateData } from '@/services/data/candidateService';
 import CandidateTableRow from './CandidateTableRow';
 import { useToast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
