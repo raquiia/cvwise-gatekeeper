@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { candidateMatchingService } from '../candidateMatchingService';
 import { JobOffer } from './types';
@@ -21,16 +22,17 @@ export const jobOfferService = {
         throw new Error("Utilisateur non authentifié");
       }
       
-      // Préparer les données pour l'insertion
-      const jobOfferData = {
+      // Ensure required_skills is an array
+      const processedJobOffer = {
         ...jobOffer,
+        required_skills: ensureArray(jobOffer.required_skills),
         user_id: user.id
       };
       
       // Insérer directement dans la table job_offers
       const { data, error } = await supabase
         .from('job_offers')
-        .insert(jobOfferData)
+        .insert(processedJobOffer)
         .select()
         .single();
       
@@ -41,8 +43,14 @@ export const jobOfferService = {
       
       console.log("Job offer created successfully:", data);
       
+      // Process response to ensure required_skills is an array
+      const processedData = {
+        ...data,
+        required_skills: ensureArray(data.required_skills)
+      };
+      
       // Cast data to JobOffer type
-      const typedData = data as JobOffer;
+      const typedData = processedData as JobOffer;
       
       // Calculer automatiquement les scores de matching pour tous les candidats de l'utilisateur
       if (typedData && typedData.id) {
@@ -66,10 +74,16 @@ export const jobOfferService = {
     try {
       console.log(`Updating job offer with ID: ${jobOfferId}`);
       
+      // Ensure required_skills is an array if it's being updated
+      const processedUpdates = {
+        ...updates,
+        required_skills: updates.required_skills ? ensureArray(updates.required_skills) : undefined
+      };
+      
       // Utiliser directement les opérations de mise à jour de Supabase
       const { data, error } = await supabase
         .from('job_offers')
-        .update(updates)
+        .update(processedUpdates)
         .eq('id', jobOfferId)
         .select()
         .single();
@@ -81,8 +95,14 @@ export const jobOfferService = {
       
       console.log("Job offer updated successfully:", data);
       
+      // Process response to ensure required_skills is an array
+      const processedData = {
+        ...data,
+        required_skills: ensureArray(data.required_skills)
+      };
+      
       // Cast data to JobOffer type
-      const typedData = data as JobOffer;
+      const typedData = processedData as JobOffer;
       
       // Recalculer les scores de matching pour tous les candidats
       if (typedData && typedData.id) {
@@ -170,8 +190,14 @@ export const jobOfferService = {
         throw new Error(`Error fetching job offers: ${error.message}`);
       }
       
+      // Process response to ensure required_skills is an array for each job offer
+      const processedData = data?.map(item => ({
+        ...item,
+        required_skills: ensureArray(item.required_skills)
+      })) || [];
+      
       // Cast data to JobOffer[] type
-      const typedData = (data || []) as JobOffer[];
+      const typedData = processedData as JobOffer[];
       
       console.log(`Retrieved ${typedData.length} job offers`);
       return typedData;
@@ -210,8 +236,14 @@ export const jobOfferService = {
         return null;
       }
       
+      // Process response to ensure required_skills is an array
+      const processedData = {
+        ...data,
+        required_skills: ensureArray(data.required_skills)
+      };
+      
       // Cast data to JobOffer type
-      const typedData = data as JobOffer;
+      const typedData = processedData as JobOffer;
       
       console.log("Job offer retrieved successfully:", typedData);
       return typedData;

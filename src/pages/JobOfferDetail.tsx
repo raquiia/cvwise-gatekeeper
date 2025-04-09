@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, Edit, RefreshCw, FileText, User, Briefcase, AlertTriangle } from 'lucide-react';
@@ -15,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { JobOffer } from '@/services/data/job-offers/types';
 import type { CandidateJobMatch, CandidateMatch } from '@/services/data/candidateMatchingService';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureArray } from '@/utils/candidateUtils';
 
 interface ExtendedCandidateMatch extends CandidateMatch {
   candidate?: {
@@ -751,4 +753,35 @@ const JobOfferDetail = () => {
                                     <Progress value={item.match?.match_score || item.score} className="h-1 mt-1" />
                                   </div>
                                   <div>
-                                    <div className="text-xs
+                                    <div className="text-xs text-gray-500">Compétences: {item.match?.skills_match_score || item.details?.skills.matchPercentage || 0}%</div>
+                                    <Progress value={item.match?.skills_match_score || item.details?.skills.matchPercentage || 0} className="h-1 mt-1" />
+                                  </div>
+                                  <div>
+                                    <div className="text-xs text-gray-500">Éducation: {item.match?.education_match_score || (item.details?.educationLevel.match ? 100 : 0)}%</div>
+                                    <Progress value={item.match?.education_match_score || (item.details?.educationLevel.match ? 100 : 0)} className="h-1 mt-1" />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+              ) : (
+                <div className="text-center p-8 bg-muted rounded-lg">
+                  <h3 className="text-lg font-medium">Aucun candidat correspondant</h3>
+                  <p className="text-muted-foreground mt-2">
+                    Il n'y a actuellement aucun candidat qui corresponde à cette offre d'emploi.
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default JobOfferDetail;
