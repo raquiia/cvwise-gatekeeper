@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Users, FileText, Search, Clock, CheckCircle, 
@@ -16,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MockDataAlert } from '@/components/candidates/MockDataAlert';
 import { useUserData } from '@/hooks/useUserData';
+import UserStats from '@/components/admin/UserStats';
 
 interface DashboardStats {
   candidatesCount: number;
@@ -60,25 +60,52 @@ const Dashboard = () => {
   const [usingMockData, setUsingMockData] = useState(false);
   const { toast } = useToast();
   const { realUsers, loading: usersLoading } = useUserData();
+  const [companiesCount, setCompaniesCount] = useState(0);
+  
+  const formatDate = (dateString?: string): string => {
+    if (!dateString) return 'Never';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return 'Today';
+    } else if (diffDays === 1) {
+      return 'Yesterday';
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+  
+  useEffect(() => {
+    if (realUsers.length > 0) {
+      const uniqueCompanies = new Set(
+        realUsers
+          .map(user => user.company || user.profile?.company)
+          .filter(company => company && company.trim() !== '')
+      );
+      setCompaniesCount(uniqueCompanies.size);
+    }
+  }, [realUsers]);
   
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         
-        // Get current user
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           throw new Error("User not authenticated");
         }
         
-        // Fetch real stats data
         try {
-          // Fetch candidates count
           const candidates = await candidateService.getUserCandidates(user.id);
           const candidatesCount = candidates.length;
           
-          // Fetch resumes count
           const { data: resumesData, error: resumesError } = await supabase
             .from('resumes')
             .select('id')
@@ -87,16 +114,12 @@ const Dashboard = () => {
           if (resumesError) throw resumesError;
           const resumesCount = resumesData?.length || 0;
           
-          // Fetch job offers count
           const jobOffers = await jobOfferService.getUserJobOffers();
           const jobOffersCount = jobOffers.length;
           
-          // Fetch pending candidates count
           const pendingCandidates = candidates.filter(c => c.status === 'pending');
           const pendingCount = pendingCandidates.length;
           
-          // Calculate growth (in a real app, this would compare to previous period)
-          // For now, we'll use random values between -10 and +20
           const getRandomGrowth = () => Math.floor(Math.random() * 30) - 10;
           
           const realStats: DashboardStats = {
@@ -107,20 +130,17 @@ const Dashboard = () => {
             candidatesGrowth: getRandomGrowth(),
             resumesGrowth: getRandomGrowth(),
             jobOffersGrowth: getRandomGrowth(),
-            pendingGrowth: getRandomGrowth() * -1, // Negative is good for pending
+            pendingGrowth: getRandomGrowth() * -1,
           };
           
           setStats(realStats);
           setUsingMockData(false);
           
-          // Fetch recent candidates
           const sortedCandidates = [...candidates].sort((a, b) => {
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           });
           
-          // Take the 5 most recent candidates
           const recentCandidatesData = sortedCandidates.slice(0, 5).map(candidate => {
-            // Determine status based on score
             const score = candidate.score || Math.floor(Math.random() * 100);
             let status: 'high' | 'medium' | 'low' = 'medium';
             if (score >= 85) status = 'high';
@@ -138,7 +158,6 @@ const Dashboard = () => {
           
           setRecentCandidates(recentCandidatesData);
           
-          // Extract all skills from candidates for top skills section
           const allSkills: string[] = [];
           candidates.forEach(candidate => {
             if (candidate.skills && Array.isArray(candidate.skills)) {
@@ -152,18 +171,15 @@ const Dashboard = () => {
             }
           });
           
-          // Count occurrences of each skill
           const skillCounts: Record<string, number> = {};
           allSkills.forEach(skill => {
             skillCounts[skill] = (skillCounts[skill] || 0) + 1;
           });
           
-          // Convert to array and sort by count (descending)
           const sortedSkills = Object.entries(skillCounts)
             .map(([name, count]) => ({ name, count }))
             .sort((a, b) => b.count - a.count);
           
-          // Take top 5 skills
           const maxCount = Math.max(...sortedSkills.map(s => s.count), 1);
           
           const topSkillsData = sortedSkills.slice(0, 5).map(skill => ({
@@ -174,7 +190,6 @@ const Dashboard = () => {
           
           setTopSkills(topSkillsData.length > 0 ? topSkillsData : getMockTopSkills());
           
-          // Generate recent activity based on real data
           const allItems = [
             ...candidates.map(c => ({ 
               type: 'candidate', 
@@ -188,7 +203,6 @@ const Dashboard = () => {
             }))
           ].sort((a, b) => b.date.getTime() - a.date.getTime());
           
-          // Take most recent 4 items
           const recentActivityData = allItems.slice(0, 4).map(item => {
             const timeAgo = getTimeAgo(item.date);
             
@@ -225,7 +239,6 @@ const Dashboard = () => {
           variant: "destructive",
         });
         
-        // Use mock data as fallback
         setStats(getMockStats());
         setRecentCandidates(getMockRecentCandidates());
         setTopSkills(getMockTopSkills());
@@ -316,7 +329,7 @@ const Dashboard = () => {
         title: "Pending", 
         value: stats.pendingCount, 
         change: `${stats.pendingGrowth > 0 ? '+' : ''}${stats.pendingGrowth}%`, 
-        isPositive: stats.pendingGrowth < 0, // For pending, negative is good
+        isPositive: stats.pendingGrowth < 0,
         icon: <Clock size={20} />,
         color: "bg-gold" 
       }
@@ -355,9 +368,7 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {usingMockData && (
-          <MockDataAlert />
-        )}
+        {usingMockData && <MockDataAlert />}
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {loading ? (
@@ -495,6 +506,16 @@ const Dashboard = () => {
           </div>
           
           <div className="space-y-6">
+            {!usersLoading && (
+              <UserStats 
+                activeUsersCount={realUsers.length}
+                pendingUsersCount={0}
+                recentUsers={realUsers}
+                formatDate={formatDate}
+                companiesCount={companiesCount}
+              />
+            )}
+            
             <div className="glass rounded-xl">
               <div className="p-5 border-b border-border/30">
                 <h2 className="text-lg font-semibold text-navy-dark">Recent Activity</h2>

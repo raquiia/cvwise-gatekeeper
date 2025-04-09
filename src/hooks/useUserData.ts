@@ -30,6 +30,7 @@ export const useUserData = () => {
     const fetchRealUsers = async () => {
       try {
         setLoading(true);
+        console.log("Fetching user data...");
         
         // Get all profiles using the secure function
         const { data: profilesData, error } = await supabase
@@ -68,9 +69,10 @@ export const useUserData = () => {
             }
           }));
           
+          console.log("Mapped users:", mappedUsers);
           setRealUsers(mappedUsers);
         } else {
-          console.log('No user data received');
+          console.log('No user data received from profiles, trying Edge Function');
           
           // Fallback to Edge Function if profiles query returns no data
           try {
@@ -83,6 +85,8 @@ export const useUserData = () => {
             if (edgeFunctionData && edgeFunctionData.users) {
               console.log("Real users loaded via Edge Function:", edgeFunctionData.users);
               setRealUsers(edgeFunctionData.users);
+            } else {
+              console.log("No users returned from Edge Function");
             }
           } catch (fallbackError) {
             console.error('Error fetching users via Edge Function:', fallbackError);
@@ -91,7 +95,7 @@ export const useUserData = () => {
         
         setLoading(false);
       } catch (error: any) {
-        console.error('Unexpected error:', error);
+        console.error('Unexpected error in useUserData:', error);
         setLoading(false);
       }
     };

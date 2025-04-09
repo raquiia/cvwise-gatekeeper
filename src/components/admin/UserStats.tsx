@@ -8,27 +8,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { RealUser } from '@/hooks/useUserData';
 
 interface UserStatsProps {
   activeUsersCount: number;
   pendingUsersCount: number;
-  recentUsers: Array<{
-    first_name?: string;
-    last_name?: string;
-    last_sign_in_at?: string;
-  }>;
+  recentUsers: RealUser[];
   formatDate: (date?: string) => string;
+  companiesCount: number;
 }
 
 const UserStats: React.FC<UserStatsProps> = ({ 
   activeUsersCount,
   pendingUsersCount, 
   recentUsers,
-  formatDate
+  formatDate,
+  companiesCount
 }) => {
-  // Calculate the number of companies (distinct company names)
-  const companiesCount = 5; // This will be replaced with real data in the Admin page
-  
   return (
     <Card className="h-full">
       <CardHeader className="pb-3">
