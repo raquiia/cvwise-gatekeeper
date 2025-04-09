@@ -354,13 +354,15 @@ export const candidateMatchingService = {
         return [];
       }
       
-      // Then, get candidate IDs and fetch them separately via the secure RPC function
+      // Then, get candidate IDs and fetch them separately via a direct query approach
+      // without using the custom RPC function which isn't registered yet
       const candidateIds = matchesData.map(match => match.candidate_id);
       
+      // Using a direct query approach instead of the RPC function
       const { data: candidatesData, error: candidatesError } = await supabase
-        .rpc('get_candidates_by_ids', {
-          candidate_ids: candidateIds
-        });
+        .from('candidates')
+        .select('*')
+        .in('id', candidateIds);
       
       if (candidatesError) {
         console.error("Error fetching candidates:", candidatesError);
@@ -371,8 +373,11 @@ export const candidateMatchingService = {
       const combinedData: CandidateMatch[] = [];
       
       for (const match of matchesData) {
+        // Check if candidatesData is defined before using find
+        if (!candidatesData) continue;
+        
         // Find corresponding candidate
-        const candidate = candidatesData?.find(c => c.id === match.candidate_id);
+        const candidate = candidatesData.find(c => c.id === match.candidate_id);
         
         if (candidate) {
           // Convert match_details from Json to MatchDetails
