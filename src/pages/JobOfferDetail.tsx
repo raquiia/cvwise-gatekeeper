@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -109,7 +110,9 @@ const JobOfferDetail = () => {
                 experience_match_score: match.experience_match_score || 0,
                 education_match_score: match.education_match_score || 0,
                 location_match_score: match.location_match_score || 0,
-                match_details: match.match_details
+                match_details: match.match_details || {
+                  skills: { matched: [], missing: [], additional: [], matchPercentage: 0 }
+                }
               }
             };
           });
@@ -135,7 +138,21 @@ const JobOfferDetail = () => {
                 .single();
               
               if (!candidateData) {
-                return match as ExtendedCandidateMatch;
+                return {
+                  ...match,
+                  match: {
+                    match_score: match.score,
+                    skills_match_score: match.details?.skills?.matchPercentage || 0,
+                    experience_match_score: match.details?.experienceLevel?.match ? 100 : 
+                      Math.min(100, ((match.details?.experienceLevel?.candidate || 0) / 
+                      (match.details?.experienceLevel?.required || 1)) * 100),
+                    education_match_score: match.details?.educationLevel?.match ? 100 : 0,
+                    location_match_score: match.details?.location?.match ? 100 : 0,
+                    match_details: match.details || {
+                      skills: { matched: [], missing: [], additional: [], matchPercentage: 0 }
+                    }
+                  }
+                } as ExtendedCandidateMatch;
               }
               
               const candidate = processCandidateData(candidateData);
@@ -145,18 +162,32 @@ const JobOfferDetail = () => {
                 candidate: candidate,
                 match: {
                   match_score: match.score,
-                  skills_match_score: match.details?.skills.matchPercentage || 0,
-                  experience_match_score: match.details?.experienceLevel.match ? 100 : 
-                    Math.min(100, ((match.details?.experienceLevel.candidate || 0) / 
-                    (match.details?.experienceLevel.required || 1)) * 100),
-                  education_match_score: match.details?.educationLevel.match ? 100 : 0,
-                  location_match_score: match.details?.location.match ? 100 : 0,
-                  match_details: match.details
+                  skills_match_score: match.details?.skills?.matchPercentage || 0,
+                  experience_match_score: match.details?.experienceLevel?.match ? 100 : 
+                    Math.min(100, ((match.details?.experienceLevel?.candidate || 0) / 
+                    (match.details?.experienceLevel?.required || 1)) * 100),
+                  education_match_score: match.details?.educationLevel?.match ? 100 : 0,
+                  location_match_score: match.details?.location?.match ? 100 : 0,
+                  match_details: match.details || {
+                    skills: { matched: [], missing: [], additional: [], matchPercentage: 0 }
+                  }
                 }
               } as ExtendedCandidateMatch;
             } catch (error) {
               console.error(`Error fetching candidate details for ${match.candidateId}:`, error);
-              return match as ExtendedCandidateMatch;
+              return {
+                ...match,
+                match: {
+                  match_score: match.score,
+                  skills_match_score: match.details?.skills?.matchPercentage || 0,
+                  experience_match_score: match.details?.experienceLevel?.match ? 100 : 50,
+                  education_match_score: match.details?.educationLevel?.match ? 100 : 0,
+                  location_match_score: match.details?.location?.match ? 100 : 0,
+                  match_details: match.details || {
+                    skills: { matched: [], missing: [], additional: [], matchPercentage: 0 }
+                  }
+                }
+              } as ExtendedCandidateMatch;
             }
           })
         );
@@ -220,11 +251,18 @@ const JobOfferDetail = () => {
     navigate(`/job-offers/${jobOfferId}/edit`);
   };
   
+  // Enhanced renderMatchedSkills with better null checking
   const renderMatchedSkills = (item: ExtendedCandidateMatch) => {
-    const matchedSkills = 
-      (item.details?.skills?.matched || 
-      item.match?.match_details?.skills?.matched || 
-      []);
+    // First, try to get matched skills from direct details
+    const matchedSkillsFromDetails = item.details?.skills?.matched;
+    // Then try from match_details if available
+    const matchedSkillsFromMatch = item.match?.match_details?.skills?.matched;
+    // Use a safe array with fallbacks at each level
+    const matchedSkills = Array.isArray(matchedSkillsFromDetails) 
+      ? matchedSkillsFromDetails 
+      : Array.isArray(matchedSkillsFromMatch) 
+        ? matchedSkillsFromMatch 
+        : [];
     
     if (matchedSkills.length > 0) {
       return matchedSkills.map((skill: string, index: number) => (
@@ -237,11 +275,16 @@ const JobOfferDetail = () => {
     }
   };
   
+  // Enhanced renderMissingSkills with better null checking
   const renderMissingSkills = (item: ExtendedCandidateMatch) => {
-    const missingSkills = 
-      (item.details?.skills?.missing || 
-      item.match?.match_details?.skills?.missing || 
-      []);
+    // Similar approach for missing skills with multiple fallbacks
+    const missingSkillsFromDetails = item.details?.skills?.missing;
+    const missingSkillsFromMatch = item.match?.match_details?.skills?.missing;
+    const missingSkills = Array.isArray(missingSkillsFromDetails) 
+      ? missingSkillsFromDetails 
+      : Array.isArray(missingSkillsFromMatch) 
+        ? missingSkillsFromMatch 
+        : [];
     
     if (missingSkills.length > 0) {
       return missingSkills.map((skill: string, index: number) => (
