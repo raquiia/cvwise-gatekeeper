@@ -1,18 +1,20 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader2, Edit, RefreshCw, FileText, User, Briefcase } from 'lucide-react';
+import { Loader2, Edit, RefreshCw, FileText, User, Briefcase, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Layout from '@/components/Layout';
-import { jobOfferService } from '@/services/data/jobOfferService';
+import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
 import { candidateMatchingService } from '@/services/data/candidateMatchingService';
+import { generateMockMatches } from '@/services/data/mocks/candidateMatchMocks';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import type { JobOffer } from '@/services/data/jobOfferService';
-import type { CandidateData } from '@/services/data/resumeDataService';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import type { JobOffer } from '@/services/data/job-offers/types';
 import type { CandidateJobMatch, CandidateMatch } from '@/services/data/candidateMatchingService';
 
 const JobOfferDetail = () => {
@@ -22,6 +24,7 @@ const JobOfferDetail = () => {
   const [loading, setLoading] = useState(true);
   const [matchLoading, setMatchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usingMockData, setUsingMockData] = useState(false);
   const navigate = useNavigate();
   
   const fetchJobOffer = async () => {
@@ -53,14 +56,30 @@ const JobOfferDetail = () => {
     if (!jobOfferId) return;
     
     try {
+      setUsingMockData(false);
       const matches = await candidateMatchingService.getMatchesForJobOffer(jobOfferId);
-      setCandidateMatches(matches);
+      
+      if (matches && matches.length > 0) {
+        setCandidateMatches(matches);
+      } else {
+        // Si aucun match n'est trouvé ou en cas d'erreur, utiliser les données de mock
+        console.log("No real matches found, using mock data");
+        const mockMatches = generateMockMatches(jobOfferId, 8);
+        setCandidateMatches(mockMatches);
+        setUsingMockData(true);
+      }
     } catch (error: any) {
       console.error('Error fetching candidate matches:', error);
+      // En cas d'erreur, utiliser les données de mock
+      console.log("Error fetching matches, using mock data");
+      const mockMatches = generateMockMatches(jobOfferId, 8);
+      setCandidateMatches(mockMatches);
+      setUsingMockData(true);
+      
       toast({
-        title: "Erreur",
-        description: error?.message || "Impossible de récupérer les correspondances de candidats",
-        variant: "destructive",
+        title: "Note",
+        description: "Données de correspondance simulées affichées en raison d'un problème technique",
+        variant: "default",
       });
     }
   };
@@ -71,16 +90,36 @@ const JobOfferDetail = () => {
     try {
       setMatchLoading(true);
       
-      await candidateMatchingService.calculateMatchesForJobOffer(jobOfferId);
+      const success = await candidateMatchingService.calculateMatchesForJobOffer(jobOfferId);
       
-      toast({
-        title: "Calcul terminé",
-        description: "Les correspondances ont été recalculées avec succès",
-      });
+      if (success) {
+        toast({
+          title: "Calcul terminé",
+          description: "Les correspondances ont été recalculées avec succès",
+        });
+      } else {
+        // Si le calcul échoue, afficher un message et utiliser des données de mock
+        console.log("Match calculation failed, using mock data");
+        const mockMatches = generateMockMatches(jobOfferId, 8);
+        setCandidateMatches(mockMatches);
+        setUsingMockData(true);
+        
+        toast({
+          title: "Note",
+          description: "Données de correspondance simulées affichées en raison d'un problème technique",
+          variant: "default",
+        });
+      }
       
       await fetchCandidateMatches();
     } catch (error: any) {
       console.error('Error recalculating matches:', error);
+      
+      // En cas d'erreur, utiliser les données de mock
+      const mockMatches = generateMockMatches(jobOfferId, 8);
+      setCandidateMatches(mockMatches);
+      setUsingMockData(true);
+      
       toast({
         title: "Erreur",
         description: error?.message || "Impossible de recalculer les correspondances",
@@ -101,6 +140,15 @@ const JobOfferDetail = () => {
   };
   
   const handleViewCandidate = (candidateId: string) => {
+    // Si nous utilisons des données de mock, afficher un message d'information
+    if (usingMockData) {
+      toast({
+        title: "Données de démonstration",
+        description: "Ce candidat est fictif et sert à démontrer l'interface utilisateur.",
+        variant: "default",
+      });
+      return;
+    }
     navigate(`/candidates/${candidateId}`);
   };
   
@@ -203,6 +251,17 @@ const JobOfferDetail = () => {
             </Button>
           </div>
         </div>
+        
+        {usingMockData && (
+          <Alert variant="warning" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Données de démonstration</AlertTitle>
+            <AlertDescription>
+              En raison d'un problème technique, nous affichons des candidats fictifs pour démontrer l'interface. 
+              Ces données ne sont pas réelles. Réessayez ultérieurement pour voir les vrais candidats correspondants.
+            </AlertDescription>
+          </Alert>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="md:col-span-2">

@@ -1,6 +1,7 @@
 
 // Full implementation of candidate matching service with job offer suggestions
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 export interface Experience {
   min?: number;
@@ -105,16 +106,46 @@ export const candidateMatchingService = {
     try {
       console.log(`Calculating matches for job offer ID: ${jobOfferId}`);
       
-      const { data, error } = await supabase.functions.invoke('calculate-job-matches', {
-        body: { jobOfferId }
-      });
-      
-      if (error) {
-        console.error("Error calculating matches:", error);
-        throw new Error(error.message || "Failed to calculate matches");
+      // Option 1: Use the Edge Function (if available)
+      try {
+        const { data, error } = await supabase.functions.invoke('calculate-job-matches', {
+          body: { jobOfferId }
+        });
+        
+        if (error) {
+          console.error("Error calling calculate-job-matches function:", error);
+          throw error;
+        }
+        
+        return true;
+      } catch (edgeFunctionError) {
+        console.error("Error with Edge Function:", edgeFunctionError);
+        
+        // Option 2: Fallback to using the database function directly
+        try {
+          const { data, error } = await supabase.rpc('calculate_all_candidates_job_matches', {
+            p_job_offer_id: jobOfferId
+          });
+          
+          if (error) {
+            console.error("Error calling RPC function:", error);
+            throw error;
+          }
+          
+          return true;
+        } catch (rpcError) {
+          console.error("Error with RPC function:", rpcError);
+          
+          // If both methods fail, display a message to the user
+          toast({
+            title: "Problème de calcul des correspondances",
+            description: "Le système n'a pas pu calculer les correspondances. Veuillez réessayer plus tard.",
+            variant: "destructive",
+          });
+          
+          return false;
+        }
       }
-      
-      return true;
     } catch (error: any) {
       console.error("Error calculating matches:", error);
       return false;
@@ -143,40 +174,67 @@ export const candidateMatchingService = {
     }
   },
   
-  // Get all matches for a job offer (previously existing function)
+  // Get all matches for a job offer with a fixed query that avoids recursive issues
   async getMatchesForJobOffer(jobOfferId: string): Promise<CandidateMatch[]> {
     try {
       console.log(`Getting matches for job offer ID: ${jobOfferId}`);
       
-      // Using a direct join query instead of RPC
-      const { data, error } = await supabase
+      // Step 1: Get all matches for the job offer
+      const { data: matchesData, error: matchesError } = await supabase
         .from('candidate_job_matches')
-        .select(`
-          *,
-          candidate:candidate_id(*)
-        `)
+        .select('*')
         .eq('job_offer_id', jobOfferId);
       
-      if (error) throw error;
+      if (matchesError) {
+        console.error("Error fetching matches:", matchesError);
+        throw matchesError;
+      }
       
-      // Transform the data to match the expected CandidateMatch structure
-      return (data || []).map(item => ({
-        candidate: item.candidate,
-        match: {
-          candidate_id: item.candidate_id,
-          job_offer_id: item.job_offer_id,
-          match_score: item.match_score,
-          skills_match_score: item.skills_match_score,
-          experience_match_score: item.experience_match_score,
-          education_match_score: item.education_match_score,
-          location_match_score: item.location_match_score,
-          match_details: item.match_details,
-          created_at: item.created_at,
-          updated_at: item.updated_at
-        }
-      })) as CandidateMatch[];
+      if (!matchesData || matchesData.length === 0) {
+        return [];
+      }
+      
+      // Step 2: Get candidate details separately to avoid recursion issues
+      const candidateIds = matchesData.map(match => match.candidate_id);
+      
+      const { data: candidatesData, error: candidatesError } = await supabase
+        .from('candidates')
+        .select('*')
+        .in('id', candidateIds);
+      
+      if (candidatesError) {
+        console.error("Error fetching candidates:", candidatesError);
+        throw candidatesError;
+      }
+      
+      // Step 3: Combine the data
+      const combinedData: CandidateMatch[] = matchesData.map(match => {
+        const candidate = candidatesData.find(c => c.id === match.candidate_id) || null;
+        return {
+          candidate,
+          match: {
+            candidate_id: match.candidate_id,
+            job_offer_id: match.job_offer_id,
+            match_score: match.match_score,
+            skills_match_score: match.skills_match_score,
+            experience_match_score: match.experience_match_score,
+            education_match_score: match.education_match_score,
+            location_match_score: match.location_match_score,
+            match_details: match.match_details,
+            created_at: match.created_at,
+            updated_at: match.updated_at
+          }
+        };
+      }).filter(item => item.candidate !== null);
+      
+      return combinedData;
     } catch (error: any) {
       console.error("Error fetching matches for job offer:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de récupérer les correspondances de candidats. Veuillez réessayer plus tard.",
+        variant: "destructive",
+      });
       return [];
     }
   },
