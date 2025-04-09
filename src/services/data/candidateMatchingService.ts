@@ -273,7 +273,7 @@ export const candidateMatchingService = {
             updated_at: match.updated_at
           }
         };
-      }).filter(item => item.candidate !== null);\
+      }).filter(item => item.candidate !== null);
       
       return combinedData;
     } catch (error: any) {
