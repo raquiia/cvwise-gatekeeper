@@ -84,7 +84,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
               // Log match result for debugging
               console.log(`Match result for ${candidate.first_name} ${candidate.last_name}:`, matchResult);
               
-              // Update the candidate score with the match score
+              // Update the candidate with match scores and details
               updatedCandidates[i] = {
                 ...candidate,
                 score: matchResult.score,
@@ -94,6 +94,9 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
               console.error(`Error calculating score for candidate ${candidate.id}:`, error);
             }
           }
+          
+          // Sort candidates by score in descending order
+          updatedCandidates.sort((a, b) => (b.score || 0) - (a.score || 0));
           
           setCandidatesWithScores(updatedCandidates);
         } catch (error) {
@@ -110,8 +113,9 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
           setIsLoading(false);
         }
       } else {
-        // If no active job offer, use the original scores
-        setCandidatesWithScores(candidates);
+        // If no active job offer, use the original candidates but sorted by their base score
+        const sortedCandidates = [...candidates].sort((a, b) => (b.score || 0) - (a.score || 0));
+        setCandidatesWithScores(sortedCandidates);
       }
     };
     
