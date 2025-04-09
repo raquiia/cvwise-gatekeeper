@@ -1,7 +1,6 @@
 // Full implementation of candidate matching service with job offer suggestions
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { generateMockMatches } from './mocks/candidateMatchMocks';
 import { Json } from '@/integrations/supabase/types';
 import { calculateOverallMatch, MatchResult } from '@/services/analysis/matchingUtils';
 
@@ -309,47 +308,7 @@ export const candidateMatchingService = {
     try {
       console.log(`Getting matches for job offer ID: ${jobOfferId}`);
       
-      const { data, error } = await supabase.functions.invoke('get_matches_for_job_offer', {
-        body: { jobOfferId }
-      });
-      
-      if (error) {
-        console.error("Error calling get_matches_for_job_offer function:", error);
-        throw error;
-      }
-      
-      if (data && Array.isArray(data) && data.length > 0) {
-        const typedMatches: CandidateMatch[] = data.map((item: any) => {
-          const candidate = item.candidate;
-          const match = item.match;
-          
-          const matchDetails = convertJsonToMatchDetails(match.match_details);
-          
-          const typedMatch: CandidateJobMatch = {
-            candidate_id: match.candidate_id,
-            job_offer_id: match.job_offer_id,
-            match_score: match.match_score || 0,
-            skills_match_score: match.skills_match_score || 0,
-            experience_match_score: match.experience_match_score || 0,
-            education_match_score: match.education_match_score || 0,
-            location_match_score: match.location_match_score || 0,
-            match_details: matchDetails,
-            created_at: match.created_at,
-            updated_at: match.updated_at
-          };
-          
-          return {
-            candidate,
-            match: typedMatch
-          };
-        });
-        
-        console.log(`Retrieved ${typedMatches.length} matches for job offer`);
-        return typedMatches;
-      }
-      
-      console.log("No matches returned from the function, trying direct query");
-      const { data: directData, error: directError } = await supabase
+      const { data: matchesData, error: matchesError } = await supabase
         .from('candidate_job_matches')
         .select(`
           *,
@@ -357,13 +316,15 @@ export const candidateMatchingService = {
         `)
         .eq('job_offer_id', jobOfferId);
       
-      if (directError) {
-        console.error("Error with direct query:", directError);
-        return [];
+      if (matchesError) {
+        console.error("Error with matches query:", matchesError);
+        throw matchesError;
       }
       
-      if (directData && Array.isArray(directData) && directData.length > 0) {
-        const typedMatches: CandidateMatch[] = directData.map((item: any) => {
+      if (matchesData && Array.isArray(matchesData) && matchesData.length > 0) {
+        console.log(`Found ${matchesData.length} matches using direct query`);
+        
+        const typedMatches: CandidateMatch[] = matchesData.map((item: any) => {
           const match = item;
           const candidate = item.candidate;
           
@@ -388,17 +349,63 @@ export const candidateMatchingService = {
           };
         });
         
-        console.log(`Retrieved ${typedMatches.length} matches via direct query`);
         return typedMatches;
       }
       
-      console.log("No matches found for this job offer");
+      console.log("No matches found, attempting to calculate them now");
+      await this.calculateMatchesForJobOffer(jobOfferId);
+      
+      const { data: recalculatedData, error: recalculatedError } = await supabase
+        .from('candidate_job_matches')
+        .select(`
+          *,
+          candidate:candidates(*)
+        `)
+        .eq('job_offer_id', jobOfferId);
+      
+      if (recalculatedError) {
+        console.error("Error with recalculated matches query:", recalculatedError);
+        return [];
+      }
+      
+      if (recalculatedData && Array.isArray(recalculatedData) && recalculatedData.length > 0) {
+        console.log(`Found ${recalculatedData.length} matches after recalculation`);
+        
+        const typedMatches: CandidateMatch[] = recalculatedData.map((item: any) => {
+          const match = item;
+          const candidate = item.candidate;
+          
+          const matchDetails = convertJsonToMatchDetails(match.match_details);
+          
+          const typedMatch: CandidateJobMatch = {
+            candidate_id: match.candidate_id,
+            job_offer_id: match.job_offer_id,
+            match_score: match.match_score || 0,
+            skills_match_score: match.skills_match_score || 0,
+            experience_match_score: match.experience_match_score || 0,
+            education_match_score: match.education_match_score || 0,
+            location_match_score: match.location_match_score || 0,
+            match_details: matchDetails,
+            created_at: match.created_at,
+            updated_at: match.updated_at
+          };
+          
+          return {
+            candidate,
+            match: typedMatch
+          };
+        });
+        
+        return typedMatches;
+      }
+      
+      console.log("No matches found for this job offer after calculation");
       return [];
     } catch (error: any) {
       console.error("Error fetching matches for job offer:", error);
       toast({
         title: "Erreur de récupération des correspondances",
-        description: "Une erreur s'est produite lors de la récupération des correspondances.",
+        description: "Une erreur s'est produite lors de la récupération des correspondances. Veuillez réessayer.",
         variant: "destructive",
       });
       
