@@ -23,15 +23,24 @@ interface CandidatesFiltersProps {
   onPreviousCompanyChange: (company: string) => void;
   onExperienceChange: (experience: string) => void;
   onSkillsChange: (skills: string[]) => void;
-  onSemanticSearchChange: (query: string) => void;
-  onApplyFilters: () => void;
-  onResetFilters: () => void;
-  location: string;
-  company: string;
-  previousCompany: string;
-  experience: string;
-  semanticSearch: string;
-  selectedSkills: string[];
+  onEducationLevelChange: (level: string) => void;
+  onCertificationChange: (cert: string) => void;
+  onLanguageChange: (lang: string) => void;
+  onAvailabilityChange: (availability: string) => void;
+  onSalaryChange: (salary: string) => void;
+  onContractTypeChange: (type: string) => void;
+  onRemotePreferenceChange: (preference: string) => void;
+  onMobilityChange: (mobility: string) => void;
+  onReset: () => void;
+  onSemanticSearchChange?: (query: string) => void;
+  onApplyFilters?: () => void;
+  onResetFilters?: () => void;
+  location?: string;
+  company?: string;
+  previousCompany?: string;
+  experience?: string;
+  semanticSearch?: string;
+  selectedSkills?: string[];
 }
 
 const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
@@ -41,15 +50,24 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
   onPreviousCompanyChange,
   onExperienceChange,
   onSkillsChange,
-  onSemanticSearchChange,
-  onApplyFilters,
-  onResetFilters,
-  location,
-  company,
-  previousCompany,
-  experience,
-  semanticSearch,
-  selectedSkills
+  onEducationLevelChange,
+  onCertificationChange,
+  onLanguageChange,
+  onAvailabilityChange,
+  onSalaryChange,
+  onContractTypeChange,
+  onRemotePreferenceChange,
+  onMobilityChange,
+  onReset,
+  onSemanticSearchChange = () => {},
+  onApplyFilters = () => {},
+  onResetFilters = () => {},
+  location = '',
+  company = '',
+  previousCompany = '',
+  experience = 'all',
+  semanticSearch = '',
+  selectedSkills = []
 }) => {
   const [skillInput, setSkillInput] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);

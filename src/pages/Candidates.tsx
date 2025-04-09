@@ -18,6 +18,15 @@ const Candidates = () => {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Filter state
+  const [location, setLocation] = useState('');
+  const [company, setCompany] = useState('');
+  const [previousCompany, setPreviousCompany] = useState('');
+  const [experience, setExperience] = useState('all');
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [semanticSearch, setSemanticSearch] = useState('');
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -77,6 +86,44 @@ const Candidates = () => {
   const handleViewCandidate = (candidateId: string) => {
     navigate(`/candidates/${candidateId}`);
   };
+  
+  const handleLocationChange = (value: string) => {
+    setLocation(value);
+  };
+  
+  const handleCompanyChange = (value: string) => {
+    setCompany(value);
+  };
+  
+  const handlePreviousCompanyChange = (value: string) => {
+    setPreviousCompany(value);
+  };
+  
+  const handleExperienceChange = (value: string) => {
+    setExperience(value);
+  };
+  
+  const handleSkillsChange = (skills: string[]) => {
+    setSelectedSkills(skills);
+  };
+  
+  const handleSemanticSearchChange = (query: string) => {
+    setSemanticSearch(query);
+  };
+  
+  const handleApplyFilters = () => {
+    // TODO: Apply filters to candidate data
+    console.log("Applying filters:", { location, company, previousCompany, experience, selectedSkills, semanticSearch });
+  };
+  
+  const handleResetFilters = () => {
+    setLocation('');
+    setCompany('');
+    setPreviousCompany('');
+    setExperience('all');
+    setSelectedSkills([]);
+    setSemanticSearch('');
+  };
 
   // Filter candidates based on selected status
   const filteredCandidates = selectedStatus
@@ -97,11 +144,11 @@ const Candidates = () => {
           <div className="w-full md:w-72">
             <CandidatesFilters 
               showFilters={showFilters}
-              onLocationChange={() => {}}
-              onCompanyChange={() => {}}
-              onPreviousCompanyChange={() => {}}
-              onSkillsChange={() => {}}
-              onExperienceChange={() => {}}
+              onLocationChange={handleLocationChange}
+              onCompanyChange={handleCompanyChange}
+              onPreviousCompanyChange={handlePreviousCompanyChange}
+              onSkillsChange={handleSkillsChange}
+              onExperienceChange={handleExperienceChange}
               onEducationLevelChange={() => {}}
               onCertificationChange={() => {}}
               onLanguageChange={() => {}}
@@ -110,7 +157,16 @@ const Candidates = () => {
               onContractTypeChange={() => {}}
               onRemotePreferenceChange={() => {}}
               onMobilityChange={() => {}}
-              onReset={() => {}}
+              onReset={handleResetFilters}
+              onSemanticSearchChange={handleSemanticSearchChange}
+              onApplyFilters={handleApplyFilters}
+              onResetFilters={handleResetFilters}
+              location={location}
+              company={company}
+              previousCompany={previousCompany}
+              experience={experience}
+              semanticSearch={semanticSearch}
+              selectedSkills={selectedSkills}
             />
           </div>
           
