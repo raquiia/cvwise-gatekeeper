@@ -1,7 +1,7 @@
 
 import type { CandidateData } from '../candidateService';
 import type { JobOffer } from '../job-offers/types';
-import type { CandidateMatch, MatchDetails, SkillsDetails } from '../candidateMatchingService';
+import type { CandidateMatch, MatchDetails, SkillsDetails } from '../candidate-matching/types';
 
 // Mock candidate data for testing
 export const mockCandidates: CandidateData[] = [
@@ -66,13 +66,18 @@ export const mockJobOffer: JobOffer = {
 export const mockSkillsDetails: SkillsDetails = {
   matched: ['JavaScript', 'React', 'Node.js'],
   missing: ['API Development'],
-  additional: ['TypeScript'],
+  additional: ['TypeScript'],  // Added this field to match the updated type
   matchPercentage: 75
 };
 
 // Mock match details for testing
 export const mockMatchDetails: MatchDetails = {
-  skills: mockSkillsDetails,
+  skills: {
+    matched: ['JavaScript', 'React', 'Node.js'],
+    missing: ['API Development'],
+    additional: ['TypeScript'],  // Added this field to match SkillsMatchDetails
+    matchPercentage: 75
+  },
   experienceLevel: {
     required: 3,
     candidate: 5,

@@ -8,7 +8,8 @@ import type {
   CandidateMatch, 
   JobOfferSuggestion,
   MatchDetails,
-  SkillsDetails
+  SkillsDetails,
+  SkillsMatchDetails
 } from './candidate-matching/types';
 
 /**
@@ -43,5 +44,6 @@ export type {
   CandidateMatch, 
   JobOfferSuggestion,
   MatchDetails,
-  SkillsDetails 
+  SkillsDetails,
+  SkillsMatchDetails
 };

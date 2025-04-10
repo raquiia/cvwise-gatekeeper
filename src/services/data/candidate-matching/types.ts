@@ -63,11 +63,12 @@ export type JobMatchWeight = {
 
 /**
  * Type for skills details
+ * Making consistent with SkillsMatchDetails to avoid type errors
  */
 export type SkillsDetails = {
   matched: string[];
   missing: string[];
-  additionalSkills?: string[];
+  additional: string[];  // Added this field to match SkillsMatchDetails
   matchPercentage: number;
 };
 
