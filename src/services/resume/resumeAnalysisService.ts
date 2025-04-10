@@ -35,13 +35,17 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
     console.log(`Text length being sent to OpenAI: ${resumeText.length} characters`);
     console.log('Sample of the text being sent:', resumeText.substring(0, 200) + '...');
     
-    // Appel à l'edge function d'analyse de CV avec paramètres améliorés
+    // Appel à l'edge function d'analyse de CV avec paramètres améliorés et un timeout plus long
     const { data, error } = await supabase.functions.invoke('resume-ai-analysis', {
       body: { 
         resumeId: resumeId,
         resumeText: resumeText,
         overwriteExisting: overwriteExisting,
         fullAnalysis: true // Indiquer qu'il faut analyser toutes les sections
+      },
+      // Augmenter le timeout pour donner plus de temps à l'analyse
+      options: {
+        timeout: 120000 // 120 secondes (2 minutes)
       }
     });
     

@@ -355,18 +355,20 @@ serve(async (req) => {
     
     // Construire la requête vers l'API OpenAI
     console.log("Envoi de la requête à OpenAI");
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${openAIApiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini", // Utiliser gpt-4o-mini qui est plus efficace avec les tokens
-        messages: [
-          {
-            role: "system",
-            content: `Tu es un expert en analyse de CV avec une grande capacité de détail. Tu dois extraire TOUTES les informations structurées du CV fourni, en accordant une attention particulière aux détails. Voici les informations à extraire:
+    
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openAIApiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini", // Utiliser gpt-4o-mini qui est plus efficace avec les tokens
+          messages: [
+            {
+              role: "system",
+              content: `Tu es un expert en analyse de CV avec une grande capacité de détail. Tu dois extraire TOUTES les informations structurées du CV fourni, en accordant une attention particulière aux détails. Voici les informations à extraire:
 
 1. Informations personnelles:
    - Prénom et nom
@@ -536,185 +538,204 @@ Retourne ces informations sous forme d'un objet JSON structuré:
 }
 
 Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne UNIQUEMENT le JSON, sans texte supplémentaire.`
-          },
-          {
-            role: "user",
-            content: `Voici le texte extrait d'un CV. Analyse-le et extrait toutes les informations structurées demandées, en étant aussi exhaustif que possible:\n\n${truncatedText}`
-          }
-        ],
-        temperature: 0.2,
-        max_tokens: 3000
-      })
-    });
-    
-    // Traiter la réponse de l'API
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Erreur OpenAI:", errorData);
-      throw new Error(`Erreur lors de l'analyse IA: ${errorData.error?.message || response.statusText}`);
-    }
-    
-    const aiResult = await response.json();
-    console.log("Réponse d'OpenAI reçue");
-    
-    // Extraire le contenu JSON de la réponse
-    let parsedData: any;
-    try {
-      const content = aiResult.choices[0].message.content;
-      // Utiliser la fonction d'extraction JSON pour gérer le cas où OpenAI retourne un JSON encapsulé dans un bloc de code markdown
-      const cleanedContent = extractJsonFromMarkdown(content);
-      console.log("Contenu nettoyé:", cleanedContent.substring(0, 200) + "...");
+            },
+            {
+              role: "user",
+              content: `Voici le texte extrait d'un CV. Analyse-le et extrait toutes les informations structurées demandées, en étant aussi exhaustif que possible:\n\n${truncatedText}`
+            }
+          ],
+          temperature: 0.2,
+          max_tokens: 3000
+        })
+      });
       
-      parsedData = JSON.parse(cleanedContent);
-      console.log("Données structurées extraites avec succès");
-      
-      // Vérifions les expériences et l'éducation
-      console.log("Expériences:", Array.isArray(parsedData.experiences) ? parsedData.experiences.length + " trouvées" : "Format invalide");
-      console.log("Éducation:", Array.isArray(parsedData.education) ? parsedData.education.length + " trouvées" : "Format invalide");
-      console.log("Langues:", Array.isArray(parsedData.languages) ? parsedData.languages.length + " trouvées" : "Format invalide");
-      console.log("Certifications:", Array.isArray(parsedData.certifications) ? parsedData.certifications.length + " trouvées" : "Format invalide");
-      console.log("Projets:", Array.isArray(parsedData.projects) ? parsedData.projects.length + " trouvés" : "Format invalide");
-    } catch (error) {
-      console.error("Erreur lors du parsing de la réponse OpenAI:", error);
-      throw new Error("Impossible de traiter la réponse de l'IA");
-    }
-    
-    // Si le candidat existe déjà, préserver certaines données existantes
-    // en cas d'analyse incomplète
-    if (existingCandidate && !fullAnalysis) {
-      console.log("Préservation des données existantes en cas d'échec de l'analyse");
-      
-      // Préserver les tableaux s'ils sont vides dans les nouvelles données
-      if (!parsedData.experiences || parsedData.experiences.length === 0) {
-        parsedData.experiences = existingCandidate.experiences || [];
+      // Traiter la réponse de l'API
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Erreur OpenAI:", errorData);
+        throw new Error(`Erreur lors de l'analyse IA: ${errorData.error?.message || response.statusText}`);
       }
       
-      if (!parsedData.education || parsedData.education.length === 0) {
-        parsedData.education = existingCandidate.education || [];
+      const aiResult = await response.json();
+      console.log("Réponse d'OpenAI reçue");
+      
+      // Extraire le contenu JSON de la réponse
+      let parsedData: any;
+      try {
+        const content = aiResult.choices[0].message.content;
+        // Utiliser la fonction d'extraction JSON pour gérer le cas où OpenAI retourne un JSON encapsulé dans un bloc de code markdown
+        const cleanedContent = extractJsonFromMarkdown(content);
+        console.log("Contenu nettoyé:", cleanedContent.substring(0, 200) + "...");
+        
+        parsedData = JSON.parse(cleanedContent);
+        console.log("Données structurées extraites avec succès");
+        
+        // Vérifions les expériences et l'éducation
+        console.log("Expériences:", Array.isArray(parsedData.experiences) ? parsedData.experiences.length + " trouvées" : "Format invalide");
+        console.log("Éducation:", Array.isArray(parsedData.education) ? parsedData.education.length + " trouvées" : "Format invalide");
+        console.log("Langues:", Array.isArray(parsedData.languages) ? parsedData.languages.length + " trouvées" : "Format invalide");
+        console.log("Certifications:", Array.isArray(parsedData.certifications) ? parsedData.certifications.length + " trouvées" : "Format invalide");
+        console.log("Projets:", Array.isArray(parsedData.projects) ? parsedData.projects.length + " trouvés" : "Format invalide");
+      } catch (error) {
+        console.error("Erreur lors du parsing de la réponse OpenAI:", error);
+        throw new Error("Impossible de traiter la réponse de l'IA");
       }
       
-      if (!parsedData.languages || parsedData.languages.length === 0) {
-        parsedData.languages = existingCandidate.languages || [];
+      // Si le candidat existe déjà, préserver certaines données existantes
+      // en cas d'analyse incomplète
+      if (existingCandidate && !fullAnalysis) {
+        console.log("Préservation des données existantes en cas d'échec de l'analyse");
+        
+        // Préserver les tableaux s'ils sont vides dans les nouvelles données
+        if (!parsedData.experiences || parsedData.experiences.length === 0) {
+          parsedData.experiences = existingCandidate.experiences || [];
+        }
+        
+        if (!parsedData.education || parsedData.education.length === 0) {
+          parsedData.education = existingCandidate.education || [];
+        }
+        
+        if (!parsedData.languages || parsedData.languages.length === 0) {
+          parsedData.languages = existingCandidate.languages || [];
+        }
+        
+        if (!parsedData.certifications || parsedData.certifications.length === 0) {
+          parsedData.certifications = existingCandidate.certifications || [];
+        }
+        
+        if (!parsedData.projects || parsedData.projects.length === 0) {
+          parsedData.projects = existingCandidate.projects || [];
+        }
       }
       
-      if (!parsedData.certifications || parsedData.certifications.length === 0) {
-        parsedData.certifications = existingCandidate.certifications || [];
-      }
-      
-      if (!parsedData.projects || parsedData.projects.length === 0) {
-        parsedData.projects = existingCandidate.projects || [];
-      }
-    }
-    
-    // Transformer les données pour correspondre au schéma de la base de données
-    const candidateData = {
-      resume_id: resumeId,
-      user_id: resumeData.user_id,
-      first_name: parsedData.first_name || parsedData.firstName || "",
-      last_name: parsedData.last_name || parsedData.lastName || "",
-      email: parsedData.email || "",
-      phone: parsedData.phone || parsedData.phoneNumber || "",
-      position: parsedData.position || parsedData.title || parsedData.currentPosition || "",
-      years_experience: parsedData.years_experience || parsedData.yearsExperience || 0,
-      location: parsedData.location || "",
-      skills: parsedData.skills || [],
-      company: parsedData.company || parsedData.currentCompany || "",
-      experiences: parsedData.experiences || parsedData.experience || parsedData.professionalExperiences || [],
-      education: parsedData.education || [],
-      certifications: parsedData.certifications || [],
-      languages: parsedData.languages || [],
-      interests: parsedData.interests || parsedData.hobbies || "",
-      projects: parsedData.projects || [],
-      industries: parsedData.industries || [],
-      professional_references: parsedData.professional_references || [],
-      professional_networks: parsedData.professional_networks || [],
-      availability: parsedData.availability || null,
-      salary_expectations: parsedData.salary_expectations || null,
-      mobility: parsedData.mobility || null,
-      contract_type: parsedData.contract_type || null,
-      remote_preference: parsedData.remote_preference || null,
-      travel_willingness: parsedData.travel_willingness || null,
-      career_objectives: parsedData.career_objectives || null,
-      professional_values: parsedData.professional_values || null,
-      work_authorization: parsedData.work_authorization || null,
-      // Utiliser notre fonction de calcul de score de qualité
-      score: calculateCandidateQualityScore({
-        skills: parsedData.skills || [],
+      // Transformer les données pour correspondre au schéma de la base de données
+      const candidateData = {
+        resume_id: resumeId,
+        user_id: resumeData.user_id,
+        first_name: parsedData.first_name || parsedData.firstName || "",
+        last_name: parsedData.last_name || parsedData.lastName || "",
+        email: parsedData.email || "",
+        phone: parsedData.phone || parsedData.phoneNumber || "",
+        position: parsedData.position || parsedData.title || parsedData.currentPosition || "",
         years_experience: parsedData.years_experience || parsedData.yearsExperience || 0,
+        location: parsedData.location || "",
+        skills: parsedData.skills || [],
+        company: parsedData.company || parsedData.currentCompany || "",
+        experiences: parsedData.experiences || parsedData.experience || parsedData.professionalExperiences || [],
         education: parsedData.education || [],
-        experiences: parsedData.experiences || parsedData.experience || []
-      }),
-      status: "qualification",
-      profile_completeness: Math.min(95, 30 + 
-        (Array.isArray(parsedData.skills) ? parsedData.skills.length * 3 : 0) + 
-        (Array.isArray(parsedData.experiences || parsedData.experience) ? (parsedData.experiences || parsedData.experience).length * 5 : 0) +
-        (Array.isArray(parsedData.education) ? parsedData.education.length * 3 : 0) +
-        (Array.isArray(parsedData.languages) ? parsedData.languages.length * 2 : 0) +
-        (Array.isArray(parsedData.certifications) ? parsedData.certifications.length * 2 : 0))
-    };
-    
-    // S'assurer que toutes les propriétés complexes sont correctement formatées
-    const formattedCandidateData = ensureProperDataFormat(candidateData);
-    
-    console.log("Données du candidat préparées avec succès");
-    console.log("Nombre d'expériences:", Array.isArray(formattedCandidateData.experiences) ? formattedCandidateData.experiences.length : 0);
-    console.log("Nombre de formations:", Array.isArray(formattedCandidateData.education) ? formattedCandidateData.education.length : 0);
-    console.log("Nombre de langues:", Array.isArray(formattedCandidateData.languages) ? formattedCandidateData.languages.length : 0);
-    console.log("Nombre de certifications:", Array.isArray(formattedCandidateData.certifications) ? formattedCandidateData.certifications.length : 0);
-    
-    // Upsert du candidat dans la base de données
-    console.log("Enregistrement du candidat dans la base de données");
-    const { data: savedCandidate, error: candidateError } = await supabase
-      .from("candidates")
-      .upsert({
-        ...(existingCandidate || {}),
-        ...formattedCandidateData,
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
+        certifications: parsedData.certifications || [],
+        languages: parsedData.languages || [],
+        interests: parsedData.interests || parsedData.hobbies || "",
+        projects: parsedData.projects || [],
+        industries: parsedData.industries || [],
+        professional_references: parsedData.professional_references || [],
+        professional_networks: parsedData.professional_networks || [],
+        availability: parsedData.availability || null,
+        salary_expectations: parsedData.salary_expectations || null,
+        mobility: parsedData.mobility || null,
+        contract_type: parsedData.contract_type || null,
+        remote_preference: parsedData.remote_preference || null,
+        travel_willingness: parsedData.travel_willingness || null,
+        career_objectives: parsedData.career_objectives || null,
+        professional_values: parsedData.professional_values || null,
+        work_authorization: parsedData.work_authorization || null,
+        // Utiliser notre fonction de calcul de score de qualité
+        score: calculateCandidateQualityScore({
+          skills: parsedData.skills || [],
+          years_experience: parsedData.years_experience || parsedData.yearsExperience || 0,
+          education: parsedData.education || [],
+          experiences: parsedData.experiences || parsedData.experience || []
+        }),
+        status: "qualification",
+        profile_completeness: Math.min(95, 30 + 
+          (Array.isArray(parsedData.skills) ? parsedData.skills.length * 3 : 0) + 
+          (Array.isArray(parsedData.experiences || parsedData.experience) ? (parsedData.experiences || parsedData.experience).length * 5 : 0) +
+          (Array.isArray(parsedData.education) ? parsedData.education.length * 3 : 0) +
+          (Array.isArray(parsedData.languages) ? parsedData.languages.length * 2 : 0) +
+          (Array.isArray(parsedData.certifications) ? parsedData.certifications.length * 2 : 0))
+      };
       
-    if (candidateError) {
-      console.error("Erreur lors de l'enregistrement du candidat:", candidateError);
-      throw new Error(`Impossible d'enregistrer le candidat: ${candidateError.message}`);
-    }
-    
-    // Marquer le CV comme analysé
-    const { error: updateError } = await supabase
-      .from("resumes")
-      .update({ parsed: true })
-      .eq("id", resumeId);
+      // S'assurer que toutes les propriétés complexes sont correctement formatées
+      const formattedCandidateData = ensureProperDataFormat(candidateData);
       
-    if (updateError) {
-      console.error("Erreur lors de la mise à jour du statut du CV:", updateError);
-      // Ne pas faire échouer l'opération entière pour cette erreur
-    }
-    
-    console.log("Analyse IA du CV terminée avec succès");
-    
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Analyse IA terminée avec succès",
-        candidate: savedCandidate,
-        parsed_data: parsedData
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200
+      console.log("Données du candidat préparées avec succès");
+      console.log("Nombre d'expériences:", Array.isArray(formattedCandidateData.experiences) ? formattedCandidateData.experiences.length : 0);
+      console.log("Nombre de formations:", Array.isArray(formattedCandidateData.education) ? formattedCandidateData.education.length : 0);
+      console.log("Nombre de langues:", Array.isArray(formattedCandidateData.languages) ? formattedCandidateData.languages.length : 0);
+      console.log("Nombre de certifications:", Array.isArray(formattedCandidateData.certifications) ? formattedCandidateData.certifications.length : 0);
+      
+      // Upsert du candidat dans la base de données
+      console.log("Enregistrement du candidat dans la base de données");
+      const { data: savedCandidate, error: candidateError } = await supabase
+        .from("candidates")
+        .upsert({
+          ...(existingCandidate || {}),
+          ...formattedCandidateData,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+        
+      if (candidateError) {
+        console.error("Erreur lors de l'enregistrement du candidat:", candidateError);
+        throw new Error(`Impossible d'enregistrer le candidat: ${candidateError.message}`);
       }
-    );
+      
+      // Marquer le CV comme analysé
+      const { error: updateError } = await supabase
+        .from("resumes")
+        .update({ parsed: true })
+        .eq("id", resumeId);
+        
+      if (updateError) {
+        console.error("Erreur lors de la mise à jour du statut du CV:", updateError);
+        // Ne pas faire échouer l'opération entière pour cette erreur
+      }
+      
+      console.log("Analyse IA du CV terminée avec succès");
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Analyse IA terminée avec succès",
+          candidate: savedCandidate,
+          parsed_data: parsedData
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200
+        }
+      );
+    } catch (openaiError: any) {
+      console.error("Erreur OpenAI:", openaiError);
+      
+      // Retourner une réponse avec succès=false mais avec un code 200 pour éviter les erreurs de non-2xx
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: openaiError.message || "Erreur lors de l'appel à OpenAI",
+          message: "L'analyse a échoué mais sera réessayée"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200 // Important: Always return 200 status even for errors
+        }
+      );
+    }
+    
   } catch (error: any) {
     console.error("Erreur lors de l'analyse IA du CV:", error);
     
+    // Retourner une réponse avec succès=false mais avec un code 200 pour éviter les erreurs de non-2xx
     return new Response(
       JSON.stringify({
         success: false,
-        message: error.message || "Une erreur est survenue lors de l'analyse IA du CV"
+        error: error.message || "Une erreur est survenue lors de l'analyse IA du CV",
+        message: "L'analyse a échoué mais sera réessayée"
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500
+        status: 200 // Important: Always return 200 status even for errors
       }
     );
   }
