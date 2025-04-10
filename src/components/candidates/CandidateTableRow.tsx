@@ -151,18 +151,19 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
       const errorMessage = error.message || "Impossible de supprimer le candidat.";
       const isRecursionError = errorMessage.includes('infinite recursion') || 
                               errorMessage.includes('recursion infinie') ||
-                              errorMessage.includes('recursive');
+                              errorMessage.includes('recursive') ||
+                              errorMessage.includes('configuration de sécurité');
       
       setDeleteError(
         isRecursionError
-          ? "Erreur de récursion infinie détectée. Veuillez contacter l'administrateur système."
+          ? "Erreur lors de la suppression. Veuillez réessayer dans quelques instants ou contacter l'administrateur système."
           : errorMessage
       );
       
       toast({
         title: "Erreur de suppression",
         description: isRecursionError 
-          ? "Problème de configuration de sécurité détecté. Veuillez contacter l'administrateur."
+          ? "Problème temporaire détecté. Veuillez réessayer dans quelques instants."
           : errorMessage,
         variant: "destructive",
       });
