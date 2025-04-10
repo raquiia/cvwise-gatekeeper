@@ -2,9 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Users, FileText, Search, CheckCircle, 
-  ChevronRight, Upload, Briefcase, Award, User,
-  TrendingUp, TrendingDown, PieChart, LineChart, Calendar,
-  ArrowUp, ArrowDown, ArrowUpRight, BarChart
+  ChevronRight, Upload, Briefcase, Award
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
@@ -16,9 +14,6 @@ import { useUserData } from '@/hooks/useUserData';
 import UserStats from '@/components/admin/UserStats';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { formatDate } from '@/utils/dateFormatter';
-import { Progress } from '@/components/ui/progress';
-import { ChartContainer, ChartLegendContent, ChartTooltipContent, ChartTooltip } from '@/components/ui/chart';
-import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, LineChart as RechartsLineChart, Line } from 'recharts';
 import MockDataAlert from '@/components/MockDataAlert';
 
 const Dashboard = () => {
@@ -63,7 +58,7 @@ const Dashboard = () => {
             id: candidate.id,
             name: `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim(),
             position: candidate.position || 'Not specified',
-            score: candidate.score || Math.floor(Math.random() * 30) + 70,
+            score: candidate.score || 0,
             date: formatDate(candidate.created_at),
             status: candidate.score >= 85 ? 'high' : (candidate.score >= 65 ? 'medium' : 'low')
           }));
@@ -94,76 +89,6 @@ const Dashboard = () => {
     
     fetchData();
   }, [toast]);
-  
-  // Sample data for KPI charts
-  const monthlyResumesData = [
-    { name: 'Jan', count: 12 },
-    { name: 'Fév', count: 19 },
-    { name: 'Mar', count: 15 },
-    { name: 'Avr', count: 27 },
-    { name: 'Mai', count: 32 },
-    { name: 'Juin', count: 24 },
-  ];
-  
-  const candidatesByDepartmentData = [
-    { name: 'Tech', value: 35, color: '#8884d8' },
-    { name: 'Marketing', value: 25, color: '#82ca9d' },
-    { name: 'Finance', value: 20, color: '#ffc658' },
-    { name: 'RH', value: 15, color: '#ff8042' },
-    { name: 'Autre', value: 5, color: '#0088fe' },
-  ];
-  
-  const candidateScoreData = [
-    { name: '0-50', count: 5 },
-    { name: '51-70', count: 15 },
-    { name: '71-85', count: 25 },
-    { name: '86-100', count: 20 },
-  ];
-  
-  const conversionRateData = [
-    { month: 'Jan', rate: 30 },
-    { month: 'Fév', rate: 28 },
-    { month: 'Mar', rate: 35 },
-    { month: 'Avr', rate: 42 },
-    { month: 'Mai', rate: 50 },
-    { month: 'Juin', rate: 55 },
-  ];
-  
-  const calculateGrowth = (current, previous) => {
-    if (!previous) return 0;
-    return ((current - previous) / previous) * 100;
-  };
-  
-  // Mock KPI metrics
-  const kpiMetrics = {
-    monthlyActiveUsers: {
-      current: 457,
-      previous: 410,
-      growth: 11.5,
-      positive: true
-    },
-    averageTimeToHire: {
-      current: 18,
-      previous: 23,
-      growth: 21.7,
-      positive: true,
-      unit: 'jours'
-    },
-    candidateConversionRate: {
-      current: 28,
-      previous: 22,
-      growth: 27.3,
-      positive: true,
-      unit: '%'
-    },
-    costPerHire: {
-      current: 2250,
-      previous: 2800,
-      growth: 19.6,
-      positive: true,
-      unit: '€'
-    }
-  };
   
   return (
     <Layout className="py-8 bg-gradient-to-br from-purple-50/50 to-white dark:from-navy-dark/90 dark:to-navy-dark">
@@ -199,127 +124,7 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {/* KPI Metrics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {!loading ? (
-            <>
-              {/* KPI - Monthly Active Users */}
-              <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-                <CardContent className="p-5">
-                  <div className="flex justify-between items-start mb-1">
-                    <div>
-                      <p className="text-muted-foreground text-sm font-medium">Utilisateurs actifs</p>
-                      <div className="flex items-end gap-2">
-                        <h3 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">{kpiMetrics.monthlyActiveUsers.current}</h3>
-                        <div className={`flex items-center ${kpiMetrics.monthlyActiveUsers.positive ? 'text-green-500' : 'text-red-500'} text-sm font-medium`}>
-                          {kpiMetrics.monthlyActiveUsers.positive ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-                          {kpiMetrics.monthlyActiveUsers.growth}%
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg text-white">
-                      <Users size={20} />
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">vs mois précédent</p>
-                  <div className="mt-3">
-                    <Progress value={85} className="h-1.5 bg-blue-100 dark:bg-blue-900/30" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              {/* KPI - Average Time to Hire */}
-              <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-                <CardContent className="p-5">
-                  <div className="flex justify-between items-start mb-1">
-                    <div>
-                      <p className="text-muted-foreground text-sm font-medium">Temps de recrutement</p>
-                      <div className="flex items-end gap-2">
-                        <h3 className="text-3xl font-bold bg-gradient-to-r from-green-500 to-emerald-400 bg-clip-text text-transparent">{kpiMetrics.averageTimeToHire.current}</h3>
-                        <div className={`flex items-center ${kpiMetrics.averageTimeToHire.positive ? 'text-green-500' : 'text-red-500'} text-sm font-medium`}>
-                          {kpiMetrics.averageTimeToHire.positive ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
-                          {kpiMetrics.averageTimeToHire.growth}%
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-br from-green-500 to-emerald-400 p-2 rounded-lg text-white">
-                      <Calendar size={20} />
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">jours en moyenne</p>
-                  <div className="mt-3">
-                    <Progress value={70} className="h-1.5 bg-green-100 dark:bg-green-900/30" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              {/* KPI - Candidate Conversion Rate */}
-              <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-                <CardContent className="p-5">
-                  <div className="flex justify-between items-start mb-1">
-                    <div>
-                      <p className="text-muted-foreground text-sm font-medium">Taux de conversion</p>
-                      <div className="flex items-end gap-2">
-                        <h3 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-violet-500 bg-clip-text text-transparent">{kpiMetrics.candidateConversionRate.current}%</h3>
-                        <div className={`flex items-center ${kpiMetrics.candidateConversionRate.positive ? 'text-green-500' : 'text-red-500'} text-sm font-medium`}>
-                          {kpiMetrics.candidateConversionRate.positive ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-                          {kpiMetrics.candidateConversionRate.growth}%
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-br from-purple-600 to-violet-500 p-2 rounded-lg text-white">
-                      <TrendingUp size={20} />
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">CV à embauches</p>
-                  <div className="mt-3">
-                    <Progress value={kpiMetrics.candidateConversionRate.current} className="h-1.5 bg-purple-100 dark:bg-purple-900/30" />
-                  </div>
-                </CardContent>
-              </Card>
-              
-              {/* KPI - Cost Per Hire */}
-              <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-                <CardContent className="p-5">
-                  <div className="flex justify-between items-start mb-1">
-                    <div>
-                      <p className="text-muted-foreground text-sm font-medium">Coût par embauche</p>
-                      <div className="flex items-end gap-2">
-                        <h3 className="text-3xl font-bold bg-gradient-to-r from-amber-500 to-orange-400 bg-clip-text text-transparent">{kpiMetrics.costPerHire.current}€</h3>
-                        <div className={`flex items-center ${kpiMetrics.costPerHire.positive ? 'text-green-500' : 'text-red-500'} text-sm font-medium`}>
-                          {kpiMetrics.costPerHire.positive ? <ArrowDown size={14} /> : <ArrowUp size={14} />}
-                          {kpiMetrics.costPerHire.growth}%
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-br from-amber-500 to-orange-400 p-2 rounded-lg text-white">
-                      <BarChart size={20} />
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">économisé vs moyenne du secteur</p>
-                  <div className="mt-3">
-                    <Progress value={65} className="h-1.5 bg-amber-100 dark:bg-amber-900/30" />
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          ) : (
-            Array(4).fill(0).map((_, index) => (
-              <div key={index} className="glass rounded-xl p-5 backdrop-blur-sm">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <Skeleton className="h-4 w-24 mb-2" />
-                    <Skeleton className="h-8 w-16" />
-                  </div>
-                  <Skeleton className="h-10 w-10 rounded-lg" />
-                </div>
-                <Skeleton className="h-4 w-32" />
-              </div>
-            ))
-          )}
-        </div>
-        
-        {/* Stats Cards Section - Standard stats */}
+        {/* Stats Cards Section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {loading ? (
             Array(4).fill(0).map((_, index) => (
@@ -403,7 +208,7 @@ const Dashboard = () => {
                       <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">{realUsers.length}</h3>
                     </div>
                     <div className="bg-gradient-to-br from-purple-600 to-pink-500 p-2 rounded-lg text-white">
-                      <User size={20} />
+                      <Users size={20} />
                     </div>
                   </div>
                   <div className="flex items-center">
@@ -416,180 +221,6 @@ const Dashboard = () => {
               </Card>
             </>
           )}
-        </div>
-        
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Monthly Resumes Chart */}
-          <Card className="border-purple-200/30 dark:border-purple-800/20 overflow-hidden shadow-xl bg-white/50 dark:bg-navy-dark/30 backdrop-blur-sm">
-            <CardHeader className="p-5 border-b border-purple-100/50 dark:border-purple-900/30 backdrop-blur-sm bg-gradient-to-r from-white/80 to-purple-50/80 dark:from-navy-dark/90 dark:to-purple-950/30">
-              <CardTitle className="text-lg font-semibold text-navy-dark dark:text-sand">CV analysés par mois</CardTitle>
-              <CardDescription className="text-muted-foreground">Evolution du nombre de CV traités</CardDescription>
-            </CardHeader>
-            <CardContent className="p-5">
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsBarChart data={monthlyResumesData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-                    <XAxis dataKey="name" tick={{ fill: 'var(--muted-foreground)' }} />
-                    <YAxis tick={{ fill: 'var(--muted-foreground)' }} />
-                    <Tooltip 
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="bg-white dark:bg-navy-dark p-2 border border-purple-200/50 dark:border-purple-900/30 rounded-md shadow-md">
-                              <p className="text-sm font-medium">{`${payload[0].payload.name} : ${payload[0].value} CV`}</p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Bar dataKey="count" fill="url(#barGradient)" radius={[4, 4, 0, 0]} />
-                    <defs>
-                      <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#8B5CF6" />
-                        <stop offset="100%" stopColor="#C4B5FD" />
-                      </linearGradient>
-                    </defs>
-                  </RechartsBarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Candidates by Department Pie Chart */}
-          <Card className="border-purple-200/30 dark:border-purple-800/20 overflow-hidden shadow-xl bg-white/50 dark:bg-navy-dark/30 backdrop-blur-sm">
-            <CardHeader className="p-5 border-b border-purple-100/50 dark:border-purple-900/30 backdrop-blur-sm bg-gradient-to-r from-white/80 to-purple-50/80 dark:from-navy-dark/90 dark:to-purple-950/30">
-              <CardTitle className="text-lg font-semibold text-navy-dark dark:text-sand">Candidats par département</CardTitle>
-              <CardDescription className="text-muted-foreground">Répartition par spécialité</CardDescription>
-            </CardHeader>
-            <CardContent className="p-5">
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart>
-                    <Pie
-                      data={candidatesByDepartmentData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                      labelLine={false}
-                    >
-                      {candidatesByDepartmentData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="bg-white dark:bg-navy-dark p-2 border border-purple-200/50 dark:border-purple-900/30 rounded-md shadow-md">
-                              <p className="text-sm font-medium" style={{ color: payload[0].payload.color }}>
-                                {`${payload[0].name} : ${payload[0].value} candidats`}
-                              </p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex flex-wrap justify-center gap-4 mt-4">
-                {candidatesByDepartmentData.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                    <span className="text-xs text-muted-foreground">{item.name}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Candidate Score Distribution Chart */}
-          <Card className="border-purple-200/30 dark:border-purple-800/20 overflow-hidden shadow-xl bg-white/50 dark:bg-navy-dark/30 backdrop-blur-sm">
-            <CardHeader className="p-5 border-b border-purple-100/50 dark:border-purple-900/30 backdrop-blur-sm bg-gradient-to-r from-white/80 to-purple-50/80 dark:from-navy-dark/90 dark:to-purple-950/30">
-              <CardTitle className="text-lg font-semibold text-navy-dark dark:text-sand">Distribution des scores</CardTitle>
-              <CardDescription className="text-muted-foreground">Candidats par plage de score</CardDescription>
-            </CardHeader>
-            <CardContent className="p-5">
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsBarChart data={candidateScoreData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-                    <XAxis dataKey="name" tick={{ fill: 'var(--muted-foreground)' }} />
-                    <YAxis tick={{ fill: 'var(--muted-foreground)' }} />
-                    <Tooltip 
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="bg-white dark:bg-navy-dark p-2 border border-purple-200/50 dark:border-purple-900/30 rounded-md shadow-md">
-                              <p className="text-sm font-medium">{`Score ${payload[0].payload.name} : ${payload[0].value} candidats`}</p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Bar dataKey="count" fill="url(#scoreGradient)" radius={[4, 4, 0, 0]} />
-                    <defs>
-                      <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#60A5FA" />
-                        <stop offset="100%" stopColor="#93C5FD" />
-                      </linearGradient>
-                    </defs>
-                  </RechartsBarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Conversion Rate Trend Chart */}
-          <Card className="border-purple-200/30 dark:border-purple-800/20 overflow-hidden shadow-xl bg-white/50 dark:bg-navy-dark/30 backdrop-blur-sm">
-            <CardHeader className="p-5 border-b border-purple-100/50 dark:border-purple-900/30 backdrop-blur-sm bg-gradient-to-r from-white/80 to-purple-50/80 dark:from-navy-dark/90 dark:to-purple-950/30">
-              <CardTitle className="text-lg font-semibold text-navy-dark dark:text-sand">Tendance du taux de conversion</CardTitle>
-              <CardDescription className="text-muted-foreground">Évolution sur les 6 derniers mois</CardDescription>
-            </CardHeader>
-            <CardContent className="p-5">
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsLineChart data={conversionRateData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-                    <XAxis dataKey="month" tick={{ fill: 'var(--muted-foreground)' }} />
-                    <YAxis tick={{ fill: 'var(--muted-foreground)' }} />
-                    <Tooltip 
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="bg-white dark:bg-navy-dark p-2 border border-purple-200/50 dark:border-purple-900/30 rounded-md shadow-md">
-                              <p className="text-sm font-medium">{`${payload[0].payload.month} : ${payload[0].value}%`}</p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <defs>
-                      <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <Line 
-                      type="monotone" 
-                      dataKey="rate" 
-                      stroke="#10B981" 
-                      strokeWidth={2}
-                      dot={{ stroke: '#10B981', strokeWidth: 2, r: 4, fill: '#fff' }}
-                      activeDot={{ r: 6, stroke: '#10B981', strokeWidth: 2, fill: '#fff' }}
-                    />
-                  </RechartsLineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
         </div>
         
         <MockDataAlert 
