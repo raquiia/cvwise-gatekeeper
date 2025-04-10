@@ -4,12 +4,10 @@ import { jobOfferService } from './job-offers/jobOfferService';
 import { candidateMatchingService } from './candidateMatchingService';
 import type { JobOffer } from './job-offers/types';
 import type { 
-  CandidateJobMatch, 
   CandidateMatch, 
   JobOfferSuggestion,
   MatchDetails,
-  SkillsMatchDetails,
-  SkillsDetails
+  SkillsMatchDetails
 } from './candidate-matching/types';
 
 /**
@@ -40,10 +38,14 @@ export const candidateDataService = {
 export type { 
   CandidateData,
   JobOffer, 
-  CandidateJobMatch, 
-  CandidateMatch, 
+  CandidateMatch,
   JobOfferSuggestion,
   MatchDetails,
-  SkillsDetails,
   SkillsMatchDetails
 };
+
+// Create interface for backward compatibility
+export interface CandidateJobMatch {
+  score: number;
+  details: MatchDetails;
+}

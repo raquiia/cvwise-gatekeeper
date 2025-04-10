@@ -36,19 +36,13 @@ export interface CandidateMatch {
   created_at?: string;
   updated_at?: string;
   
-  // Additional properties for frontend compatibility
+  // Frontend compatibility properties
   candidateId?: string;
   firstName?: string;
   lastName?: string;
   company?: string;
   score?: number;
   details?: MatchDetails;
-}
-
-// Extended match interface for frontend components
-export interface CandidateJobMatch {
-  score: number;
-  details: MatchDetails;
 }
 
 // Detailed match information

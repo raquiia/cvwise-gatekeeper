@@ -4,8 +4,6 @@
  * Please use the new modular files in the job-offers directory for new code.
  */
 
-import { supabase } from '@/integrations/supabase/client';
-import { candidateMatchingService } from './candidateMatchingService';
 import { jobOfferService as newJobOfferService } from './job-offers/jobOfferService';
 import { JobOffer as JobOfferType } from './job-offers/types';
 import { getCountryFromLocation, getCurrencyFromCountry } from './job-offers/utils';
