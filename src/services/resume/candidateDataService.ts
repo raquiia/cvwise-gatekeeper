@@ -27,11 +27,11 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     }
     
     // RPC returns an array, we need the first item
-    const candidateData = data[0];
+    const candidateData = data[0] as Record<string, any>;
     console.log('Successfully retrieved candidate data via RPC:', candidateData);
     
     // If the RPC returns incomplete data, try a direct query as fallback
-    if (!candidateData || typeof candidateData !== 'object' || 
+    if (!candidateData || 
         !candidateData.experiences || 
         (Array.isArray(candidateData.experiences) && candidateData.experiences.length === 0)) {
       console.log('RPC returned incomplete data, trying direct query...');

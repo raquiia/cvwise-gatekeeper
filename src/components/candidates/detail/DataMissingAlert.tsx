@@ -33,14 +33,14 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
       setLoading(true);
       
       // 1. Extraire le texte du CV
-      const { text, error } = await extractResumeText(resumeId);
+      const textResult = await extractResumeText(resumeId);
       
-      if (error || !text) {
-        throw new Error(error || "Impossible d'extraire le texte du CV");
+      if (!textResult.text) {
+        throw new Error(textResult.message || "Impossible d'extraire le texte du CV");
       }
       
       // 2. Ré-analyser le CV en forçant l'écrasement des données existantes
-      const { success, message, candidateId } = await analyzeResume(resumeId, text, true);
+      const { success, message, candidateId } = await analyzeResume(resumeId, textResult.text, true);
       
       if (!success) {
         throw new Error(message || "Échec de l'analyse");
