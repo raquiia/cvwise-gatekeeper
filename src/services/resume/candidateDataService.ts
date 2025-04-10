@@ -10,12 +10,11 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
   try {
     console.log('Fetching complete candidate data for ID:', candidateId);
     
-    // Utiliser directement la requête Supabase plutôt qu'un appel RPC pour éviter la récursion RLS
-    const { data, error } = await supabase
-      .from('candidates')
-      .select('*')
-      .eq('id', candidateId)
-      .single();
+    // Utiliser la fonction RPC get_candidate_by_id pour obtenir des données complètes
+    // Cette fonction est plus robuste que la requête directe et gère mieux les champs JSON
+    const { data, error } = await supabase.rpc('get_candidate_by_id', {
+      candidate_id_param: candidateId
+    });
     
     if (error) {
       console.error('Error fetching candidate data:', error.message);
@@ -27,7 +26,22 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
       return null;
     }
     
-    console.log('Successfully retrieved candidate data:', data);
+    console.log('Successfully retrieved candidate data via RPC:', data);
+    
+    // If the RPC fails or returns incomplete data, try a direct query as fallback
+    if (!data.experiences || data.experiences.length === 0) {
+      console.log('RPC returned incomplete data, trying direct query...');
+      const { data: directData, error: directError } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('id', candidateId)
+        .single();
+      
+      if (!directError && directData) {
+        console.log('Successfully retrieved candidate data via direct query:', directData);
+        return directData as CandidateData;
+      }
+    }
     
     // Type assertion to ensure compatibility with CandidateData
     return data as CandidateData;

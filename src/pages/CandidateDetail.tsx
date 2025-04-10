@@ -9,6 +9,7 @@ import { CandidateData } from '@/services/data/candidateService';
 import { ArrowLeft, Briefcase, FileText, Edit } from 'lucide-react';
 import { processCandidateData } from '@/utils/candidateUtils';
 import { toast } from '@/hooks/use-toast';
+import { getCompleteCandidateData } from '@/services/resume/candidateDataService';
 
 // Import the component tabs
 import ProfileTab from '@/components/candidates/detail/ProfileTab';
@@ -40,8 +41,11 @@ const CandidateDetail = () => {
       setLoading(true);
       console.log("Fetching candidate with ID:", candidateId);
       
-      // Use candidateService instead of candidateDataService
-      const data = await candidateService.getCandidateById(candidateId);
+      // First try using the direct function to get complete candidate data
+      const completeData = await getCompleteCandidateData(candidateId);
+      
+      // Fallback to candidateService if the direct function fails
+      const data = completeData || await candidateService.getCandidateById(candidateId);
       
       if (!data) {
         console.log("Candidate not found:", candidateId);
@@ -130,7 +134,7 @@ const CandidateDetail = () => {
           
           <div className="flex flex-col md:flex-row md:items-center justify-between">
             <h1 className="text-2xl font-bold text-navy-dark">
-              {candidate.first_name} {candidate.last_name}
+              {candidate?.first_name} {candidate?.last_name}
             </h1>
             
             <div className="flex gap-2 mt-4 md:mt-0">
@@ -141,7 +145,10 @@ const CandidateDetail = () => {
                 <Briefcase size={16} className="mr-2" />
                 Match d'emploi
               </Button>
-              <Button variant="outline" onClick={handleEditCandidate}>
+              <Button variant="outline" onClick={() => toast({
+                title: "Fonctionnalité à venir",
+                description: "L'édition du profil candidat sera bientôt disponible",
+              })}>
                 <Edit size={16} className="mr-2" />
                 Éditer
               </Button>
@@ -155,8 +162,8 @@ const CandidateDetail = () => {
         
         {dataIncompletenessDetected && (
           <DataMissingAlert 
-            candidateName={`${candidate.first_name} ${candidate.last_name}`} 
-            resumeId={candidate.resume_id}
+            candidateName={`${candidate?.first_name} ${candidate?.last_name}`} 
+            resumeId={candidate?.resume_id}
             onReanalysisComplete={fetchCandidateData}
           />
         )}
@@ -177,21 +184,25 @@ const CandidateDetail = () => {
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="profile">
-            <ProfileTab candidate={candidate} />
-          </TabsContent>
-          
-          <TabsContent value="experience">
-            <ExperienceTab candidate={candidate} />
-          </TabsContent>
-          
-          <TabsContent value="education">
-            <EducationTab candidate={candidate} />
-          </TabsContent>
-          
-          <TabsContent value="details">
-            <DetailsTab candidate={candidate} />
-          </TabsContent>
+          {candidate && (
+            <>
+              <TabsContent value="profile">
+                <ProfileTab candidate={candidate} />
+              </TabsContent>
+              
+              <TabsContent value="experience">
+                <ExperienceTab candidate={candidate} />
+              </TabsContent>
+              
+              <TabsContent value="education">
+                <EducationTab candidate={candidate} />
+              </TabsContent>
+              
+              <TabsContent value="details">
+                <DetailsTab candidate={candidate} />
+              </TabsContent>
+            </>
+          )}
         </Tabs>
       </div>
     </Layout>

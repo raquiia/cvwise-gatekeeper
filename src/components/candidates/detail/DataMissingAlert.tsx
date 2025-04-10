@@ -1,132 +1,102 @@
 
 import React, { useState } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { analyzeResume, extractResumeText } from '@/services/resumeService';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { analyzeResume, extractResumeText } from '@/services/resume/analysisOperations';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 
 interface DataMissingAlertProps {
   candidateName: string;
-  resumeId?: string;
-  onReanalysisComplete?: () => void;
+  resumeId: string | undefined;
+  onReanalysisComplete: () => void;
 }
 
 const DataMissingAlert: React.FC<DataMissingAlertProps> = ({ 
   candidateName, 
   resumeId,
-  onReanalysisComplete 
+  onReanalysisComplete
 }) => {
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-  const handleRelaunchAnalysis = async () => {
+  const [loading, setLoading] = useState(false);
+  
+  const handleReanalyze = async () => {
     if (!resumeId) {
       toast({
         title: "Erreur",
-        description: "Impossible de relancer l'analyse : aucun CV associé à ce candidat",
-        variant: "destructive"
+        description: "Impossible de retrouver le CV original pour ré-analyser ce candidat",
+        variant: "destructive",
       });
       return;
     }
-
+    
     try {
-      setIsAnalyzing(true);
+      setLoading(true);
       
-      // 1. Récupérer les données du CV
-      toast({
-        title: "Récupération des données",
-        description: "Récupération des données du CV en cours..."
-      });
+      // 1. Extraire le texte du CV
+      const { text } = await extractResumeText(resumeId);
       
-      const { data: resumeData, error: resumeError } = await supabase
-        .rpc('get_resume_by_id', { p_resume_id: resumeId });
-      
-      if (resumeError || !resumeData || resumeData.length === 0) {
-        throw new Error(resumeError?.message || "Impossible de récupérer les données du CV");
+      if (!text) {
+        throw new Error("Impossible d'extraire le texte du CV");
       }
       
-      // Pour un accès plus facile
-      const resumeInfo = resumeData[0];
-      console.log("Informations du CV récupérées:", resumeInfo);
+      // 2. Ré-analyser le CV en forçant l'écrasement des données existantes
+      const { success, message, candidateId } = await analyzeResume(resumeId, text, true);
       
-      // 2. Extraire le texte du CV en utilisant la fonction dédiée
-      const extractionResult = await extractResumeText(resumeId, resumeInfo.file_path);
-      
-      if (!extractionResult.success || !extractionResult.text) {
-        throw new Error("Impossible d'extraire le texte du CV. " + (extractionResult.message || ""));
+      if (!success) {
+        throw new Error(message || "Échec de l'analyse");
       }
       
-      const extractedText = extractionResult.text;
-      
-      console.log("Texte extrait du CV (longueur totale) :", extractedText.length, "caractères");
-      console.log("Échantillon du texte extrait:", extractedText.substring(0, 200) + "...");
-      
-      // 3. Analyse du CV par l'IA avec le texte extrait
-      toast({
-        title: "Analyse en cours",
-        description: "L'IA analyse le CV pour extraire les informations..."
-      });
-      
-      // Utiliser la fonction existante et forcer la réécriture complète des données
-      // pour garantir une mise à jour complète du profil, avec fullAnalysis à true
-      const analysisResult = await analyzeResume(resumeId, extractedText, true);
-      
-      if (!analysisResult.success) {
-        throw new Error(analysisResult.message || "Échec de l'analyse du CV");
-      }
-      
-      console.log("Analyse IA réussie, ID du candidat:", analysisResult.candidateId);
-      
-      // 4. Notification de succès
       toast({
         title: "Analyse terminée",
-        description: "Les données du candidat ont été mises à jour avec succès"
+        description: `Le profil de ${candidateName} a été ré-analysé avec succès`,
       });
       
-      // 5. Rafraîchir la page pour voir les nouvelles données
-      if (onReanalysisComplete) {
+      // 3. Rafraîchir les données après une courte pause
+      setTimeout(() => {
         onReanalysisComplete();
-      } else {
-        window.location.reload();
-      }
+      }, 1000);
       
     } catch (error: any) {
-      console.error("Erreur lors de la réanalyse:", error);
+      console.error("Error during reanalysis:", error);
       toast({
-        title: "Échec de l'analyse",
-        description: error.message || "Une erreur est survenue lors de l'analyse du CV",
-        variant: "destructive"
+        title: "Échec de la ré-analyse",
+        description: error.message || "Une erreur est survenue lors de la ré-analyse du CV",
+        variant: "destructive",
       });
     } finally {
-      setIsAnalyzing(false);
+      setLoading(false);
     }
   };
-
+  
   return (
-    <Alert className="mb-6 bg-amber-50 border-amber-200">
-      <AlertTriangle className="h-5 w-5 text-amber-600" />
-      <div className="flex justify-between items-start w-full">
-        <div>
-          <AlertTitle className="text-amber-800">Données incomplètes</AlertTitle>
-          <AlertDescription className="text-amber-700">
-            Certaines informations détaillées pour {candidateName} sont manquantes ou n'ont pas été correctement importées. 
-            Vous pouvez compléter les données manuellement en modifiant le profil du candidat ou utiliser le bouton ci-contre pour relancer l'analyse IA.
-          </AlertDescription>
-        </div>
-        {resumeId && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="mt-2 bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200 hover:text-amber-900"
-            onClick={handleRelaunchAnalysis}
-            disabled={isAnalyzing}
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            {isAnalyzing ? "Analyse en cours..." : "Relancer l'analyse IA"}
-          </Button>
-        )}
-      </div>
+    <Alert variant="warning" className="mb-6">
+      <AlertTriangle className="h-5 w-5 text-amber-500" />
+      <AlertTitle className="text-amber-600">Données incomplètes</AlertTitle>
+      <AlertDescription className="mt-1">
+        <p className="mb-3">
+          Le profil de <strong>{candidateName}</strong> semble incomplet. 
+          Certaines informations comme l'expérience professionnelle ou la formation 
+          n'ont pas été correctement extraites.
+        </p>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleReanalyze}
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              Ré-analyse en cours...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Ré-analyser le CV
+            </>
+          )}
+        </Button>
+      </AlertDescription>
     </Alert>
   );
 };
