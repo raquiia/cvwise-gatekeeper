@@ -67,7 +67,7 @@ export const matchDbService = {
           
           // Store the match result in the database
           try {
-            const matchDetailsJson = matchDetailsToJson(match.details);
+            const matchDetailsData = matchDetailsToJson(match.details);
             
             const { data: savedMatch, error: insertError } = await supabase
               .from('candidate_job_matches')
@@ -79,7 +79,7 @@ export const matchDbService = {
                 experience_match_score: match.details.experienceLevel.score || 0,
                 education_match_score: match.details.educationLevel.score || 0,
                 location_match_score: match.details.location.score || 0,
-                match_details: matchDetailsJson
+                match_details: matchDetailsData
               }, {
                 onConflict: 'candidate_id,job_offer_id'
               })
@@ -104,7 +104,7 @@ export const matchDbService = {
             last_name: candidate.last_name,
             position: candidate.position,
             company: candidate.company,
-            match_details: matchDetailsJson(match.details),
+            match_details: matchDetailsToJson(match.details),
             // Also include frontend-compatible properties
             candidateId: candidate.id,
             firstName: candidate.first_name,
