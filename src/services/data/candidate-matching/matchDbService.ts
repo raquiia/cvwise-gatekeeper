@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateMatch } from './types';
 import { processCandidateData, processJobOfferData } from '@/utils/candidateUtils';
