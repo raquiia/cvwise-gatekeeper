@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Star, MapPin, Eye, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -89,7 +88,6 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   const updatedAt = candidate.updated_at ? new Date(candidate.updated_at) : null;
   const company = candidate.company || 'Non spécifié';
 
-  // Get a color for the avatar based on the candidate's name
   const getAvatarColor = (name: string) => {
     const colors = [
       'from-purple-400 to-purple-600',
@@ -104,7 +102,6 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
       'from-cyan-400 to-cyan-600'
     ];
     
-    // Simple hash function to convert name to an index
     const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return colors[hash % colors.length];
   };
@@ -133,7 +130,9 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
         console.warn('Candidate has no resume_id. Only candidate will be deleted:', candidate.id);
       }
       
-      // Utiliser directement le service de candidat pour la suppression
+      console.log('Attempting to delete candidate with ID:', candidate.id);
+      console.log('Delete resume as well?', !!candidate.resume_id);
+      
       await candidateService.deleteCandidate(candidate.id, !!candidate.resume_id);
       
       toast({
@@ -148,11 +147,23 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
       setShowDeleteDialog(false);
     } catch (error: any) {
       console.error('Error deleting candidate:', error);
-      setDeleteError(error.message || "Impossible de supprimer le candidat. Veuillez réessayer.");
+      
+      const errorMessage = error.message || "Impossible de supprimer le candidat.";
+      const isRecursionError = errorMessage.includes('infinite recursion') || 
+                              errorMessage.includes('recursion infinie') ||
+                              errorMessage.includes('recursive');
+      
+      setDeleteError(
+        isRecursionError
+          ? "Erreur de récursion infinie détectée. Veuillez contacter l'administrateur système."
+          : errorMessage
+      );
       
       toast({
-        title: "Erreur",
-        description: error.message || "Impossible de supprimer le candidat. Veuillez réessayer.",
+        title: "Erreur de suppression",
+        description: isRecursionError 
+          ? "Problème de configuration de sécurité détecté. Veuillez contacter l'administrateur."
+          : errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -160,7 +171,6 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     }
   };
 
-  // Get status chip color based on status
   const getStatusChipColor = (status: string) => {
     switch(status) {
       case 'active': 

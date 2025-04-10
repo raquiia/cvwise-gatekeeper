@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -202,32 +201,56 @@ export const candidateService = {
           .eq('id', candidateId)
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching candidate resume_id:', error);
+          throw error;
+        }
         resumeId = data?.resume_id;
       }
       
-      // Delete the candidate
+      console.log(`Starting deletion process for candidate ${candidateId}, resume: ${resumeId}`);
+      
+      // Delete directly from the table instead of using RPC to avoid potential recursion issues
       const { error: deleteError } = await supabase
         .from('candidates')
         .delete()
         .eq('id', candidateId);
       
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error('Error during candidate deletion:', deleteError);
+        if (deleteError.message.includes('infinite recursion')) {
+          throw new Error(`Erreur de récursion infinie détectée lors de la suppression. Veuillez contacter l'administrateur.`);
+        }
+        throw deleteError;
+      }
       
       // If requested and resume exists, delete it too
       if (deleteResume && resumeId) {
-        const { error: resumeError } = await supabase
-          .rpc('delete_resume_by_id', { resume_id_param: resumeId });
-        
-        if (resumeError) {
-          console.error('Error deleting resume:', resumeError);
-          // Don't fail the operation if resume delete fails
+        console.log(`Attempting to delete resume ${resumeId}`);
+        try {
+          const { error: resumeError } = await supabase
+            .from('resumes')
+            .delete()
+            .eq('id', resumeId);
+          
+          if (resumeError) {
+            console.error('Error deleting resume:', resumeError);
+            // Don't fail the operation if resume delete fails
+          }
+        } catch (resumeDeleteError) {
+          console.error('Exception deleting resume:', resumeDeleteError);
+          // Continue anyway since candidate was deleted
         }
       }
       
+      console.log(`Successfully deleted candidate ${candidateId}`);
       return true;
     } catch (error: any) {
       console.error('Error in deleteCandidate:', error);
+      // Check if error is related to infinite recursion in RLS policies
+      if (error.message && error.message.includes('infinite recursion')) {
+        throw new Error(`Erreur de récursion infinie détectée lors de la suppression. Il s'agit d'un problème de configuration de sécurité.`);
+      }
       throw new Error(`Failed to delete candidate: ${error.message}`);
     }
   },
