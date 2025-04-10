@@ -9,7 +9,7 @@ import type {
   JobOfferSuggestion,
   MatchDetails,
   SkillsDetails
-} from './candidateMatchingService';
+} from './candidate-matching/types';
 
 /**
  * Re-export all the services to maintain backward compatibility

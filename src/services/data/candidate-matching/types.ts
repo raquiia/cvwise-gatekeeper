@@ -60,3 +60,40 @@ export type JobMatchWeight = {
   location: number;
   education: number;
 };
+
+/**
+ * Type for skills details (missing in original file)
+ */
+export type SkillsDetails = {
+  matched: string[];
+  missing: string[];
+  additionalSkills?: string[];
+  matchPercentage: number;
+};
+
+/**
+ * Type for job offer suggestions (missing in original file)
+ */
+export type JobOfferSuggestion = {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  matchScore: number;
+  description: string;
+  requiredSkills: string[];
+  softSkills: string[];
+  toolsAndTechnologies: string[];
+  education: string;
+  experience: {
+    min: number;
+    max: number;
+  };
+  contractType: string;
+  remotePreference: string;
+  salary: {
+    min: number;
+    max: number;
+    currency: string;
+  };
+};
