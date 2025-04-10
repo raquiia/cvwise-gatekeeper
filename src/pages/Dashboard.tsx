@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart3, Users, FileText, Search, CheckCircle, 
-  ChevronRight, Upload, Briefcase, Award
+  ChevronRight, Upload, Briefcase, Award, GraduationCap, 
+  Building, Heart, Terminal, Zap, Train, Microscope
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
@@ -15,6 +16,171 @@ import UserStats from '@/components/admin/UserStats';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { formatDate } from '@/utils/dateFormatter';
 import MockDataAlert from '@/components/MockDataAlert';
+import { 
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
+  Cell, PieChart, Pie, Sector, Legend
+} from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+
+const sectorIcons = {
+  "IT": <Terminal size={16} className="mr-2" />,
+  "Santé": <Heart size={16} className="mr-2" />,
+  "Énergie": <Zap size={16} className="mr-2" />,
+  "Ferroviaire": <Train size={16} className="mr-2" />,
+  "Ingénierie": <Building size={16} className="mr-2" />,
+  "Sciences": <Microscope size={16} className="mr-2" />,
+};
+
+// Composant pour le graphique en secteurs
+const SectorPieChart = ({ data, loading }) => {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const onPieEnter = (_, index) => {
+    setActiveIndex(index);
+  };
+
+  const renderActiveShape = (props) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props;
+
+    return (
+      <g>
+        <text x={cx} y={cy} dy={-20} textAnchor="middle" fill="#888" className="text-xs">
+          {payload.name}
+        </text>
+        <text x={cx} y={cy} textAnchor="middle" fill="#333" className="text-lg font-semibold">
+          {value}
+        </text>
+        <text x={cx} y={cy} dy={20} textAnchor="middle" fill="#888" className="text-xs">
+          {`${(percent * 100).toFixed(0)}%`}
+        </text>
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius}
+          outerRadius={outerRadius + 10}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+          opacity={0.3}
+        />
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius}
+          outerRadius={outerRadius}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+        />
+      </g>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Skeleton className="h-48 w-48 rounded-full" />
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+        <Building size={48} className="mb-2 opacity-30" />
+        <p>Aucune donnée de secteur disponible</p>
+      </div>
+    );
+  }
+
+  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F'];
+
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <PieChart>
+        <Pie
+          activeIndex={activeIndex}
+          activeShape={renderActiveShape}
+          data={data}
+          cx="50%"
+          cy="50%"
+          innerRadius={60}
+          outerRadius={80}
+          fill="#8884d8"
+          dataKey="value"
+          onMouseEnter={onPieEnter}
+        >
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          ))}
+        </Pie>
+        <Legend />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+};
+
+// Composant pour le graphique à barres
+const EducationBarChart = ({ data, loading }) => {
+  if (loading) {
+    return (
+      <div className="space-y-3 py-8">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-8 w-3/4" />
+        <Skeleton className="h-8 w-5/6" />
+        <Skeleton className="h-8 w-2/3" />
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+        <GraduationCap size={48} className="mb-2 opacity-30" />
+        <p>Aucune donnée de niveau d'études disponible</p>
+      </div>
+    );
+  }
+
+  // Définir une palette de couleurs dégradée pour les barres
+  const getBarColor = (index) => {
+    const colors = ['#8884d8', '#9c8edb', '#af97df', '#c3a1e2', '#d7aae6', '#eab4e9'];
+    return colors[index % colors.length];
+  };
+
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+      >
+        <XAxis type="number" />
+        <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
+        <Tooltip
+          content={({ active, payload }) => {
+            if (active && payload && payload.length) {
+              return (
+                <div className="bg-white/90 dark:bg-gray-800/90 p-2 rounded border shadow">
+                  <p className="font-medium">{payload[0].payload.name}</p>
+                  <p className="text-sm">
+                    <span className="font-medium">{payload[0].value}</span> candidats
+                  </p>
+                </div>
+              );
+            }
+            return null;
+          }}
+        />
+        <Bar dataKey="value">
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={getBarColor(index)} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,6 +191,97 @@ const Dashboard = () => {
   const [candidatesCount, setCandidatesCount] = useState(0);
   const [resumesCount, setResumesCount] = useState(0);
   const [topCandidatesCount, setTopCandidatesCount] = useState(0);
+  const [candidatesData, setCandidatesData] = useState([]);
+  const [educationData, setEducationData] = useState([]);
+  const [sectorData, setSectorData] = useState([]);
+  
+  // Fonction d'extraction du niveau d'études à partir des données de candidat
+  const extractEducationLevel = (candidate) => {
+    if (!candidate.education || !Array.isArray(candidate.education) || candidate.education.length === 0) {
+      return "Non spécifié";
+    }
+    
+    // Trier par date pour obtenir le diplôme le plus récent
+    const sortedEducation = [...candidate.education].sort((a, b) => {
+      const dateA = a.end_date ? new Date(a.end_date).getTime() : 0;
+      const dateB = b.end_date ? new Date(b.end_date).getTime() : 0;
+      return dateB - dateA;
+    });
+    
+    const mostRecentEducation = sortedEducation[0];
+    return mostRecentEducation.degree || mostRecentEducation.diploma || "Non spécifié";
+  };
+  
+  // Fonction d'extraction du secteur à partir des données de candidat
+  const extractSector = (candidate) => {
+    if (!candidate.experiences || !Array.isArray(candidate.experiences) || candidate.experiences.length === 0) {
+      return "Non spécifié";
+    }
+    
+    // Trier par date pour obtenir l'expérience la plus récente
+    const sortedExperiences = [...candidate.experiences].sort((a, b) => {
+      const dateA = a.end_date ? new Date(a.end_date).getTime() : Date.now();
+      const dateB = b.end_date ? new Date(b.end_date).getTime() : Date.now();
+      return dateB - dateA;
+    });
+    
+    const mostRecentExperience = sortedExperiences[0];
+    
+    // Déterminer le secteur en fonction du titre ou de l'entreprise
+    const title = (mostRecentExperience.title || "").toLowerCase();
+    const company = (mostRecentExperience.company || "").toLowerCase();
+    
+    if (title.includes("développeur") || title.includes("informatique") || 
+        title.includes("software") || title.includes("web") || title.includes("data")) {
+      return "IT";
+    } else if (title.includes("médecin") || title.includes("infirmier") || 
+              title.includes("santé") || company.includes("hôpital") || 
+              company.includes("clinique")) {
+      return "Santé";
+    } else if (title.includes("énergie") || title.includes("électricité") || 
+              company.includes("edf") || company.includes("engie")) {
+      return "Énergie";
+    } else if (title.includes("ingénieur") || title.includes("engineer") || 
+              title.includes("architecte")) {
+      return "Ingénierie";
+    } else if (title.includes("train") || title.includes("sncf") || 
+              title.includes("ferroviaire") || company.includes("sncf")) {
+      return "Ferroviaire";
+    } else if (title.includes("science") || title.includes("recherche") || 
+              title.includes("laboratoire")) {
+      return "Sciences";
+    }
+    
+    return "Autre";
+  };
+  
+  // Agréger les données par niveau d'études
+  const aggregateEducationData = (candidates) => {
+    const educationMap = {};
+    
+    candidates.forEach(candidate => {
+      const education = extractEducationLevel(candidate);
+      educationMap[education] = (educationMap[education] || 0) + 1;
+    });
+    
+    return Object.entries(educationMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  };
+  
+  // Agréger les données par secteur
+  const aggregateSectorData = (candidates) => {
+    const sectorMap = {};
+    
+    candidates.forEach(candidate => {
+      const sector = extractSector(candidate);
+      sectorMap[sector] = (sectorMap[sector] || 0) + 1;
+    });
+    
+    return Object.entries(sectorMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  };
   
   useEffect(() => {
     const fetchData = async () => {
@@ -44,7 +301,12 @@ const Dashboard = () => {
           throw candidatesError;
         }
         
+        setCandidatesData(candidatesData || []);
         setCandidatesCount(candidatesData?.length || 0);
+        
+        // Traiter les données pour l'éducation et le secteur
+        setEducationData(aggregateEducationData(candidatesData || []));
+        setSectorData(aggregateSectorData(candidatesData || []));
         
         const highScoredCandidates = (candidatesData || []).filter(
           candidate => candidate.score >= 85
@@ -223,10 +485,32 @@ const Dashboard = () => {
           )}
         </div>
         
-        <MockDataAlert 
-          feature="d'analyse avancée" 
-          icon={<BarChart3 className="h-4 w-4" />}
-        />
+        {/* Graphiques de distribution */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-md">
+            <CardHeader className="border-b border-purple-100/50 dark:border-purple-900/30">
+              <div className="flex items-center">
+                <GraduationCap className="mr-2 h-5 w-5 text-purple-500" />
+                <CardTitle className="text-lg font-semibold">Distribution par niveau d'études</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4">
+              <EducationBarChart data={educationData} loading={loading} />
+            </CardContent>
+          </Card>
+          
+          <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-md">
+            <CardHeader className="border-b border-purple-100/50 dark:border-purple-900/30">
+              <div className="flex items-center">
+                <Building className="mr-2 h-5 w-5 text-purple-500" />
+                <CardTitle className="text-lg font-semibold">Distribution par secteur</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4">
+              <SectorPieChart data={sectorData} loading={loading} />
+            </CardContent>
+          </Card>
+        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-2">
