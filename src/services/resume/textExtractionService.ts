@@ -35,9 +35,15 @@ export const extractResumeText = async (resumeId: string, filePath?: string): Pr
               throw new Error('Impossible de récupérer les informations du CV');
             }
             
-            if (Array.isArray(rpcData) && rpcData.length > 0) {
-              path = rpcData[0].file_path;
+            // Handle both array and object responses properly
+            if (Array.isArray(rpcData)) {
+              if (rpcData.length > 0) {
+                path = rpcData[0].file_path;
+              } else {
+                throw new Error('Aucune donnée de CV trouvée');
+              }
             } else {
+              // Direct object access if not an array
               path = rpcData.file_path;
             }
           } else {
