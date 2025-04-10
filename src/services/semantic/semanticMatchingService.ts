@@ -21,6 +21,10 @@ export const semanticMatchingService = {
     const normalizedQuery = query.toLowerCase();
     const normalizedCandidateText = candidateText.toLowerCase();
     
+    // Log for debugging
+    console.log(`Checking semantic match for query: "${query}"`);
+    console.log(`Candidate text sample: "${candidateText.substring(0, 100)}..."`);
+    
     // Domain-specific keyword mapping (this would be much more extensive in a real implementation)
     const domainMappings: Record<string, string[]> = {
       // Railway industry mappings
@@ -34,9 +38,23 @@ export const semanticMatchingService = {
       // Industry mappings
       'santé': ['hôpital', 'clinique', 'médical', 'pharmaceutique', 'médecin', 'soins'],
       'finance': ['banque', 'assurance', 'crédit', 'comptabilité', 'audit'],
+      
+      // Location mappings
+      'sydney': ['australie', 'australia', 'nsw', 'new south wales'],
     };
     
-    // Check direct match
+    // Split query into keywords for more flexible matching
+    const queryKeywords = normalizedQuery.split(/\s+/).filter(kw => kw.length > 2);
+    
+    // Check for direct matches with individual keywords
+    for (const keyword of queryKeywords) {
+      if (normalizedCandidateText.includes(keyword)) {
+        console.log(`Direct keyword match found for "${keyword}"`);
+        return true;
+      }
+    }
+    
+    // Check direct match with full query
     if (normalizedCandidateText.includes(normalizedQuery)) {
       console.log(`Direct match found for "${query}"`);
       return true;
@@ -45,7 +63,7 @@ export const semanticMatchingService = {
     // Check for domain-specific matches
     for (const [domain, keywords] of Object.entries(domainMappings)) {
       // If query contains this domain
-      if (normalizedQuery.includes(domain)) {
+      if (queryKeywords.some(kw => domain.includes(kw) || kw.includes(domain))) {
         // Check if candidate text contains any of the related keywords
         const matchedKeywords = keywords.filter(keyword => 
           normalizedCandidateText.includes(keyword)
@@ -59,7 +77,7 @@ export const semanticMatchingService = {
       
       // Check the reverse: if query contains keywords and candidate contains domain
       const queryMatchedKeywords = keywords.filter(keyword => 
-        normalizedQuery.includes(keyword)
+        queryKeywords.some(qk => keyword.includes(qk) || qk.includes(keyword))
       );
       
       if (queryMatchedKeywords.length > 0 && normalizedCandidateText.includes(domain)) {
@@ -68,9 +86,24 @@ export const semanticMatchingService = {
       }
     }
     
-    // In a real implementation, this would compute embedding similarity
-    // and return true if the similarity score exceeds the threshold
+    // For longer text, try fuzzy word matching
+    // This helps with partial matches and minor typos
+    for (const keyword of queryKeywords) {
+      if (keyword.length < 4) continue; // Skip very short words
+      
+      // Look for words that contain the keyword or vice versa
+      const candidateWords = normalizedCandidateText.split(/\s+/);
+      for (const word of candidateWords) {
+        if (word.length < 4) continue;
+        
+        if (word.includes(keyword) || keyword.includes(word)) {
+          console.log(`Fuzzy word match found: "${keyword}" ~ "${word}"`);
+          return true;
+        }
+      }
+    }
     
+    console.log(`No semantic match found for "${query}"`);
     return false;
   },
   

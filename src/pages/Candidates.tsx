@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -9,9 +10,11 @@ import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { semanticMatchingService } from '@/services/semantic/semanticMatchingService';
 
 const Candidates = () => {
   const [candidates, setCandidates] = useState<CandidateData[]>([]);
+  const [filteredCandidates, setFilteredCandidates] = useState<CandidateData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
@@ -52,9 +55,11 @@ const Candidates = () => {
           new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
         );
         setCandidates(sortedCandidates);
+        setFilteredCandidates(sortedCandidates); // Initialize filtered candidates with all candidates
       } else {
         console.error("Candidates data is not an array:", data);
         setCandidates([]);
+        setFilteredCandidates([]);
         setError("Format de données incorrect");
       }
     } catch (error: any) {
@@ -74,6 +79,20 @@ const Candidates = () => {
   useEffect(() => {
     fetchCandidates();
   }, [user]);
+
+  // Filter candidates when status is changed
+  useEffect(() => {
+    if (!candidates || candidates.length === 0) return;
+    
+    let result = [...candidates];
+    
+    // Filter by status
+    if (selectedStatus) {
+      result = result.filter(candidate => candidate.status === selectedStatus);
+    }
+    
+    setFilteredCandidates(result);
+  }, [selectedStatus, candidates]);
 
   const handleStatusChange = (status: string | null) => {
     setSelectedStatus(status);
@@ -115,10 +134,104 @@ const Candidates = () => {
     setSemanticSearch(query);
   };
   
+  // Implement the actual filtering logic
   const handleApplyFilters = () => {
-    // Apply filters to candidate data
     console.log("Applying filters:", { location, company, previousCompany, experience, selectedSkills, semanticSearch });
-    // TODO: Implement actual filtering logic
+    
+    if (!candidates || candidates.length === 0) return;
+    
+    let result = [...candidates];
+    
+    // Filter by status (applied separately through the status filter)
+    if (selectedStatus) {
+      result = result.filter(candidate => candidate.status === selectedStatus);
+    }
+    
+    // Filter by location
+    if (location) {
+      result = result.filter(candidate => {
+        const candidateLocation = candidate.location || '';
+        return candidateLocation.toLowerCase().includes(location.toLowerCase());
+      });
+    }
+    
+    // Filter by current company
+    if (company) {
+      result = result.filter(candidate => {
+        const candidateCompany = candidate.company || '';
+        return candidateCompany.toLowerCase().includes(company.toLowerCase());
+      });
+    }
+    
+    // Filter by previous company
+    if (previousCompany) {
+      result = result.filter(candidate => {
+        // Check in experiences array for previous companies
+        const experiences = Array.isArray(candidate.experiences) ? candidate.experiences : [];
+        return experiences.some(exp => {
+          const companyName = typeof exp === 'object' && exp ? exp.company || '' : '';
+          return companyName.toLowerCase().includes(previousCompany.toLowerCase());
+        });
+      });
+    }
+    
+    // Filter by experience level
+    if (experience !== 'all') {
+      const expRanges = {
+        '1-3': { min: 1, max: 3 },
+        '4-6': { min: 4, max: 6 },
+        '7-10': { min: 7, max: 10 },
+        '10+': { min: 10, max: 100 }
+      };
+      
+      const selectedRange = expRanges[experience as keyof typeof expRanges];
+      if (selectedRange) {
+        result = result.filter(candidate => {
+          const yearsExp = Number(candidate.years_experience) || 0;
+          return yearsExp >= selectedRange.min && yearsExp <= selectedRange.max;
+        });
+      }
+    }
+    
+    // Filter by skills
+    if (selectedSkills.length > 0) {
+      result = result.filter(candidate => {
+        const candidateSkills = Array.isArray(candidate.skills) ? candidate.skills : [];
+        return selectedSkills.every(skill => 
+          candidateSkills.some(candidateSkill => 
+            candidateSkill.toLowerCase().includes(skill.toLowerCase()) ||
+            skill.toLowerCase().includes(candidateSkill.toLowerCase())
+          )
+        );
+      });
+    }
+    
+    // Apply semantic search if provided
+    if (semanticSearch) {
+      result = result.filter(candidate => {
+        // Get the searchable text from the candidate
+        const candidateText = semanticMatchingService.getCandidateSearchableText(candidate);
+        
+        // Check if there's a semantic match between the query and candidate text
+        return semanticMatchingService.isSemanticMatch({
+          query: semanticSearch,
+          candidateText,
+          threshold: 0.5
+        });
+      });
+    }
+    
+    // Update the filtered candidates
+    setFilteredCandidates(result);
+    
+    // Show feedback to the user
+    toast({
+      title: `${result.length} candidats trouvés`,
+      description: result.length > 0 
+        ? "Les filtres ont été appliqués avec succès." 
+        : "Aucun candidat ne correspond à vos critères de recherche.",
+      variant: result.length > 0 ? "default" : "destructive",
+    });
   };
   
   const handleResetFilters = () => {
@@ -128,12 +241,19 @@ const Candidates = () => {
     setExperience('all');
     setSelectedSkills([]);
     setSemanticSearch('');
+    
+    // Reset to original candidates list filtered only by status
+    if (selectedStatus) {
+      setFilteredCandidates(candidates.filter(candidate => candidate.status === selectedStatus));
+    } else {
+      setFilteredCandidates(candidates);
+    }
+    
+    toast({
+      title: "Filtres réinitialisés",
+      description: "Tous les filtres ont été réinitialisés.",
+    });
   };
-
-  // Filter candidates based on selected status
-  const filteredCandidates = selectedStatus
-    ? candidates.filter(candidate => candidate.status === selectedStatus)
-    : candidates;
 
   return (
     <Layout>
