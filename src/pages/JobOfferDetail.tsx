@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
@@ -76,15 +75,21 @@ const JobOfferDetail = () => {
     if (!jobOfferId) return;
     
     try {
+      console.log("Fetching candidate matches for job offer:", jobOfferId);
       let matches;
       
       try {
+        console.log("Attempting to use RPC for matches");
         const { data, error } = await supabase
           .rpc('get_matches_for_job_offer', { p_job_offer_id: jobOfferId });
         
-        if (error) throw error;
+        if (error) {
+          console.error("RPC Error:", error);
+          throw error;
+        }
         
         if (data && data.length > 0) {
+          console.log("Successfully got matches from RPC:", data.length);
           const processedMatches = data.map((item: any) => {
             const candidate = processCandidateData(item.candidate || {});
             const match = item.match || {};
@@ -98,9 +103,9 @@ const JobOfferDetail = () => {
               score: match.match_score || 0,
               details: match.match_details || {
                 skills: { matched: [], missing: [], additional: [], matchPercentage: 0 },
-                experienceLevel: { required: 0, candidate: 0, match: false },
-                location: { required: '', candidate: '', match: false },
-                educationLevel: { required: '', candidate: '', match: false },
+                experienceLevel: { required: 0, candidate: 0, match: false, score: 0 },
+                location: { required: '', candidate: '', match: false, score: 0 },
+                educationLevel: { required: '', candidate: '', match: false, score: 0 },
                 overall: 0
               },
               candidate: candidate,
@@ -120,12 +125,16 @@ const JobOfferDetail = () => {
           setCandidateMatches(processedMatches);
           console.log("Matches loaded from RPC:", processedMatches.length);
           return;
+        } else {
+          console.log("No matches found from RPC, will recalculate");
         }
       } catch (rpcError) {
         console.error('Error using RPC for matches, falling back to service:', rpcError);
       }
       
-      matches = await candidateMatchingService.getMatchesForJobOffer(jobOfferId);
+      console.log("Calculating matches using service method");
+      matches = await candidateMatchingService.calculateMatchesForJobOffer(jobOfferId);
+      console.log("Matches calculated:", matches?.length || 0);
       
       if (matches && matches.length > 0) {
         const enhancedMatches = await Promise.all(
@@ -138,16 +147,18 @@ const JobOfferDetail = () => {
                 .single();
               
               if (!candidateData) {
+                console.log(`No candidate data found for ID ${match.candidateId}`);
                 return {
                   ...match,
                   match: {
                     match_score: match.score,
                     skills_match_score: match.details?.skills?.matchPercentage || 0,
-                    experience_match_score: match.details?.experienceLevel?.match ? 100 : 
+                    experience_match_score: match.details?.experienceLevel?.score || 
+                      (match.details?.experienceLevel?.match ? 100 : 
                       Math.min(100, ((match.details?.experienceLevel?.candidate || 0) / 
-                      (match.details?.experienceLevel?.required || 1)) * 100),
-                    education_match_score: match.details?.educationLevel?.match ? 100 : 0,
-                    location_match_score: match.details?.location?.match ? 100 : 0,
+                      Math.max(1, (match.details?.experienceLevel?.required || 1))) * 100)),
+                    education_match_score: match.details?.educationLevel?.score || (match.details?.educationLevel?.match ? 100 : 0),
+                    location_match_score: match.details?.location?.score || (match.details?.location?.match ? 100 : 0),
                     match_details: match.details || {
                       skills: { matched: [], missing: [], additional: [], matchPercentage: 0 }
                     }
@@ -156,6 +167,7 @@ const JobOfferDetail = () => {
               }
               
               const candidate = processCandidateData(candidateData);
+              console.log(`Enhanced match for candidate: ${candidate.first_name} ${candidate.last_name} with score ${match.score}`);
               
               return {
                 ...match,
@@ -163,11 +175,12 @@ const JobOfferDetail = () => {
                 match: {
                   match_score: match.score,
                   skills_match_score: match.details?.skills?.matchPercentage || 0,
-                  experience_match_score: match.details?.experienceLevel?.match ? 100 : 
+                  experience_match_score: match.details?.experienceLevel?.score || 
+                    (match.details?.experienceLevel?.match ? 100 : 
                     Math.min(100, ((match.details?.experienceLevel?.candidate || 0) / 
-                    (match.details?.experienceLevel?.required || 1)) * 100),
-                  education_match_score: match.details?.educationLevel?.match ? 100 : 0,
-                  location_match_score: match.details?.location?.match ? 100 : 0,
+                    Math.max(1, (match.details?.experienceLevel?.required || 1))) * 100)),
+                  education_match_score: match.details?.educationLevel?.score || (match.details?.educationLevel?.match ? 100 : 0),
+                  location_match_score: match.details?.location?.score || (match.details?.location?.match ? 100 : 0),
                   match_details: match.details || {
                     skills: { matched: [], missing: [], additional: [], matchPercentage: 0 }
                   }
@@ -180,9 +193,10 @@ const JobOfferDetail = () => {
                 match: {
                   match_score: match.score,
                   skills_match_score: match.details?.skills?.matchPercentage || 0,
-                  experience_match_score: match.details?.experienceLevel?.match ? 100 : 50,
-                  education_match_score: match.details?.educationLevel?.match ? 100 : 0,
-                  location_match_score: match.details?.location?.match ? 100 : 0,
+                  experience_match_score: match.details?.experienceLevel?.score || 
+                    (match.details?.experienceLevel?.match ? 100 : 50),
+                  education_match_score: match.details?.educationLevel?.score || (match.details?.educationLevel?.match ? 100 : 0),
+                  location_match_score: match.details?.location?.score || (match.details?.location?.match ? 100 : 0),
                   match_details: match.details || {
                     skills: { matched: [], missing: [], additional: [], matchPercentage: 0 }
                   }
@@ -216,6 +230,7 @@ const JobOfferDetail = () => {
     try {
       setMatchLoading(true);
       
+      console.log("Starting recalculation of matches for job offer:", jobOfferId);
       await candidateMatchingService.calculateMatchesForJobOffer(jobOfferId);
       
       toast({
@@ -224,6 +239,7 @@ const JobOfferDetail = () => {
       });
       
       await fetchCandidateMatches();
+      console.log("Matches recalculated and fetched");
     } catch (error: any) {
       console.error('Error recalculating matches:', error);
       
@@ -251,15 +267,10 @@ const JobOfferDetail = () => {
     navigate(`/job-offers/${jobOfferId}/edit`);
   };
   
-  // Enhanced renderMatchedSkills with better null checking
   const renderMatchedSkills = (item: ExtendedCandidateMatch) => {
-    // First try to get matched skills from match.match_details path
     const matchDetailsSkills = item.match?.match_details?.skills?.matched;
-    
-    // Then try from details path
     const detailsSkills = item.details?.skills?.matched;
     
-    // Use a safe array with comprehensive fallbacks
     const matchedSkills = Array.isArray(matchDetailsSkills) 
       ? matchDetailsSkills 
       : Array.isArray(detailsSkills) 
@@ -277,9 +288,7 @@ const JobOfferDetail = () => {
     }
   };
   
-  // Enhanced renderMissingSkills with better null checking
   const renderMissingSkills = (item: ExtendedCandidateMatch) => {
-    // Similar approach for missing skills with multiple fallbacks
     const missingSkillsFromMatchDetails = item.match?.match_details?.skills?.missing;
     const missingSkillsFromDetails = item.details?.skills?.missing;
     

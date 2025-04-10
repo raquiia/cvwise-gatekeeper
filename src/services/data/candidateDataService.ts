@@ -1,51 +1,16 @@
-
-import { candidateService, CandidateData } from './candidateService';
-import { jobOfferService } from './job-offers/jobOfferService';
-import { candidateMatchingService } from './candidateMatchingService';
-import type { JobOffer } from './job-offers/types';
-import type { 
-  CandidateMatch, 
-  JobOfferSuggestion,
-  MatchDetails,
-  SkillsMatchDetails
-} from './candidate-matching/types';
+import { MatchDetails } from './candidate-matching/types';
 
 /**
- * Re-export all the services to maintain backward compatibility
+ * Interface for the result of a candidate-job matching operation
  */
-export const candidateDataService = {
-  // Re-export candidate services
-  getUserCandidates: candidateService.getUserCandidates,
-  getCandidateById: candidateService.getCandidateById,
-  deleteCandidate: candidateService.deleteCandidate,
-  
-  // Re-export job offer services
-  createJobOffer: jobOfferService.createJobOffer,
-  updateJobOffer: jobOfferService.updateJobOffer,
-  deleteJobOffer: jobOfferService.deleteJobOffer,
-  getUserJobOffers: jobOfferService.getUserJobOffers,
-  getJobOfferById: jobOfferService.getJobOfferById,
-  
-  // Re-export matching services
-  calculateMatchesForJobOffer: candidateMatchingService.calculateMatchesForJobOffer,
-  getCandidateJobMatch: candidateMatchingService.getCandidateJobMatch,
-  getMatchesForJobOffer: candidateMatchingService.getMatchesForJobOffer,
-  getTopCandidatesForJobOffer: candidateMatchingService.getTopCandidatesForJobOffer,
-  generateJobOfferSuggestions: candidateMatchingService.generateJobOfferSuggestions
-};
-
-// Re-export types to maintain backward compatibility
-export type { 
-  CandidateData,
-  JobOffer, 
-  CandidateMatch,
-  JobOfferSuggestion,
-  MatchDetails,
-  SkillsMatchDetails
-};
-
-// Create interface for backward compatibility
 export interface CandidateJobMatch {
   score: number;
   details: MatchDetails;
 }
+
+/**
+ * Service for candidate data operations
+ */
+export const candidateDataService = {
+  // Add any needed service methods here
+};
