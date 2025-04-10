@@ -294,6 +294,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                   candidate={candidate}
                   onViewCandidate={onViewCandidate}
                   onCandidateDeleted={handleCandidateDeleted}
+                  hideScore={true}
                   scoreIsMatchScore={!!activeJobOfferId}
                   matchDetails={candidate.matchDetails}
                 />

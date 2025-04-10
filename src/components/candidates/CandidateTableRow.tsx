@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Star, MapPin, Eye, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,7 @@ interface CandidateTableRowProps {
   candidate: CandidateData;
   onViewCandidate: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
+  hideScore?: boolean;
   scoreIsMatchScore?: boolean;
   matchDetails?: any;
 }
@@ -34,6 +34,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   candidate, 
   onViewCandidate,
   onCandidateDeleted,
+  hideScore = false,
   scoreIsMatchScore = false,
   matchDetails = null
 }) => {
@@ -47,29 +48,24 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     return null;
   }
 
-  // Make sure we have an id
   if (!candidate.id) {
     console.error('Candidate without ID:', candidate);
     return null;
   }
 
-  // Get safe values with fallbacks
   const firstInitial = candidate.first_name?.charAt(0) || '?';
   const lastInitial = candidate.last_name?.charAt(0) || '?';
   const fullName = `${candidate.first_name || 'Sans nom'} ${candidate.last_name || ''}`.trim();
   
-  // Fix for position coming as an object sometimes
   let position = 'Non spécifié';
   if (candidate.position) {
     if (typeof candidate.position === 'string') {
       position = candidate.position;
     } else if (typeof candidate.position === 'object' && candidate.position !== null) {
-      // Try to extract value if position is an object
       const posObj = candidate.position as any;
       if (posObj.value && posObj.value !== 'undefined') {
         position = posObj.value;
       } else if (Object.values(posObj).length > 0) {
-        // Try first value in the object
         const firstValue = Object.values(posObj).find(v => typeof v === 'string' && v !== 'undefined');
         if (firstValue) position = String(firstValue);
       }
@@ -79,7 +75,6 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   const location = candidate.location || 'Non spécifié';
   const yearsExp = candidate.years_experience || 0;
   
-  // Make sure skills is an array of strings
   const skills = Array.isArray(candidate.skills) 
     ? candidate.skills.map(skill => String(skill)) 
     : (typeof candidate.skills === 'object' && candidate.skills !== null)
@@ -91,14 +86,12 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   const updatedAt = candidate.updated_at ? new Date(candidate.updated_at) : null;
   const company = candidate.company || 'Non spécifié';
   
-  // Safe click handler
   const handleViewClick = () => {
     if (candidate.id) {
       onViewCandidate(candidate.id);
     }
   };
   
-  // Delete candidate handler
   const handleDeleteClick = () => {
     setDeleteError(null);
     setShowDeleteDialog(true);
@@ -111,14 +104,12 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     setDeleteError(null);
     
     try {
-      // Check if resume_id exists before deletion
       if (!candidate.resume_id) {
         console.warn('Candidate has no resume_id. Only candidate will be deleted:', candidate.id);
       }
       
       await candidateDataService.deleteCandidate(candidate.id);
       
-      // Notify parent component to refresh the list
       toast({
         title: "Candidat supprimé",
         description: `${fullName} a été supprimé avec succès.`,
@@ -207,23 +198,25 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
             )}
           </div>
         </td>
-        <td className="p-4">
-          {score > 0 ? (
-            <div className={`rating-chip ${
-              score > 85 ? 'rating-high' : 
-              score > 65 ? 'rating-medium' : 
-              'rating-low'
-            }`}>
-              <Star size={12} />
-              {score}%
-              {scoreIsMatchScore && (
-                <span className="ml-1 text-xs">match</span>
-              )}
-            </div>
-          ) : (
-            <span className="text-muted-foreground text-xs">N/A</span>
-          )}
-        </td>
+        {!hideScore && (
+          <td className="p-4">
+            {score > 0 ? (
+              <div className={`rating-chip ${
+                score > 85 ? 'rating-high' : 
+                score > 65 ? 'rating-medium' : 
+                'rating-low'
+              }`}>
+                <Star size={12} />
+                {score}%
+                {scoreIsMatchScore && (
+                  <span className="ml-1 text-xs">match</span>
+                )}
+              </div>
+            ) : (
+              <span className="text-muted-foreground text-xs">N/A</span>
+            )}
+          </td>
+        )}
         <td className="p-4 text-muted-foreground hidden md:table-cell">
           {updatedAt ? updatedAt.toLocaleDateString() : 'N/A'}
         </td>
