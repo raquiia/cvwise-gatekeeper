@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { analyzeResume } from '@/services/resumeService';
+import { analyzeResume, extractResumeText } from '@/services/resumeService';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -49,41 +49,38 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
       // Pour un accès plus facile
       const resumeInfo = resumeData[0];
       
-      // 2. Télécharger et lire le contenu du fichier CV
-      const { data: fileData, error: fileError } = await supabase.storage
-        .from('resumes')
-        .download(resumeInfo.file_path);
+      // 2. Extraire le texte du CV en utilisant la fonction dédiée
+      const extractionResult = await extractResumeText(resumeId, resumeInfo.file_path);
       
-      if (fileError || !fileData) {
-        throw new Error("Impossible de récupérer le fichier du CV");
+      if (!extractionResult.success || !extractionResult.text) {
+        throw new Error("Impossible d'extraire le texte du CV. " + (extractionResult.message || ""));
       }
       
-      // 3. Extraire le texte du fichier
-      const text = await fileData.text();
+      const extractedText = extractionResult.text;
       
-      if (!text || text.trim() === '') {
-        throw new Error("Le contenu du CV est vide");
-      }
+      console.log("Texte extrait du CV (premiers 100 caractères) :", extractedText.substring(0, 100));
       
-      // 4. Analyse du CV par l'IA avec le texte récupéré
+      // 3. Analyse du CV par l'IA avec le texte extrait
       toast({
         title: "Analyse en cours",
         description: "L'IA analyse le CV pour extraire les informations..."
       });
       
-      const analysisResult = await analyzeResume(resumeId, text, true);
+      // Utiliser la fonction existante mais indiquer qu'il faut préserver les données
+      // si l'analyse échoue (overwriteExisting = false)
+      const analysisResult = await analyzeResume(resumeId, extractedText, true);
       
       if (!analysisResult.success) {
         throw new Error(analysisResult.message || "Échec de l'analyse du CV");
       }
       
-      // 5. Notification de succès
+      // 4. Notification de succès
       toast({
         title: "Analyse terminée",
         description: "Les données du candidat ont été mises à jour avec succès"
       });
       
-      // 6. Rafraîchir la page pour voir les nouvelles données
+      // 5. Rafraîchir la page pour voir les nouvelles données
       if (onReanalysisComplete) {
         onReanalysisComplete();
       } else {
