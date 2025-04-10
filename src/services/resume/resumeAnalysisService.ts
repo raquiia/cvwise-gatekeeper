@@ -109,7 +109,6 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
       // Si l'erreur est liée à la récursion dans les politiques, essayons une approche alternative
       if (apiError.message && apiError.message.includes('recursion')) {
         console.warn('Detected recursion error, using alternative approach');
-        // Ici, on pourrait implémenter une approche alternative, comme une mise à jour directe
         toast({
           title: "Attention",
           description: "L'analyse a été effectuée, mais en raison d'une limitation technique, veuillez rafraîchir la page pour voir toutes les données",

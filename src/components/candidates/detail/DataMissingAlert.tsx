@@ -32,7 +32,7 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
     try {
       setLoading(true);
       
-      // 1. Extraire le texte du CV - en passant seulement resumeId, laissant la fonction récupérer le chemin
+      // 1. Extraire le texte du CV - pas besoin de passer filePath, la fonction va le récupérer automatiquement
       const textResult = await extractResumeText(resumeId);
       
       if (!textResult.success || !textResult.text) {
@@ -40,6 +40,7 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
       }
       
       // 2. Ré-analyser le CV en forçant l'écrasement des données existantes
+      // Assurons-nous de passer tous les arguments requis dans le bon ordre
       const analysisResult = await analyzeResume(resumeId, textResult.text, true);
       
       if (!analysisResult.success) {
