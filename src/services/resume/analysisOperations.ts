@@ -85,7 +85,12 @@ export const extractResumeText = async (resumeId: string, filePath: string): Pro
       throw new Error(data?.error || 'Extraction du texte échouée');
     }
     
-    console.log('Text extraction successful');
+    console.log('Text extraction successful, length:', data.data?.text?.length || 0);
+    
+    // Vérifier que le texte extrait n'est pas vide
+    if (!data.data?.text || data.data.text.trim() === '') {
+      throw new Error('Le texte extrait est vide');
+    }
     
     // Retourner le texte extrait
     return { 
@@ -139,12 +144,13 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
     console.log(`Text length being sent to OpenAI: ${resumeText.length} characters`);
     console.log('Sample of the text being sent:', resumeText.substring(0, 200) + '...');
     
-    // Appel à l'edge function d'analyse de CV
+    // Appel à l'edge function d'analyse de CV avec paramètres améliorés
     const { data, error } = await supabase.functions.invoke('resume-ai-analysis', {
       body: { 
         resumeId: resumeId,
         resumeText: resumeText,
-        overwriteExisting: overwriteExisting
+        overwriteExisting: overwriteExisting,
+        fullAnalysis: true // Indiquer qu'il faut analyser toutes les sections
       }
     });
     
@@ -163,7 +169,7 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
     // Vérifier les structures complexes pour debugging
     if (data.candidate) {
       // Check résumé des données analysées
-      console.log('Parsed data from OpenAI:', data.parsed_data ? JSON.stringify(data.parsed_data).substring(0, 200) + '...' : 'No parsed data');
+      console.log('Parsed data from OpenAI received:', data.parsed_data ? 'Yes' : 'No');
       
       // Vérifier les structures complexes pour debugging
       console.log('Experiences:', typeof data.candidate.experiences, Array.isArray(data.candidate.experiences) ? data.candidate.experiences.length : 'Not an array');

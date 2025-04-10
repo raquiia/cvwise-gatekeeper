@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.2";
@@ -153,7 +154,7 @@ function ensureProperDataFormat(data: any): any {
       data[prop] = ensureArray(data[prop]);
       
       // Log de debugging pour les propriétés importantes
-      if (prop === 'experiences' || prop === 'education') {
+      if (prop === 'experiences' || prop === 'education' || prop === 'languages' || prop === 'certifications') {
         console.log(`Formatting ${prop}, final result:`, JSON.stringify(data[prop]));
       }
     }
@@ -242,7 +243,7 @@ serve(async (req) => {
   if (corsResponse) return corsResponse;
 
   try {
-    const { resumeId, resumeText, extractText, pdfUrl } = await req.json();
+    const { resumeId, resumeText, extractText, pdfUrl, fullAnalysis = false } = await req.json();
     
     if (!resumeId) {
       throw new Error("L'ID du CV est requis");
@@ -250,6 +251,7 @@ serve(async (req) => {
     
     console.log("Démarrage de l'analyse AI pour le CV:", resumeId);
     console.log("Taille du texte reçu:", resumeText?.length || 0, "caractères");
+    console.log("Analyse complète demandée:", fullAnalysis ? "Oui" : "Non");
     console.log("Échantillon du texte:", resumeText?.substring(0, 200) + "...");
 
     // Créer un client Supabase avec la clé service
@@ -276,7 +278,7 @@ serve(async (req) => {
       .eq("resume_id", resumeId)
       .maybeSingle();
     
-    console.log("Candidat existant:", existingCandidate);
+    console.log("Candidat existant:", existingCandidate ? "Oui" : "Non");
     
     // Extraire ou utiliser le texte du CV
     let textToAnalyze = resumeText;
@@ -441,6 +443,7 @@ IMPORTANT:
 - Si tu n'es pas sûr d'une information, indique-le clairement.
 - Pour les expériences professionnelles et formations, assure-toi de capturer TOUS les détails fournis dans le texte original.
 - Les expériences et éducation doivent TOUJOURS être des tableaux d'objets, même s'il n'y a qu'un seul élément.
+- Ne laisse pas de champs vides - si l'information n'est pas disponible, tu peux utiliser null pour les valeurs numériques ou des chaînes vides pour le texte.
 
 Retourne ces informations sous forme d'un objet JSON structuré:
 
@@ -566,14 +569,41 @@ Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne
       console.log("Données structurées extraites avec succès");
       
       // Vérifions les expériences et l'éducation
-      console.log("Expériences:", JSON.stringify(parsedData.experiences || parsedData.experience || []));
-      console.log("Éducation:", JSON.stringify(parsedData.education || []));
-      console.log("Langues:", JSON.stringify(parsedData.languages || []));
-      console.log("Certifications:", JSON.stringify(parsedData.certifications || []));
-      console.log("Projets:", JSON.stringify(parsedData.projects || []));
+      console.log("Expériences:", Array.isArray(parsedData.experiences) ? parsedData.experiences.length + " trouvées" : "Format invalide");
+      console.log("Éducation:", Array.isArray(parsedData.education) ? parsedData.education.length + " trouvées" : "Format invalide");
+      console.log("Langues:", Array.isArray(parsedData.languages) ? parsedData.languages.length + " trouvées" : "Format invalide");
+      console.log("Certifications:", Array.isArray(parsedData.certifications) ? parsedData.certifications.length + " trouvées" : "Format invalide");
+      console.log("Projets:", Array.isArray(parsedData.projects) ? parsedData.projects.length + " trouvés" : "Format invalide");
     } catch (error) {
       console.error("Erreur lors du parsing de la réponse OpenAI:", error);
       throw new Error("Impossible de traiter la réponse de l'IA");
+    }
+    
+    // Si le candidat existe déjà, préserver certaines données existantes
+    // en cas d'analyse incomplète
+    if (existingCandidate && !fullAnalysis) {
+      console.log("Préservation des données existantes en cas d'échec de l'analyse");
+      
+      // Préserver les tableaux s'ils sont vides dans les nouvelles données
+      if (!parsedData.experiences || parsedData.experiences.length === 0) {
+        parsedData.experiences = existingCandidate.experiences || [];
+      }
+      
+      if (!parsedData.education || parsedData.education.length === 0) {
+        parsedData.education = existingCandidate.education || [];
+      }
+      
+      if (!parsedData.languages || parsedData.languages.length === 0) {
+        parsedData.languages = existingCandidate.languages || [];
+      }
+      
+      if (!parsedData.certifications || parsedData.certifications.length === 0) {
+        parsedData.certifications = existingCandidate.certifications || [];
+      }
+      
+      if (!parsedData.projects || parsedData.projects.length === 0) {
+        parsedData.projects = existingCandidate.projects || [];
+      }
     }
     
     // Transformer les données pour correspondre au schéma de la base de données
@@ -626,11 +656,11 @@ Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne
     // S'assurer que toutes les propriétés complexes sont correctement formatées
     const formattedCandidateData = ensureProperDataFormat(candidateData);
     
-    console.log("Données du candidat préparées:", JSON.stringify({
-      experiences: formattedCandidateData.experiences,
-      education: formattedCandidateData.education,
-      languages: formattedCandidateData.languages
-    }));
+    console.log("Données du candidat préparées avec succès");
+    console.log("Nombre d'expériences:", Array.isArray(formattedCandidateData.experiences) ? formattedCandidateData.experiences.length : 0);
+    console.log("Nombre de formations:", Array.isArray(formattedCandidateData.education) ? formattedCandidateData.education.length : 0);
+    console.log("Nombre de langues:", Array.isArray(formattedCandidateData.languages) ? formattedCandidateData.languages.length : 0);
+    console.log("Nombre de certifications:", Array.isArray(formattedCandidateData.certifications) ? formattedCandidateData.certifications.length : 0);
     
     // Upsert du candidat dans la base de données
     console.log("Enregistrement du candidat dans la base de données");

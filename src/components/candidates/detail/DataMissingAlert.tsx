@@ -58,7 +58,8 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
       
       const extractedText = extractionResult.text;
       
-      console.log("Texte extrait du CV (premiers 100 caractères) :", extractedText.substring(0, 100));
+      console.log("Texte extrait du CV (longueur totale) :", extractedText.length, "caractères");
+      console.log("Échantillon du texte extrait:", extractedText.substring(0, 200) + "...");
       
       // 3. Analyse du CV par l'IA avec le texte extrait
       toast({
@@ -66,13 +67,15 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
         description: "L'IA analyse le CV pour extraire les informations..."
       });
       
-      // Utiliser la fonction existante mais indiquer qu'il faut préserver les données
-      // si l'analyse échoue (overwriteExisting = false)
+      // Utiliser la fonction existante et forcer la réécriture complète des données
+      // pour garantir une mise à jour complète du profil
       const analysisResult = await analyzeResume(resumeId, extractedText, true);
       
       if (!analysisResult.success) {
         throw new Error(analysisResult.message || "Échec de l'analyse du CV");
       }
+      
+      console.log("Analyse IA réussie, ID du candidat:", analysisResult.candidateId);
       
       // 4. Notification de succès
       toast({
