@@ -1,100 +1,83 @@
 
 /**
- * Types for candidate matching functionality
+ * Types for matching and AI suggestion functionality
  */
 
-export type SkillsMatchDetails = {
-  matched: string[];
-  missing: string[];
-  additional: string[];
-  matchPercentage: number;
-};
+// Generic skill type with level
+export interface SkillWithLevel {
+  skill: string;
+  level: number;
+}
 
-export type ExperienceLevelMatch = {
-  required: number;
-  candidate: number;
-  match: boolean;
-  score?: number;
-};
-
-export type LocationMatch = {
-  required: string;
-  candidate: string;
-  match: boolean;
-  score?: number;
-};
-
-export type EducationLevelMatch = {
-  required: string;
-  candidate: string;
-  match: boolean;
-  score?: number;
-};
-
-export type MatchDetails = {
-  skills: SkillsMatchDetails;
-  experienceLevel: ExperienceLevelMatch;
-  location: LocationMatch;
-  educationLevel: EducationLevelMatch;
-  overall: number;
-};
-
-export type CandidateJobMatch = {
-  score: number;
-  details: MatchDetails;
-};
-
-export type CandidateMatch = {
-  candidateId: string;
-  firstName: string;
-  lastName: string;
-  position: string;
-  company: string;
-  score: number;
-  details: MatchDetails;
-};
-
-export type JobMatchWeight = {
-  skills: number;
-  experience: number;
-  location: number;
-  education: number;
-};
-
-/**
- * Type for skills details
- * Making consistent with SkillsMatchDetails to avoid type errors
- */
-export type SkillsDetails = {
-  matched: string[];
-  missing: string[];
-  additional: string[];  // Added this field to match SkillsMatchDetails
-  matchPercentage: number;
-};
-
-/**
- * Type for job offer suggestions
- */
-export type JobOfferSuggestion = {
+// Match result for a candidate against a job offer
+export interface CandidateMatch {
   id: string;
-  title: string;
-  company: string;
-  location: string;
-  matchScore: number;
-  description: string;
-  requiredSkills: string[];
-  softSkills: string[];
-  toolsAndTechnologies: string[];
-  education: string;
-  experience: {
-    min: number;
-    max: number;
+  candidate_id: string;
+  job_offer_id: string;
+  match_score: number;
+  skills_match_score?: number;
+  experience_match_score?: number;
+  education_match_score?: number;
+  location_match_score?: number;
+  match_details?: {
+    matched_skills?: string[];
+    missing_skills?: string[];
+    matched_education?: boolean;
+    location_distance?: number;
+    experience_difference?: number;
+    [key: string]: any;
   };
-  contractType: string;
-  remotePreference: string;
-  salary: {
-    min: number;
-    max: number;
-    currency: string;
+  first_name?: string;
+  last_name?: string;
+  position?: string;
+  location?: string;
+  email?: string;
+  phone?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Options for calculating match scores
+export interface MatchingOptions {
+  weights?: {
+    skills?: number;
+    experience?: number;
+    education?: number;
+    location?: number;
   };
-};
+  thresholds?: {
+    skills?: number;
+    experience?: number;
+    education?: number;
+    location?: number;
+  };
+}
+
+// Response from the matching calculation operation
+export interface MatchingResponse {
+  matches: CandidateMatch[];
+  total: number;
+  success: boolean;
+  error?: string;
+}
+
+// AI-generated job offer suggestion
+export interface JobOfferSuggestion {
+  title?: string;
+  location?: string;
+  description?: string;
+  requiredSkills?: string[];
+  softSkills?: string[]; // Ajout du champ pour les soft skills
+  education?: string;
+  experience?: {
+    min?: number;
+    max?: number;
+  };
+  contractType?: string;
+  remotePreference?: string;
+  salary?: {
+    min?: number;
+    max?: number;
+    currency?: string;
+  };
+}

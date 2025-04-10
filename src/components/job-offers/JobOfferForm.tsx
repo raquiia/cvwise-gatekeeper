@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Sparkles, Info, Plus, Wand2 } from 'lucide-react';
@@ -260,12 +259,33 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
   const applySuggestions = () => {
     if (!suggestion) return;
     
+    if (suggestion.title) {
+      form.setValue('title', suggestion.title);
+    }
+    
+    if (suggestion.location) {
+      form.setValue('location', suggestion.location);
+    }
+    
     if (suggestion.description) {
       form.setValue('description', suggestion.description);
     }
     
     if (suggestion.requiredSkills && suggestion.requiredSkills.length > 0) {
       form.setValue('required_skills', suggestion.requiredSkills);
+    }
+    
+    if (suggestion.softSkills && suggestion.softSkills.length > 0) {
+      const currentSkills = form.getValues('required_skills') || [];
+      const newSkills = [...currentSkills];
+      
+      suggestion.softSkills.forEach(softSkill => {
+        if (!newSkills.includes(softSkill)) {
+          newSkills.push(softSkill);
+        }
+      });
+      
+      form.setValue('required_skills', newSkills);
     }
     
     if (suggestion.education) {
@@ -302,6 +322,8 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
     }
     
     setShowSuggestionDialog(false);
+    setActiveTab('standard');
+    
     toast({
       title: "Suggestions appliquées",
       description: "Les suggestions complètes ont été appliquées avec succès",
@@ -337,48 +359,61 @@ const JobOfferForm: React.FC<JobOfferFormProps> = ({ jobOfferId, isEditing = fal
           form.setValue('title', suggestions.title);
         }
         
-        if (suggestions.location) {
+        if (suggestion.location) {
           form.setValue('location', suggestions.location);
         }
         
-        if (suggestions.description) {
+        if (suggestion.description) {
           form.setValue('description', suggestions.description);
         }
         
-        if (suggestions.requiredSkills && suggestions.requiredSkills.length > 0) {
-          form.setValue('required_skills', suggestions.requiredSkills);
+        if (suggestion.requiredSkills && suggestion.requiredSkills.length > 0) {
+          form.setValue('required_skills', suggestion.requiredSkills);
         }
         
-        if (suggestions.education) {
-          form.setValue('education_level', suggestions.education);
+        if (suggestion.softSkills && suggestion.softSkills.length > 0) {
+          const currentSkills = form.getValues('required_skills') || [];
+          const newSkills = [...currentSkills];
+          
+          suggestions.softSkills.forEach(softSkill => {
+            if (!newSkills.includes(softSkill)) {
+              newSkills.push(softSkill);
+            }
+          });
+          
+          form.setValue('required_skills', newSkills);
         }
         
-        if (suggestions.experience) {
-          if (suggestions.experience.min !== undefined) {
-            form.setValue('experience_years_min', suggestions.experience.min);
+        if (suggestion.education) {
+          form.setValue('education_level', suggestion.education);
+        }
+        
+        if (suggestion.experience) {
+          if (suggestion.experience.min !== undefined) {
+            form.setValue('experience_years_min', suggestion.experience.min);
           }
-          if (suggestions.experience.max !== undefined) {
-            form.setValue('experience_years_max', suggestions.experience.max);
+          if (suggestion.experience.max !== undefined) {
+            form.setValue('experience_years_max', suggestion.experience.max);
           }
         }
         
-        if (suggestions.contractType) {
-          form.setValue('contract_type', suggestions.contractType);
+        if (suggestion.contractType) {
+          form.setValue('contract_type', suggestion.contractType);
         }
         
-        if (suggestions.remotePreference) {
-          form.setValue('remote_preference', suggestions.remotePreference);
+        if (suggestion.remotePreference) {
+          form.setValue('remote_preference', suggestion.remotePreference);
         }
         
-        if (suggestions.salary) {
-          if (suggestions.salary.min !== undefined) {
-            form.setValue('salary_min', suggestions.salary.min);
+        if (suggestion.salary) {
+          if (suggestion.salary.min !== undefined) {
+            form.setValue('salary_min', suggestion.salary.min);
           }
-          if (suggestions.salary.max !== undefined) {
-            form.setValue('salary_max', suggestions.salary.max);
+          if (suggestion.salary.max !== undefined) {
+            form.setValue('salary_max', suggestion.salary.max);
           }
-          if (suggestions.salary.currency) {
-            form.setValue('salary_currency', suggestions.salary.currency);
+          if (suggestion.salary.currency) {
+            form.setValue('salary_currency', suggestion.salary.currency);
           }
         }
       }
