@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart3, Users, FileText, Search, CheckCircle, 
@@ -31,7 +30,6 @@ const sectorIcons = {
   "Sciences": <Microscope size={16} className="mr-2" />,
 };
 
-// Composant pour le graphique en secteurs
 const SectorPieChart = ({ data, loading }) => {
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -120,7 +118,6 @@ const SectorPieChart = ({ data, loading }) => {
   );
 };
 
-// Composant pour le graphique à barres
 const EducationBarChart = ({ data, loading }) => {
   if (loading) {
     return (
@@ -142,7 +139,6 @@ const EducationBarChart = ({ data, loading }) => {
     );
   }
 
-  // Définir une palette de couleurs dégradée pour les barres
   const getBarColor = (index) => {
     const colors = ['#8884d8', '#9c8edb', '#af97df', '#c3a1e2', '#d7aae6', '#eab4e9'];
     return colors[index % colors.length];
@@ -195,13 +191,11 @@ const Dashboard = () => {
   const [educationData, setEducationData] = useState([]);
   const [sectorData, setSectorData] = useState([]);
   
-  // Fonction d'extraction du niveau d'études à partir des données de candidat
   const extractEducationLevel = (candidate) => {
     if (!candidate.education || !Array.isArray(candidate.education) || candidate.education.length === 0) {
       return "Non spécifié";
     }
     
-    // Trier par date pour obtenir le diplôme le plus récent
     const sortedEducation = [...candidate.education].sort((a, b) => {
       const dateA = a.end_date ? new Date(a.end_date).getTime() : 0;
       const dateB = b.end_date ? new Date(b.end_date).getTime() : 0;
@@ -212,22 +206,19 @@ const Dashboard = () => {
     return mostRecentEducation.degree || mostRecentEducation.diploma || "Non spécifié";
   };
   
-  // Fonction d'extraction du secteur à partir des données de candidat
   const extractSector = (candidate) => {
     if (!candidate.experiences || !Array.isArray(candidate.experiences) || candidate.experiences.length === 0) {
       return "Non spécifié";
     }
     
-    // Trier par date pour obtenir l'expérience la plus récente
     const sortedExperiences = [...candidate.experiences].sort((a, b) => {
-      const dateA = a.end_date ? new Date(a.end_date).getTime() : Date.now();
-      const dateB = b.end_date ? new Date(b.end_date).getTime() : Date.now();
+      const dateA = a.end_date ? new Date(a.end_date).getTime() : Number(Date.now());
+      const dateB = b.end_date ? new Date(b.end_date).getTime() : Number(Date.now());
       return dateB - dateA;
     });
     
     const mostRecentExperience = sortedExperiences[0];
     
-    // Déterminer le secteur en fonction du titre ou de l'entreprise
     const title = (mostRecentExperience.title || "").toLowerCase();
     const company = (mostRecentExperience.company || "").toLowerCase();
     
@@ -255,7 +246,6 @@ const Dashboard = () => {
     return "Autre";
   };
   
-  // Agréger les données par niveau d'études
   const aggregateEducationData = (candidates) => {
     const educationMap = {};
     
@@ -269,7 +259,6 @@ const Dashboard = () => {
       .sort((a, b) => b.value - a.value);
   };
   
-  // Agréger les données par secteur
   const aggregateSectorData = (candidates) => {
     const sectorMap = {};
     
@@ -304,7 +293,6 @@ const Dashboard = () => {
         setCandidatesData(candidatesData || []);
         setCandidatesCount(candidatesData?.length || 0);
         
-        // Traiter les données pour l'éducation et le secteur
         setEducationData(aggregateEducationData(candidatesData || []));
         setSectorData(aggregateSectorData(candidatesData || []));
         
@@ -386,7 +374,6 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {/* Stats Cards Section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {loading ? (
             Array(4).fill(0).map((_, index) => (
@@ -485,7 +472,6 @@ const Dashboard = () => {
           )}
         </div>
         
-        {/* Graphiques de distribution */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-md">
             <CardHeader className="border-b border-purple-100/50 dark:border-purple-900/30">
@@ -556,7 +542,7 @@ const Dashboard = () => {
                       ))
                     ) : recentCandidates.length > 0 ? (
                       recentCandidates.map((candidate, idx) => (
-                        <tr key={idx} className="border-b border-purple-100/10 dark:border-purple-900/10 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 transition-colors">
+                        <tr key={idx} className="border-b border-purple-100/10 dark:border-purple-900/10 hover:bg-purple-50/50 dark:hover:bg-purple-900/50 transition-colors">
                           <td className="p-4">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-200 to-indigo-200 dark:from-purple-800 dark:to-indigo-900 flex items-center justify-center text-purple-700 dark:text-purple-300 font-medium">
@@ -600,7 +586,7 @@ const Dashboard = () => {
                             <div className="w-16 h-16 text-purple-300 dark:text-purple-700 opacity-50 mb-3">
                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
                               </svg>
                             </div>
                             <p className="text-lg font-medium text-purple-700 dark:text-purple-300">Aucun candidat trouvé</p>
