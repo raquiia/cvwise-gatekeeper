@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -210,29 +211,52 @@ export const candidateService = {
       
       console.log(`Starting deletion process for candidate ${candidateId}, resume: ${resumeId}`);
       
-      // Méthode 1: Utiliser une suppression directe avec validation utilisateur
-      const { error: deleteError } = await supabase
-        .from('candidates')
-        .delete()
-        .eq('id', candidateId)
-        .throwOnError();
-      
-      if (deleteError) {
-        console.error('Error during direct candidate deletion:', deleteError);
-        if (deleteError.message.includes('infinite recursion')) {
-          throw new Error(`Erreur de récursion infinie détectée lors de la suppression. Veuillez contacter l'administrateur.`);
+      // Method 1: Try the secure RPC function
+      try {
+        const { data, error } = await supabase.rpc('delete_candidate_secure', {
+          candidate_id_param: candidateId
+        });
+        
+        if (error) {
+          console.error('Error during secure candidate deletion:', error);
+          throw error;
         }
-        throw deleteError;
+        
+        console.log(`Successfully deleted candidate ${candidateId} via secure function:`, data);
+        
+        // If requested and resume exists, delete it too
+        if (deleteResume && resumeId) {
+          await handleResumeDelete(resumeId);
+        }
+        
+        return true;
+      } catch (rpcError: any) {
+        console.error('RPC method failed, falling back to direct delete:', rpcError);
+        
+        // Method 2: Direct delete as fallback
+        const { error: deleteError } = await supabase
+          .from('candidates')
+          .delete()
+          .eq('id', candidateId)
+          .throwOnError();
+        
+        if (deleteError) {
+          console.error('Error during direct candidate deletion:', deleteError);
+          if (deleteError.message.includes('infinite recursion')) {
+            throw new Error(`Erreur de récursion infinie détectée lors de la suppression. Veuillez contacter l'administrateur.`);
+          }
+          throw deleteError;
+        }
+        
+        console.log(`Successfully deleted candidate ${candidateId} via direct method`);
+        
+        // If requested and resume exists, delete it too
+        if (deleteResume && resumeId) {
+          await handleResumeDelete(resumeId);
+        }
+        
+        return true;
       }
-      
-      console.log(`Successfully deleted candidate ${candidateId} via direct method`);
-      
-      // If requested and resume exists, delete it too
-      if (deleteResume && resumeId) {
-        await handleResumeDelete(resumeId);
-      }
-      
-      return true;
     } catch (error: any) {
       console.error('Error in deleteCandidate:', error);
       // Check if error is related to infinite recursion in RLS policies
