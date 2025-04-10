@@ -21,15 +21,19 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
       throw new Error(`Erreur lors de la récupération des données du candidat: ${error.message}`);
     }
     
-    if (!data) {
+    if (!data || !Array.isArray(data) || data.length === 0) {
       console.log('No candidate found with ID:', candidateId);
       return null;
     }
     
-    console.log('Successfully retrieved candidate data via RPC:', data);
+    // RPC returns an array, we need the first item
+    const candidateData = data[0];
+    console.log('Successfully retrieved candidate data via RPC:', candidateData);
     
-    // If the RPC fails or returns incomplete data, try a direct query as fallback
-    if (!data.experiences || data.experiences.length === 0) {
+    // If the RPC returns incomplete data, try a direct query as fallback
+    if (!candidateData || typeof candidateData !== 'object' || 
+        !candidateData.experiences || 
+        (Array.isArray(candidateData.experiences) && candidateData.experiences.length === 0)) {
       console.log('RPC returned incomplete data, trying direct query...');
       const { data: directData, error: directError } = await supabase
         .from('candidates')
@@ -44,7 +48,7 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     }
     
     // Type assertion to ensure compatibility with CandidateData
-    return data as CandidateData;
+    return candidateData as unknown as CandidateData;
   } catch (error: any) {
     console.error('Exception in getCompleteCandidateData:', error);
     toast({
