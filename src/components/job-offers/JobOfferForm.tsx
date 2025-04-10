@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Sparkles, Info, Plus, Wand2 } from 'lucide-react';
@@ -856,4 +857,182 @@ Exemple: Recherche développeur React senior à Paris, 5 ans d'expérience minim
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Bac">
+                            <SelectItem value="Bac">Bac</SelectItem>
+                            <SelectItem value="Bac+2">Bac+2</SelectItem>
+                            <SelectItem value="Bac+3">Bac+3</SelectItem>
+                            <SelectItem value="Bac+5">Bac+5</SelectItem>
+                            <SelectItem value="Bac+8">Bac+8</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="salary_currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Devise</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Devise" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="EUR">EUR (€)</SelectItem>
+                            <SelectItem value="USD">USD ($)</SelectItem>
+                            <SelectItem value="GBP">GBP (£)</SelectItem>
+                            <SelectItem value="CAD">CAD (C$)</SelectItem>
+                            <SelectItem value="CHF">CHF (Fr)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="salary_min"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Salaire min. annuel</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="0" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="salary_max"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Salaire max. annuel</FormLabel>
+                        <FormControl>
+                          <Input type="number" min="0" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <div className="pt-4">
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {isEditing ? "Mise à jour en cours..." : "Création en cours..."}
+                      </>
+                    ) : (
+                      <>
+                        {isEditing ? "Mettre à jour l'offre" : "Créer l'offre"}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </form>
+        </Form>
+      </TabsContent>
+      
+      <Dialog open={showSuggestionDialog} onOpenChange={setShowSuggestionDialog}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Suggestions pour votre offre d'emploi</DialogTitle>
+            <DialogDescription>
+              Notre assistant IA a généré des suggestions pour améliorer votre offre d'emploi.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {suggestion && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground mb-1">Titre suggéré</h3>
+                  <p className="font-semibold">{suggestion.title}</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground mb-1">Localisation</h3>
+                  <p>{suggestion.location}</p>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="font-medium text-sm text-muted-foreground mb-1">Description</h3>
+                <div className="border rounded-md p-3 bg-muted/20">
+                  <p className="whitespace-pre-line">{suggestion.description}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground mb-1">Compétences techniques</h3>
+                  <div className="flex flex-wrap gap-1">
+                    {suggestion.requiredSkills?.map((skill, i) => (
+                      <Badge key={i} variant="secondary">{skill}</Badge>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground mb-1">Compétences comportementales</h3>
+                  <div className="flex flex-wrap gap-1">
+                    {suggestion.softSkills?.map((skill, i) => (
+                      <Badge key={i} variant="outline" className="bg-blue-50">{skill}</Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground mb-1">Niveau d'études</h3>
+                  <p>{suggestion.education}</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground mb-1">Expérience</h3>
+                  <p>{suggestion.experience?.min} - {suggestion.experience?.max} ans</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground mb-1">Type de contrat</h3>
+                  <p>{suggestion.contractType}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground mb-1">Télétravail</h3>
+                  <p>{suggestion.remotePreference}</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground mb-1">Salaire</h3>
+                  <p>{suggestion.salary?.min?.toLocaleString()} - {suggestion.salary?.max?.toLocaleString()} {suggestion.salary?.currency}</p>
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setShowSuggestionDialog(false)}>
+                  Fermer
+                </Button>
+                <Button onClick={applySuggestions}>
+                  Appliquer les suggestions
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </Tabs>
+  );
+};
+
+export default JobOfferForm;

@@ -62,7 +62,7 @@ export type JobMatchWeight = {
 };
 
 /**
- * Type for skills details (missing in original file)
+ * Type for skills details
  */
 export type SkillsDetails = {
   matched: string[];
@@ -72,7 +72,7 @@ export type SkillsDetails = {
 };
 
 /**
- * Type for job offer suggestions (missing in original file)
+ * Type for job offer suggestions
  */
 export type JobOfferSuggestion = {
   id: string;
