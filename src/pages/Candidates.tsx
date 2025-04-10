@@ -9,6 +9,9 @@ import { candidateDataService } from '@/services/data/candidateDataService';
 import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 const Candidates = () => {
   const [candidates, setCandidates] = useState<CandidateData[]>([]);
@@ -26,6 +29,7 @@ const Candidates = () => {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [semanticSearch, setSemanticSearch] = useState('');
   
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -150,59 +154,120 @@ const Candidates = () => {
             showFilters={showFilters}
           />
           
-          <div className="flex flex-col md:flex-row gap-6 my-6">
-            <div className={`w-full md:w-72 transition-all duration-300 ${showFilters ? 'opacity-100 max-h-[2000px]' : 'opacity-0 md:opacity-100 max-h-0 md:max-h-[2000px] overflow-hidden md:overflow-visible'}`}>
-              <div className="sticky top-24">
-                <CandidatesFilters 
-                  showFilters={showFilters}
-                  onLocationChange={handleLocationChange}
-                  onCompanyChange={handleCompanyChange}
-                  onPreviousCompanyChange={handlePreviousCompanyChange}
-                  onSkillsChange={handleSkillsChange}
-                  onExperienceChange={handleExperienceChange}
-                  onEducationLevelChange={() => {}}
-                  onCertificationChange={() => {}}
-                  onLanguageChange={() => {}}
-                  onAvailabilityChange={() => {}}
-                  onSalaryChange={() => {}}
-                  onContractTypeChange={() => {}}
-                  onRemotePreferenceChange={() => {}}
-                  onMobilityChange={() => {}}
-                  onReset={handleResetFilters}
-                  onSemanticSearchChange={handleSemanticSearchChange}
-                  onApplyFilters={handleApplyFilters}
-                  onResetFilters={handleResetFilters}
-                  location={location}
-                  company={company}
-                  previousCompany={previousCompany}
-                  experience={experience}
-                  semanticSearch={semanticSearch}
-                  selectedSkills={selectedSkills}
-                />
+          {isDesktop ? (
+            <div className="flex gap-6 my-6">
+              {/* Desktop: Side filters in a Sheet */}
+              <Sheet open={showFilters} onOpenChange={setShowFilters}>
+                <SheetContent side="left" className="w-[350px] sm:w-[450px] p-0 overflow-y-auto">
+                  <div className="p-6">
+                    <CandidatesFilters 
+                      showFilters={true}
+                      onLocationChange={handleLocationChange}
+                      onCompanyChange={handleCompanyChange}
+                      onPreviousCompanyChange={handlePreviousCompanyChange}
+                      onSkillsChange={handleSkillsChange}
+                      onExperienceChange={handleExperienceChange}
+                      onEducationLevelChange={() => {}}
+                      onCertificationChange={() => {}}
+                      onLanguageChange={() => {}}
+                      onAvailabilityChange={() => {}}
+                      onSalaryChange={() => {}}
+                      onContractTypeChange={() => {}}
+                      onRemotePreferenceChange={() => {}}
+                      onMobilityChange={() => {}}
+                      onReset={handleResetFilters}
+                      onSemanticSearchChange={handleSemanticSearchChange}
+                      onApplyFilters={handleApplyFilters}
+                      onResetFilters={handleResetFilters}
+                      location={location}
+                      company={company}
+                      previousCompany={previousCompany}
+                      experience={experience}
+                      semanticSearch={semanticSearch}
+                      selectedSkills={selectedSkills}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+              
+              {/* Main content - taking full width */}
+              <div className="flex-1 transition-all duration-300 mx-auto">
+                {loading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="w-12 h-12 rounded-full border-4 border-t-purple-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                    <p className="ml-4 text-purple-700 dark:text-purple-300 font-medium">Chargement des candidats...</p>
+                  </div>
+                ) : error ? (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg p-4 text-red-700 dark:text-red-300">
+                    {error}
+                  </div>
+                ) : (
+                  <CandidatesTable 
+                    candidates={filteredCandidates}
+                    selectedStatus={selectedStatus}
+                    onStatusChange={handleStatusChange}
+                    onViewCandidate={handleViewCandidate}
+                    onCandidateDeleted={fetchCandidates}
+                  />
+                )}
               </div>
             </div>
-            
-            <div className="flex-1 transition-all duration-300">
-              {loading ? (
-                <div className="flex justify-center items-center py-12">
-                  <div className="w-12 h-12 rounded-full border-4 border-t-purple-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-                  <p className="ml-4 text-purple-700 dark:text-purple-300 font-medium">Chargement des candidats...</p>
-                </div>
-              ) : error ? (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg p-4 text-red-700 dark:text-red-300">
-                  {error}
-                </div>
-              ) : (
-                <CandidatesTable 
-                  candidates={filteredCandidates}
-                  selectedStatus={selectedStatus}
-                  onStatusChange={handleStatusChange}
-                  onViewCandidate={handleViewCandidate}
-                  onCandidateDeleted={fetchCandidates}
-                />
-              )}
+          ) : (
+            /* Mobile: Bottom drawer for filters */
+            <div className="my-6">
+              <Drawer open={showFilters} onOpenChange={setShowFilters}>
+                <DrawerContent className="p-6 max-h-[85vh]">
+                  <CandidatesFilters 
+                    showFilters={true}
+                    onLocationChange={handleLocationChange}
+                    onCompanyChange={handleCompanyChange}
+                    onPreviousCompanyChange={handlePreviousCompanyChange}
+                    onSkillsChange={handleSkillsChange}
+                    onExperienceChange={handleExperienceChange}
+                    onEducationLevelChange={() => {}}
+                    onCertificationChange={() => {}}
+                    onLanguageChange={() => {}}
+                    onAvailabilityChange={() => {}}
+                    onSalaryChange={() => {}}
+                    onContractTypeChange={() => {}}
+                    onRemotePreferenceChange={() => {}}
+                    onMobilityChange={() => {}}
+                    onReset={handleResetFilters}
+                    onSemanticSearchChange={handleSemanticSearchChange}
+                    onApplyFilters={handleApplyFilters}
+                    onResetFilters={handleResetFilters}
+                    location={location}
+                    company={company}
+                    previousCompany={previousCompany}
+                    experience={experience}
+                    semanticSearch={semanticSearch}
+                    selectedSkills={selectedSkills}
+                  />
+                </DrawerContent>
+              </Drawer>
+              
+              <div className="w-full mx-auto">
+                {loading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="w-12 h-12 rounded-full border-4 border-t-purple-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                    <p className="ml-4 text-purple-700 dark:text-purple-300 font-medium">Chargement des candidats...</p>
+                  </div>
+                ) : error ? (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg p-4 text-red-700 dark:text-red-300">
+                    {error}
+                  </div>
+                ) : (
+                  <CandidatesTable 
+                    candidates={filteredCandidates}
+                    selectedStatus={selectedStatus}
+                    onStatusChange={handleStatusChange}
+                    onViewCandidate={handleViewCandidate}
+                    onCandidateDeleted={fetchCandidates}
+                  />
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </Layout>
