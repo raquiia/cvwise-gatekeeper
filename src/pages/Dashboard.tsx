@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, Users, FileText, Search, CheckCircle, 
-  ChevronRight, Upload, Briefcase, Award, Building, User
+  ChevronRight, Upload, Briefcase, Award, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
@@ -92,7 +91,6 @@ const Dashboard = () => {
   return (
     <Layout className="py-8 bg-gradient-to-br from-purple-50/50 to-white dark:from-navy-dark/90 dark:to-navy-dark">
       <div className="container mx-auto px-4 pb-16">
-        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
           <div className="mb-4 md:mb-0">
             <h1 className="text-2xl font-bold text-navy-dark dark:text-sand mb-1 bg-gradient-to-r from-purple-700 to-indigo-600 dark:from-purple-400 dark:to-indigo-300 bg-clip-text text-transparent">
@@ -124,7 +122,6 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {/* Stats Cards Section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {loading ? (
             Array(4).fill(0).map((_, index) => (
@@ -223,9 +220,7 @@ const Dashboard = () => {
           )}
         </div>
         
-        {/* Recent Candidates & User Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Recent Candidates Section */}
           <div className="lg:col-span-2">
             <Card className="border-purple-200/30 dark:border-purple-800/20 overflow-hidden shadow-xl bg-white/50 dark:bg-navy-dark/30 backdrop-blur-sm">
               <CardHeader className="p-5 border-b border-purple-100/50 dark:border-purple-900/30 backdrop-blur-sm bg-gradient-to-r from-white/80 to-purple-50/80 dark:from-navy-dark/90 dark:to-purple-950/30">
@@ -332,7 +327,6 @@ const Dashboard = () => {
             </Card>
           </div>
           
-          {/* User Stats Section */}
           <div>
             {!usersLoading && (
               <div className="animate-fade-in">
@@ -355,24 +349,6 @@ const Dashboard = () => {
                       formatDate={formatDate}
                       companiesCount={topCandidatesCount}
                     />
-                  </CardContent>
-                </Card>
-                
-                {/* Mock Data Alert */}
-                <Card className="mt-4 border-purple-200/30 dark:border-purple-800/20 overflow-hidden shadow-md bg-white/50 dark:bg-navy-dark/30 backdrop-blur-sm">
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <Building className="text-purple-600 dark:text-purple-400 mt-1" size={20} />
-                      <div>
-                        <h3 className="font-medium text-navy-dark dark:text-sand">Entreprises</h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Gérez vos entreprises partenaires et les offres d'emploi associées.
-                        </p>
-                        <Button size="sm" className="mt-3 bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800">
-                          Accéder
-                        </Button>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
               </div>
