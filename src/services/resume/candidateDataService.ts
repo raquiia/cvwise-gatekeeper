@@ -30,8 +30,7 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     const candidateData = Array.isArray(data) ? data[0] : data;
     console.log('Successfully retrieved complete candidate data:', candidateData);
     
-    // Type assertion to ensure compatibility with CandidateData
-    return candidateData as unknown as CandidateData;
+    return candidateData as CandidateData;
   } catch (error: any) {
     console.error('Exception in getCompleteCandidateData:', error);
     toast({
