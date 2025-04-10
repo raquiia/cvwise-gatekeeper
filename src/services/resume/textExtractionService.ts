@@ -5,14 +5,37 @@ import { supabase } from '@/integrations/supabase/client';
 /**
  * Extraire le texte d'un CV à partir de son ID
  */
-export const extractResumeText = async (resumeId: string, filePath: string): Promise<{ success: boolean; message?: string; text?: string }> => {
+export const extractResumeText = async (resumeId: string, filePath?: string): Promise<{ success: boolean; message?: string; text?: string }> => {
   try {
     console.log('Starting text extraction for resume:', resumeId);
+    
+    // If filePath is not provided, try to get it from the database
+    let path = filePath;
+    
+    if (!path) {
+      // Fetch the resume data to get the file path
+      const { data: resumeData, error: resumeError } = await supabase
+        .from("resumes")
+        .select("file_path")
+        .eq("id", resumeId)
+        .single();
+        
+      if (resumeError || !resumeData) {
+        console.error('Failed to get resume data:', resumeError);
+        throw new Error('Impossible de trouver le CV avec cet identifiant');
+      }
+      
+      path = resumeData.file_path;
+      
+      if (!path) {
+        throw new Error('Chemin du fichier non trouvé pour ce CV');
+      }
+    }
     
     // Obtenir l'URL publique du fichier
     const { data: urlData } = supabase.storage
       .from('resumes')
-      .getPublicUrl(filePath);
+      .getPublicUrl(path);
       
     if (!urlData || !urlData.publicUrl) {
       console.error('Failed to get public URL for file');
