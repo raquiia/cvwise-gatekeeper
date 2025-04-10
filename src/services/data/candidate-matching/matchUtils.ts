@@ -82,6 +82,9 @@ export async function calculateCandidateJobMatch(
     const candidateSkills = ensureStringArray(candidate.skills);
     const jobSkills = ensureStringArray(jobOffer.required_skills);
     
+    console.log('Candidate skills:', candidateSkills);
+    console.log('Job skills:', jobSkills);
+    
     // Calculate skills match
     const { 
       matchedSkills, 
@@ -90,10 +93,15 @@ export async function calculateCandidateJobMatch(
       matchPercentage: skillMatchPercentage 
     } = calculateSkillsMatch(candidateSkills, jobSkills);
     
+    console.log('Skills match percentage:', skillMatchPercentage);
+    console.log('Matched skills:', matchedSkills);
+    
     // Match experience - improve calculation with more precise scoring
     const candidateExperience = candidate.years_experience || 0;
     const minExperience = jobOffer.experience_years_min || 0;
     const maxExperience = jobOffer.experience_years_max || minExperience + 5;
+    
+    console.log('Experience comparison - Candidate:', candidateExperience, 'Job min:', minExperience, 'Job max:', maxExperience);
     
     // Calculate experience match score on a scale of 0-100
     let experienceScore = 0;
@@ -114,6 +122,8 @@ export async function calculateCandidateJobMatch(
       experienceScore = Math.min(70, (candidateExperience / minExperience) * 80);
     }
     
+    console.log('Experience score:', experienceScore);
+    
     const experienceMatch = {
       required: minExperience,
       candidate: candidateExperience,
@@ -124,6 +134,8 @@ export async function calculateCandidateJobMatch(
     // Match location with improved semantic matching
     const jobLocation = jobOffer.location || '';
     const candidateLocation = candidate.location || '';
+    
+    console.log('Location comparison - Candidate:', candidateLocation, 'Job:', jobLocation);
     
     // Calculate location match score
     let locationScore = 0;
@@ -164,6 +176,8 @@ export async function calculateCandidateJobMatch(
         }
       }
     }
+    
+    console.log('Location match:', locationMatches, 'Location score:', locationScore);
     
     const locationMatch = {
       required: jobLocation,
@@ -276,6 +290,8 @@ export async function calculateCandidateJobMatch(
       (educationMatch.score * educationWeight)
     );
     
+    console.log('Overall match score:', overallScore);
+    
     return {
       score: overallScore,
       details: {
@@ -361,6 +377,16 @@ export function createDefaultMatchDetails(candidate: CandidateData): CandidateJo
  * Convert MatchDetails to JSON format for database storage
  */
 export function matchDetailsToJson(details: MatchDetails): any {
+  if (!details) {
+    return {
+      skills: { matched: [], missing: [], additional: [], matchPercentage: 0 },
+      experienceLevel: { required: 0, candidate: 0, match: false, score: 0 },
+      location: { required: '', candidate: '', match: false, score: 0 },
+      educationLevel: { required: '', candidate: '', match: false, score: 0 },
+      overall: 0
+    };
+  }
+  
   return {
     skills: details.skills || { matched: [], missing: [], additional: [], matchPercentage: 0 },
     experienceLevel: details.experienceLevel || { required: 0, candidate: 0, match: false, score: 0 },

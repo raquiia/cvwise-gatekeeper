@@ -79,7 +79,9 @@ export const candidateMatchingService = {
   // Calculate match scores for all candidates against a job offer
   calculateMatchesForJobOffer: async (jobOfferId: string): Promise<CandidateMatch[]> => {
     console.log('Delegating match calculation to matchDbService');
-    return await matchDbService.calculateMatchesForJobOffer(jobOfferId);
+    const matches = await matchDbService.calculateMatchesForJobOffer(jobOfferId);
+    console.log(`Received ${matches.length} matches from matchDbService`);
+    return matches;
   },
   
   // Re-export methods from other services for backward compatibility

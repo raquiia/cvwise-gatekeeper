@@ -63,6 +63,7 @@ export const matchDbService = {
         for (const candidate of candidates) {
           console.log(`Calculating match for candidate: ${candidate.first_name} ${candidate.last_name}`);
           const match = await calculateCandidateJobMatch(candidate as CandidateData, jobOffer as JobOffer);
+          console.log(`Match score for ${candidate.first_name} ${candidate.last_name}: ${match.score}`);
           
           // Store the match result in the database
           try {
@@ -103,7 +104,7 @@ export const matchDbService = {
             last_name: candidate.last_name,
             position: candidate.position,
             company: candidate.company,
-            match_details: match.details,
+            match_details: matchDetailsJson(match.details),
             // Also include frontend-compatible properties
             candidateId: candidate.id,
             firstName: candidate.first_name,
@@ -122,6 +123,7 @@ export const matchDbService = {
       
       // Process the match data if we got it successfully through RPC
       if (matchData) {
+        console.log('RPC returned match data:', matchData.length);
         const matches: CandidateMatch[] = matchData.map((item: any) => {
           const candidate = processCandidateData(item.candidate || {});
           const matchDetails = item.match || {};
