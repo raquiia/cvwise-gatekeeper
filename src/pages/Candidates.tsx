@@ -136,9 +136,11 @@ const Candidates = () => {
 
   return (
     <Layout>
-      <div className="relative min-h-screen">
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-navy/5 to-white/0 dark:from-navy/20 dark:to-navy-dark/0 pointer-events-none"></div>
+      <div className="relative min-h-screen overflow-hidden">
+        {/* Background elements */}
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 to-white/20 dark:from-purple-950/20 dark:to-navy-dark/0 pointer-events-none"></div>
+        <div className="absolute top-20 right-0 w-96 h-96 bg-purple-200/20 dark:bg-purple-900/10 rounded-full filter blur-3xl opacity-70 transform translate-x-1/2 -translate-y-1/3 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-200/20 dark:bg-blue-900/10 rounded-full filter blur-3xl opacity-70 transform -translate-x-1/3 translate-y-1/3 pointer-events-none"></div>
         
         <div className="container mx-auto px-4 py-8 relative z-10">
           <CandidatesHeader 
@@ -149,7 +151,7 @@ const Candidates = () => {
           />
           
           <div className="flex flex-col md:flex-row gap-6 my-6">
-            <div className={`w-full md:w-72 transition-all duration-300 ${showFilters ? 'opacity-100' : 'opacity-0 md:opacity-100'}`}>
+            <div className={`w-full md:w-72 transition-all duration-300 ${showFilters ? 'opacity-100 max-h-[2000px]' : 'opacity-0 md:opacity-100 max-h-0 md:max-h-[2000px] overflow-hidden md:overflow-visible'}`}>
               <div className="sticky top-24">
                 <CandidatesFilters 
                   showFilters={showFilters}
@@ -180,8 +182,17 @@ const Candidates = () => {
               </div>
             </div>
             
-            <div className={`flex-1 transition-all duration-300 ${showFilters ? 'md:opacity-100' : 'md:opacity-100'}`}>
-              <div className="animate-fade-in">
+            <div className="flex-1 transition-all duration-300">
+              {loading ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="w-12 h-12 rounded-full border-4 border-t-purple-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                  <p className="ml-4 text-purple-700 dark:text-purple-300 font-medium">Chargement des candidats...</p>
+                </div>
+              ) : error ? (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg p-4 text-red-700 dark:text-red-300">
+                  {error}
+                </div>
+              ) : (
                 <CandidatesTable 
                   candidates={filteredCandidates}
                   selectedStatus={selectedStatus}
@@ -189,7 +200,7 @@ const Candidates = () => {
                   onViewCandidate={handleViewCandidate}
                   onCandidateDeleted={fetchCandidates}
                 />
-              </div>
+              )}
             </div>
           </div>
         </div>

@@ -1,6 +1,8 @@
+
 import React, { useState } from 'react';
 import { Star, MapPin, Eye, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -84,10 +86,31 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
       ? Object.values(candidate.skills).filter(Boolean).map(skill => String(skill))
       : [];
       
-  const score = candidate.score || 0;
   const status = candidate.status || 'qualification';
   const updatedAt = candidate.updated_at ? new Date(candidate.updated_at) : null;
   const company = candidate.company || 'Non spécifié';
+
+  // Get a color for the avatar based on the candidate's name
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'from-purple-400 to-purple-600',
+      'from-blue-400 to-blue-600',
+      'from-green-400 to-green-600',
+      'from-amber-400 to-amber-600',
+      'from-pink-400 to-pink-600',
+      'from-indigo-400 to-indigo-600',
+      'from-teal-400 to-teal-600',
+      'from-red-400 to-red-600',
+      'from-orange-400 to-orange-600',
+      'from-cyan-400 to-cyan-600'
+    ];
+    
+    // Simple hash function to convert name to an index
+    const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  };
+  
+  const colorClass = getAvatarColor(fullName);
   
   const handleViewClick = () => {
     if (candidate.id) {
@@ -137,31 +160,54 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     }
   };
 
+  // Get status chip color based on status
+  const getStatusChipColor = (status: string) => {
+    switch(status) {
+      case 'active': 
+        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
+      case 'qualification': 
+        return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+      case 'interview': 
+        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
+      case 'hired': 
+        return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300';
+      case 'inactive': 
+        return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300';
+      default: 
+        return 'bg-gray-100 text-gray-700 dark:bg-gray-800/30 dark:text-gray-300';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch(status) {
+      case 'active': return 'Actif';
+      case 'qualification': return 'En qualification';
+      case 'inactive': return 'Inactif';
+      case 'interview': return 'En entretien';
+      case 'hired': return 'Embauché';
+      default: return 'Statut inconnu';
+    }
+  };
+
+  const statusChipClass = getStatusChipColor(status);
+  const statusText = getStatusText(status);
+
   return (
     <>
-      <TableRow className="border-b border-border/10 hover:bg-navy/5 dark:hover:bg-white/5 transition-colors">
+      <TableRow className="border-b border-purple-100/30 dark:border-purple-900/20 hover:bg-purple-50/50 dark:hover:bg-purple-900/10 transition-colors">
         <TableCell className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-navy/10 to-navy/20 dark:from-sand/10 dark:to-sand/20 flex items-center justify-center text-navy-dark dark:text-sand font-medium shadow-inner overflow-hidden">
-              {firstInitial}{lastInitial}
-            </div>
+            <Avatar className={`bg-gradient-to-br ${colorClass} text-white shadow-md h-11 w-11 transition-all duration-300 hover:shadow-lg`}>
+              <AvatarFallback className="text-white font-medium">
+                {firstInitial}{lastInitial}
+              </AvatarFallback>
+            </Avatar>
             <div>
               <span className="font-medium text-navy-dark dark:text-sand">{fullName}</span>
-              <div className="flex items-center mt-0.5">
-                {status === 'active' ? (
-                  <div className="flex items-center text-xs text-emerald-600 dark:text-emerald-400">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1"></div>
-                    Actif
-                  </div>
-                ) : (
-                  <div className="flex items-center text-xs text-amber-600 dark:text-amber-400">
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1"></div>
-                    {status === 'qualification' ? 'En qualification' : 
-                     status === 'inactive' ? 'Inactif' : 
-                     status === 'interview' ? 'En entretien' :
-                     status === 'hired' ? 'Embauché' : 'Statut inconnu'}
-                  </div>
-                )}
+              <div className="flex items-center mt-1">
+                <div className={`px-2 py-0.5 rounded-full text-xs ${statusChipClass}`}>
+                  {statusText}
+                </div>
               </div>
             </div>
           </div>
@@ -175,7 +221,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
         <TableCell className="p-4 text-muted-foreground hidden lg:table-cell">
           {location !== 'Non spécifié' ? (
             <div className="flex items-center">
-              <MapPin size={14} className="mr-1" />
+              <MapPin size={14} className="mr-1 text-purple-500 dark:text-purple-400" />
               {location}
             </div>
           ) : 'Non spécifié'}
@@ -187,7 +233,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
           <div className="flex flex-wrap gap-1">
             {skills.length > 0 ? (
               skills.slice(0, 3).map((skill, idx) => (
-                <span key={idx} className="inline-block px-2 py-0.5 bg-navy/10 dark:bg-sand/10 text-navy-dark dark:text-sand text-xs rounded-full">
+                <span key={idx} className="inline-block px-2 py-0.5 bg-purple-100/70 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs rounded-full">
                   {String(skill)}
                 </span>
               ))
@@ -195,7 +241,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
               <span className="text-muted-foreground text-xs">Non spécifié</span>
             )}
             {skills.length > 3 && (
-              <span className="inline-block px-2 py-0.5 bg-navy/5 dark:bg-sand/5 text-navy-dark dark:text-sand text-xs rounded-full">
+              <span className="inline-block px-2 py-0.5 bg-purple-50 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 text-xs rounded-full">
                 +{skills.length - 3}
               </span>
             )}
@@ -209,18 +255,18 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8 hover:bg-navy/10 dark:hover:bg-sand/10 hover:text-navy-dark dark:hover:text-sand transition-colors"
+              className="h-8 w-8 hover:bg-purple-100 dark:hover:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
               onClick={handleViewClick}
             >
               <Eye size={16} />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-navy/10 dark:hover:bg-sand/10 transition-colors">
+                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
                   <MoreHorizontal size={16} />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-md border-border/40 shadow-lg dark:bg-navy-dark/95">
+              <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-md border-purple-200/50 shadow-lg dark:bg-navy-dark/95 dark:border-purple-800/30">
                 <DropdownMenuItem>
                   Éditer
                 </DropdownMenuItem>
@@ -238,7 +284,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
       </TableRow>
       
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="bg-white/95 backdrop-blur-md border-border/40 shadow-lg dark:bg-navy-dark/95">
+        <AlertDialogContent className="bg-white/95 backdrop-blur-md border-purple-200/50 shadow-lg dark:bg-navy-dark/95 dark:border-purple-800/30">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
             <AlertDialogDescription>

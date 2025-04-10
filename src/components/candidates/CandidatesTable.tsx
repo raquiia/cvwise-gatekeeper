@@ -161,151 +161,174 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   };
   
   return (
-    <Card className="overflow-hidden border border-border/20 shadow-md bg-gradient-to-b from-white to-gray-50 dark:from-navy-dark dark:to-navy-dark/90 animate-fade-in">
-      {/* Table Header with Sort Controls */}
-      <div className="p-4 border-b border-border/30 backdrop-blur-sm flex items-center justify-between bg-white/80 dark:bg-navy-dark/80">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-navy-dark dark:text-sand">
-            {candidatesCount} candidats
-          </span>
+    <div className="animate-fade-in transition-all">
+      <Card className="overflow-hidden border border-purple-200/30 dark:border-purple-900/20 shadow-xl bg-white/50 dark:bg-navy-dark/30 backdrop-blur-sm rounded-xl">
+        {/* Table Header with Sort Controls */}
+        <div className="p-4 border-b border-purple-100/50 dark:border-purple-900/30 backdrop-blur-sm flex items-center justify-between bg-gradient-to-r from-white/80 to-purple-50/80 dark:from-navy-dark/90 dark:to-purple-950/30">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-navy-dark dark:text-sand">
+              {candidatesCount} candidats
+            </span>
+            
+            <Separator orientation="vertical" className="h-4" />
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 gap-1 text-muted-foreground hover:text-purple-700 dark:hover:text-purple-300">
+                  <span>Statut</span>
+                  <ChevronDown size={14} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-white/95 backdrop-blur-md border-purple-100/50 shadow-lg dark:bg-navy-dark/95 dark:border-purple-800/30">
+                <DropdownMenuItem onClick={() => onStatusChange(null)}>
+                  Tous
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onStatusChange('active')}>
+                  <CheckCircle size={14} className="mr-2 text-emerald-500" />
+                  Actifs
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onStatusChange('qualification')}>
+                  <AlertTriangle size={14} className="mr-2 text-amber-500" />
+                  En qualification
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onStatusChange('inactive')}>
+                  <XCircle size={14} className="mr-2 text-red-500" />
+                  Inactifs
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           
-          <Separator orientation="vertical" className="h-4" />
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="gap-1 border-purple-200/50 dark:border-purple-800/30 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                  disabled={isLoading}
+                >
+                  <Briefcase size={14} className="mr-1 text-purple-600 dark:text-purple-400" />
+                  Activer une offre d'emploi
+                  <ChevronDown size={14} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-white/95 backdrop-blur-md border-purple-100/50 shadow-lg dark:bg-navy-dark/95 dark:border-purple-800/30">
+                <DropdownMenuItem onClick={() => handleJobOfferChange(null)}>
+                  Liste standard (sans contexte)
+                </DropdownMenuItem>
+                
+                <Separator className="my-1" />
+                
+                {jobOffers.length === 0 ? (
+                  <DropdownMenuItem disabled>
+                    Aucune offre d'emploi disponible
+                  </DropdownMenuItem>
+                ) : (
+                  jobOffers.map(offer => (
+                    <DropdownMenuItem 
+                      key={offer.id} 
+                      onClick={() => handleJobOfferChange(offer.id)}
+                      className={activeJobOfferId === offer.id ? "bg-purple-50 dark:bg-purple-900/20" : ""}
+                    >
+                      {offer.title}
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 gap-1 text-muted-foreground hover:text-navy-dark">
-                <span>Statut</span>
-                <ChevronDown size={14} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-white/95 backdrop-blur-md border-border/40 shadow-lg dark:bg-navy-dark/95">
-              <DropdownMenuItem onClick={() => onStatusChange(null)}>
-                Tous
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onStatusChange('active')}>
-                <CheckCircle size={14} className="mr-2 text-emerald-500" />
-                Actifs
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onStatusChange('qualification')}>
-                <AlertTriangle size={14} className="mr-2 text-amber-500" />
-                En qualification
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onStatusChange('inactive')}>
-                <XCircle size={14} className="mr-2 text-red-500" />
-                Inactifs
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-muted-foreground hover:text-purple-700 dark:hover:text-purple-300"
+                >
+                  <ArrowUpDown size={14} className="mr-1" />
+                  Trier
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-white/95 backdrop-blur-md border-purple-100/50 shadow-lg dark:bg-navy-dark/95 dark:border-purple-800/30">
+                <DropdownMenuItem onClick={() => handleSortChange('name')} className={sortBy === 'name' ? "bg-purple-50 dark:bg-purple-900/20" : ""}>
+                  Par nom
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSortChange('date')} className={sortBy === 'date' ? "bg-purple-50 dark:bg-purple-900/20" : ""}>
+                  Par date de mise à jour
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-muted-foreground hover:text-purple-700 dark:hover:text-purple-300"
+            >
+              <SlidersHorizontal size={14} className="mr-1" />
+              Colonnes
+            </Button>
+          </div>
         </div>
         
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="gap-1"
-                disabled={isLoading}
-              >
-                <Briefcase size={14} className="mr-1" />
-                Activer une offre d'emploi
-                <ChevronDown size={14} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-white/95 backdrop-blur-md border-border/40 shadow-lg dark:bg-navy-dark/95">
-              <DropdownMenuItem onClick={() => handleJobOfferChange(null)}>
-                Liste standard (sans contexte)
-              </DropdownMenuItem>
-              
-              <Separator className="my-1" />
-              
-              {jobOffers.length === 0 ? (
-                <DropdownMenuItem disabled>
-                  Aucune offre d'emploi disponible
-                </DropdownMenuItem>
+        {/* Table Body */}
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-purple-200 dark:scrollbar-thumb-purple-800/40 scrollbar-track-transparent">
+          <Table>
+            <TableHeader className="bg-gradient-to-r from-purple-50/80 to-white/80 dark:from-purple-900/20 dark:to-navy-dark/40">
+              <TableRow className="border-none hover:bg-transparent">
+                <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Nom</TableHead>
+                <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Poste</TableHead>
+                <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Entreprise</TableHead>
+                <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden lg:table-cell">Localisation</TableHead>
+                <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden lg:table-cell">Expérience</TableHead>
+                <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Compétences</TableHead>
+                <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden md:table-cell">Mise à jour</TableHead>
+                <TableHead className="text-center text-sm font-medium text-navy-dark dark:text-sand">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <div className="w-12 h-12 rounded-full border-4 border-t-purple-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                      <p className="mt-4 text-purple-700 dark:text-purple-300 font-medium">Chargement des candidats...</p>
+                    </div>
+                  </td>
+                </TableRow>
+              ) : validCandidates.length === 0 ? (
+                <TableRow>
+                  <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <div className="w-20 h-20 text-purple-300 dark:text-purple-700 opacity-50">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87m-4-12a4 4 0 010 7.75" />
+                        </svg>
+                      </div>
+                      <p className="mt-4 text-lg font-medium text-purple-700 dark:text-purple-300">Aucun candidat trouvé</p>
+                      <p className="mt-2 text-muted-foreground text-center max-w-md">
+                        Importez des CV pour commencer à créer des profils de candidats.
+                      </p>
+                    </div>
+                  </td>
+                </TableRow>
               ) : (
-                jobOffers.map(offer => (
-                  <DropdownMenuItem 
-                    key={offer.id} 
-                    onClick={() => handleJobOfferChange(offer.id)}
-                    className={activeJobOfferId === offer.id ? "bg-muted" : ""}
-                  >
-                    {offer.title}
-                  </DropdownMenuItem>
+                validCandidates.map((candidate) => (
+                  <CandidateTableRow 
+                    key={candidate.id || `temp-${Math.random()}`}
+                    candidate={candidate}
+                    onViewCandidate={onViewCandidate}
+                    onCandidateDeleted={handleCandidateDeleted}
+                    hideScore={true}
+                    scoreIsMatchScore={!!activeJobOfferId}
+                    matchDetails={candidate.matchDetails}
+                  />
                 ))
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-navy-dark">
-                <ArrowUpDown size={14} className="mr-1" />
-                Trier
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-white/95 backdrop-blur-md border-border/40 shadow-lg dark:bg-navy-dark/95">
-              <DropdownMenuItem onClick={() => handleSortChange('name')} className={sortBy === 'name' ? "bg-muted" : ""}>
-                Par nom
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleSortChange('date')} className={sortBy === 'date' ? "bg-muted" : ""}>
-                Par date de mise à jour
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-navy-dark">
-            <SlidersHorizontal size={14} className="mr-1" />
-            Colonnes
-          </Button>
+            </TableBody>
+          </Table>
         </div>
-      </div>
-      
-      {/* Table Body */}
-      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-navy/50 scrollbar-track-transparent">
-        <Table>
-          <TableHeader className="bg-navy/5 dark:bg-white/5">
-            <TableRow className="border-none hover:bg-transparent">
-              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Nom</TableHead>
-              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Poste</TableHead>
-              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Entreprise</TableHead>
-              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden lg:table-cell">Localisation</TableHead>
-              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden lg:table-cell">Expérience</TableHead>
-              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Compétences</TableHead>
-              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden md:table-cell">Mise à jour</TableHead>
-              <TableHead className="text-center text-sm font-medium text-navy-dark dark:text-sand">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <td colSpan={8} className="p-8 text-center text-muted-foreground">
-                  Chargement des candidats...
-                </td>
-              </TableRow>
-            ) : validCandidates.length === 0 ? (
-              <TableRow>
-                <td colSpan={8} className="p-8 text-center text-muted-foreground">
-                  Aucun candidat trouvé. Importez des CV pour commencer à créer des candidats.
-                </td>
-              </TableRow>
-            ) : (
-              validCandidates.map((candidate) => (
-                <CandidateTableRow 
-                  key={candidate.id || `temp-${Math.random()}`}
-                  candidate={candidate}
-                  onViewCandidate={onViewCandidate}
-                  onCandidateDeleted={handleCandidateDeleted}
-                  hideScore={true}
-                  scoreIsMatchScore={!!activeJobOfferId}
-                  matchDetails={candidate.matchDetails}
-                />
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
 };
 
