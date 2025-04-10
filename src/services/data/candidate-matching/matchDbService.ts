@@ -61,18 +61,26 @@ export const matchDbService = {
           const match = await calculateCandidateJobMatch(candidate as CandidateData, jobOffer as JobOffer);
           
           matches.push({
+            id: `${candidate.id}-${jobOfferId}`,
+            candidate_id: candidate.id,
+            job_offer_id: jobOfferId,
+            match_score: match.score,
+            first_name: candidate.first_name,
+            last_name: candidate.last_name,
+            position: candidate.position,
+            company: candidate.company,
+            match_details: match.details,
+            // Also include frontend-compatible properties
             candidateId: candidate.id,
             firstName: candidate.first_name,
             lastName: candidate.last_name,
-            position: candidate.position,
-            company: candidate.company,
             score: match.score,
             details: match.details
           });
         }
         
         // Sort by score (descending)
-        matches.sort((a, b) => b.score - a.score);
+        matches.sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
         
         return matches;
       }
@@ -84,6 +92,11 @@ export const matchDbService = {
           const matchDetails = item.match || {};
           
           return {
+            id: `${candidate.id}-${jobOfferId}`,
+            candidate_id: candidate.id,
+            job_offer_id: jobOfferId,
+            match_score: matchDetails.match_score || 0,
+            // Include frontend-compatible properties
             candidateId: candidate.id,
             firstName: candidate.first_name,
             lastName: candidate.last_name,
@@ -101,7 +114,7 @@ export const matchDbService = {
         });
         
         // Sort by score (descending)
-        matches.sort((a, b) => b.score - a.score);
+        matches.sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
         
         return matches;
       }

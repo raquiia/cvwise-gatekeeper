@@ -8,8 +8,8 @@ import type {
   CandidateMatch, 
   JobOfferSuggestion,
   MatchDetails,
-  SkillsDetails,
-  SkillsMatchDetails
+  SkillsMatchDetails,
+  SkillsDetails
 } from './candidate-matching/types';
 
 /**

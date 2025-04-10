@@ -35,7 +35,56 @@ export interface CandidateMatch {
   phone?: string;
   created_at?: string;
   updated_at?: string;
+  
+  // Additional properties for frontend compatibility
+  candidateId?: string;
+  firstName?: string;
+  lastName?: string;
+  company?: string;
+  score?: number;
+  details?: MatchDetails;
 }
+
+// Extended match interface for frontend components
+export interface CandidateJobMatch {
+  score: number;
+  details: MatchDetails;
+}
+
+// Detailed match information
+export interface MatchDetails {
+  skills: SkillsMatchDetails;
+  experienceLevel: {
+    required: number;
+    candidate: number;
+    match: boolean;
+    score?: number;
+  };
+  location: {
+    required: string;
+    candidate: string;
+    match: boolean;
+    score?: number;
+  };
+  educationLevel: {
+    required: string;
+    candidate: string;
+    match: boolean;
+    score?: number;
+  };
+  overall: number;
+}
+
+// Skills match details
+export interface SkillsMatchDetails {
+  matched: string[];
+  missing: string[];
+  additional: string[];
+  matchPercentage: number;
+}
+
+// Skills details (for backward compatibility)
+export interface SkillsDetails extends SkillsMatchDetails {}
 
 // Options for calculating match scores
 export interface MatchingOptions {
@@ -67,7 +116,7 @@ export interface JobOfferSuggestion {
   location?: string;
   description?: string;
   requiredSkills?: string[];
-  softSkills?: string[]; // Ajout du champ pour les soft skills
+  softSkills?: string[]; 
   education?: string;
   experience?: {
     min?: number;

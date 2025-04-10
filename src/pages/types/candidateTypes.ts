@@ -1,6 +1,6 @@
 
 import { Json } from '@/integrations/supabase/types';
-import { MatchDetails } from '@/services/data/candidate-matching';
+import { MatchDetails } from '@/services/data/candidate-matching/types';
 
 export interface ExtendedCandidateMatch {
   candidateId: string;
