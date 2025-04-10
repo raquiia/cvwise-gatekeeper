@@ -222,10 +222,10 @@ export const candidateService = {
       if (error) {
         console.error('Error during candidate deletion via RPC:', error);
         
-        // Format the error message
-        const errorMessage = error && typeof error === 'object' ? 
-          String(error.message || 'Unknown error') : 
-          'Unknown error';
+        // Format the error message using a safer approach
+        const errorMessage = error && typeof error === 'object' && 'message' in error 
+          ? String(error.message || 'Unknown error') 
+          : 'Unknown error';
           
         if (errorMessage.includes('infinite recursion') || 
             errorMessage.includes('recursion infinie') ||
@@ -247,10 +247,10 @@ export const candidateService = {
     } catch (error: unknown) {
       console.error('Error in deleteCandidate:', error);
       
-      // Format error message with type guard
+      // Format error message with proper type checking
       const errorMessage = error && 
-        typeof error === 'object' ? 
-        String((error as any).message || 'Unknown error') : 
+        typeof error === 'object' && 'message' in error ? 
+        String(error.message || 'Unknown error') : 
         'Unknown error';
         
       if (errorMessage.includes('infinite recursion') || 

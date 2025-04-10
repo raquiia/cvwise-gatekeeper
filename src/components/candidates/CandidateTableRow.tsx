@@ -135,16 +135,18 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
       
       await candidateService.deleteCandidate(candidate.id, !!candidate.resume_id);
       
-      toast({
-        title: "Candidat supprimé",
-        description: `${fullName} a été supprimé avec succès.`,
-      });
-      
-      if (onCandidateDeleted) {
-        onCandidateDeleted();
-      }
-      
       setShowDeleteDialog(false);
+      
+      setTimeout(() => {
+        toast({
+          title: "Candidat supprimé",
+          description: `${fullName} a été supprimé avec succès.`,
+        });
+        
+        if (onCandidateDeleted) {
+          onCandidateDeleted();
+        }
+      }, 100);
     } catch (error: any) {
       console.error('Error deleting candidate:', error);
       
@@ -170,6 +172,11 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteDialog(false);
+    setDeleteError(null);
   };
 
   const getStatusChipColor = (status: string) => {
@@ -308,7 +315,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
             )}
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting} onClick={handleCancelDelete}>Annuler</AlertDialogCancel>
             <AlertDialogAction 
               onClick={confirmDelete} 
               disabled={isDeleting}
