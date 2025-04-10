@@ -21,15 +21,17 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
       throw new Error(`Erreur lors de la récupération des données du candidat: ${error.message}`);
     }
     
-    if (!data) {
+    if (!data || (Array.isArray(data) && data.length === 0)) {
       console.log('No candidate found with ID:', candidateId);
       return null;
     }
     
-    console.log('Successfully retrieved complete candidate data:', data);
+    // Handle both array and direct object responses
+    const candidateData = Array.isArray(data) ? data[0] : data;
+    console.log('Successfully retrieved complete candidate data:', candidateData);
     
     // Type assertion to ensure compatibility with CandidateData
-    return data as unknown as CandidateData;
+    return candidateData as unknown as CandidateData;
   } catch (error: any) {
     console.error('Exception in getCompleteCandidateData:', error);
     toast({

@@ -14,52 +14,60 @@ export const extractResumeText = async (resumeId: string, filePath?: string): Pr
     
     if (!path) {
       try {
-        // Fetch the resume data to get the file path
-        const { data: resumeData, error: resumeError } = await supabase
-          .from("resumes")
-          .select("file_path")
-          .eq("id", resumeId)
-          .maybeSingle();
+        console.log('File path not provided, fetching from database');
+        
+        // Try to get the resume data using the RPC function first
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc('get_resume_by_id', { p_resume_id: resumeId });
           
-        if (resumeError) {
-          // Check specifically for the recursion error
-          if (resumeError.message && resumeError.message.includes('recursion')) {
-            console.warn('Detected recursion error, trying alternative method');
-            
-            // Try using the RPC instead
-            const { data: rpcData, error: rpcError } = await supabase
-              .rpc('get_resume_by_id', { p_resume_id: resumeId });
-              
-            if (rpcError || !rpcData) {
-              console.error('Failed to get resume data via RPC:', rpcError);
-              throw new Error('Impossible de récupérer les informations du CV');
-            }
-            
-            // Handle both array and object responses properly
-            if (Array.isArray(rpcData)) {
-              if (rpcData.length > 0) {
-                path = rpcData[0].file_path;
-              } else {
-                throw new Error('Aucune donnée de CV trouvée');
-              }
-            } else {
-              // Direct object access if not an array
-              // Add type assertion to help TypeScript understand the object structure
-              const resumeObj = rpcData as { file_path: string };
-              path = resumeObj.file_path;
-            }
-          } else {
-            console.error('Failed to get resume data:', resumeError);
-            throw new Error('Impossible de trouver le CV avec cet identifiant');
-          }
-        } else if (!resumeData) {
-          throw new Error('CV non trouvé');
-        } else {
-          path = resumeData.file_path;
+        if (rpcError) {
+          console.error('Failed to get resume data via RPC:', rpcError);
+          throw new Error('Impossible de récupérer les informations du CV via RPC');
         }
-      } catch (dbError) {
-        console.error('Database error when fetching resume:', dbError);
-        throw dbError;
+        
+        if (!rpcData) {
+          throw new Error('Aucune donnée de CV trouvée');
+        }
+        
+        // Handle the response which could be an array or a single object
+        if (Array.isArray(rpcData)) {
+          if (rpcData.length === 0) {
+            throw new Error('Aucune donnée de CV trouvée');
+          }
+          path = rpcData[0].file_path;
+          console.log('Got file path from RPC array response:', path);
+        } else {
+          // Type assertion to help TypeScript understand the object structure
+          const resumeObj = rpcData as unknown as { file_path: string };
+          path = resumeObj.file_path;
+          console.log('Got file path from RPC object response:', path);
+        }
+      } catch (rpcError) {
+        console.error('RPC error, trying direct query as fallback:', rpcError);
+        
+        // Fallback to direct query if RPC fails
+        try {
+          const { data: resumeData, error: queryError } = await supabase
+            .from("resumes")
+            .select("file_path")
+            .eq("id", resumeId)
+            .single();
+            
+          if (queryError) {
+            console.error('Failed to get resume data via direct query:', queryError);
+            throw queryError;
+          }
+          
+          if (!resumeData) {
+            throw new Error('CV non trouvé');
+          }
+          
+          path = resumeData.file_path;
+          console.log('Got file path from direct query:', path);
+        } catch (queryError) {
+          console.error('All attempts to get file path failed:', queryError);
+          throw new Error('Impossible de trouver le chemin du fichier pour ce CV');
+        }
       }
       
       if (!path) {
@@ -68,6 +76,7 @@ export const extractResumeText = async (resumeId: string, filePath?: string): Pr
     }
     
     // Obtenir l'URL publique du fichier
+    console.log('Getting public URL for file path:', path);
     const { data: urlData } = supabase.storage
       .from('resumes')
       .getPublicUrl(path);
@@ -77,7 +86,10 @@ export const extractResumeText = async (resumeId: string, filePath?: string): Pr
       throw new Error('Impossible d\'obtenir l\'URL du fichier');
     }
     
+    console.log('Public URL obtained:', urlData.publicUrl);
+    
     // Appel à l'edge function d'extraction de texte
+    console.log('Invoking extract-cv-text edge function');
     const { data, error } = await supabase.functions.invoke('extract-cv-text', {
       body: { 
         pdfUrl: urlData.publicUrl,

@@ -28,6 +28,7 @@ const CandidateDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
+  const [retryCount, setRetryCount] = useState(0); // Add retry counter
 
   const fetchCandidateData = async () => {
     if (!candidateId) {
@@ -42,27 +43,46 @@ const CandidateDetail = () => {
       console.log("Fetching candidate with ID:", candidateId);
       
       // First try using the direct function to get complete candidate data
-      const completeData = await getCompleteCandidateData(candidateId);
+      let data = null;
       
-      // Fallback to candidateService if the direct function fails
-      const data = completeData || await candidateService.getCandidateById(candidateId);
+      try {
+        console.log("Attempting to get complete data via bypassing_rls function");
+        data = await getCompleteCandidateData(candidateId);
+        console.log("Received data from getCompleteCandidateData:", data ? "Success" : "No data");
+      } catch (directError: any) {
+        console.error("Error with direct function, falling back to standard service:", directError);
+        
+        // If direct function fails with a specific error, we'll try the regular service
+        if (directError.message && (
+            directError.message.includes('ambiguous') || 
+            directError.message.includes('recursion')
+        )) {
+          console.log("Detected specific error, trying fallback method");
+          data = await candidateService.getCandidateById(candidateId);
+          console.log("Fallback method result:", data ? "Success" : "No data");
+        } else {
+          // Rethrow if it's a different error
+          throw directError;
+        }
+      }
       
       if (!data) {
         console.log("Candidate not found:", candidateId);
         setError("Candidat non trouvé");
       } else {
-        console.log("Candidate data retrieved successfully:", data);
+        console.log("Candidate data retrieved successfully");
         
         // Process the data to ensure arrays and properties are correctly formatted
         const processedData = processCandidateData(data);
-        console.log("Processed candidate data:", processedData);
         
         // Vérification améliorée des données incomplètes
         // On vérifie chaque section critique pour détecter si des données importantes sont manquantes
-        const hasEmptyExperiences = !processedData.experiences || processedData.experiences.length === 0;
-        const hasEmptyEducation = !processedData.education || processedData.education.length === 0;
-        const hasEmptyLanguages = !processedData.languages || processedData.languages.length === 0;
-        const hasEmptyCertifications = !processedData.certifications || processedData.certifications.length === 0;
+        const hasEmptyExperiences = !processedData.experiences || 
+          (Array.isArray(processedData.experiences) && processedData.experiences.length === 0);
+        const hasEmptyEducation = !processedData.education || 
+          (Array.isArray(processedData.education) && processedData.education.length === 0);
+        const hasEmptyLanguages = !processedData.languages || 
+          (Array.isArray(processedData.languages) && processedData.languages.length === 0);
         
         // Détection plus précise des données incomplètes
         const hasIncompleteData = hasEmptyExperiences || hasEmptyEducation || hasEmptyLanguages;
@@ -71,7 +91,6 @@ const CandidateDetail = () => {
           experiences: !hasEmptyExperiences,
           education: !hasEmptyEducation,
           languages: !hasEmptyLanguages,
-          certifications: !hasEmptyCertifications,
           isComplete: !hasIncompleteData
         });
         
@@ -81,6 +100,19 @@ const CandidateDetail = () => {
     } catch (err: any) {
       console.error("Error loading candidate:", err);
       setError(`Une erreur s'est produite lors du chargement des données: ${err.message}`);
+      
+      // If we have less than 3 retries and the error contains specific keywords,
+      // automatically retry after a short delay
+      if (retryCount < 2 && err.message && (
+          err.message.includes('ambiguous') || 
+          err.message.includes('recursion')
+      )) {
+        console.log(`Auto-retrying (${retryCount + 1}/3) after error...`);
+        setRetryCount(prev => prev + 1);
+        setTimeout(() => {
+          fetchCandidateData();
+        }, 1500);
+      }
     } finally {
       setLoading(false);
     }

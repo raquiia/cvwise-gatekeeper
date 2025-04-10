@@ -32,7 +32,7 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
     try {
       setLoading(true);
       
-      // 1. Extraire le texte du CV - pas besoin de passer filePath, la fonction va le récupérer automatiquement
+      // 1. Extraire le texte du CV
       console.log("Commencer l'extraction de texte pour CV ID:", resumeId);
       const textResult = await extractResumeText(resumeId);
       
@@ -58,10 +58,10 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
         description: `Le profil de ${candidateName} a été ré-analysé avec succès`,
       });
       
-      // 3. Rafraîchir les données après une courte pause
+      // 3. Rafraîchir les données après une courte pause pour laisser le temps à la base de données de se mettre à jour
       setTimeout(() => {
         onReanalysisComplete();
-      }, 1000);
+      }, 2000);
       
     } catch (error: any) {
       console.error("Error during reanalysis:", error);
