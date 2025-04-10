@@ -3,7 +3,8 @@ import type { JobOffer } from '../job-offers/types';
 import type { CandidateData } from '../candidateService';
 import { semanticMatchingService } from '../../semantic/semanticMatchingService';
 import { ensureArray, ensureStringArray, hasProperty, isUndefinedObject } from '@/utils/candidateUtils';
-import { CandidateJobMatch, MatchDetails } from './types';
+import type { MatchDetails } from './types';
+import { CandidateJobMatch } from '../candidateDataService';
 
 /**
  * Calculates match between a candidate's skills and required job skills
