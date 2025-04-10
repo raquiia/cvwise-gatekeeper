@@ -7,7 +7,8 @@ import type {
   CandidateMatch, 
   JobOfferSuggestion,
   MatchDetails,
-  SkillsMatchDetails
+  SkillsMatchDetails,
+  CandidateJobMatch
 } from './candidate-matching/types';
 
 /**
@@ -41,11 +42,6 @@ export type {
   CandidateMatch,
   JobOfferSuggestion,
   MatchDetails,
-  SkillsMatchDetails
+  SkillsMatchDetails,
+  CandidateJobMatch
 };
-
-// Create interface for backward compatibility
-export interface CandidateJobMatch {
-  score: number;
-  details: MatchDetails;
-}

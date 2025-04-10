@@ -45,6 +45,12 @@ export interface CandidateMatch {
   details?: MatchDetails;
 }
 
+// Candidate match with job (individual candidate-job pairing)
+export interface CandidateJobMatch {
+  score: number;
+  details: MatchDetails;
+}
+
 // Detailed match information
 export interface MatchDetails {
   skills: SkillsMatchDetails;
