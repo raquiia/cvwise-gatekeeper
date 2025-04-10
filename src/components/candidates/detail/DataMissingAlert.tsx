@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { analyzeResume, extractResumeText } from '@/services/resumeService';
+import { analyzeResume } from '@/services/resumeService';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DataMissingAlertProps {
   candidateName: string;
@@ -32,37 +33,83 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
     try {
       setIsAnalyzing(true);
       
-      // 1. Extraction du texte du CV
+      // 1. Récupérer les données du CV (dont le texte déjà extrait)
       toast({
-        title: "Extraction du texte",
-        description: "Extraction du texte du CV en cours..."
+        title: "Récupération des données",
+        description: "Récupération des données du CV en cours..."
       });
       
-      const extractResult = await extractResumeText(resumeId, ""); // Le chemin du fichier sera récupéré par le backend
+      const { data: resumeData, error: resumeError } = await supabase
+        .rpc('get_resume_by_id', { p_resume_id: resumeId });
       
-      if (!extractResult.success || !extractResult.text) {
-        throw new Error(extractResult.message || "Échec de l'extraction du texte du CV");
+      if (resumeError || !resumeData || resumeData.length === 0) {
+        throw new Error(resumeError?.message || "Impossible de récupérer les données du CV");
       }
       
-      // 2. Analyse du CV par l'IA
-      toast({
-        title: "Analyse en cours",
-        description: "L'IA analyse le CV pour extraire les informations..."
-      });
+      // Pour un accès plus facile
+      const resumeInfo = resumeData[0];
       
-      const analysisResult = await analyzeResume(resumeId, extractResult.text, true);
+      // 2. Récupérer le texte brut du CV depuis la base de données
+      const { data: textData, error: textError } = await supabase
+        .from('resume_texts')
+        .select('text')
+        .eq('resume_id', resumeId)
+        .single();
       
-      if (!analysisResult.success) {
-        throw new Error(analysisResult.message || "Échec de l'analyse du CV");
+      if (textError) {
+        console.log("Texte du CV non trouvé en base, tentative d'accès au fichier");
+        // Si le texte n'est pas en base, on peut le récupérer via le fichier original
+        // Noter que cette partie devrait idéalement être gérée par une fonction edge
+        const { data: fileData, error: fileError } = await supabase.storage
+          .from('resumes')
+          .download(resumeInfo.file_path);
+        
+        if (fileError || !fileData) {
+          throw new Error("Impossible de récupérer le fichier du CV");
+        }
+        
+        // Utiliser le texte brut du fichier (version simplifiée)
+        const text = await fileData.text();
+        
+        // 3. Analyse du CV par l'IA avec le texte récupéré
+        toast({
+          title: "Analyse en cours",
+          description: "L'IA analyse le CV pour extraire les informations..."
+        });
+        
+        const analysisResult = await analyzeResume(resumeId, text, true);
+        
+        if (!analysisResult.success) {
+          throw new Error(analysisResult.message || "Échec de l'analyse du CV");
+        }
+      } else {
+        // Utiliser le texte déjà stocké en base
+        const text = textData.text;
+        
+        if (!text) {
+          throw new Error("Le texte du CV est vide");
+        }
+        
+        // 3. Analyse du CV par l'IA avec le texte récupéré de la base
+        toast({
+          title: "Analyse en cours",
+          description: "L'IA analyse le CV pour extraire les informations..."
+        });
+        
+        const analysisResult = await analyzeResume(resumeId, text, true);
+        
+        if (!analysisResult.success) {
+          throw new Error(analysisResult.message || "Échec de l'analyse du CV");
+        }
       }
       
-      // 3. Notification de succès
+      // 4. Notification de succès
       toast({
         title: "Analyse terminée",
         description: "Les données du candidat ont été mises à jour avec succès"
       });
       
-      // 4. Rafraîchir la page pour voir les nouvelles données
+      // 5. Rafraîchir la page pour voir les nouvelles données
       if (onReanalysisComplete) {
         onReanalysisComplete();
       } else {
