@@ -66,7 +66,7 @@ export const mockJobOffer: JobOffer = {
 export const mockSkillsDetails: SkillsDetails = {
   matched: ['JavaScript', 'React', 'Node.js'],
   missing: ['API Development'],
-  additional: ['TypeScript'],  // Added this field to match the updated type
+  additional: ['TypeScript'],
   matchPercentage: 75
 };
 
@@ -75,7 +75,7 @@ export const mockMatchDetails: MatchDetails = {
   skills: {
     matched: ['JavaScript', 'React', 'Node.js'],
     missing: ['API Development'],
-    additional: ['TypeScript'],  // Added this field to match SkillsMatchDetails
+    additional: ['TypeScript'],
     matchPercentage: 75
   },
   experienceLevel: {
@@ -99,6 +99,14 @@ export const mockMatchDetails: MatchDetails = {
 // Mock candidate matches for testing
 export const mockCandidateMatches: CandidateMatch[] = [
   {
+    // Required CandidateMatch properties
+    id: 'match-c1-j1',
+    candidate_id: 'c1',
+    job_offer_id: 'j1',
+    match_score: 85,
+    match_details: mockMatchDetails,
+    
+    // Frontend compatibility properties
     candidateId: 'c1',
     firstName: 'John',
     lastName: 'Doe',
@@ -108,6 +116,17 @@ export const mockCandidateMatches: CandidateMatch[] = [
     details: mockMatchDetails
   },
   {
+    // Required CandidateMatch properties
+    id: 'match-c2-j1',
+    candidate_id: 'c2',
+    job_offer_id: 'j1',
+    match_score: 65,
+    match_details: {
+      matched_skills: ['JavaScript'],
+      missing_skills: ['React', 'Node.js', 'API Development'],
+    },
+    
+    // Frontend compatibility properties
     candidateId: 'c2',
     firstName: 'Jane',
     lastName: 'Smith',
@@ -140,6 +159,17 @@ export const mockCandidateMatches: CandidateMatch[] = [
     }
   },
   {
+    // Required CandidateMatch properties
+    id: 'match-c3-j1',
+    candidate_id: 'c3',
+    job_offer_id: 'j1',
+    match_score: 55,
+    match_details: {
+      matched_skills: [],
+      missing_skills: ['JavaScript', 'React', 'Node.js', 'API Development'],
+    },
+    
+    // Frontend compatibility properties
     candidateId: 'c3',
     firstName: 'Alex',
     lastName: 'Johnson',
