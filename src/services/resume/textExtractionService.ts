@@ -96,6 +96,7 @@ export const extractResumeText = async (resumeId: string, filePath?: string): Pr
     }
     
     console.log('Text extraction successful, length:', data.data?.text?.length || 0);
+    console.log('Sample of extracted text:', data.data?.text?.substring(0, 500) + '...');
     
     // Vérifier que le texte extrait n'est pas vide
     if (!data.data?.text || data.data.text.trim() === '') {

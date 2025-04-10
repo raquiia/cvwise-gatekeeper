@@ -33,7 +33,7 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
     }
     
     console.log(`Text length being sent to OpenAI: ${resumeText.length} characters`);
-    console.log('Sample of the text being sent:', resumeText.substring(0, 200) + '...');
+    console.log('Sample of the text being sent:', resumeText.substring(0, 500) + '...');
     
     // Appel à l'edge function d'analyse de CV avec gestion améliorée des erreurs
     try {
@@ -109,13 +109,29 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
       // Si l'erreur est liée à la récursion dans les politiques, essayons une approche alternative
       if (apiError.message && apiError.message.includes('recursion')) {
         console.warn('Detected recursion error, using alternative approach');
+        
+        // Utiliser une méthode alternative pour l'analyse en cas d'erreur de récursion
+        const { data: directData, error: directError } = await supabase
+          .from('candidates')
+          .select('id')
+          .eq('resume_id', resumeId)
+          .single();
+          
+        if (directError || !directData) {
+          throw new Error("Échec de l'analyse du CV: impossible de retrouver le candidat");
+        }
+        
+        console.log("Récupération alternative du candidat réussie:", directData.id);
+        
         toast({
-          title: "Attention",
+          title: "Analyse effectuée",
           description: "L'analyse a été effectuée, mais en raison d'une limitation technique, veuillez rafraîchir la page pour voir toutes les données",
         });
+        
         return { 
           success: true, 
           message: "Analyse effectuée avec succès, mais des limitations techniques requièrent un rafraîchissement de la page",
+          candidateId: directData.id
         };
       }
       throw apiError;

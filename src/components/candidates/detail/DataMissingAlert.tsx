@@ -33,6 +33,7 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
       setLoading(true);
       
       // 1. Extraire le texte du CV - pas besoin de passer filePath, la fonction va le récupérer automatiquement
+      console.log("Commencer l'extraction de texte pour CV ID:", resumeId);
       const textResult = await extractResumeText(resumeId);
       
       if (!textResult.success || !textResult.text) {
@@ -40,14 +41,17 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
       }
       
       console.log("Texte extrait avec succès, longueur:", textResult.text.length);
+      console.log("Échantillon du texte extrait:", textResult.text.substring(0, 500) + "...");
       
       // 2. Ré-analyser le CV en forçant l'écrasement des données existantes
-      // Assurons-nous de passer tous les arguments requis dans le bon ordre
+      console.log("Commencer l'analyse du CV avec le texte extrait");
       const analysisResult = await analyzeResume(resumeId, textResult.text, true);
       
       if (!analysisResult.success) {
         throw new Error(analysisResult.message || "Échec de l'analyse");
       }
+      
+      console.log("Analyse terminée avec succès, candidateId:", analysisResult.candidateId);
       
       toast({
         title: "Analyse terminée",
