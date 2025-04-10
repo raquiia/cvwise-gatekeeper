@@ -223,9 +223,10 @@ export const candidateService = {
         if (deleteError) {
           console.error('Error during direct candidate deletion:', deleteError);
           // Check for recursion errors specifically
-          const errorMessage = deleteError && typeof deleteError === 'object' && 'message' in deleteError 
-            ? String(deleteError.message) 
-            : 'Unknown error';
+          const errorMessage = deleteError && 
+            typeof deleteError === 'object' ? 
+            String((deleteError as any).message || 'Unknown error') : 
+            'Unknown error';
             
           if (errorMessage.includes('infinite recursion') || 
               errorMessage.includes('recursion infinie') ||
@@ -247,9 +248,10 @@ export const candidateService = {
         console.error('Error during candidate deletion:', deleteError);
         
         // Re-throw the error with a better message
-        const errorMessage = deleteError && typeof deleteError === 'object' && 'message' in deleteError 
-          ? String(deleteError.message) 
-          : 'Unknown error';
+        const errorMessage = deleteError && 
+          typeof deleteError === 'object' ? 
+          String((deleteError as any).message || 'Unknown error') : 
+          'Unknown error';
           
         if (errorMessage.includes('infinite recursion') || 
             errorMessage.includes('recursion infinie') ||
@@ -262,9 +264,10 @@ export const candidateService = {
     } catch (error: unknown) {
       console.error('Error in deleteCandidate:', error);
       // Check if error is related to infinite recursion in RLS policies
-      const errorMessage = error && typeof error === 'object' && 'message' in error 
-        ? String(error.message) 
-        : 'Unknown error';
+      const errorMessage = error && 
+        typeof error === 'object' ? 
+        String((error as any).message || 'Unknown error') : 
+        'Unknown error';
         
       if (errorMessage.includes('infinite recursion') || 
           errorMessage.includes('recursion infinie') ||
