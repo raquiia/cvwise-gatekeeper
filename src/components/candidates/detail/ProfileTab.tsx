@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { MapPin, Phone, Mail, Calendar, FileText } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
-import { ensureArray, ensureStringArray, safeString } from '@/utils/candidateUtils';
+import { ensureArray, ensureStringArray, safeString, isUndefinedObject } from '@/utils/candidateUtils';
 
 interface ProfileTabProps {
   candidate: CandidateData;
@@ -30,10 +31,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
   const hasValidMobility = mobility.trim().length > 0;
   const hasValidTravelWillingness = travelWillingness.trim().length > 0;
   const hasValidSalaryExpectations = salaryExpectations.trim().length > 0;
-
-  const isUndefinedObject = (obj: any): boolean => {
-    return obj && typeof obj === 'object' && obj._type === 'undefined';
-  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
