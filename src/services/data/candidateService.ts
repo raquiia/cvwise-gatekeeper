@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -224,11 +223,13 @@ export const candidateService = {
         if (deleteError) {
           console.error('Error during direct candidate deletion:', deleteError);
           // Check for recursion errors specifically
-          if (deleteError && typeof deleteError === 'object' && 'message' in deleteError && typeof deleteError.message === 'string' && (
-            deleteError.message.includes('infinite recursion') || 
-            deleteError.message.includes('recursion infinie') ||
-            deleteError.message.includes('recursive')
-          )) {
+          const errorMessage = deleteError && typeof deleteError === 'object' && 'message' in deleteError 
+            ? String(deleteError.message) 
+            : 'Unknown error';
+            
+          if (errorMessage.includes('infinite recursion') || 
+              errorMessage.includes('recursion infinie') ||
+              errorMessage.includes('recursive')) {
             throw new Error(`Erreur de récursion infinie détectée lors de la suppression. Il s'agit d'un problème de configuration de sécurité. Veuillez réessayer plus tard.`);
           }
           throw deleteError;
@@ -242,31 +243,35 @@ export const candidateService = {
         }
         
         return true;
-      } catch (deleteError: any) {
+      } catch (deleteError: unknown) {
         console.error('Error during candidate deletion:', deleteError);
         
         // Re-throw the error with a better message
-        if (deleteError && typeof deleteError === 'object' && 'message' in deleteError && typeof deleteError.message === 'string' && (
-          deleteError.message.includes('infinite recursion') || 
-          deleteError.message.includes('recursion infinie') ||
-          deleteError.message.includes('recursive')
-        )) {
+        const errorMessage = deleteError && typeof deleteError === 'object' && 'message' in deleteError 
+          ? String(deleteError.message) 
+          : 'Unknown error';
+          
+        if (errorMessage.includes('infinite recursion') || 
+            errorMessage.includes('recursion infinie') ||
+            errorMessage.includes('recursive')) {
           throw new Error(`Erreur de récursion infinie détectée lors de la suppression. Il s'agit d'un problème de configuration de sécurité. Veuillez réessayer plus tard.`);
         }
         
-        throw new Error(`Failed to delete candidate: ${deleteError && typeof deleteError === 'object' && 'message' in deleteError ? deleteError.message : 'Unknown error'}`);
+        throw new Error(`Failed to delete candidate: ${errorMessage}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error in deleteCandidate:', error);
       // Check if error is related to infinite recursion in RLS policies
-      if (error.message && (
-          error.message.includes('infinite recursion') || 
-          error.message.includes('recursion infinie') ||
-          error.message.includes('recursive')
-      )) {
+      const errorMessage = error && typeof error === 'object' && 'message' in error 
+        ? String(error.message) 
+        : 'Unknown error';
+        
+      if (errorMessage.includes('infinite recursion') || 
+          errorMessage.includes('recursion infinie') ||
+          errorMessage.includes('recursive')) {
         throw new Error(`Erreur de récursion infinie détectée lors de la suppression. Il s'agit d'un problème de configuration de sécurité. Veuillez réessayer plus tard.`);
       }
-      throw new Error(`Failed to delete candidate: ${error.message}`);
+      throw new Error(`Failed to delete candidate: ${errorMessage}`);
     }
   },
   
