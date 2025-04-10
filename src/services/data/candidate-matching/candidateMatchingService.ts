@@ -1,7 +1,7 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import type { CandidateData } from '../candidateService';
-import type { CandidateMatch } from './types';
-import { CandidateJobMatch } from '../candidateDataService';
+import type { CandidateMatch, CandidateJobMatch } from './types';
 import { processJobOfferData } from '@/utils/candidateUtils';
 import { calculateCandidateJobMatch, createDefaultMatchDetails } from './matchUtils';
 import { matchDbService } from './matchDbService';

@@ -1,7 +1,8 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateMatch } from './types';
 import { processCandidateData, processJobOfferData } from '@/utils/candidateUtils';
-import { calculateCandidateJobMatch, matchDetailsToJson } from './matchUtils';
+import { calculateCandidateJobMatch } from './matchUtils';
 import type { CandidateData } from '../candidateService';
 import type { JobOffer } from '../job-offers/types';
 
@@ -34,11 +35,9 @@ export const matchDbService = {
         }
         
         if (!rawCandidates || rawCandidates.length === 0) {
-          console.log('No candidates found for matching');
           return [];
         }
         
-        console.log(`Found ${rawCandidates.length} candidates to match against job offer`);
         const candidates = rawCandidates.map(processCandidateData);
         
         // Fetch the job offer
@@ -54,61 +53,27 @@ export const matchDbService = {
         }
         
         const jobOffer = processJobOfferData(rawJobOffer);
-        console.log('Job offer for matching:', jobOffer.title);
         
         // Calculate match scores for each candidate
         const matches: CandidateMatch[] = [];
         
         for (const candidate of candidates) {
-          console.log(`Calculating match for candidate: ${candidate.first_name} ${candidate.last_name}`);
           const match = await calculateCandidateJobMatch(candidate as CandidateData, jobOffer as JobOffer);
-          
-          // Save the match to database
-          try {
-            const matchId = `${candidate.id}-${jobOfferId}`;
-            
-            // Convert MatchDetails to JSON format that Supabase can handle
-            const matchDetailsJson = matchDetailsToJson(match.details);
-            
-            const { error: upsertError } = await supabase
-              .from('candidate_job_matches')
-              .upsert({
-                candidate_id: candidate.id,
-                job_offer_id: jobOfferId,
-                match_score: match.score,
-                skills_match_score: match.details.skills.matchPercentage,
-                experience_match_score: match.details.experienceLevel.score || 0,
-                education_match_score: match.details.educationLevel.score || 0,
-                location_match_score: match.details.location.score || 0,
-                match_details: matchDetailsJson,
-                id: matchId
-              });
-              
-            if (upsertError) {
-              console.error('Error saving match to database:', upsertError);
-            } else {
-              console.log(`Match saved for candidate ${candidate.id} with score ${match.score}`);
-            }
-          } catch (error) {
-            console.error('Error in match upsert:', error);
-          }
           
           matches.push({
             id: `${candidate.id}-${jobOfferId}`,
             candidate_id: candidate.id,
             job_offer_id: jobOfferId,
             match_score: match.score,
-            skills_match_score: match.details.skills.matchPercentage,
-            experience_match_score: match.details.experienceLevel.score || 0,
-            education_match_score: match.details.educationLevel.score || 0,
-            location_match_score: match.details.location.score || 0,
+            first_name: candidate.first_name,
+            last_name: candidate.last_name,
+            position: candidate.position,
+            company: candidate.company,
             match_details: match.details,
             // Also include frontend-compatible properties
             candidateId: candidate.id,
             firstName: candidate.first_name,
             lastName: candidate.last_name,
-            position: candidate.position,
-            company: candidate.company,
             score: match.score,
             details: match.details
           });
@@ -122,8 +87,6 @@ export const matchDbService = {
       
       // Process the match data if we got it successfully through RPC
       if (matchData) {
-        console.log(`Got ${matchData.length} matches from RPC function`);
-        
         const matches: CandidateMatch[] = matchData.map((item: any) => {
           const candidate = processCandidateData(item.candidate || {});
           const matchDetails = item.match || {};
@@ -133,11 +96,6 @@ export const matchDbService = {
             candidate_id: candidate.id,
             job_offer_id: jobOfferId,
             match_score: matchDetails.match_score || 0,
-            skills_match_score: matchDetails.skills_match_score || 0,
-            experience_match_score: matchDetails.experience_match_score || 0,
-            education_match_score: matchDetails.education_match_score || 0,
-            location_match_score: matchDetails.location_match_score || 0,
-            match_details: matchDetails.match_details || {},
             // Include frontend-compatible properties
             candidateId: candidate.id,
             firstName: candidate.first_name,
@@ -147,9 +105,9 @@ export const matchDbService = {
             score: matchDetails.match_score || 0,
             details: matchDetails.match_details || {
               skills: { matched: [], missing: [], additional: [], matchPercentage: 0 },
-              experienceLevel: { required: 0, candidate: 0, match: false, score: 0 },
-              location: { required: '', candidate: '', match: false, score: 0 },
-              educationLevel: { required: '', candidate: '', match: false, score: 0 },
+              experienceLevel: { required: 0, candidate: 0, match: false },
+              location: { required: '', candidate: '', match: false },
+              educationLevel: { required: '', candidate: '', match: false },
               overall: 0
             }
           };
@@ -186,7 +144,6 @@ export const matchDbService = {
    */
   getMatchesForJobOffer: async (jobOfferId: string): Promise<CandidateMatch[]> => {
     try {
-      console.log('Getting all matches for job offer:', jobOfferId);
       return await matchDbService.calculateMatchesForJobOffer(jobOfferId);
     } catch (error) {
       console.error('Error getting matches for job offer:', error);

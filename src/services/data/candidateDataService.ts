@@ -1,42 +1,51 @@
 
-import { MatchDetails } from './candidate-matching/types';
-import { candidateService } from './candidateService';
-import { supabase } from '@/integrations/supabase/client';
-import { Json } from '@/integrations/supabase/types';
+import { candidateService, CandidateData } from './candidateService';
+import { jobOfferService } from './job-offers/jobOfferService';
+import { candidateMatchingService } from './candidateMatchingService';
+import type { JobOffer } from './job-offers/types';
+import type { 
+  CandidateMatch, 
+  JobOfferSuggestion,
+  MatchDetails,
+  SkillsMatchDetails
+} from './candidate-matching/types';
 
 /**
- * Interface for the result of a candidate-job matching operation
+ * Re-export all the services to maintain backward compatibility
  */
+export const candidateDataService = {
+  // Re-export candidate services
+  getUserCandidates: candidateService.getUserCandidates,
+  getCandidateById: candidateService.getCandidateById,
+  deleteCandidate: candidateService.deleteCandidate,
+  
+  // Re-export job offer services
+  createJobOffer: jobOfferService.createJobOffer,
+  updateJobOffer: jobOfferService.updateJobOffer,
+  deleteJobOffer: jobOfferService.deleteJobOffer,
+  getUserJobOffers: jobOfferService.getUserJobOffers,
+  getJobOfferById: jobOfferService.getJobOfferById,
+  
+  // Re-export matching services
+  calculateMatchesForJobOffer: candidateMatchingService.calculateMatchesForJobOffer,
+  getCandidateJobMatch: candidateMatchingService.getCandidateJobMatch,
+  getMatchesForJobOffer: candidateMatchingService.getMatchesForJobOffer,
+  getTopCandidatesForJobOffer: candidateMatchingService.getTopCandidatesForJobOffer,
+  generateJobOfferSuggestions: candidateMatchingService.generateJobOfferSuggestions
+};
+
+// Re-export types to maintain backward compatibility
+export type { 
+  CandidateData,
+  JobOffer, 
+  CandidateMatch,
+  JobOfferSuggestion,
+  MatchDetails,
+  SkillsMatchDetails
+};
+
+// Create interface for backward compatibility
 export interface CandidateJobMatch {
   score: number;
   details: MatchDetails;
 }
-
-/**
- * Service for candidate data operations
- */
-export const candidateDataService = {
-  /**
-   * Delete a candidate by ID
-   */
-  deleteCandidate: async (candidateId: string, deleteResume: boolean = true): Promise<boolean> => {
-    try {
-      return await candidateService.deleteCandidate(candidateId, deleteResume);
-    } catch (error: any) {
-      console.error('Error in candidateDataService.deleteCandidate:', error);
-      throw new Error(`Failed to delete candidate: ${error.message}`);
-    }
-  },
-  
-  /**
-   * Get all candidates for the current user
-   */
-  getUserCandidates: async () => {
-    try {
-      return await candidateService.getUserCandidates();
-    } catch (error: any) {
-      console.error('Error in candidateDataService.getUserCandidates:', error);
-      throw new Error(`Failed to get user candidates: ${error.message}`);
-    }
-  }
-};
