@@ -44,7 +44,9 @@ export const extractResumeText = async (resumeId: string, filePath?: string): Pr
               }
             } else {
               // Direct object access if not an array
-              path = rpcData.file_path;
+              // Add type assertion to help TypeScript understand the object structure
+              const resumeObj = rpcData as { file_path: string };
+              path = resumeObj.file_path;
             }
           } else {
             console.error('Failed to get resume data:', resumeError);
