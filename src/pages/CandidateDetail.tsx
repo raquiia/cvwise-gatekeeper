@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -52,11 +53,23 @@ const CandidateDetail = () => {
         const processedData = processCandidateData(data);
         console.log("Processed candidate data:", processedData);
         
-        // Check for data incompleteness
-        const hasIncompleteData = 
-          (!processedData.experiences || processedData.experiences.length === 0) &&
-          (!processedData.education || processedData.education.length === 0) &&
-          (!processedData.languages || processedData.languages.length === 0);
+        // Vérification améliorée des données incomplètes
+        // On vérifie chaque section critique pour détecter si des données importantes sont manquantes
+        const hasEmptyExperiences = !processedData.experiences || processedData.experiences.length === 0;
+        const hasEmptyEducation = !processedData.education || processedData.education.length === 0;
+        const hasEmptyLanguages = !processedData.languages || processedData.languages.length === 0;
+        const hasEmptyCertifications = !processedData.certifications || processedData.certifications.length === 0;
+        
+        // Détection plus précise des données incomplètes
+        const hasIncompleteData = hasEmptyExperiences || hasEmptyEducation || hasEmptyLanguages;
+        
+        console.log("Data completeness check:", {
+          experiences: !hasEmptyExperiences,
+          education: !hasEmptyEducation,
+          languages: !hasEmptyLanguages,
+          certifications: !hasEmptyCertifications,
+          isComplete: !hasIncompleteData
+        });
         
         setDataIncompletenessDetected(hasIncompleteData);
         setCandidate(processedData);

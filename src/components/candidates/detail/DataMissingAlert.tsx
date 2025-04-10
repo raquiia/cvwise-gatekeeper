@@ -48,6 +48,7 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
       
       // Pour un accès plus facile
       const resumeInfo = resumeData[0];
+      console.log("Informations du CV récupérées:", resumeInfo);
       
       // 2. Extraire le texte du CV en utilisant la fonction dédiée
       const extractionResult = await extractResumeText(resumeId, resumeInfo.file_path);
@@ -68,7 +69,7 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
       });
       
       // Utiliser la fonction existante et forcer la réécriture complète des données
-      // pour garantir une mise à jour complète du profil
+      // pour garantir une mise à jour complète du profil, avec fullAnalysis à true
       const analysisResult = await analyzeResume(resumeId, extractedText, true);
       
       if (!analysisResult.success) {
@@ -110,7 +111,7 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
           <AlertTitle className="text-amber-800">Données incomplètes</AlertTitle>
           <AlertDescription className="text-amber-700">
             Certaines informations détaillées pour {candidateName} sont manquantes ou n'ont pas été correctement importées. 
-            Vous pouvez compléter les données manuellement en modifiant le profil du candidat.
+            Vous pouvez compléter les données manuellement en modifiant le profil du candidat ou utiliser le bouton ci-contre pour relancer l'analyse IA.
           </AlertDescription>
         </div>
         {resumeId && (

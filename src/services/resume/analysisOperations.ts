@@ -164,22 +164,40 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
       throw new Error(data?.error || 'Analyse du CV échouée');
     }
     
-    console.log('AI analysis successful, candidate created:', data.candidate?.id);
+    console.log('AI analysis successful, candidate created or updated:', data.candidate?.id);
     
-    // Vérifier les structures complexes pour debugging
+    // Vérifier les structures de données retournées
     if (data.candidate) {
-      // Check résumé des données analysées
-      console.log('Parsed data from OpenAI received:', data.parsed_data ? 'Yes' : 'No');
+      // Vérifier chaque section importante pour le débogage
+      console.log('Experiences:', typeof data.candidate.experiences, 
+        Array.isArray(data.candidate.experiences) ? 
+        `Array with ${data.candidate.experiences.length} items` : 
+        'Not an array or empty');
       
-      // Vérifier les structures complexes pour debugging
-      console.log('Experiences:', typeof data.candidate.experiences, Array.isArray(data.candidate.experiences) ? data.candidate.experiences.length : 'Not an array');
-      console.log('Education:', typeof data.candidate.education, Array.isArray(data.candidate.education) ? data.candidate.education.length : 'Not an array');
-      console.log('Skills:', typeof data.candidate.skills, Array.isArray(data.candidate.skills) ? data.candidate.skills.length : 'Not an array');
-      console.log('Languages:', typeof data.candidate.languages, Array.isArray(data.candidate.languages) ? data.candidate.languages.length : 'Not an array');
-      console.log('Certifications:', typeof data.candidate.certifications, Array.isArray(data.candidate.certifications) ? data.candidate.certifications.length : 'Not an array');
-      console.log('Projects:', typeof data.candidate.projects, Array.isArray(data.candidate.projects) ? data.candidate.projects.length : 'Not an array');
+      console.log('Education:', typeof data.candidate.education, 
+        Array.isArray(data.candidate.education) ? 
+        `Array with ${data.candidate.education.length} items` : 
+        'Not an array or empty');
+      
+      console.log('Languages:', typeof data.candidate.languages, 
+        Array.isArray(data.candidate.languages) ? 
+        `Array with ${data.candidate.languages.length} items` : 
+        'Not an array or empty');
+      
+      console.log('Skills:', typeof data.candidate.skills, 
+        Array.isArray(data.candidate.skills) ? 
+        `Array with ${data.candidate.skills.length} items` : 
+        'Not an array or empty');
+      
+      console.log('Certifications:', typeof data.candidate.certifications, 
+        Array.isArray(data.candidate.certifications) ? 
+        `Array with ${data.candidate.certifications.length} items` : 
+        'Not an array or empty');
+    } else {
+      console.warn('No candidate data returned from analysis');
     }
     
+    // Message de succès différent selon que l'on a écrasé ou créé
     const successMessage = overwriteExisting 
       ? "Le CV a été ré-analysé avec succès et les données du candidat ont été mises à jour" 
       : "Le CV a été analysé avec succès et un candidat a été créé";
