@@ -1,3 +1,4 @@
+
 import { CandidateData } from '../candidateService';
 import { JobOffer } from '../job-offers/types';
 import { MatchDetails, SkillsMatchDetails } from './types';
@@ -63,6 +64,23 @@ export const calculateCandidateJobMatch = async (
       }
     };
   }
+};
+
+/**
+ * Create default match details for a candidate
+ */
+export const createDefaultMatchDetails = (candidate: CandidateData): CandidateJobMatch => {
+  console.log('Creating default match details for candidate:', candidate.id);
+  return {
+    score: 0,
+    details: {
+      skills: { matched: [], missing: [], additional: [], matchPercentage: 0 },
+      experienceLevel: { required: 0, candidate: 0, match: false, score: 0 },
+      educationLevel: { required: '', candidate: '', match: false, score: 0 },
+      location: { required: '', candidate: '', match: false, score: 0 },
+      overall: 0
+    }
+  };
 };
 
 /**
