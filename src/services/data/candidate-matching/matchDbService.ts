@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateMatch } from './types';
 import { processCandidateData, processJobOfferData } from '@/utils/candidateUtils';
-import { calculateCandidateJobMatch } from './matchUtils';
+import { calculateCandidateJobMatch, matchDetailsToJson } from './matchUtils';
 import type { CandidateData } from '../candidateService';
 import type { JobOffer } from '../job-offers/types';
 
@@ -68,10 +68,12 @@ export const matchDbService = {
           try {
             const matchId = `${candidate.id}-${jobOfferId}`;
             
+            // Convert MatchDetails to JSON format that Supabase can handle
+            const matchDetailsJson = matchDetailsToJson(match.details);
+            
             const { error: upsertError } = await supabase
               .from('candidate_job_matches')
               .upsert({
-                id: matchId,
                 candidate_id: candidate.id,
                 job_offer_id: jobOfferId,
                 match_score: match.score,
@@ -79,7 +81,8 @@ export const matchDbService = {
                 experience_match_score: match.details.experienceLevel.score || 0,
                 education_match_score: match.details.educationLevel.score || 0,
                 location_match_score: match.details.location.score || 0,
-                match_details: match.details
+                match_details: matchDetailsJson,
+                id: matchId
               });
               
             if (upsertError) {
