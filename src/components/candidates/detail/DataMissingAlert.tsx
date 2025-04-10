@@ -32,20 +32,18 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
     try {
       setLoading(true);
       
-      // 1. Extraire le texte du CV
+      // 1. Extraire le texte du CV - en passant seulement resumeId, laissant la fonction récupérer le chemin
       const textResult = await extractResumeText(resumeId);
       
-      if (!textResult.text) {
+      if (!textResult.success || !textResult.text) {
         throw new Error(textResult.message || "Impossible d'extraire le texte du CV");
       }
       
       // 2. Ré-analyser le CV en forçant l'écrasement des données existantes
-      // Correcting the call by passing resumeId as the first argument and textResult.text as the second argument
-      // The third argument (true) indicates we want to force overwriting existing data
-      const { success, message, candidateId } = await analyzeResume(resumeId, textResult.text, true);
+      const analysisResult = await analyzeResume(resumeId, textResult.text, true);
       
-      if (!success) {
-        throw new Error(message || "Échec de l'analyse");
+      if (!analysisResult.success) {
+        throw new Error(analysisResult.message || "Échec de l'analyse");
       }
       
       toast({
