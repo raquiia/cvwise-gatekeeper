@@ -46,7 +46,11 @@ const Candidates = () => {
       console.log("Retrieved candidates:", data);
       
       if (Array.isArray(data)) {
-        setCandidates(data);
+        // Sort candidates by updated_at in descending order (newest first)
+        const sortedCandidates = [...data].sort((a, b) => 
+          new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
+        );
+        setCandidates(sortedCandidates);
       } else {
         console.error("Candidates data is not an array:", data);
         setCandidates([]);
@@ -171,8 +175,6 @@ const Candidates = () => {
           </div>
           
           <div className="flex-1">
-            {/* Suppression du composant MockDataAlert */}
-            
             <CandidatesTable 
               candidates={filteredCandidates}
               selectedStatus={selectedStatus}

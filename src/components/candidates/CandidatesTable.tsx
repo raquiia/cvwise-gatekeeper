@@ -35,7 +35,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   const [activeJobOfferId, setActiveJobOfferId] = useState<string | null>(null);
   const [candidatesWithScores, setCandidatesWithScores] = useState<CandidateData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [sortBy, setSortBy] = useState<'score' | 'name' | 'date'>('score');
+  const [sortBy, setSortBy] = useState<'name' | 'date'>('date');
   
   // Fetch job offers on component mount
   useEffect(() => {
@@ -57,87 +57,32 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     fetchJobOffers();
   }, []);
   
-  // Update candidate scores when active job offer changes or candidates change
+  // Update candidate list when candidates change or sort criteria changes
   useEffect(() => {
-    const updateCandidateScores = async () => {
-      if (!candidates || candidates.length === 0) {
-        setCandidatesWithScores([]);
-        return;
-      }
-      
-      if (activeJobOfferId) {
-        setIsLoading(true);
-        try {
-          console.log("Active job offer ID:", activeJobOfferId);
-          console.log("Calculating scores for", candidates.length, "candidates");
-          
-          // Copy candidates to avoid mutation issues
-          const updatedCandidates = [...candidates];
-          
-          // Calculate match scores for each candidate against the active job
-          for (let i = 0; i < updatedCandidates.length; i++) {
-            const candidate = updatedCandidates[i];
-            console.log(`Calculating score for candidate: ${candidate.first_name} ${candidate.last_name}`);
-            
-            try {
-              const matchResult = await candidateMatchingService.calculateCandidateActiveJobScore(candidate);
-              
-              // Log match result for debugging
-              console.log(`Match result for ${candidate.first_name} ${candidate.last_name}:`, matchResult);
-              
-              // Update the candidate with match scores and details
-              updatedCandidates[i] = {
-                ...candidate,
-                score: matchResult.score,
-                matchDetails: matchResult.details
-              };
-            } catch (error) {
-              console.error(`Error calculating score for candidate ${candidate.id}:`, error);
-            }
-          }
-          
-          // Sort candidates by score in descending order by default
-          sortCandidates(updatedCandidates, sortBy);
-          
-          setCandidatesWithScores(updatedCandidates);
-        } catch (error) {
-          console.error("Error updating candidate scores:", error);
-          // Fall back to regular candidates if there's an error
-          const sortedCandidates = [...candidates];
-          sortCandidates(sortedCandidates, sortBy);
-          setCandidatesWithScores(sortedCandidates);
-          
-          toast({
-            title: "Erreur de calcul des scores",
-            description: "Impossible de calculer les scores pour le poste sélectionné. Utilisation des scores de base.",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
-        // If no active job offer, use the original candidates but sorted
-        const sortedCandidates = [...candidates];
-        sortCandidates(sortedCandidates, sortBy);
-        setCandidatesWithScores(sortedCandidates);
-      }
-    };
+    if (!candidates || candidates.length === 0) {
+      setCandidatesWithScores([]);
+      return;
+    }
     
-    updateCandidateScores();
-  }, [candidates, activeJobOfferId, sortBy]);
+    // Copy candidates to avoid mutation issues
+    const updatedCandidates = [...candidates];
+    
+    // Sort candidates based on sort criteria
+    sortCandidates(updatedCandidates, sortBy);
+    
+    setCandidatesWithScores(updatedCandidates);
+  }, [candidates, sortBy]);
   
   // Function to sort candidates based on sort criteria
-  const sortCandidates = (candidatesList: CandidateData[], criteria: 'score' | 'name' | 'date') => {
+  const sortCandidates = (candidatesList: CandidateData[], criteria: 'name' | 'date') => {
     switch(criteria) {
-      case 'score':
-        candidatesList.sort((a, b) => (b.score || 0) - (a.score || 0));
-        break;
       case 'name':
         candidatesList.sort((a, b) => 
           `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
         );
         break;
       case 'date':
+        // Sort by updated_at in descending order (newest first)
         candidatesList.sort((a, b) => 
           new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
         );
@@ -184,7 +129,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     }
   };
   
-  const handleSortChange = (criteria: 'score' | 'name' | 'date') => {
+  const handleSortChange = (criteria: 'name' | 'date') => {
     setSortBy(criteria);
   };
   
@@ -255,21 +200,19 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
-                variant={activeJobOfferId ? "default" : "outline"} 
+                variant="outline" 
                 size="sm" 
                 className="gap-1"
                 disabled={isLoading}
               >
                 <Briefcase size={14} className="mr-1" />
-                {activeJobOfferId 
-                  ? `Scores relatifs à: ${getActiveJobOfferName()}` 
-                  : "Activer une offre d'emploi"}
+                Activer une offre d'emploi
                 <ChevronDown size={14} />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={() => handleJobOfferChange(null)}>
-                Scores généraux (sans contexte)
+                Liste standard (sans contexte)
               </DropdownMenuItem>
               
               <Separator className="my-1" />
@@ -300,9 +243,6 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handleSortChange('score')} className={sortBy === 'score' ? "bg-muted" : ""}>
-                Par score
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleSortChange('name')} className={sortBy === 'name' ? "bg-muted" : ""}>
                 Par nom
               </DropdownMenuItem>
@@ -330,9 +270,6 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
               <th className="text-left p-4 text-sm font-medium text-navy-dark hidden lg:table-cell">Localisation</th>
               <th className="text-left p-4 text-sm font-medium text-navy-dark hidden lg:table-cell">Expérience</th>
               <th className="text-left p-4 text-sm font-medium text-navy-dark">Compétences</th>
-              <th className="text-left p-4 text-sm font-medium text-navy-dark">
-                {activeJobOfferId ? "Match" : "Score"}
-              </th>
               <th className="text-left p-4 text-sm font-medium text-navy-dark hidden md:table-cell">Mise à jour</th>
               <th className="text-center p-4 text-sm font-medium text-navy-dark">Actions</th>
             </tr>
@@ -340,13 +277,13 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={9} className="p-8 text-center text-muted-foreground">
-                  Chargement des scores des candidats...
+                <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                  Chargement des candidats...
                 </td>
               </tr>
             ) : validCandidates.length === 0 ? (
               <tr>
-                <td colSpan={9} className="p-8 text-center text-muted-foreground">
+                <td colSpan={8} className="p-8 text-center text-muted-foreground">
                   Aucun candidat trouvé. Importez des CV pour commencer à créer des candidats.
                 </td>
               </tr>
