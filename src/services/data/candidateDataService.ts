@@ -1,7 +1,7 @@
 
 import { candidateService, CandidateData } from './candidateService';
 import { jobOfferService } from './job-offers/jobOfferService';
-import { candidateMatchingService } from './candidateMatchingService';
+import { candidateMatchingService } from './candidate-matching/candidateMatchingService';
 import type { JobOffer } from './job-offers/types';
 import type { 
   CandidateMatch, 

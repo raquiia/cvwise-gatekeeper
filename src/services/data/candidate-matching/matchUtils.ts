@@ -356,3 +356,16 @@ export function createDefaultMatchDetails(candidate: CandidateData): CandidateJo
     }
   };
 }
+
+/**
+ * Convert MatchDetails to JSON format for database storage
+ */
+export function matchDetailsToJson(details: MatchDetails): any {
+  return {
+    skills: details.skills || { matched: [], missing: [], additional: [], matchPercentage: 0 },
+    experienceLevel: details.experienceLevel || { required: 0, candidate: 0, match: false, score: 0 },
+    location: details.location || { required: '', candidate: '', match: false, score: 0 },
+    educationLevel: details.educationLevel || { required: '', candidate: '', match: false, score: 0 },
+    overall: details.overall || 0
+  };
+}

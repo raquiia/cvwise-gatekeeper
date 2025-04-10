@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateMatch } from './types';
 import { processCandidateData, processJobOfferData } from '@/utils/candidateUtils';
-import { calculateCandidateJobMatch } from './matchUtils';
+import { calculateCandidateJobMatch, matchDetailsToJson } from './matchUtils';
 import type { CandidateData } from '../candidateService';
 import type { JobOffer } from '../job-offers/types';
 
@@ -35,10 +35,12 @@ export const matchDbService = {
         }
         
         if (!rawCandidates || rawCandidates.length === 0) {
+          console.log('No candidates found to match with this job offer');
           return [];
         }
         
         const candidates = rawCandidates.map(processCandidateData);
+        console.log(`Found ${candidates.length} candidates to evaluate`);
         
         // Fetch the job offer
         const { data: rawJobOffer, error: jobOfferError } = await supabase
@@ -53,12 +55,44 @@ export const matchDbService = {
         }
         
         const jobOffer = processJobOfferData(rawJobOffer);
+        console.log('Successfully fetched job offer for matching:', jobOffer.title);
         
         // Calculate match scores for each candidate
         const matches: CandidateMatch[] = [];
         
         for (const candidate of candidates) {
+          console.log(`Calculating match for candidate: ${candidate.first_name} ${candidate.last_name}`);
           const match = await calculateCandidateJobMatch(candidate as CandidateData, jobOffer as JobOffer);
+          
+          // Store the match result in the database
+          try {
+            const matchDetailsJson = matchDetailsToJson(match.details);
+            
+            const { data: savedMatch, error: insertError } = await supabase
+              .from('candidate_job_matches')
+              .upsert({
+                candidate_id: candidate.id,
+                job_offer_id: jobOfferId,
+                match_score: match.score,
+                skills_match_score: match.details.skills.matchPercentage,
+                experience_match_score: match.details.experienceLevel.score || 0,
+                education_match_score: match.details.educationLevel.score || 0,
+                location_match_score: match.details.location.score || 0,
+                match_details: matchDetailsJson
+              }, {
+                onConflict: 'candidate_id,job_offer_id'
+              })
+              .select()
+              .single();
+              
+            if (insertError) {
+              console.error('Error saving match results:', insertError);
+            } else {
+              console.log(`Match result saved for candidate ${candidate.id} with score ${match.score}`);
+            }
+          } catch (saveError) {
+            console.error('Error during match save operation:', saveError);
+          }
           
           matches.push({
             id: `${candidate.id}-${jobOfferId}`,
@@ -82,6 +116,7 @@ export const matchDbService = {
         // Sort by score (descending)
         matches.sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
         
+        console.log(`Generated ${matches.length} matches for job offer`);
         return matches;
       }
       
@@ -116,6 +151,7 @@ export const matchDbService = {
         // Sort by score (descending)
         matches.sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
         
+        console.log(`Retrieved ${matches.length} matches for job offer from RPC`);
         return matches;
       }
       
