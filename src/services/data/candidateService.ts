@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -211,39 +210,25 @@ export const candidateService = {
       
       console.log(`Starting deletion process for candidate ${candidateId}, resume: ${resumeId}`);
       
-      // Method 1: Try the secure RPC function
+      // Instead of using RPC, we'll use a direct database operation with proper checks
       try {
-        const { data, error } = await supabase.rpc('delete_candidate_secure', {
-          candidate_id_param: candidateId
-        });
-        
-        if (error) {
-          console.error('Error during secure candidate deletion:', error);
-          throw error;
-        }
-        
-        console.log(`Successfully deleted candidate ${candidateId} via secure function:`, data);
-        
-        // If requested and resume exists, delete it too
-        if (deleteResume && resumeId) {
-          await handleResumeDelete(resumeId);
-        }
-        
-        return true;
-      } catch (rpcError: any) {
-        console.error('RPC method failed, falling back to direct delete:', rpcError);
-        
-        // Method 2: Direct delete as fallback
+        // First try a direct delete which is safer from a type perspective
         const { error: deleteError } = await supabase
           .from('candidates')
           .delete()
           .eq('id', candidateId)
+          .eq('user_id', (await supabase.auth.getUser()).data.user?.id) // Ensure ownership
           .throwOnError();
         
         if (deleteError) {
           console.error('Error during direct candidate deletion:', deleteError);
-          if (deleteError.message.includes('infinite recursion')) {
-            throw new Error(`Erreur de récursion infinie détectée lors de la suppression. Veuillez contacter l'administrateur.`);
+          // Check for recursion errors specifically
+          if (deleteError.message && (
+            deleteError.message.includes('infinite recursion') || 
+            deleteError.message.includes('recursion infinie') ||
+            deleteError.message.includes('recursive')
+          )) {
+            throw new Error(`Erreur de récursion infinie détectée lors de la suppression. Il s'agit d'un problème de configuration de sécurité. Veuillez réessayer plus tard.`);
           }
           throw deleteError;
         }
@@ -256,6 +241,19 @@ export const candidateService = {
         }
         
         return true;
+      } catch (deleteError: any) {
+        console.error('Error during candidate deletion:', deleteError);
+        
+        // Re-throw the error with a better message
+        if (deleteError.message && (
+          deleteError.message.includes('infinite recursion') || 
+          deleteError.message.includes('recursion infinie') ||
+          deleteError.message.includes('recursive')
+        )) {
+          throw new Error(`Erreur de récursion infinie détectée lors de la suppression. Il s'agit d'un problème de configuration de sécurité. Veuillez réessayer plus tard.`);
+        }
+        
+        throw new Error(`Failed to delete candidate: ${deleteError.message || 'Unknown error'}`);
       }
     } catch (error: any) {
       console.error('Error in deleteCandidate:', error);
