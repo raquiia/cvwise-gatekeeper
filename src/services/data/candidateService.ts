@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -191,66 +192,39 @@ export const candidateService = {
   
   deleteCandidate: async (candidateId: string, deleteResume: boolean = false): Promise<boolean> => {
     try {
-      // First, get the candidate to check if it has a resume
+      // If deleteResume is true, we need to get the resume ID first
       let resumeId: string | null = null;
       
       if (deleteResume) {
-        const { data, error } = await supabase
-          .from('candidates')
-          .select('resume_id')
-          .eq('id', candidateId)
-          .single();
-        
-        if (error) {
-          console.error('Error fetching candidate resume_id:', error);
-          throw error;
+        try {
+          const { data, error } = await supabase
+            .from('candidates')
+            .select('resume_id')
+            .eq('id', candidateId)
+            .single();
+          
+          if (!error && data) {
+            resumeId = data.resume_id;
+          }
+        } catch (err) {
+          console.warn('Failed to get resume_id for candidate:', err);
+          // Continue anyway as we can still delete the candidate
         }
-        resumeId = data?.resume_id;
       }
       
       console.log(`Starting deletion process for candidate ${candidateId}, resume: ${resumeId}`);
       
-      // Instead of using RPC, we'll use a direct database operation with proper checks
-      try {
-        // First try a direct delete which is safer from a type perspective
-        const { error: deleteError } = await supabase
-          .from('candidates')
-          .delete()
-          .eq('id', candidateId)
-          .eq('user_id', (await supabase.auth.getUser()).data.user?.id) // Ensure ownership
-          .throwOnError();
+      // Use the secure RPC function to bypass RLS issues
+      const { data, error } = await supabase.rpc('delete_candidate_secure', {
+        candidate_id_param: candidateId
+      });
+      
+      if (error) {
+        console.error('Error during candidate deletion via RPC:', error);
         
-        if (deleteError) {
-          console.error('Error during direct candidate deletion:', deleteError);
-          // Check for recursion errors specifically
-          const errorMessage = deleteError && 
-            typeof deleteError === 'object' ? 
-            String((deleteError as any).message || 'Unknown error') : 
-            'Unknown error';
-            
-          if (errorMessage.includes('infinite recursion') || 
-              errorMessage.includes('recursion infinie') ||
-              errorMessage.includes('recursive')) {
-            throw new Error(`Erreur de récursion infinie détectée lors de la suppression. Il s'agit d'un problème de configuration de sécurité. Veuillez réessayer plus tard.`);
-          }
-          throw deleteError;
-        }
-        
-        console.log(`Successfully deleted candidate ${candidateId} via direct method`);
-        
-        // If requested and resume exists, delete it too
-        if (deleteResume && resumeId) {
-          await handleResumeDelete(resumeId);
-        }
-        
-        return true;
-      } catch (deleteError: unknown) {
-        console.error('Error during candidate deletion:', deleteError);
-        
-        // Re-throw the error with a better message
-        const errorMessage = deleteError && 
-          typeof deleteError === 'object' ? 
-          String((deleteError as any).message || 'Unknown error') : 
+        // Format the error message
+        const errorMessage = error && typeof error === 'object' ? 
+          String(error.message || 'Unknown error') : 
           'Unknown error';
           
         if (errorMessage.includes('infinite recursion') || 
@@ -261,9 +235,19 @@ export const candidateService = {
         
         throw new Error(`Failed to delete candidate: ${errorMessage}`);
       }
+      
+      console.log(`Successfully deleted candidate ${candidateId} via secure RPC function`);
+      
+      // If requested and resume exists, delete it too
+      if (deleteResume && resumeId) {
+        await handleResumeDelete(resumeId);
+      }
+      
+      return true;
     } catch (error: unknown) {
       console.error('Error in deleteCandidate:', error);
-      // Check if error is related to infinite recursion in RLS policies
+      
+      // Format error message with type guard
       const errorMessage = error && 
         typeof error === 'object' ? 
         String((error as any).message || 'Unknown error') : 
@@ -274,6 +258,7 @@ export const candidateService = {
           errorMessage.includes('recursive')) {
         throw new Error(`Erreur de récursion infinie détectée lors de la suppression. Il s'agit d'un problème de configuration de sécurité. Veuillez réessayer plus tard.`);
       }
+      
       throw new Error(`Failed to delete candidate: ${errorMessage}`);
     }
   },
@@ -300,10 +285,9 @@ export const candidateService = {
 async function handleResumeDelete(resumeId: string): Promise<void> {
   console.log(`Attempting to delete resume ${resumeId}`);
   try {
-    const { error: resumeError } = await supabase
-      .from('resumes')
-      .delete()
-      .eq('id', resumeId);
+    const { error: resumeError } = await supabase.rpc('delete_resume_by_id', {
+      resume_id_param: resumeId
+    });
     
     if (resumeError) {
       console.error('Error deleting resume:', resumeError);
