@@ -39,6 +39,8 @@ const DataMissingAlert: React.FC<DataMissingAlertProps> = ({
         throw new Error(textResult.message || "Impossible d'extraire le texte du CV");
       }
       
+      console.log("Texte extrait avec succès, longueur:", textResult.text.length);
+      
       // 2. Ré-analyser le CV en forçant l'écrasement des données existantes
       // Assurons-nous de passer tous les arguments requis dans le bon ordre
       const analysisResult = await analyzeResume(resumeId, textResult.text, true);

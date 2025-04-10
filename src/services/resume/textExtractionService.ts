@@ -13,19 +13,46 @@ export const extractResumeText = async (resumeId: string, filePath?: string): Pr
     let path = filePath;
     
     if (!path) {
-      // Fetch the resume data to get the file path
-      const { data: resumeData, error: resumeError } = await supabase
-        .from("resumes")
-        .select("file_path")
-        .eq("id", resumeId)
-        .single();
-        
-      if (resumeError || !resumeData) {
-        console.error('Failed to get resume data:', resumeError);
-        throw new Error('Impossible de trouver le CV avec cet identifiant');
+      try {
+        // Fetch the resume data to get the file path
+        const { data: resumeData, error: resumeError } = await supabase
+          .from("resumes")
+          .select("file_path")
+          .eq("id", resumeId)
+          .maybeSingle();
+          
+        if (resumeError) {
+          // Check specifically for the recursion error
+          if (resumeError.message && resumeError.message.includes('recursion')) {
+            console.warn('Detected recursion error, trying alternative method');
+            
+            // Try using the RPC instead
+            const { data: rpcData, error: rpcError } = await supabase
+              .rpc('get_resume_by_id', { p_resume_id: resumeId });
+              
+            if (rpcError || !rpcData) {
+              console.error('Failed to get resume data via RPC:', rpcError);
+              throw new Error('Impossible de récupérer les informations du CV');
+            }
+            
+            if (Array.isArray(rpcData) && rpcData.length > 0) {
+              path = rpcData[0].file_path;
+            } else {
+              path = rpcData.file_path;
+            }
+          } else {
+            console.error('Failed to get resume data:', resumeError);
+            throw new Error('Impossible de trouver le CV avec cet identifiant');
+          }
+        } else if (!resumeData) {
+          throw new Error('CV non trouvé');
+        } else {
+          path = resumeData.file_path;
+        }
+      } catch (dbError) {
+        console.error('Database error when fetching resume:', dbError);
+        throw dbError;
       }
-      
-      path = resumeData.file_path;
       
       if (!path) {
         throw new Error('Chemin du fichier non trouvé pour ce CV');
