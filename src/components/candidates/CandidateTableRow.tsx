@@ -20,6 +20,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { CandidateData } from '@/services/data/candidateService';
 import { candidateDataService } from '@/services/data/candidateDataService';
+import { TableRow, TableCell } from '@/components/ui/table';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface CandidateTableRowProps {
   candidate: CandidateData;
@@ -136,22 +139,22 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
 
   return (
     <>
-      <tr className="border-b border-border/10 hover:bg-navy/5 transition-colors">
-        <td className="p-4">
+      <TableRow className="border-b border-border/10 hover:bg-navy/5 dark:hover:bg-white/5 transition-colors">
+        <TableCell className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-navy/10 flex items-center justify-center text-navy-dark font-medium">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-navy/10 to-navy/20 dark:from-sand/10 dark:to-sand/20 flex items-center justify-center text-navy-dark dark:text-sand font-medium shadow-inner overflow-hidden">
               {firstInitial}{lastInitial}
             </div>
             <div>
-              <span className="font-medium text-navy-dark">{fullName}</span>
+              <span className="font-medium text-navy-dark dark:text-sand">{fullName}</span>
               <div className="flex items-center mt-0.5">
                 {status === 'active' ? (
-                  <div className="flex items-center text-xs text-emerald-600">
+                  <div className="flex items-center text-xs text-emerald-600 dark:text-emerald-400">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1"></div>
                     Actif
                   </div>
                 ) : (
-                  <div className="flex items-center text-xs text-amber-600">
+                  <div className="flex items-center text-xs text-amber-600 dark:text-amber-400">
                     <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1"></div>
                     {status === 'qualification' ? 'En qualification' : 
                      status === 'inactive' ? 'Inactif' : 
@@ -162,29 +165,29 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
               </div>
             </div>
           </div>
-        </td>
-        <td className="p-4 text-navy-dark">
+        </TableCell>
+        <TableCell className="p-4 text-navy-dark dark:text-sand">
           {position}
-        </td>
-        <td className="p-4 text-navy-dark">
+        </TableCell>
+        <TableCell className="p-4 text-navy-dark dark:text-sand">
           {company}
-        </td>
-        <td className="p-4 text-muted-foreground hidden lg:table-cell">
+        </TableCell>
+        <TableCell className="p-4 text-muted-foreground hidden lg:table-cell">
           {location !== 'Non spécifié' ? (
             <div className="flex items-center">
               <MapPin size={14} className="mr-1" />
               {location}
             </div>
           ) : 'Non spécifié'}
-        </td>
-        <td className="p-4 text-muted-foreground hidden lg:table-cell">
+        </TableCell>
+        <TableCell className="p-4 text-muted-foreground hidden lg:table-cell">
           {yearsExp > 0 ? `${yearsExp} ans` : 'Non spécifié'}
-        </td>
-        <td className="p-4">
+        </TableCell>
+        <TableCell className="p-4">
           <div className="flex flex-wrap gap-1">
             {skills.length > 0 ? (
               skills.slice(0, 3).map((skill, idx) => (
-                <span key={idx} className="inline-block px-2 py-0.5 bg-navy/10 text-navy-dark text-xs rounded-full">
+                <span key={idx} className="inline-block px-2 py-0.5 bg-navy/10 dark:bg-sand/10 text-navy-dark dark:text-sand text-xs rounded-full">
                   {String(skill)}
                 </span>
               ))
@@ -192,56 +195,37 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
               <span className="text-muted-foreground text-xs">Non spécifié</span>
             )}
             {skills.length > 3 && (
-              <span className="inline-block px-2 py-0.5 bg-navy/5 text-navy-dark text-xs rounded-full">
+              <span className="inline-block px-2 py-0.5 bg-navy/5 dark:bg-sand/5 text-navy-dark dark:text-sand text-xs rounded-full">
                 +{skills.length - 3}
               </span>
             )}
           </div>
-        </td>
-        {!hideScore && (
-          <td className="p-4">
-            {score > 0 ? (
-              <div className={`rating-chip ${
-                score > 85 ? 'rating-high' : 
-                score > 65 ? 'rating-medium' : 
-                'rating-low'
-              }`}>
-                <Star size={12} />
-                {score}%
-                {scoreIsMatchScore && (
-                  <span className="ml-1 text-xs">match</span>
-                )}
-              </div>
-            ) : (
-              <span className="text-muted-foreground text-xs">N/A</span>
-            )}
-          </td>
-        )}
-        <td className="p-4 text-muted-foreground hidden md:table-cell">
-          {updatedAt ? updatedAt.toLocaleDateString() : 'N/A'}
-        </td>
-        <td className="p-4">
+        </TableCell>
+        <TableCell className="p-4 text-muted-foreground hidden md:table-cell">
+          {updatedAt ? format(updatedAt, 'dd MMM yyyy', { locale: fr }) : 'N/A'}
+        </TableCell>
+        <TableCell className="p-4">
           <div className="flex items-center justify-center gap-1">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8"
+              className="h-8 w-8 hover:bg-navy/10 dark:hover:bg-sand/10 hover:text-navy-dark dark:hover:text-sand transition-colors"
               onClick={handleViewClick}
             >
               <Eye size={16} />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-navy/10 dark:hover:bg-sand/10 transition-colors">
                   <MoreHorizontal size={16} />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-md border-border/40 shadow-lg dark:bg-navy-dark/95">
                 <DropdownMenuItem>
                   Éditer
                 </DropdownMenuItem>
                 <DropdownMenuItem 
-                  className="text-red-600"
+                  className="text-red-600 dark:text-red-400"
                   onClick={handleDeleteClick}
                 >
                   <Trash2 size={14} className="mr-2" />
@@ -250,18 +234,18 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </td>
-      </tr>
+        </TableCell>
+      </TableRow>
       
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white/95 backdrop-blur-md border-border/40 shadow-lg dark:bg-navy-dark/95">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
             <AlertDialogDescription>
               Êtes-vous sûr de vouloir supprimer {fullName} ? Cette action est irréversible.
             </AlertDialogDescription>
             {deleteError && (
-              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-sm">
+              <div className="mt-2 p-2 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm">
                 {deleteError}
               </div>
             )}
@@ -271,7 +255,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
             <AlertDialogAction 
               onClick={confirmDelete} 
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
             >
               {isDeleting ? 'Suppression...' : 'Supprimer'}
             </AlertDialogAction>

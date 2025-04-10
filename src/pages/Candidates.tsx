@@ -136,52 +136,61 @@ const Candidates = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <CandidatesHeader 
-          searchQuery={searchQuery}
-          onSearchChange={handleSearchChange}
-          onToggleFilters={handleToggleFilters}
-          showFilters={showFilters}
-        />
+      <div className="relative min-h-screen">
+        {/* Background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-navy/5 to-white/0 dark:from-navy/20 dark:to-navy-dark/0 pointer-events-none"></div>
         
-        <div className="flex flex-col md:flex-row gap-6 my-6">
-          <div className="w-full md:w-72">
-            <CandidatesFilters 
-              showFilters={showFilters}
-              onLocationChange={handleLocationChange}
-              onCompanyChange={handleCompanyChange}
-              onPreviousCompanyChange={handlePreviousCompanyChange}
-              onSkillsChange={handleSkillsChange}
-              onExperienceChange={handleExperienceChange}
-              onEducationLevelChange={() => {}}
-              onCertificationChange={() => {}}
-              onLanguageChange={() => {}}
-              onAvailabilityChange={() => {}}
-              onSalaryChange={() => {}}
-              onContractTypeChange={() => {}}
-              onRemotePreferenceChange={() => {}}
-              onMobilityChange={() => {}}
-              onReset={handleResetFilters}
-              onSemanticSearchChange={handleSemanticSearchChange}
-              onApplyFilters={handleApplyFilters}
-              onResetFilters={handleResetFilters}
-              location={location}
-              company={company}
-              previousCompany={previousCompany}
-              experience={experience}
-              semanticSearch={semanticSearch}
-              selectedSkills={selectedSkills}
-            />
-          </div>
+        <div className="container mx-auto px-4 py-8 relative z-10">
+          <CandidatesHeader 
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
+            onToggleFilters={handleToggleFilters}
+            showFilters={showFilters}
+          />
           
-          <div className="flex-1">
-            <CandidatesTable 
-              candidates={filteredCandidates}
-              selectedStatus={selectedStatus}
-              onStatusChange={handleStatusChange}
-              onViewCandidate={handleViewCandidate}
-              onCandidateDeleted={fetchCandidates}
-            />
+          <div className="flex flex-col md:flex-row gap-6 my-6">
+            <div className={`w-full md:w-72 transition-all duration-300 ${showFilters ? 'opacity-100' : 'opacity-0 md:opacity-100'}`}>
+              <div className="sticky top-24">
+                <CandidatesFilters 
+                  showFilters={showFilters}
+                  onLocationChange={handleLocationChange}
+                  onCompanyChange={handleCompanyChange}
+                  onPreviousCompanyChange={handlePreviousCompanyChange}
+                  onSkillsChange={handleSkillsChange}
+                  onExperienceChange={handleExperienceChange}
+                  onEducationLevelChange={() => {}}
+                  onCertificationChange={() => {}}
+                  onLanguageChange={() => {}}
+                  onAvailabilityChange={() => {}}
+                  onSalaryChange={() => {}}
+                  onContractTypeChange={() => {}}
+                  onRemotePreferenceChange={() => {}}
+                  onMobilityChange={() => {}}
+                  onReset={handleResetFilters}
+                  onSemanticSearchChange={handleSemanticSearchChange}
+                  onApplyFilters={handleApplyFilters}
+                  onResetFilters={handleResetFilters}
+                  location={location}
+                  company={company}
+                  previousCompany={previousCompany}
+                  experience={experience}
+                  semanticSearch={semanticSearch}
+                  selectedSkills={selectedSkills}
+                />
+              </div>
+            </div>
+            
+            <div className={`flex-1 transition-all duration-300 ${showFilters ? 'md:opacity-100' : 'md:opacity-100'}`}>
+              <div className="animate-fade-in">
+                <CandidatesTable 
+                  candidates={filteredCandidates}
+                  selectedStatus={selectedStatus}
+                  onStatusChange={handleStatusChange}
+                  onViewCandidate={handleViewCandidate}
+                  onCandidateDeleted={fetchCandidates}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -14,6 +14,8 @@ import CandidateTableRow from './CandidateTableRow';
 import { useToast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
 import { candidateMatchingService } from '@/services/data/candidateMatchingService';
+import { Table, TableHeader, TableRow, TableHead, TableBody } from '@/components/ui/table';
+import { Card } from '@/components/ui/card';
 
 interface CandidatesTableProps {
   candidates: CandidateData[];
@@ -159,11 +161,11 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   };
   
   return (
-    <div className="glass rounded-xl overflow-hidden">
+    <Card className="overflow-hidden border border-border/20 shadow-md bg-gradient-to-b from-white to-gray-50 dark:from-navy-dark dark:to-navy-dark/90 animate-fade-in">
       {/* Table Header with Sort Controls */}
-      <div className="p-4 border-b border-border/30 flex items-center justify-between">
+      <div className="p-4 border-b border-border/30 backdrop-blur-sm flex items-center justify-between bg-white/80 dark:bg-navy-dark/80">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-navy-dark">
+          <span className="text-sm font-medium text-navy-dark dark:text-sand">
             {candidatesCount} candidats
           </span>
           
@@ -176,7 +178,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                 <ChevronDown size={14} />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent className="bg-white/95 backdrop-blur-md border-border/40 shadow-lg dark:bg-navy-dark/95">
               <DropdownMenuItem onClick={() => onStatusChange(null)}>
                 Tous
               </DropdownMenuItem>
@@ -210,7 +212,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                 <ChevronDown size={14} />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent className="bg-white/95 backdrop-blur-md border-border/40 shadow-lg dark:bg-navy-dark/95">
               <DropdownMenuItem onClick={() => handleJobOfferChange(null)}>
                 Liste standard (sans contexte)
               </DropdownMenuItem>
@@ -242,7 +244,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                 Trier
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent className="bg-white/95 backdrop-blur-md border-border/40 shadow-lg dark:bg-navy-dark/95">
               <DropdownMenuItem onClick={() => handleSortChange('name')} className={sortBy === 'name' ? "bg-muted" : ""}>
                 Par nom
               </DropdownMenuItem>
@@ -260,33 +262,33 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
       </div>
       
       {/* Table Body */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-navy/5">
-              <th className="text-left p-4 text-sm font-medium text-navy-dark">Nom</th>
-              <th className="text-left p-4 text-sm font-medium text-navy-dark">Poste</th>
-              <th className="text-left p-4 text-sm font-medium text-navy-dark">Entreprise</th>
-              <th className="text-left p-4 text-sm font-medium text-navy-dark hidden lg:table-cell">Localisation</th>
-              <th className="text-left p-4 text-sm font-medium text-navy-dark hidden lg:table-cell">Expérience</th>
-              <th className="text-left p-4 text-sm font-medium text-navy-dark">Compétences</th>
-              <th className="text-left p-4 text-sm font-medium text-navy-dark hidden md:table-cell">Mise à jour</th>
-              <th className="text-center p-4 text-sm font-medium text-navy-dark">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-navy/50 scrollbar-track-transparent">
+        <Table>
+          <TableHeader className="bg-navy/5 dark:bg-white/5">
+            <TableRow className="border-none hover:bg-transparent">
+              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Nom</TableHead>
+              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Poste</TableHead>
+              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Entreprise</TableHead>
+              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden lg:table-cell">Localisation</TableHead>
+              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden lg:table-cell">Expérience</TableHead>
+              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Compétences</TableHead>
+              <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden md:table-cell">Mise à jour</TableHead>
+              <TableHead className="text-center text-sm font-medium text-navy-dark dark:text-sand">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {isLoading ? (
-              <tr>
+              <TableRow>
                 <td colSpan={8} className="p-8 text-center text-muted-foreground">
                   Chargement des candidats...
                 </td>
-              </tr>
+              </TableRow>
             ) : validCandidates.length === 0 ? (
-              <tr>
+              <TableRow>
                 <td colSpan={8} className="p-8 text-center text-muted-foreground">
                   Aucun candidat trouvé. Importez des CV pour commencer à créer des candidats.
                 </td>
-              </tr>
+              </TableRow>
             ) : (
               validCandidates.map((candidate) => (
                 <CandidateTableRow 
@@ -300,10 +302,10 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                 />
               ))
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
-    </div>
+    </Card>
   );
 };
 
