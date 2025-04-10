@@ -32,8 +32,9 @@ export const semanticMatchingService = {
       'transport': ['sncf', 'ratp', 'aéroport', 'avion', 'métro', 'bus', 'tramway'],
       
       // Job title mappings
-      'chef de projet': ['project manager', 'gestionnaire de projet', 'responsable projet', 'directeur de projet'],
-      'développeur': ['ingénieur logiciel', 'software engineer', 'programmeur', 'fullstack'],
+      'chef de projet': ['project manager', 'gestionnaire de projet', 'responsable projet', 'directeur de projet', 'chef de projet pmo', 'pmo'],
+      'développeur': ['ingénieur logiciel', 'software engineer', 'programmeur', 'fullstack', 'développeur web', 'coder'],
+      'pmo': ['project management office', 'chef de projet', 'project manager', 'gestion de projet'],
       
       // Industry mappings
       'santé': ['hôpital', 'clinique', 'médical', 'pharmaceutique', 'médecin', 'soins'],
@@ -41,6 +42,23 @@ export const semanticMatchingService = {
       
       // Location mappings
       'sydney': ['australie', 'australia', 'nsw', 'new south wales'],
+      'paris': ['france', 'île-de-france', 'idf', 'région parisienne'],
+      
+      // Skills mappings
+      'gestion de projet': ['project management', 'chef de projet', 'direction de projet', 'suivi de projet'],
+      'ms project': ['microsoft project', 'msproject', 'microsoft ms project', 'outil de gestion de projet microsoft'],
+      'jira': ['atlassian', 'issue tracking', 'suivi de tickets', 'gestion agile'],
+      
+      // Tools mappings
+      'outils de gestion de projet': ['ms project', 'jira', 'trello', 'asana', 'monday', 'azure devops', 'planification'],
+      
+      // Experience mappings
+      'junior': ['débutant', '0-2 ans', '1-3 ans', 'peu expérimenté'],
+      'intermédiaire': ['3-5 ans', '4-6 ans', 'mid-level'],
+      'senior': ['6+ ans', '7+ ans', '8+ ans', 'expérimenté', 'expert'],
+      
+      // Education mappings
+      'bac+5': ['master', 'diplôme d\'ingénieur', 'école d\'ingénieur', 'ingénieur', 'msc', 'master of science']
     };
     
     // Split query into keywords for more flexible matching
@@ -98,6 +116,57 @@ export const semanticMatchingService = {
         
         if (word.includes(keyword) || keyword.includes(word)) {
           console.log(`Fuzzy word match found: "${keyword}" ~ "${word}"`);
+          return true;
+        }
+        
+        // Add Levenshtein distance calculation for typo tolerance (simple version)
+        // If words are of similar length and share at least 70% of the same characters
+        if (Math.abs(word.length - keyword.length) <= 2) {
+          const commonChars = [...keyword].filter(char => word.includes(char)).length;
+          const maxLength = Math.max(word.length, keyword.length);
+          const similarity = commonChars / maxLength;
+          
+          if (similarity > 0.7) {
+            console.log(`Fuzzy similarity match found: "${keyword}" ~ "${word}" (${Math.round(similarity * 100)}% similar)`);
+            return true;
+          }
+        }
+      }
+    }
+    
+    // Check for context-aware matches (e.g., skills in job requirements)
+    if (normalizedQuery.includes("project") && normalizedCandidateText.includes("gestion de projet")) {
+      console.log(`Context-aware match found: "project" ~ "gestion de projet"`);
+      return true;
+    }
+    
+    if (normalizedQuery.includes("gestion") && 
+        (normalizedCandidateText.includes("project management") || normalizedCandidateText.includes("management"))) {
+      console.log(`Context-aware match found: "gestion" ~ "project management"`);
+      return true;
+    }
+    
+    // Try to match skill abbreviations and their full forms
+    const abbreviations: Record<string, string[]> = {
+      "pmo": ["project management office", "program management office"],
+      "ms": ["microsoft", "ms project", "management system"],
+      "pm": ["project manager", "project management"]
+    };
+    
+    for (const [abbr, fullForms] of Object.entries(abbreviations)) {
+      if (normalizedQuery.includes(abbr)) {
+        for (const form of fullForms) {
+          if (normalizedCandidateText.includes(form)) {
+            console.log(`Abbreviation match found: "${abbr}" ~ "${form}"`);
+            return true;
+          }
+        }
+      }
+      
+      // Check the reverse
+      if (fullForms.some(form => normalizedQuery.includes(form))) {
+        if (normalizedCandidateText.includes(abbr)) {
+          console.log(`Reverse abbreviation match found: "${fullForms.join(' or ')}" ~ "${abbr}"`);
           return true;
         }
       }

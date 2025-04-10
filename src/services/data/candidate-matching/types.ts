@@ -1,70 +1,62 @@
 
-import { Json } from '@/integrations/supabase/types';
+/**
+ * Types for candidate matching functionality
+ */
 
-// Define types for matching
-export interface SkillsDetails {
+export type SkillsMatchDetails = {
   matched: string[];
   missing: string[];
   additional: string[];
   matchPercentage: number;
-}
+};
 
-export interface MatchDetails {
-  skills: SkillsDetails;
-  experienceLevel: {
-    required: number;
-    candidate: number;
-    match: boolean;
-  };
-  location: {
-    required: string;
-    candidate: string;
-    match: boolean;
-  };
-  educationLevel: {
-    required: string;
-    candidate: string;
-    match: boolean;
-  };
+export type ExperienceLevelMatch = {
+  required: number;
+  candidate: number;
+  match: boolean;
+  score?: number;
+};
+
+export type LocationMatch = {
+  required: string;
+  candidate: string;
+  match: boolean;
+  score?: number;
+};
+
+export type EducationLevelMatch = {
+  required: string;
+  candidate: string;
+  match: boolean;
+  score?: number;
+};
+
+export type MatchDetails = {
+  skills: SkillsMatchDetails;
+  experienceLevel: ExperienceLevelMatch;
+  location: LocationMatch;
+  educationLevel: EducationLevelMatch;
   overall: number;
-}
+};
 
-export interface CandidateMatch {
+export type CandidateJobMatch = {
+  score: number;
+  details: MatchDetails;
+};
+
+export type CandidateMatch = {
   candidateId: string;
   firstName: string;
   lastName: string;
-  position?: string;
-  company?: string;
-  score: number;
-  details?: MatchDetails;
-}
-
-export interface CandidateJobMatch {
+  position: string;
+  company: string;
   score: number;
   details: MatchDetails;
-}
+};
 
-export interface JobOfferSuggestion {
-  id: string;
-  title: string;
-  company: string;
-  matchScore: number;
-  details?: MatchDetails;
-  description?: string;
-  requiredSkills?: string[];
-  softSkills?: string[];
-  toolsAndTechnologies?: string[];
-  education?: string;
-  experience?: {
-    min: number;
-    max: number;
-  };
-  contractType?: string;
-  remotePreference?: string;
-  salary?: {
-    min: number;
-    max: number;
-    currency: string;
-  };
-  location?: string;
-}
+export type JobMatchWeight = {
+  skills: number;
+  experience: number;
+  location: number;
+  education: number;
+};

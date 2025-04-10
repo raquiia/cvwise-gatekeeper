@@ -52,7 +52,17 @@ const CandidatesMatchingSection = ({
           {candidateMatches.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
               {candidateMatches
-                .sort((a, b) => (b.match?.match_score || b.score) - (a.match?.match_score || a.score))
+                .sort((a, b) => {
+                  // Sort by overall match score first
+                  const scoreA = (b.match?.match_score || b.score) - (a.match?.match_score || a.score);
+                  
+                  // If scores are equal, use name as tiebreaker
+                  if (scoreA === 0) {
+                    return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
+                  }
+                  
+                  return scoreA;
+                })
                 .map((item) => (
                   <CandidateCard 
                     key={item.candidateId}
@@ -74,7 +84,20 @@ const CandidatesMatchingSection = ({
           {candidateMatches.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
               {candidateMatches
-                .sort((a, b) => (b.match?.skills_match_score || (b.details?.skills.matchPercentage || 0)) - (a.match?.skills_match_score || (a.details?.skills.matchPercentage || 0)))
+                .sort((a, b) => {
+                  // Sort by skills match score
+                  const skillScoreA = (b.match?.skills_match_score || (b.details?.skills.matchPercentage || 0));
+                  const skillScoreB = (a.match?.skills_match_score || (a.details?.skills.matchPercentage || 0));
+                  
+                  const scoreDiff = skillScoreA - skillScoreB;
+                  
+                  // If scores are equal, use name as tiebreaker
+                  if (scoreDiff === 0) {
+                    return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
+                  }
+                  
+                  return scoreDiff;
+                })
                 .map((item) => (
                   <SkillsMatchCandidateCard 
                     key={item.candidateId}
@@ -97,7 +120,29 @@ const CandidatesMatchingSection = ({
           {candidateMatches.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
               {candidateMatches
-                .sort((a, b) => (b.match?.experience_match_score || (b.details?.experienceLevel.match ? 100 : 50)) - (a.match?.experience_match_score || (a.details?.experienceLevel.match ? 100 : 50)))
+                .sort((a, b) => {
+                  // Sort by experience match score
+                  const expScoreA = b.match?.experience_match_score || 
+                      (b.details?.experienceLevel.score || 
+                      (b.details?.experienceLevel.match ? 100 : 
+                      Math.min(100, ((b.details?.experienceLevel.candidate || 0) / 
+                      Math.max(1, (b.details?.experienceLevel.required || 1))) * 100)));
+                  
+                  const expScoreB = a.match?.experience_match_score || 
+                      (a.details?.experienceLevel.score || 
+                      (a.details?.experienceLevel.match ? 100 : 
+                      Math.min(100, ((a.details?.experienceLevel.candidate || 0) / 
+                      Math.max(1, (a.details?.experienceLevel.required || 1))) * 100)));
+                  
+                  const scoreDiff = expScoreA - expScoreB;
+                  
+                  // If scores are equal, use name as tiebreaker
+                  if (scoreDiff === 0) {
+                    return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
+                  }
+                  
+                  return scoreDiff;
+                })
                 .map((item) => (
                   <ExperienceMatchCandidateCard 
                     key={item.candidateId}
