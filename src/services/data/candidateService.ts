@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -211,39 +210,12 @@ export const candidateService = {
       
       console.log(`Starting deletion process for candidate ${candidateId}, resume: ${resumeId}`);
       
-      // Méthode 1: Utiliser la fonction RPC secure pour éviter les problèmes de récursion
-      try {
-        const { data, error } = await supabase
-          .rpc('delete_candidate_secure', {
-            candidate_id_param: candidateId
-          });
-        
-        if (error) {
-          console.error('Error during secure candidate deletion:', error);
-          // Continue to try alternate method if this fails
-          throw error;
-        }
-        
-        if (data === true) {
-          console.log(`Successfully deleted candidate ${candidateId} using secure function`);
-          
-          // If requested and resume exists, delete it too
-          if (deleteResume && resumeId) {
-            await handleResumeDelete(resumeId);
-          }
-          
-          return true;
-        }
-      } catch (rpcError) {
-        console.error('RPC method failed, trying direct delete:', rpcError);
-        // Continue to method 2
-      }
-      
-      // Méthode 2: Suppression directe (fallback)
+      // Méthode 1: Utiliser une suppression directe avec validation utilisateur
       const { error: deleteError } = await supabase
         .from('candidates')
         .delete()
-        .eq('id', candidateId);
+        .eq('id', candidateId)
+        .throwOnError();
       
       if (deleteError) {
         console.error('Error during direct candidate deletion:', deleteError);
