@@ -19,6 +19,63 @@ function handleCors(req: Request) {
   return null;
 }
 
+// Fonction pour extraire un titre de poste à partir du texte libre
+function extractJobTitle(text: string): string {
+  // Rechercher des patterns communs de titres de poste
+  const titlePatterns = [
+    /poste\s+de\s+([\w\s]+?)(?:\s+à|\s+basé|\s+en|,|$)/i,
+    /recherche\s+([\w\s]+?)(?:\s+à|\s+basé|\s+en|,|$)/i,
+    /([\w\s]+?)\s+(?:à|basé|en|recherché)/i,
+    /(développeur|ingénieur|technicien|consultant|chef de projet|architecte|manager)[\w\s]*/i,
+  ];
+
+  for (const pattern of titlePatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      // Nettoyer et formater le titre
+      return match[1].trim().replace(/\s+/g, ' ').replace(/^\w/, c => c.toUpperCase());
+    }
+  }
+
+  // Si aucun pattern ne correspond, utiliser les premiers mots (max 5)
+  const words = text.trim().split(/\s+/);
+  if (words.length > 0) {
+    return words.slice(0, Math.min(5, words.length)).join(' ');
+  }
+
+  return "Poste à pourvoir"; // Titre par défaut
+}
+
+// Fonction pour extraire la localisation à partir du texte libre
+function extractLocation(text: string): string | null {
+  // Rechercher des patterns communs de localisation
+  const locationPatterns = [
+    /(?:à|en|sur|dans|près de|proche de)\s+([A-Z][a-zÀ-ÿ-]+(?:\s+[A-Z][a-zÀ-ÿ-]+)*)/i,
+    /(?:basé|localisé|situé)\s+(?:à|en|sur|dans|près de|proche de)\s+([A-Z][a-zÀ-ÿ-]+(?:\s+[A-Z][a-zÀ-ÿ-]+)*)/i,
+    /(?:poste|emploi|job)\s+(?:à|en|sur|dans)\s+([A-Z][a-zÀ-ÿ-]+(?:\s+[A-Z][a-zÀ-ÿ-]+)*)/i,
+  ];
+
+  for (const pattern of locationPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      return match[1].trim().replace(/\s+/g, ' ');
+    }
+  }
+
+  // Liste des grandes villes françaises pour la détection simple
+  const frenchCities = ["Paris", "Lyon", "Marseille", "Toulouse", "Nice", "Nantes", "Strasbourg", 
+                      "Montpellier", "Bordeaux", "Lille", "Rennes", "Reims", "Le Havre", 
+                      "Saint-Étienne", "Toulon", "Grenoble", "Dijon", "Angers", "Nîmes", "Villeurbanne"];
+  
+  for (const city of frenchCities) {
+    if (text.toLowerCase().includes(city.toLowerCase())) {
+      return city;
+    }
+  }
+
+  return null;
+}
+
 serve(async (req) => {
   // Handle CORS
   const corsResponse = handleCors(req);
@@ -27,11 +84,19 @@ serve(async (req) => {
   try {
     const { jobTitle, location, freeformText } = await req.json();
     
+    // Vérifier si nous avons un texte libre ou des champs spécifiques
+    const isUsingFreeformText = !!freeformText && freeformText.trim().length > 0;
+    
     if (!jobTitle && !freeformText) {
       throw new Error("Le titre du poste ou une description libre est requis");
     }
     
-    console.log("Génération de suggestions pour:", { jobTitle, location, freeformText: freeformText?.substring(0, 100) + "..." });
+    console.log("Génération de suggestions pour:", { 
+      mode: isUsingFreeformText ? "texte libre" : "formulaire standard",
+      jobTitle, 
+      location, 
+      freeformText: freeformText?.substring(0, 100) + "..." 
+    });
 
     // Obtenir la clé API OpenAI
     const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
@@ -39,10 +104,43 @@ serve(async (req) => {
       throw new Error("Clé API OpenAI non configurée");
     }
     
+    // Extraire des informations du texte libre si nécessaire
+    let effectiveTitle = jobTitle || "";
+    let effectiveLocation = location || "";
+    
+    if (isUsingFreeformText) {
+      // Extraire le titre si non fourni
+      if (!effectiveTitle) {
+        effectiveTitle = extractJobTitle(freeformText);
+        console.log("Titre extrait du texte libre:", effectiveTitle);
+      }
+      
+      // Extraire la localisation si non fournie
+      if (!effectiveLocation) {
+        const extractedLocation = extractLocation(freeformText);
+        if (extractedLocation) {
+          effectiveLocation = extractedLocation;
+          console.log("Localisation extraite du texte libre:", effectiveLocation);
+        }
+      }
+    }
+    
     // Construire le prompt basé sur les entrées
-    const content = freeformText 
-      ? `Génère une offre d'emploi complète et détaillée basée sur cette description: ${freeformText}`
-      : `Génère une offre d'emploi complète et détaillée pour un poste de ${jobTitle}${location ? ` à ${location}` : ''}.`;
+    let content;
+    if (isUsingFreeformText) {
+      content = `Génère une offre d'emploi complète et détaillée basée sur cette description: ${freeformText}`;
+      
+      // Ajouter des informations supplémentaires extraites si elles n'étaient pas dans le prompt d'origine
+      if (effectiveTitle && !freeformText.toLowerCase().includes(effectiveTitle.toLowerCase())) {
+        content += `\n\nTitre du poste: ${effectiveTitle}`;
+      }
+      
+      if (effectiveLocation && !freeformText.toLowerCase().includes(effectiveLocation.toLowerCase())) {
+        content += `\n\nLocalisation: ${effectiveLocation}`;
+      }
+    } else {
+      content = `Génère une offre d'emploi complète et détaillée pour un poste de ${effectiveTitle}${effectiveLocation ? ` à ${effectiveLocation}` : ''}.`;
+    }
     
     // Appel à l'API OpenAI
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -60,7 +158,7 @@ serve(async (req) => {
             
 Analyse la demande de l'utilisateur et génère une offre d'emploi complète avec les éléments suivants :
 
-1. Un titre de poste précis et professionnel
+1. Un titre de poste précis et professionnel (maximum 5-6 mots)
 2. Une localisation précise (ville ou région + pays)
 3. Une description complète et détaillée du poste (au moins 200 mots)
 4. Une liste de compétences techniques (hard skills) requises (au moins 8)
@@ -70,6 +168,13 @@ Analyse la demande de l'utilisateur et génère une offre d'emploi complète ave
 8. Un type de contrat recommandé (CDI, CDD, Freelance, etc.)
 9. Une recommandation pour le mode de travail (sur site, hybride, télétravail)
 10. Une fourchette de salaire appropriée (montants minimum et maximum)
+
+Si le texte fourni par l'utilisateur mentionne explicitement:
+- Un titre de poste: utilise exactement ce titre
+- Une localisation: utilise exactement cette localisation
+- Un niveau d'éducation: respecte cette exigence
+- Un type de contrat: respecte cette exigence
+- Des compétences spécifiques: inclus-les obligatoirement
 
 Retourne ces informations dans un JSON structuré avec les champs suivants:
 
@@ -120,6 +225,18 @@ Assure-toi que tous les champs sont remplis avec des informations pertinentes et
       if (jsonMatch) {
         suggestions = JSON.parse(jsonMatch[0]);
         console.log("Suggestions analysées avec succès");
+        
+        // S'assurer que les valeurs extraites sont utilisées si elles sont valides
+        if (isUsingFreeformText) {
+          // Garantir l'utilisation du titre et de la localisation extraits si pertinent
+          if (effectiveTitle && (!suggestions.title || suggestions.title.length > 50)) {
+            suggestions.title = effectiveTitle;
+          }
+          
+          if (effectiveLocation && (!suggestions.location || suggestions.location.includes("Paris"))) {
+            suggestions.location = effectiveLocation + (suggestions.location?.includes("France") ? ", France" : "");
+          }
+        }
       } else {
         throw new Error("Format de réponse invalide");
       }

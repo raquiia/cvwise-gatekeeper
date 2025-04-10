@@ -20,32 +20,33 @@ export const jobSuggestionService = {
         freeformText: freeformText?.substring(0, 100) + "..." 
       });
       
-      // Here we would normally communicate with an API or backend service
-      // For now, we'll return a mock suggestion
-      
-      return {
-        id: "suggestion-1",
-        title: jobTitle,
-        company: "Company Name",
-        location: location || "Paris, France",
-        matchScore: 85,
-        description: freeformText || `Description for ${jobTitle}`,
-        requiredSkills: ["JavaScript", "React", "TypeScript", "Node.js", "Git"],
-        softSkills: ["Communication", "Teamwork", "Problem Solving"],
-        toolsAndTechnologies: ["VS Code", "GitHub", "Docker"],
-        education: "Bac+5",
-        experience: {
-          min: 2,
-          max: 5
+      // Appel à l'edge function Supabase
+      const supabaseUrl = 'https://xgsaazntnhtbrwchvnxl.supabase.co';
+      const response = await fetch(`${supabaseUrl}/functions/v1/job-offer-suggestions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhnc2Fhem50bmh0YnJ3Y2h2bnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5MTU3MDAsImV4cCI6MjA1ODQ5MTcwMH0.GP1QMFgNN2uKM3LVqPbkQk5PSL-phJ0Iqx96AFAQyqg`
         },
-        contractType: "CDI",
-        remotePreference: "Hybride",
-        salary: {
-          min: 45000,
-          max: 60000,
-          currency: "EUR"
-        }
-      };
+        body: JSON.stringify({
+          jobTitle,
+          location,
+          freeformText
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to generate job suggestions');
+      }
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to generate job suggestions');
+      }
+      
+      return result.data;
     } catch (error) {
       console.error('Error generating job offer suggestions:', error);
       throw error;
