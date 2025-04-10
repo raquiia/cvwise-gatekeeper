@@ -76,6 +76,43 @@ function extractLocation(text: string): string | null {
   return null;
 }
 
+// Fonction pour extraire le niveau d'éducation du texte libre
+function extractEducationLevel(text: string): string | null {
+  // Patterns pour les formulations courantes de niveaux d'éducation
+  const educationPatterns = [
+    /\b(bac\s*\+\s*[1-8])\b/i,
+    /\b(master|licence|doctorat|bts|dut|bachelor)\b/i,
+    /\bniveau\s+(bac\s*\+\s*[1-8]|master|licence|doctorat|bts|dut|bachelor)\b/i,
+    /\bdiplôme\s+(bac\s*\+\s*[1-8]|master|licence|doctorat|bts|dut|bachelor)\b/i,
+    /\b(bac\s*\+\s*[1-8]|master|licence|doctorat|bts|dut|bachelor)\s+(?:exigé|requis|demandé|obligatoire|souhaité)\b/i,
+    /\b(master|licence|doctorat|bts|dut|bachelor)\s+(?:[1-2]|i{1,2})\b/i,
+  ];
+
+  for (const pattern of educationPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      // Standardiser le format
+      const education = match[1].trim().toLowerCase();
+      
+      // Normalisation des termes
+      if (education.includes("bac+") || education.includes("bac +")) {
+        return education.replace(/\s+/g, "").replace("bac+", "Bac+").toUpperCase();
+      }
+      
+      if (education.startsWith("master")) return "Bac+5";
+      if (education.startsWith("licence")) return "Bac+3";
+      if (education.startsWith("doctorat")) return "Bac+8";
+      if (education.startsWith("bts") || education.startsWith("dut")) return "Bac+2";
+      if (education.startsWith("bachelor")) return "Bac+3";
+      
+      // Si c'est déjà un format standard, capitaliser la première lettre
+      return education.charAt(0).toUpperCase() + education.slice(1);
+    }
+  }
+
+  return null;
+}
+
 serve(async (req) => {
   // Handle CORS
   const corsResponse = handleCors(req);
@@ -107,6 +144,7 @@ serve(async (req) => {
     // Extraire des informations du texte libre si nécessaire
     let effectiveTitle = jobTitle || "";
     let effectiveLocation = location || "";
+    let effectiveEducation = null;
     
     if (isUsingFreeformText) {
       // Extraire le titre si non fourni
@@ -123,6 +161,12 @@ serve(async (req) => {
           console.log("Localisation extraite du texte libre:", effectiveLocation);
         }
       }
+      
+      // Extraire le niveau d'éducation
+      effectiveEducation = extractEducationLevel(freeformText);
+      if (effectiveEducation) {
+        console.log("Niveau d'éducation extrait du texte libre:", effectiveEducation);
+      }
     }
     
     // Construire le prompt basé sur les entrées
@@ -138,8 +182,15 @@ serve(async (req) => {
       if (effectiveLocation && !freeformText.toLowerCase().includes(effectiveLocation.toLowerCase())) {
         content += `\n\nLocalisation: ${effectiveLocation}`;
       }
+      
+      if (effectiveEducation && !freeformText.toLowerCase().includes(effectiveEducation.toLowerCase())) {
+        content += `\n\nNiveau d'éducation requis: ${effectiveEducation}`;
+      }
     } else {
-      content = `Génère une offre d'emploi complète et détaillée pour un poste de ${effectiveTitle}${effectiveLocation ? ` à ${effectiveLocation}` : ''}.`;
+      content = `Génère une offre d'emploi complète et détaillée pour un poste de ${effectiveTitle}${effectiveLocation ? ` à ${effectiveLocation}` : ''}`;
+      if (effectiveEducation) {
+        content += `\n\nNiveau d'éducation requis: ${effectiveEducation}`;
+      }
     }
     
     // Appel à l'API OpenAI
@@ -235,6 +286,11 @@ Assure-toi que tous les champs sont remplis avec des informations pertinentes et
           
           if (effectiveLocation && (!suggestions.location || suggestions.location.includes("Paris"))) {
             suggestions.location = effectiveLocation + (suggestions.location?.includes("France") ? ", France" : "");
+          }
+          
+          // S'assurer que le niveau d'éducation est bien pris en compte
+          if (effectiveEducation && (!suggestions.education || suggestions.education === "Bac+3")) {
+            suggestions.education = effectiveEducation;
           }
         }
       } else {
