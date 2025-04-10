@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import CandidatesHeader from '@/components/candidates/CandidatesHeader';
 import CandidatesTable from '@/components/candidates/CandidatesTable';
 import CandidatesFilters from '@/components/candidates/CandidatesFilters';
-import { candidateDataService } from '@/services/data/candidateDataService';
+import { candidateService } from '@/services/data/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
@@ -21,7 +20,6 @@ const Candidates = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   
-  // Filter state
   const [location, setLocation] = useState('');
   const [company, setCompany] = useState('');
   const [previousCompany, setPreviousCompany] = useState('');
@@ -46,16 +44,15 @@ const Candidates = () => {
       setError(null);
       
       console.log("Fetching candidates for user:", user.id);
-      const data = await candidateDataService.getUserCandidates();
+      const data = await candidateService.getUserCandidates();
       console.log("Retrieved candidates:", data);
       
       if (Array.isArray(data)) {
-        // Sort candidates by updated_at in descending order (newest first)
         const sortedCandidates = [...data].sort((a, b) => 
           new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
         );
         setCandidates(sortedCandidates);
-        setFilteredCandidates(sortedCandidates); // Initialize filtered candidates with all candidates
+        setFilteredCandidates(sortedCandidates);
       } else {
         console.error("Candidates data is not an array:", data);
         setCandidates([]);
@@ -80,13 +77,11 @@ const Candidates = () => {
     fetchCandidates();
   }, [user]);
 
-  // Filter candidates when status is changed
   useEffect(() => {
     if (!candidates || candidates.length === 0) return;
     
     let result = [...candidates];
     
-    // Filter by status
     if (selectedStatus) {
       result = result.filter(candidate => candidate.status === selectedStatus);
     }
@@ -134,7 +129,6 @@ const Candidates = () => {
     setSemanticSearch(query);
   };
   
-  // Implement the actual filtering logic
   const handleApplyFilters = () => {
     console.log("Applying filters:", { location, company, previousCompany, experience, selectedSkills, semanticSearch });
     
@@ -142,12 +136,10 @@ const Candidates = () => {
     
     let result = [...candidates];
     
-    // Filter by status (applied separately through the status filter)
     if (selectedStatus) {
       result = result.filter(candidate => candidate.status === selectedStatus);
     }
     
-    // Filter by location
     if (location) {
       result = result.filter(candidate => {
         const candidateLocation = candidate.location || '';
@@ -155,7 +147,6 @@ const Candidates = () => {
       });
     }
     
-    // Filter by current company
     if (company) {
       result = result.filter(candidate => {
         const candidateCompany = candidate.company || '';
@@ -163,10 +154,8 @@ const Candidates = () => {
       });
     }
     
-    // Filter by previous company
     if (previousCompany) {
       result = result.filter(candidate => {
-        // Check in experiences array for previous companies
         const experiences = Array.isArray(candidate.experiences) ? candidate.experiences : [];
         return experiences.some(exp => {
           const companyName = typeof exp === 'object' && exp ? exp.company || '' : '';
@@ -175,25 +164,21 @@ const Candidates = () => {
       });
     }
     
-    // Filter by experience level
-    if (experience !== 'all') {
-      const expRanges = {
-        '1-3': { min: 1, max: 3 },
-        '4-6': { min: 4, max: 6 },
-        '7-10': { min: 7, max: 10 },
-        '10+': { min: 10, max: 100 }
-      };
-      
-      const selectedRange = expRanges[experience as keyof typeof expRanges];
-      if (selectedRange) {
-        result = result.filter(candidate => {
-          const yearsExp = Number(candidate.years_experience) || 0;
-          return yearsExp >= selectedRange.min && yearsExp <= selectedRange.max;
-        });
-      }
+    const expRanges = {
+      '1-3': { min: 1, max: 3 },
+      '4-6': { min: 4, max: 6 },
+      '7-10': { min: 7, max: 10 },
+      '10+': { min: 10, max: 100 }
+    };
+    
+    const selectedRange = expRanges[experience as keyof typeof expRanges];
+    if (selectedRange) {
+      result = result.filter(candidate => {
+        const yearsExp = Number(candidate.years_experience) || 0;
+        return yearsExp >= selectedRange.min && yearsExp <= selectedRange.max;
+      });
     }
     
-    // Filter by skills
     if (selectedSkills.length > 0) {
       result = result.filter(candidate => {
         const candidateSkills = Array.isArray(candidate.skills) ? candidate.skills : [];
@@ -206,13 +191,9 @@ const Candidates = () => {
       });
     }
     
-    // Apply semantic search if provided
     if (semanticSearch) {
       result = result.filter(candidate => {
-        // Get the searchable text from the candidate
         const candidateText = semanticMatchingService.getCandidateSearchableText(candidate);
-        
-        // Check if there's a semantic match between the query and candidate text
         return semanticMatchingService.isSemanticMatch({
           query: semanticSearch,
           candidateText,
@@ -221,10 +202,8 @@ const Candidates = () => {
       });
     }
     
-    // Update the filtered candidates
     setFilteredCandidates(result);
     
-    // Show feedback to the user
     toast({
       title: `${result.length} candidats trouvés`,
       description: result.length > 0 
@@ -242,7 +221,6 @@ const Candidates = () => {
     setSelectedSkills([]);
     setSemanticSearch('');
     
-    // Reset to original candidates list filtered only by status
     if (selectedStatus) {
       setFilteredCandidates(candidates.filter(candidate => candidate.status === selectedStatus));
     } else {
@@ -258,7 +236,6 @@ const Candidates = () => {
   return (
     <Layout>
       <div className="relative min-h-screen overflow-hidden">
-        {/* Background elements */}
         <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 to-white/20 dark:from-purple-950/20 dark:to-navy-dark/0 pointer-events-none"></div>
         <div className="absolute top-20 right-0 w-96 h-96 bg-purple-200/20 dark:bg-purple-900/10 rounded-full filter blur-3xl opacity-70 transform translate-x-1/2 -translate-y-1/3 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-200/20 dark:bg-blue-900/10 rounded-full filter blur-3xl opacity-70 transform -translate-x-1/3 translate-y-1/3 pointer-events-none"></div>
@@ -271,7 +248,6 @@ const Candidates = () => {
             showFilters={showFilters}
           />
           
-          {/* Filters displayed above candidate list when showFilters is true */}
           {showFilters && (
             <div className="mb-6 animate-in fade-in duration-300">
               <CandidatesFilters 
@@ -303,7 +279,6 @@ const Candidates = () => {
             </div>
           )}
           
-          {/* Main content - candidates table */}
           <div className="transition-all duration-300 mx-auto">
             {loading ? (
               <div className="flex justify-center items-center py-12">

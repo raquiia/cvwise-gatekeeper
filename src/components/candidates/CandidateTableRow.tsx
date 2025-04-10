@@ -20,8 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { CandidateData } from '@/services/data/candidateService';
-import { candidateDataService } from '@/services/data/candidateDataService';
+import { CandidateData, candidateService } from '@/services/data/candidateService';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -134,7 +133,8 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
         console.warn('Candidate has no resume_id. Only candidate will be deleted:', candidate.id);
       }
       
-      await candidateDataService.deleteCandidate(candidate.id);
+      // Utiliser directement le service de candidat pour la suppression
+      await candidateService.deleteCandidate(candidate.id, !!candidate.resume_id);
       
       toast({
         title: "Candidat supprimé",
