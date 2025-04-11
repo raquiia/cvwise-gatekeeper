@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart3, Users, FileText, Search, CheckCircle, 
@@ -215,9 +214,12 @@ const Dashboard = () => {
     
     const sortedExperiences = [...candidate.experiences].sort((a, b) => {
       // Convert string dates to numeric timestamps for comparison
-      const dateA = a.end_date ? new Date(a.end_date || "").getTime() : Number(Date.now());
-      const dateB = b.end_date ? new Date(b.end_date || "").getTime() : Number(Date.now());
-      return Number(dateB) - Number(dateA);
+      // For end_date, use current time if not provided
+      const dateAValue: number = a.end_date ? new Date(a.end_date).getTime() : Date.now();
+      const dateBValue: number = b.end_date ? new Date(b.end_date).getTime() : Date.now();
+      
+      // Ensure we're working with numbers for the subtraction
+      return dateBValue - dateAValue;
     });
     
     const mostRecentExperience = sortedExperiences[0];
@@ -642,4 +644,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
