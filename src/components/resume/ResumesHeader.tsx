@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Upload, Loader2 } from 'lucide-react';
@@ -72,17 +73,22 @@ const DebugUploadButton = ({ userId }: DebugUploadButtonProps) => {
 
 const ResumesHeader: React.FC<ResumesHeaderProps> = ({ userId }) => {
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+    <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 bg-gradient-to-r from-navy/5 to-navy/10 p-6 rounded-xl shadow-sm animate-fade-in">
       <div className="mb-4 md:mb-0">
-        <h1 className="text-2xl font-bold text-navy-dark mb-1">CV</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-3xl font-bold text-navy-dark mb-2 flex items-center">
+          <span className="bg-navy/10 p-2 rounded-full mr-3">
+            <Upload size={20} className="text-navy" />
+          </span>
+          CV
+        </h1>
+        <p className="text-muted-foreground text-sm md:text-base">
           Gérez tous les CV importés dans le système
         </p>
       </div>
       
       <div className="flex">
         <Link to="/resumes/upload">
-          <Button className="button-primary">
+          <Button className="bg-navy hover:bg-navy-dark text-white shadow-md transition-all duration-300 hover:shadow-lg">
             <Upload size={18} className="mr-2" />
             Importer un CV
           </Button>
