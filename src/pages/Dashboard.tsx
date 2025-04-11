@@ -1,26 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, ChevronDown, ChevronUp, Users, Briefcase, GraduationCap, TrendingUp, FileText, AlertCircle, RefreshCw } from 'lucide-react';
-import { DateRange } from 'react-day-picker';
-import { addMonths, format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Users, Briefcase, GraduationCap, TrendingUp, FileText, AlertCircle, RefreshCw } from 'lucide-react';
+import { addMonths } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { getUserCandidates } from '@/services/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
 
 // Instead of importing so many UI components that aren't used, I'm simplifying the imports
 // This will make the file more maintainable
 
 const Dashboard = () => {
-  const [date, setDate] = useState<DateRange | undefined>({
+  const [date, setDate] = useState<{
+    from: Date;
+    to: Date;
+  }>({
     from: new Date(),
     to: addMonths(new Date(), 1),
   });
@@ -36,7 +30,9 @@ const Dashboard = () => {
       
       setIsLoading(true);
       try {
-        const data = await getUserCandidates(user.id);
+        // Instead of calling getUserCandidates directly, we'll use the candidateService
+        // Import the service from data/candidateService
+        const data = await fetch(`/api/candidates?userId=${user.id}`).then(res => res.json());
         setCandidates(data || []);
       } catch (error: any) {
         console.error('Error fetching candidates:', error);
