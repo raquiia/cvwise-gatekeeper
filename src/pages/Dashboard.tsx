@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart3, Users, FileText, Search, CheckCircle, 
@@ -43,13 +44,14 @@ interface SectorPieChartProps {
 const SectorPieChart = ({ data, loading }: SectorPieChartProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const onPieEnter = (_, index: number) => {
+  const onPieEnter = (_: any, index: number) => {
     setActiveIndex(index);
   };
 
   const renderActiveShape = (props: any) => {
     const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props;
 
+    // Ensure percent is a number to avoid type errors
     const percentValue: number = typeof percent === 'number' ? percent : 0;
 
     return (
@@ -208,19 +210,45 @@ const Dashboard = () => {
   const [educationData, setEducationData] = useState([]);
   const [sectorData, setSectorData] = useState([]);
 
-  const extractEducationLevel = (candidate) => {
+  // Function to extract the highest education level from a candidate
+  const extractHighestEducationLevel = (candidate) => {
     if (!candidate.education || !Array.isArray(candidate.education) || candidate.education.length === 0) {
       return "Non spécifié";
     }
     
+    // Sort education by end date (most recent first)
     const sortedEducation = [...candidate.education].sort((a, b) => {
       const dateA = a.end_date ? new Date(a.end_date).getTime() : 0;
       const dateB = b.end_date ? new Date(b.end_date).getTime() : 0;
       return dateB - dateA;
     });
     
+    // Get the most recent education
     const mostRecentEducation = sortedEducation[0];
-    return mostRecentEducation.degree || mostRecentEducation.diploma || "Non spécifié";
+    
+    // Format the diploma with appropriate level
+    let diplomaName = mostRecentEducation.degree || mostRecentEducation.diploma || "Non spécifié";
+    let level = "";
+    
+    // Determine education level based on keywords
+    const diplomaLower = diplomaName.toLowerCase();
+    if (diplomaLower.includes("master") || diplomaLower.includes("bac +5") || 
+        diplomaLower.includes("ingénieur") || diplomaLower.includes("mba")) {
+      level = " (Bac +5)";
+    } else if (diplomaLower.includes("licence") || diplomaLower.includes("bachelor") || 
+               diplomaLower.includes("bac +3")) {
+      level = " (Bac +3)";
+    } else if (diplomaLower.includes("bts") || diplomaLower.includes("dut") || 
+               diplomaLower.includes("bac +2")) {
+      level = " (Bac +2)";
+    } else if (diplomaLower.includes("doctorat") || diplomaLower.includes("phd") || 
+               diplomaLower.includes("bac +8")) {
+      level = " (Bac +8)";
+    } else if (diplomaLower.includes("bac") || diplomaLower.includes("baccalauréat")) {
+      level = " (Bac)";
+    }
+    
+    return diplomaName + level;
   };
   
   const extractSector = (candidate) => {
@@ -267,7 +295,7 @@ const Dashboard = () => {
     const educationMap = {};
     
     candidates.forEach(candidate => {
-      const education = extractEducationLevel(candidate);
+      const education = extractHighestEducationLevel(candidate);
       educationMap[education] = (educationMap[education] || 0) + 1;
     });
     
