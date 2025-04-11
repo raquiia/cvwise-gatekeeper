@@ -91,7 +91,7 @@ const SectorPieChart = ({ data, loading }) => {
     );
   }
 
-  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F'];
+  const COLORS = ['#8884d8', '#9c8edb', '#af97df', '#c3a1e2', '#d7aae6', '#eab4e9'];
 
   return (
     <ResponsiveContainer width="100%" height={240}>

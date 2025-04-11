@@ -8,13 +8,15 @@ interface SelectableCardProps {
   selected: boolean;
   onSelect: () => void;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 const SelectableCard: React.FC<SelectableCardProps> = ({ 
   children, 
   selected, 
   onSelect,
-  className
+  className,
+  style
 }) => {
   return (
     <div 
@@ -26,6 +28,7 @@ const SelectableCard: React.FC<SelectableCardProps> = ({
         className
       )}
       onClick={onSelect}
+      style={style}
     >
       {selected && (
         <div className="absolute top-0 left-0 w-full h-1 bg-navy"></div>
