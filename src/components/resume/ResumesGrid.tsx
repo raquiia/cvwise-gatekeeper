@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, FileText, Download, Loader2, MoreHorizontal, Calendar, Trash2, Brain, FileCheck, AlertTriangle } from 'lucide-react';
+import { Plus, FileText, Download, Loader2, MoreHorizontal, Calendar, Trash2, Brain, FileCheck, AlertTriangle, ArrowUp, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -168,14 +168,17 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        <Link to="/resumes/upload" className="glass rounded-xl border-2 border-dashed border-navy/20 flex flex-col items-center justify-center p-6 h-64 hover:border-navy/40 transition-colors hover:bg-navy/5 animate-fade-in">
-          <div className="w-16 h-16 rounded-full bg-navy/10 flex items-center justify-center text-sand mb-4 shadow-md">
-            <Plus size={28} className="text-navy" />
+        <Link to="/resumes/upload" className="glass rounded-xl border-2 border-dashed border-navy/20 flex flex-col items-center justify-center p-6 h-64 hover:border-navy/40 transition-all duration-500 group hover:shadow-lg hover:-translate-y-1 hover:bg-navy/5 animate-fade-in">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400/70 to-blue-500/70 flex items-center justify-center text-white mb-4 shadow-md transform transition-all duration-500 group-hover:scale-110 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <Plus size={28} className="text-white relative z-10" />
+            <div className="absolute top-0 left-0 w-full h-full bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-500"></div>
           </div>
-          <p className="text-navy-dark font-medium mb-2 text-lg">Importer un CV</p>
-          <p className="text-sm text-muted-foreground text-center max-w-[200px]">
+          <p className="text-navy-dark font-medium mb-2 text-lg group-hover:text-purple-700 transition-colors duration-300">Importer un CV</p>
+          <p className="text-sm text-muted-foreground text-center max-w-[200px] group-hover:text-navy-dark transition-colors duration-300">
             Glissez-déposez ou cliquez pour sélectionner
           </p>
+          <div className="absolute opacity-0 group-hover:opacity-100 bottom-0 w-full h-1 bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 transition-opacity duration-500"></div>
         </Link>
         
         {resumes.map((resume, index) => (
@@ -183,25 +186,53 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
             key={resume.id}
             selected={selectedResumes.includes(resume.id)}
             onSelect={() => onSelect(resume.id)}
-            className={getCardClassName(resume)}
+            className={`${getCardClassName(resume)} transition-all duration-500 hover:-translate-y-1 hover:shadow-xl group`}
             style={{
               animationDelay: `${index * 0.05}s`
             }}
           >
-            <div className="p-5 flex-grow">
+            <div className="p-5 flex-grow relative">
+              {/* Subtle background pattern */}
+              <div className="absolute inset-0 bg-pattern opacity-5 pointer-events-none"></div>
+              
+              {/* Status badge */}
+              {isResumeAnalyzed(resume) && (
+                <div className="absolute top-3 right-3">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <FileCheck className="w-3 h-3 mr-1" />
+                    Analysé
+                  </span>
+                </div>
+              )}
+              
+              {hasExtractedText(resume.id) && !isResumeAnalyzed(resume) && (
+                <div className="absolute top-3 right-3">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    <FileText className="w-3 h-3 mr-1" />
+                    Prêt
+                  </span>
+                </div>
+              )}
+              
               <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-navy to-navy-dark flex items-center justify-center text-white shadow-md">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-navy to-blue-600 flex items-center justify-center text-white shadow-md transition-all duration-300 group-hover:scale-110 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   {isResumeAnalyzed(resume) ? (
                     <FileCheck size={20} className="text-white" />
                   ) : (
                     <FileText size={20} className="text-white" />
                   )}
+                  
+                  {/* Accent effect */}
+                  <span className="absolute -top-1 -right-1">
+                    {isResumeAnalyzed(resume) && <Sparkles size={10} className="text-yellow-300 animate-pulse" />}
+                  </span>
                 </div>
                 
                 {!selectionMode && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-navy/10">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-navy/10 transition-colors duration-300">
                         <MoreHorizontal size={16} />
                       </Button>
                     </DropdownMenuTrigger>
@@ -256,24 +287,24 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                 )}
               </div>
               
-              <h3 className="font-medium text-navy-dark break-all line-clamp-1 mb-1 text-lg" title={resume.file_name}>
+              <h3 className="font-medium text-navy-dark break-all line-clamp-1 mb-1 text-lg hover:text-purple-700 transition-colors duration-300" title={resume.file_name}>
                 {resume.file_name}
               </h3>
               
               {resume.candidates && resume.candidates.length > 0 ? (
-                <p className="text-sm text-navy mb-3 flex items-center">
+                <div className="text-sm text-navy mb-3 flex items-center p-2 bg-green-50 rounded-lg border border-green-100">
                   <span className="bg-navy/10 h-6 w-6 rounded-full flex items-center justify-center mr-2">
                     <FileCheck size={12} className="text-navy" />
                   </span>
-                  Candidat: {resume.candidates[0].first_name} {resume.candidates[0].last_name}
-                </p>
+                  <span className="truncate">Candidat: <span className="font-medium">{resume.candidates[0].first_name} {resume.candidates[0].last_name}</span></span>
+                </div>
               ) : (
-                <p className="text-sm text-amber-600 mb-3 flex items-center">
+                <div className="text-sm text-amber-600 mb-3 flex items-center p-2 bg-amber-50 rounded-lg border border-amber-100">
                   <span className="bg-amber-100 h-6 w-6 rounded-full flex items-center justify-center mr-2">
                     <AlertTriangle size={12} className="text-amber-600" />
                   </span>
-                  CV importé
-                </p>
+                  <span>CV importé</span>
+                </div>
               )}
               
               <div className="flex items-center text-xs text-muted-foreground mt-4 bg-gray-50 p-2 rounded-md">
@@ -288,17 +319,18 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
             </div>
             
             {!selectionMode && (
-              <div className="border-t border-border/10 p-4 flex flex-wrap gap-2 justify-between bg-gradient-to-b from-transparent to-gray-50/50">
+              <div className="border-t border-border/10 p-4 flex flex-wrap gap-2 justify-between bg-gradient-to-b from-transparent to-gray-50/50 transition-colors duration-500 group-hover:to-navy/5">
                 <Button 
                   variant="default" 
                   size="sm" 
-                  className="text-xs flex-1 btn-hover-effect bg-navy hover:bg-navy-dark"
+                  className="text-xs flex-1 btn-hover-effect bg-navy hover:bg-navy-dark transition-all duration-300 relative overflow-hidden group"
                   onClick={(e) => {
                     e.preventDefault();
                     onDownload(resume.file_path, resume.file_name, resume.id);
                   }}
                   disabled={downloading[resume.id]}
                 >
+                  <span className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                   {downloading[resume.id] ? (
                     <Loader2 size={14} className="mr-1 animate-spin" />
                   ) : (
@@ -310,7 +342,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="text-xs flex-1 btn-hover-effect border-navy/30 text-navy hover:bg-navy/5"
+                  className="text-xs flex-1 btn-hover-effect border-navy/30 text-navy hover:bg-navy/5 transition-all duration-300"
                   onClick={(e) => {
                     e.preventDefault();
                     onExtractText(resume.id, resume.file_path);
@@ -329,7 +361,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                   <Button 
                     variant={isResumeAnalyzed(resume) ? "outline" : "default"}
                     size="sm"
-                    className={`text-xs flex-1 btn-hover-effect ${isResumeAnalyzed(resume) 
+                    className={`text-xs flex-1 btn-hover-effect relative overflow-hidden group ${isResumeAnalyzed(resume) 
                       ? "bg-green-50 border-green-200 hover:bg-green-100 text-green-700" 
                       : "bg-blue-500 hover:bg-blue-600 text-white"}`}
                     onClick={(e) => {
@@ -338,6 +370,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                     }}
                     disabled={analyzing[resume.id] || checkingAnalyzed[resume.id]}
                   >
+                    <span className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                     {analyzing[resume.id] || checkingAnalyzed[resume.id] ? (
                       <Loader2 size={14} className="mr-1 animate-spin" />
                     ) : (
@@ -350,7 +383,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="text-xs text-red-600 flex-1 btn-hover-effect hover:bg-red-50 border-red-200"
+                  className="text-xs text-red-600 flex-1 btn-hover-effect hover:bg-red-50 border-red-200 transition-all duration-300"
                   onClick={(e) => {
                     e.preventDefault();
                     onDelete(resume.id, resume.file_path);
