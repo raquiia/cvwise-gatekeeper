@@ -30,15 +30,27 @@ const sectorIcons = {
   "Sciences": <Microscope size={16} className="mr-2" />,
 };
 
-const SectorPieChart = ({ data, loading }) => {
+interface ChartData {
+  name: string;
+  value: number;
+}
+
+interface SectorPieChartProps {
+  data: ChartData[];
+  loading: boolean;
+}
+
+const SectorPieChart = ({ data, loading }: SectorPieChartProps) => {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const onPieEnter = (_, index) => {
+  const onPieEnter = (_, index: number) => {
     setActiveIndex(index);
   };
 
-  const renderActiveShape = (props) => {
+  const renderActiveShape = (props: any) => {
     const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props;
+
+    const percentValue: number = typeof percent === 'number' ? percent : 0;
 
     return (
       <g>
@@ -49,7 +61,7 @@ const SectorPieChart = ({ data, loading }) => {
           {value}
         </text>
         <text x={cx} y={cy} dy={20} textAnchor="middle" fill="#888" className="text-xs">
-          {`${(percent * 100).toFixed(0)}%`}
+          {`${(percentValue * 100).toFixed(0)}%`}
         </text>
         <Sector
           cx={cx}
@@ -118,7 +130,12 @@ const SectorPieChart = ({ data, loading }) => {
   );
 };
 
-const EducationBarChart = ({ data, loading }) => {
+interface EducationBarChartProps {
+  data: ChartData[];
+  loading: boolean;
+}
+
+const EducationBarChart = ({ data, loading }: EducationBarChartProps) => {
   if (loading) {
     return (
       <div className="space-y-3 py-8">
@@ -139,7 +156,7 @@ const EducationBarChart = ({ data, loading }) => {
     );
   }
 
-  const getBarColor = (index) => {
+  const getBarColor = (index: number) => {
     const colors = ['#8884d8', '#9c8edb', '#af97df', '#c3a1e2', '#d7aae6', '#eab4e9'];
     return colors[index % colors.length];
   };
@@ -190,7 +207,7 @@ const Dashboard = () => {
   const [candidatesData, setCandidatesData] = useState([]);
   const [educationData, setEducationData] = useState([]);
   const [sectorData, setSectorData] = useState([]);
-  
+
   const extractEducationLevel = (candidate) => {
     if (!candidate.education || !Array.isArray(candidate.education) || candidate.education.length === 0) {
       return "Non spécifié";
