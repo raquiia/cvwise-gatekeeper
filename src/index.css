@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,25 +5,22 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 47.4% 11.2%;
+    --foreground: 222.2 84% 4.9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 47.4% 11.2%;
+    --card-foreground: 222.2 84% 4.9%;
+ 
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 222.1 83.2% 9.8%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
 
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
@@ -32,48 +28,43 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --ring: 222.2 84% 4.9%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+
+    --ring: 222.1 83.2% 9.8%;
 
     --radius: 0.5rem;
-
-    /* Custom properties */
-    --sand: #FAF5EF;
-    --navy: #25316D;
-    --navy-dark: #192147;
-    --border-color: #E0E0E0;
   }
 
   .dark {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
 
-    --muted: 223 47% 11%;
-    --muted-foreground: 215.4 16.3% 56.9%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+ 
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
 
-    --accent: 216 34% 17%;
-    --accent-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
 
-    --popover: 224 71% 4%;
-    --popover-foreground: 215 20.2% 65.1%;
-
-    --card: 224 71% 4%;
-    --card-foreground: 213 31% 91%;
-
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 1.2%;
-
-    --secondary: 210 40% 20%;
+    --secondary: 212.2 84% 3.9%;
     --secondary-foreground: 210 40% 98%;
+
+    --muted: 212.2 84% 3.9%;
+    --muted-foreground: 215 39% 83.1%;
+
+    --accent: 212.2 84% 3.9%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --ring: 217.2 32.6% 17.5%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
 
-    --radius: 0.5rem;
+    --ring: 217.2 91.2% 59.8%;
   }
 }
 
@@ -81,307 +72,126 @@
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
-    font-feature-settings:
-      "rlig" 1,
-      "calt" 1;
   }
 }
 
-/* Glassmorphism effect */
-.glass {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 16px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.3s ease;
+/* tailwind.css */
+@tailwind components;
+@tailwind utilities;
+
+/* FONTS */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* UTILITIES */
+html,
+body {
+	font-family: 'Poppins', sans-serif;
+	@apply h-full;
 }
 
-.glass:hover {
-  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
+/* ===== Scrollbar CSS ===== */
+/* Firefox */
+* {
+  scrollbar-width: auto;
+  scrollbar-color: #9ca3af #f3f4f6;
 }
 
-/* Enhanced glass cards for CV display */
-.glass-card {
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+/* Chrome, Edge, and Safari */
+*::-webkit-scrollbar {
+  width: 6px;
 }
 
-.glass-card:hover {
-  transform: translateY(-5px) scale(1.02);
-  box-shadow: 0 15px 45px rgba(52, 53, 99, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+*::-webkit-scrollbar-track {
+  background: #f3f4f6;
 }
 
+*::-webkit-scrollbar-thumb {
+  background-color: #9ca3af;
+  border-radius: 10px;
+  border: 0px solid #ffffff;
+}
+
+/* COLORS */
+:root {
+  --navy: #1e293b;
+  --navy-dark: #0f172a;
+  --sand: #f1f5f9;
+}
+
+/* CV Tags Styling */
+.cv-tag {
+  @apply inline-flex items-center px-2 py-1 text-xs font-medium rounded-full;
+}
+
+.cv-tag-analyzed {
+  @apply bg-green-100 text-green-700 border border-green-200;
+}
+
+.cv-tag-extracted {
+  @apply bg-blue-100 text-blue-600 border border-blue-200;
+}
+
+/* Card hover effects */
 .card-hover {
-  transition: all 0.3s ease;
+  @apply transition-all duration-300;
 }
 
 .card-hover:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  @apply transform -translate-y-1;
 }
 
 .card-hover-disabled {
-  transition: all 0.3s ease;
+  @apply cursor-pointer;
 }
 
-/* Enhanced gradient backgrounds */
-.bg-gradient-subtle {
-  background: linear-gradient(to right, rgba(253, 244, 255, 0.7), rgba(239, 246, 255, 0.7), rgba(240, 253, 250, 0.7));
+/* Button hover effect */
+.btn-hover-effect {
+  @apply transition-all duration-300;
 }
 
-.bg-gradient-card {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.6), rgba(240, 240, 250, 0.6));
+.btn-hover-effect:hover:not(:disabled) {
+  @apply transform -translate-y-0.5 shadow-md;
 }
 
-.bg-gradient-btn {
-  background: linear-gradient(to right, #6366f1, #8b5cf6);
-  transition: all 0.3s ease;
+/* Glass effect */
+.glass {
+  @apply bg-white/90 backdrop-blur-sm border border-white/50;
 }
 
-.bg-gradient-btn:hover {
-  background: linear-gradient(to right, #4f46e5, #7c3aed);
-  box-shadow: 0 6px 20px rgba(111, 66, 193, 0.3);
-}
-
-/* Input field style */
-.input-field {
-  @apply rounded-md border border-border shadow-sm focus:outline-none focus:ring-1 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50;
-  @apply bg-background text-foreground placeholder:text-muted-foreground;
-  @apply h-10 py-2 px-3;
-  transition: all 0.2s ease;
-}
-
-.input-field:focus {
-  @apply border-navy/50 ring-navy/30;
-  box-shadow: 0 0 0 3px rgba(37, 49, 109, 0.1);
-}
-
-/* Primary button style */
-.button-primary {
-  @apply inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
-  @apply bg-primary text-primary-foreground hover:bg-primary/90;
-  @apply h-10 px-4 py-2;
-}
-
-/* Label style */
-.label {
-  @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70;
-  @apply block mb-1.5 text-navy-dark;
-}
-
-/* Shimmering effect for loading states */
-.shimmer {
-  position: relative;
-  overflow: hidden;
-}
-
-.shimmer::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg, 
-    rgba(255, 255, 255, 0) 0%, 
-    rgba(255, 255, 255, 0.2) 20%, 
-    rgba(255, 255, 255, 0.5) 60%, 
-    rgba(255, 255, 255, 0)
-  );
-  animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
+/* Animation keyframes */
+@keyframes scale {
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
   100% {
-    transform: translateX(100%);
-  }
-}
-
-/* Fade-in animation */
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-in-out forwards;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  to {
+    transform: scale(1);
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
-/* Slide up animation */
-.animate-slide-up {
-  animation: slideUp 0.4s ease-out forwards;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Scale animation */
 .animate-scale {
   animation: scale 0.3s ease-out forwards;
 }
 
-@keyframes scale {
-  from {
+@keyframes fadeIn {
+  0% {
     opacity: 0;
-    transform: scale(0.95);
+    transform: translateY(10px);
   }
-  to {
+  100% {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0);
   }
 }
 
-/* Styles pour les puces d'évaluation */
-.rating-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
 }
 
-.rating-high {
-  background-color: rgba(16, 185, 129, 0.15);
-  color: rgb(16, 185, 129);
-}
-
-.rating-medium {
-  background-color: rgba(245, 158, 11, 0.15);
-  color: rgb(245, 158, 11);
-}
-
-.rating-low {
-  background-color: rgba(239, 68, 68, 0.15);
-  color: rgb(239, 68, 68);
-}
-
-/* Styles pour la grille des CV */
-.cv-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-}
-
-.cv-card {
-  background: linear-gradient(180deg, #ffffff, #f8f9fa);
-  border-radius: var(--radius);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.cv-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-/* Animation pour les boutons */
-.btn-hover-effect {
-  transition: all 0.2s ease;
-}
-
-.btn-hover-effect:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Animation pour les icônes */
-.icon-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Style pour les étiquettes CV */
-.cv-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1;
-}
-
-.cv-tag-extracted {
-  background-color: rgba(59, 130, 246, 0.1);
-  color: rgb(59, 130, 246);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-}
-
-.cv-tag-analyzed {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: rgb(16, 185, 129);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-}
-
-/* Styles pour les actions de la carte CV */
-.cv-card-actions {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  background-color: rgba(0, 0, 0, 0.01);
-}
-
-/* Effet de pulsation pour les notifications */
-.pulse-effect {
-  position: relative;
-}
-
-.pulse-effect::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  background: inherit;
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.5;
-    transform: scale(1.05);
-  }
+/* Input field styling */
+.input-field {
+  @apply h-10 px-3 py-2 bg-white border border-input rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition-all;
 }

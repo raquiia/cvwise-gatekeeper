@@ -456,16 +456,16 @@ const Resumes = () => {
   });
 
   return (
-    <Layout className="py-8 bg-sand/30">
+    <Layout className="py-8 bg-gradient-to-b from-sand/30 to-white">
       <div className="container mx-auto px-4">
-        <ResumesHeader userId={user?.id} />
+        <ResumesHeader />
         
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
           <input
             type="text"
             placeholder="Rechercher un CV..."
-            className="input-field pl-10 w-full"
+            className="input-field pl-10 w-full shadow-sm focus:shadow-md transition-shadow duration-300"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -496,6 +496,7 @@ const Resumes = () => {
                   <Button 
                     variant="destructive"
                     disabled={selectedResumes.length === 0 || isProcessingBatch || isBatchAnalyzing}
+                    className="shadow-sm hover:shadow-md transition-shadow duration-300"
                   >
                     {isProcessingBatch ? (
                       <Loader2 size={16} className="mr-2 animate-spin" />
@@ -505,16 +506,16 @@ const Resumes = () => {
                     Supprimer ({selectedResumes.length})
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-white p-6 rounded-xl shadow-xl border border-gray-100 animate-scale">
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Confirmation de suppression</AlertDialogTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogTitle className="text-xl font-bold text-navy-dark">Confirmation de suppression</AlertDialogTitle>
+                    <AlertDialogDescription className="text-navy/70">
                       Êtes-vous sûr de vouloir supprimer {selectedResumes.length} CV ? Cette action est irréversible.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleBatchDelete} className="bg-red-600 hover:bg-red-700">
+                  <AlertDialogFooter className="mt-6">
+                    <AlertDialogCancel className="transition-all duration-300 hover:bg-gray-100">Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleBatchDelete} className="bg-red-600 hover:bg-red-700 transition-colors">
                       Supprimer
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -526,6 +527,7 @@ const Resumes = () => {
                   <Button 
                     variant="default"
                     disabled={selectedResumes.length === 0 || isProcessingBatch || isBatchAnalyzing}
+                    className="bg-navy hover:bg-navy-dark transition-colors shadow-sm hover:shadow-md"
                   >
                     {isBatchAnalyzing ? (
                       <Loader2 size={16} className="mr-2 animate-spin" />
@@ -535,18 +537,18 @@ const Resumes = () => {
                     Analyser ({selectedResumes.length})
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-white p-6 rounded-xl shadow-xl border border-gray-100 animate-scale">
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Confirmation d'analyse en lot</AlertDialogTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogTitle className="text-xl font-bold text-navy-dark">Confirmation d'analyse en lot</AlertDialogTitle>
+                    <AlertDialogDescription className="text-navy/70">
                       Vous êtes sur le point d'analyser {selectedResumes.length} CV. Cette action peut prendre un certain temps.
                       <br /><br />
                       Les CV déjà analysés seront ignorés. Pour les autres, le texte sera extrait puis analysé automatiquement.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleBatchAnalyze} className="bg-blue-600 hover:bg-blue-700">
+                  <AlertDialogFooter className="mt-6">
+                    <AlertDialogCancel className="transition-all duration-300 hover:bg-gray-100">Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleBatchAnalyze} className="bg-blue-600 hover:bg-blue-700 transition-colors">
                       Analyser
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -557,6 +559,7 @@ const Resumes = () => {
                 variant="outline"
                 onClick={cancelSelection}
                 disabled={isBatchAnalyzing || isProcessingBatch}
+                className="border-navy/30 text-navy hover:bg-navy/5 transition-colors"
               >
                 Annuler
               </Button>
@@ -568,7 +571,7 @@ const Resumes = () => {
                   <span className="text-sm text-muted-foreground">Analyse en cours...</span>
                   <span className="text-sm text-muted-foreground">{batchProgress.current}/{batchProgress.total} CV</span>
                 </div>
-                <Progress value={batchProgress.percent} className="h-2" />
+                <Progress value={batchProgress.percent} className="h-2 bg-gray-100" />
               </div>
             )}
           </>
@@ -581,23 +584,25 @@ const Resumes = () => {
         {!isLoading && !errorMessage && resumes.length === 0 && <NoResumesState />}
         
         {!isLoading && !errorMessage && resumes.length > 0 && (
-          <ResumesGrid
-            resumes={filteredResumes}
-            selectedResumes={selectedResumes}
-            selectionMode={selectionMode}
-            downloading={downloading}
-            extracting={extracting}
-            analyzing={analyzing}
-            extractedText={extractedText}
-            isTextDialogOpen={isTextDialogOpen}
-            onSelect={toggleResumeSelection}
-            onDownload={handleDownloadResume}
-            onDelete={handleDeleteResume}
-            onExtractText={handleExtractText}
-            onAnalyzeResume={handleAnalyzeResume}
-            onCloseTextDialog={() => setIsTextDialogOpen(false)}
-            resumesWithExtractedText={resumesWithExtractedText}
-          />
+          <div className="animate-fade-in">
+            <ResumesGrid
+              resumes={filteredResumes}
+              selectedResumes={selectedResumes}
+              selectionMode={selectionMode}
+              downloading={downloading}
+              extracting={extracting}
+              analyzing={analyzing}
+              extractedText={extractedText}
+              isTextDialogOpen={isTextDialogOpen}
+              onSelect={toggleResumeSelection}
+              onDownload={handleDownloadResume}
+              onDelete={handleDeleteResume}
+              onExtractText={handleExtractText}
+              onAnalyzeResume={handleAnalyzeResume}
+              onCloseTextDialog={() => setIsTextDialogOpen(false)}
+              resumesWithExtractedText={resumesWithExtractedText}
+            />
+          </div>
         )}
       </div>
     </Layout>
