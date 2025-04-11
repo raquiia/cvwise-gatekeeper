@@ -197,8 +197,8 @@ const Dashboard = () => {
     }
     
     const sortedEducation = [...candidate.education].sort((a, b) => {
-      const dateA = a.end_date ? new Date(a.end_date || "").getTime() : 0;
-      const dateB = b.end_date ? new Date(b.end_date || "").getTime() : 0;
+      const dateA = a.end_date ? new Date(a.end_date).getTime() : 0;
+      const dateB = b.end_date ? new Date(b.end_date).getTime() : 0;
       return dateB - dateA;
     });
     
