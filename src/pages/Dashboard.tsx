@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart3, Users, FileText, Search, CheckCircle, 
@@ -199,8 +198,8 @@ const Dashboard = () => {
     
     const sortedEducation = [...candidate.education].sort((a, b) => {
       // Convert string dates to numeric timestamps for comparison
-      const dateA = a.end_date ? new Date(a.end_date).getTime() : 0;
-      const dateB = b.end_date ? new Date(b.end_date).getTime() : 0;
+      const dateA = a.end_date ? new Date(a.end_date || "").getTime() : 0;
+      const dateB = b.end_date ? new Date(b.end_date || "").getTime() : 0;
       return dateB - dateA;
     });
     
