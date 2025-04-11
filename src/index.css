@@ -106,6 +106,23 @@
   transform: translateY(-2px);
 }
 
+/* Enhanced glass cards for CV display */
+.glass-card {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.glass-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 15px 45px rgba(52, 53, 99, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
 .card-hover {
   transition: all 0.3s ease;
 }
@@ -117,6 +134,25 @@
 
 .card-hover-disabled {
   transition: all 0.3s ease;
+}
+
+/* Enhanced gradient backgrounds */
+.bg-gradient-subtle {
+  background: linear-gradient(to right, rgba(253, 244, 255, 0.7), rgba(239, 246, 255, 0.7), rgba(240, 253, 250, 0.7));
+}
+
+.bg-gradient-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.6), rgba(240, 240, 250, 0.6));
+}
+
+.bg-gradient-btn {
+  background: linear-gradient(to right, #6366f1, #8b5cf6);
+  transition: all 0.3s ease;
+}
+
+.bg-gradient-btn:hover {
+  background: linear-gradient(to right, #4f46e5, #7c3aed);
+  box-shadow: 0 6px 20px rgba(111, 66, 193, 0.3);
 }
 
 /* Input field style */
@@ -143,6 +179,35 @@
 .label {
   @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70;
   @apply block mb-1.5 text-navy-dark;
+}
+
+/* Shimmering effect for loading states */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0) 0%, 
+    rgba(255, 255, 255, 0.2) 20%, 
+    rgba(255, 255, 255, 0.5) 60%, 
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 /* Fade-in animation */
@@ -293,4 +358,30 @@
   padding: 0.75rem;
   border-top: 1px solid rgba(0, 0, 0, 0.05);
   background-color: rgba(0, 0, 0, 0.01);
+}
+
+/* Effet de pulsation pour les notifications */
+.pulse-effect {
+  position: relative;
+}
+
+.pulse-effect::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: inherit;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
 }

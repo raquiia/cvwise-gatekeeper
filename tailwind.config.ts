@@ -118,6 +118,10 @@ export default {
 				'blur-in': {
 					from: { filter: 'blur(8px)', opacity: '0' },
 					to: { filter: 'blur(0)', opacity: '1' }
+				},
+				'shine': {
+					'0%': { transform: 'translateX(-100%)' },
+					'50%, 100%': { transform: 'translateX(100%)' }
 				}
 			},
 			animation: {
