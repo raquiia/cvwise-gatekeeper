@@ -1,77 +1,14 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, Loader2, Sparkles } from 'lucide-react';
+import { Upload, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
-import { uploadResume } from '@/services/resumeService';
-import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
-
-interface DebugUploadButtonProps {
-  userId: string;
-}
 
 interface ResumesHeaderProps {
   userId?: string;
 }
 
-const DebugUploadButton = ({ userId }: DebugUploadButtonProps) => {
-  const { toast } = useToast();
-  const [uploading, setUploading] = useState(false);
-  
-  const handleTestUpload = async () => {
-    setUploading(true);
-    try {
-      // Ensure bucket exists before uploading
-      await ensureResumesBucketExists();
-      
-      const testContent = "This is a test CV file";
-      const testBlob = new Blob([testContent], { type: 'text/plain' });
-      const testFile = new File([testBlob], 'test-cv.txt', { type: 'text/plain' });
-      
-      toast({
-        title: "Test en cours",
-        description: "Tentative de téléchargement d'un fichier test...",
-      });
-      
-      const result = await uploadResume(testFile, userId);
-      
-      if (result) {
-        toast({
-          title: "Test réussi",
-          description: "Le test de téléchargement a réussi. ID: " + result.id,
-        });
-      } else {
-        throw new Error("Le test de téléchargement a échoué");
-      }
-    } catch (error: any) {
-      console.error('Test upload failed:', error);
-      toast({
-        title: "Test échoué",
-        description: error.message || "Erreur inconnue",
-        variant: "destructive",
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
-  
-  return (
-    <Button 
-      variant="outline" 
-      size="sm" 
-      className="ml-2 bg-white/80 hover:bg-white/90 border-navy/10 hover:border-navy/20 text-navy transition-all duration-300" 
-      onClick={handleTestUpload}
-      disabled={uploading}
-    >
-      {uploading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
-      Tester Upload
-    </Button>
-  );
-};
-
-const ResumesHeader: React.FC<ResumesHeaderProps> = ({ userId }) => {
+const ResumesHeader: React.FC<ResumesHeaderProps> = () => {
   return (
     <div className="relative rounded-xl overflow-hidden animate-fade-in mb-8">
       <div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 via-blue-500/20 to-teal-500/30 opacity-50"></div>
@@ -106,8 +43,6 @@ const ResumesHeader: React.FC<ResumesHeaderProps> = ({ userId }) => {
               </span>
             </Button>
           </Link>
-          
-          {userId && <DebugUploadButton userId={userId} />}
         </div>
       </div>
       
