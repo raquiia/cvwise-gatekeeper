@@ -118,21 +118,6 @@ export default {
 				'blur-in': {
 					from: { filter: 'blur(8px)', opacity: '0' },
 					to: { filter: 'blur(0)', opacity: '1' }
-				},
-				'float': {
-					'0%, 100%': { transform: 'translateY(0)' },
-					'50%': { transform: 'translateY(-10px)' }
-				},
-				'shine': {
-					'0%': { left: '-100%' },
-					'100%': { left: '100%' }
-				},
-				'pulse': {
-					'0%, 100%': { opacity: '1' },
-					'50%': { opacity: '0.5' }
-				},
-				'ping': {
-					'75%, 100%': { transform: 'scale(2)', opacity: '0' }
 				}
 			},
 			animation: {
@@ -143,11 +128,7 @@ export default {
 				'slide-up': 'slide-up 0.4s ease-out',
 				'slide-down': 'slide-down 0.4s ease-out',
 				'scale-in': 'scale-in 0.3s ease-out',
-				'blur-in': 'blur-in 0.4s ease-out',
-				'float': 'float 6s ease-in-out infinite',
-				'shine': 'shine 2s forwards linear',
-				'pulse': 'pulse 3s ease-in-out infinite',
-				'ping': 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite'
+				'blur-in': 'blur-in 0.4s ease-out'
 			},
 			fontFamily: {
 				sans: ['Inter var', 'Inter', 'sans-serif']
@@ -156,9 +137,6 @@ export default {
 				'dark-sm': '0 2px 4px 0 rgba(0, 0, 0, 0.25)',
 				'dark-md': '0 4px 8px 0 rgba(0, 0, 0, 0.3)',
 				'dark-lg': '0 8px 16px 0 rgba(0, 0, 0, 0.35)'
-			},
-			backgroundImage: {
-				'pattern': "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiMyMjIiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMCAwaDYwdjYwSDB6Ii8+PC9nPjwvZz48L3N2Zz4=')"
 			}
 		}
 	},
