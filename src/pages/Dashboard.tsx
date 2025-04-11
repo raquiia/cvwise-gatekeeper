@@ -472,7 +472,7 @@ const Dashboard = () => {
           )}
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
           <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-md">
             <CardHeader className="border-b border-purple-100/50 dark:border-purple-900/30">
               <div className="flex items-center">
