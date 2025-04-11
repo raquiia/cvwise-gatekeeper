@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Calendar, ChevronDown, ChevronUp, Users, Briefcase, GraduationCap, TrendingUp, FileText, AlertCircle, RefreshCw } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
@@ -14,1019 +15,234 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { getUserCandidates } from '@/services/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-  CommandShortcut,
-} from "@/components/ui/command"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form"
-import {
-  PopoverClose,
-} from "@/components/ui/popover"
-import { CalendarDateRangePicker } from "@/components/ui/calendar"
-import { useForm } from 'react-hook-form';
-import { z } from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
-import {
-  FormDescription,
-} from "@/components/ui/form"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import {
-  Progress
-} from "@/components/ui/progress"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { MoreHorizontal } from 'lucide-react';
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Skeleton } from "@/components/ui/skeleton"
-import {
-  CardFooter,
-} from "@/components/ui/card"
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card"
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-  ResizableSeparator,
-} from "@/components/ui/resizable"
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer"
-import {
-  Menubar,
-  MenubarCheckboxItem,
-  MenubarContent,
-  MenubarItem,
-  MenubarMenu,
-  MenubarRadioGroup,
-  MenubarRadioItem,
-  MenubarSeparator,
-  MenubarShortcut,
-  MenubarSub,
-  MenubarSubContent,
-  MenubarSubTrigger,
-  MenubarTrigger,
-} from "@/components/ui/menubar"
-import {
-  CommandDialog,
-  CommandList as CommandList2,
-  CommandInput as CommandInput2,
-  CommandItem as CommandItem2,
-} from "@/components/ui/command"
-import {
-  AspectRatio,
-} from "@/components/ui/aspect-ratio"
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-  useCarousel,
-} from "@/components/ui/carousel"
-import {
-  ScrollArea,
-} from "@/components/ui/scroll-area"
-import {
-  ResizableHandle as ResizableHandle2,
-  ResizablePanel as ResizablePanel2,
-  ResizablePanelGroup as ResizablePanelGroup2,
-  ResizableSeparator as ResizableSeparator2,
-} from "@/components/ui/resizable"
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-import {
-  ContextMenu,
-  ContextMenuCheckboxItem,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuLabel,
-  ContextMenuRadioGroup,
-  ContextMenuRadioItem,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  NavigationMenuViewport,
-} from "@/components/ui/navigation-menu"
-import {
-  DropdownMenu as DropdownMenu2,
-  DropdownMenuContent as DropdownMenuContent2,
-  DropdownMenuItem as DropdownMenuItem2,
-  DropdownMenuLabel as DropdownMenuLabel2,
-  DropdownMenuSeparator as DropdownMenuSeparator2,
-  DropdownMenuTrigger as DropdownMenuTrigger2,
-} from "@/components/ui/dropdown-menu"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import {
-  Calendar as Calendar2
-} from "@/components/ui/calendar"
-import {
-  Card as Card2,
-  CardContent as CardContent2,
-  CardDescription as CardDescription2,
-  CardFooter as CardFooter2,
-  CardHeader as CardHeader2,
-  CardTitle as CardTitle2,
-} from "@/components/ui/card"
-import {
-  Checkbox,
-} from "@/components/ui/checkbox"
-import {
-  Command as Command3,
-  CommandDialog as CommandDialog3,
-  CommandEmpty as CommandEmpty3,
-  CommandGroup as CommandGroup3,
-  CommandInput as CommandInput3,
-  CommandItem as CommandItem3,
-  CommandList as CommandList3,
-  CommandSeparator as CommandSeparator3,
-  CommandShortcut as CommandShortcut3,
-} from "@/components/ui/command"
-import {
-  ContextMenu as ContextMenu3,
-  ContextMenuCheckboxItem as ContextMenuCheckboxItem3,
-  ContextMenuContent as ContextMenuContent3,
-  ContextMenuItem as ContextMenuItem3,
-  ContextMenuLabel as ContextMenuLabel3,
-  ContextMenuRadioGroup as ContextMenuRadioGroup3,
-  ContextMenuRadioItem as ContextMenuRadioItem3,
-  ContextMenuSeparator as ContextMenuSeparator3,
-  ContextMenuSub as ContextMenuSub3,
-  ContextMenuSubContent as ContextMenuSubContent3,
-  ContextMenuSubTrigger as ContextMenuSubTrigger3,
-  ContextMenuTrigger as ContextMenuTrigger3,
-} from "@/components/ui/context-menu"
-import {
-  Dialog as Dialog3,
-  DialogContent as DialogContent3,
-  DialogDescription as DialogDescription3,
-  DialogFooter as DialogFooter3,
-  DialogHeader as DialogHeader3,
-  DialogTitle as DialogTitle3,
-  DialogTrigger as DialogTrigger3,
-} from "@/components/ui/dialog"
-import {
-  DropdownMenu as DropdownMenu4,
-  DropdownMenuContent as DropdownMenuContent4,
-  DropdownMenuItem as DropdownMenuItem4,
-  DropdownMenuLabel as DropdownMenuLabel4,
-  DropdownMenuSeparator as DropdownMenuSeparator4,
-  DropdownMenuTrigger as DropdownMenuTrigger4,
-} from "@/components/ui/dropdown-menu"
-import {
-  Form as Form4,
-  FormControl as FormControl4,
-  FormDescription as FormDescription4,
-  FormField as FormField4,
-  FormItem as FormItem4,
-  FormLabel as FormLabel4,
-  FormMessage as FormMessage4,
-} from "@/components/ui/form"
-import {
-  HoverCard as HoverCard4,
-  HoverCardContent as HoverCardContent4,
-  HoverCardTrigger as HoverCardTrigger4,
-} from "@/components/ui/hover-card"
-import {
-  Input as Input4,
-} from "@/components/ui/input"
-import {
-  Label as Label4,
-} from "@/components/ui/label"
-import {
-  Menubar as Menubar4,
-  MenubarCheckboxItem as MenubarCheckboxItem4,
-  MenubarContent as MenubarContent4,
-  MenubarItem as MenubarItem4,
-  MenubarMenu as MenubarMenu4,
-  MenubarRadioGroup as MenubarRadioGroup4,
-  MenubarRadioItem as MenubarRadioItem4,
-  MenubarSeparator as MenubarSeparator4,
-  MenubarShortcut as MenubarShortcut4,
-  MenubarSub as MenubarSub4,
-  MenubarSubContent as MenubarSubContent4,
-  MenubarSubTrigger as MenubarSubTrigger4,
-  MenubarTrigger as MenubarTrigger4,
-} from "@/components/ui/menubar"
-import {
-  Popover as Popover4,
-  PopoverClose as PopoverClose4,
-  PopoverContent as PopoverContent4,
-  PopoverTrigger as PopoverTrigger4,
-} from "@/components/ui/popover"
-import {
-  Progress as Progress4,
-} from "@/components/ui/progress"
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@/components/ui/radio-group"
-import {
-  ResizableHandle as ResizableHandle4,
-  ResizablePanel as ResizablePanel4,
-  ResizablePanelGroup as ResizablePanelGroup4,
-  ResizableSeparator as ResizableSeparator4,
-} from "@/components/ui/resizable"
-import {
-  ScrollArea as ScrollArea4,
-} from "@/components/ui/scroll-area"
-import {
-  Select as Select4,
-  SelectContent as SelectContent4,
-  SelectItem as SelectItem4,
-  SelectTrigger as SelectTrigger4,
-  SelectValue as SelectValue4,
-} from "@/components/ui/select"
-import {
-  Separator as Separator4,
-} from "@/components/ui/separator"
-import {
-  Sheet as Sheet4,
-  SheetClose as SheetClose4,
-  SheetContent as SheetContent4,
-  SheetDescription as SheetDescription4,
-  SheetFooter as SheetFooter4,
-  SheetHeader as SheetHeader4,
-  SheetTitle as SheetTitle4,
-  SheetTrigger as SheetTrigger4,
-} from "@/components/ui/sheet"
-import {
-  Skeleton as Skeleton4,
-} from "@/components/ui/skeleton"
-import {
-  Table as Table4,
-  TableBody as TableBody4,
-  TableCaption as TableCaption4,
-  TableCell as TableCell4,
-  TableFooter as TableFooter4,
-  TableHead as TableHead4,
-  TableHeader as TableHeader4,
-  TableRow as TableRow4,
-} from "@/components/ui/table"
-import {
-  Textarea,
-} from "@/components/ui/textarea"
-import {
-  Tooltip as Tooltip4,
-  TooltipContent as TooltipContent4,
-  TooltipProvider as TooltipProvider4,
-  TooltipTrigger as TooltipTrigger4,
-} from "@/components/ui/tooltip"
-import {
-  useFormField,
-} from "@/components/ui/form"
-import {
-  useCarousel as useCarousel4,
-} from "@/components/ui/carousel"
-import {
-  useDialog,
-} from "@/components/ui/dialog"
-import {
-  useDrawer,
-} from "@/components/ui/drawer"
-import {
-  useHoverCard,
-} from "@/components/ui/hover-card"
-import {
-  useMenu,
-} from "@/components/ui/menu"
-import {
-  useOptionalContext,
-} from "@/components/ui/use-optional-context"
-import {
-  usePopover,
-} from "@/components/ui/popover"
-import {
-  useSheet,
-} from "@/components/ui/sheet"
-import {
-  useToast as useToast4,
-} from "@/components/ui/use-toast"
-import {
-  useTooltip,
-} from "@/components/ui/tooltip"
-import {
-  useTransitionStatus,
-} from "@/components/ui/use-transition-status"
-import {
-  useAccordionContext,
-} from "@/components/ui/accordion"
-import {
-  useCollapsibleContext,
-} from "@/components/ui/collapsible"
-import {
-  useContextMenuContext,
-} from "@/components/ui/context-menu"
-import {
-  useDropdownMenuContext,
-} from "@/components/ui/dropdown-menu"
-import {
-  useMenubarContext,
-} from "@/components/ui/menubar"
-import {
-  useNavigationMenuContext,
-} from "@/components/ui/navigation-menu"
-import {
-  useRadioGroupContext,
-} from "@/components/ui/radio-group"
-import {
-  useResizableContext,
-} from "@/components/ui/resizable"
-import {
-  useSelectContext,
-} from "@/components/ui/select"
-import {
-  useTableContext,
-} from "@/components/ui/table"
-import {
-  useAlertDialog,
-} from "@/components/ui/alert-dialog"
-import {
-  useCommand,
-} from "@/components/ui/command"
-import {
-  useFormStatus,
-} from "@/components/ui/form"
-import {
-  useFormField as useFormField4,
-} from "@/components/ui/form"
-import {
-  useToast as useToast5,
-} from "@/components/ui/use-toast"
-import {
-  useTransitionStatus as useTransitionStatus4,
-} from "@/components/ui/use-transition-status"
-import {
-  useAccordionContext as useAccordionContext4,
-} from "@/components/ui/accordion"
-import {
-  useAlertDialog as useAlertDialog4,
-} from "@/components/ui/alert-dialog"
-import {
-  useCarousel as useCarousel5,
-} from "@/components/ui/carousel"
-import {
-  useCollapsibleContext as useCollapsibleContext4,
-} from "@/components/ui/collapsible"
-import {
-  useCommand as useCommand4,
-} from "@/components/ui/command"
-import {
-  useContextMenuContext as useContextMenuContext4,
-} from "@/components/ui/context-menu"
-import {
-  useDialog as useDialog4,
-} from "@/components/ui/dialog"
-import {
-  useDrawer as useDrawer4,
-} from "@/components/ui/drawer"
-import {
-  useDropdownMenuContext as useDropdownMenuContext4,
-} from "@/components/ui/dropdown-menu"
-import {
-  useFormStatus as useFormStatus4,
-} from "@/components/ui/form"
-import {
-  useHoverCard as useHoverCard4,
-} from "@/components/ui/hover-card"
-import {
-  useMenu as useMenu4,
-} from "@/components/ui/menu"
-import {
-  useMenubarContext as useMenubarContext4,
-} from "@/components/ui/menubar"
-import {
-  useNavigationMenuContext as useNavigationMenuContext4,
-} from "@/components/ui/navigation-menu"
-import {
-  useOptionalContext as useOptionalContext4,
-} from "@/components/ui/use-optional-context"
-import {
-  usePopover as usePopover5,
-} from "@/components/ui/popover"
-import {
-  useRadioGroupContext as useRadioGroupContext4,
-} from "@/components/ui/radio-group"
-import {
-  useResizableContext as useResizableContext4,
-} from "@/components/ui/resizable"
-import {
-  useSelectContext as useSelectContext4,
-} from "@/components/ui/select"
-import {
-  useSheet as useSheet5,
-} from "@/components/ui/sheet"
-import {
-  useTableContext as useTableContext4,
-} from "@/components/ui/table"
-import {
-  useTooltip as useTooltip5,
-} from "@/components/ui/tooltip"
-import {
-  useToast as useToast6,
-} from "@/components/ui/use-toast"
-import {
-  useTransitionStatus as useTransitionStatus5,
-} from "@/components/ui/use-transition-status"
-import {
-  useAccordionContext as useAccordionContext5,
-} from "@/components/ui/accordion"
-import {
-  useAlertDialog as useAlertDialog5,
-} from "@/components/ui/alert-dialog"
-import {
-  useCarousel as useCarousel6,
-} from "@/components/ui/carousel"
-import {
-  useCollapsibleContext as useCollapsibleContext5,
-} from "@/components/ui/collapsible"
-import {
-  useCommand as useCommand5,
-} from "@/components/ui/command"
-import {
-  useContextMenuContext as useContextMenuContext5,
-} from "@/components/ui/context-menu"
-import {
-  useDialog as useDialog5,
-} from "@/components/ui/dialog"
-import {
-  useDrawer as useDrawer5,
-} from "@/components/ui/drawer"
-import {
-  useDropdownMenuContext as useDropdownMenuContext5,
-} from "@/components/ui/dropdown-menu"
-import {
-  useFormStatus as useFormStatus5,
-} from "@/components/ui/form"
-import {
-  useHoverCard as useHoverCard5,
-} from "@/components/ui/hover-card"
-import {
-  useMenu as useMenu5,
-} from "@/components/ui/menu"
-import {
-  useMenubarContext as useMenubarContext5,
-} from "@/components/ui/menubar"
-import {
-  useNavigationMenuContext as useNavigationMenuContext5,
-} from "@/components/ui/navigation-menu"
-import {
-  useOptionalContext as useOptionalContext5,
-} from "@/components/ui/use-optional-context"
-import {
-  usePopover as usePopover6,
-} from "@/components/ui/popover"
-import {
-  useRadioGroupContext as useRadioGroupContext5,
-} from "@/components/ui/radio-group"
-import {
-  useResizableContext as useResizableContext5,
-} from "@/components/ui/resizable"
-import {
-  useSelectContext as useSelectContext5,
-} from "@/components/ui/select"
-import {
-  useSheet as useSheet6,
-} from "@/components/ui/sheet"
-import {
-  useTableContext as useTableContext5,
-} from "@/components/ui/table"
-import {
-  useTooltip as useTooltip6,
-} from "@/components/ui/tooltip"
-import {
-  useToast as useToast7,
-} from "@/components/ui/use-toast"
-import {
-  useTransitionStatus as useTransitionStatus6,
-} from "@/components/ui/use-transition-status"
-import {
-  useAccordionContext as useAccordionContext6,
-} from "@/components/ui/accordion"
-import {
-  useAlertDialog as useAlertDialog6,
-} from "@/components/ui/alert-dialog"
-import {
-  useCarousel as useCarousel7,
-} from "@/components/ui/carousel"
-import {
-  useCollapsibleContext as useCollapsibleContext6,
-} from "@/components/ui/collapsible"
-import {
-  useCommand as useCommand6,
-} from "@/components/ui/command"
-import {
-  useContextMenuContext as useContextMenuContext6,
-} from "@/components/ui/context-menu"
-import {
-  useDialog as useDialog6,
-} from "@/components/ui/dialog"
-import {
-  useDrawer as useDrawer6,
-} from "@/components/ui/drawer"
-import {
-  useDropdownMenuContext as useDropdownMenuContext6,
-} from "@/components/ui/dropdown-menu"
-import {
-  useFormStatus as useFormStatus6,
-} from "@/components/ui/form"
-import {
-  useHoverCard as useHoverCard6,
-} from "@/components/ui/hover-card"
-import {
-  useMenu as useMenu6,
-} from "@/components/ui/menu"
-import {
-  useMenubarContext as useMenubarContext6,
-} from "@/components/ui/menubar"
-import {
-  useNavigationMenuContext as useNavigationMenuContext6,
-} from "@/components/ui/navigation-menu"
-import {
-  useOptionalContext as useOptionalContext6,
-} from "@/components/ui/use-optional-context"
-import {
-  usePopover as usePopover7,
-} from "@/components/ui/popover"
-import {
-  useRadioGroupContext as useRadioGroupContext6,
-} from "@/components/ui/radio-group"
-import {
-  useResizableContext as useResizableContext6,
-} from "@/components/ui/resizable"
-import {
-  useSelectContext as useSelectContext6,
-} from "@/components/ui/select"
-import {
-  useSheet as useSheet7,
-} from "@/components/ui/sheet"
-import {
-  useTableContext as useTableContext6,
-} from "@/components/ui/table"
-import {
-  useTooltip as useTooltip7,
-} from "@/components/ui/tooltip"
-import {
-  useToast as useToast8,
-} from "@/components/ui/use-toast"
-import {
-  useTransitionStatus as useTransitionStatus7,
-} from "@/components/ui/use-transition-status"
-import {
-  useAccordionContext as useAccordionContext7,
-} from "@/components/ui/accordion"
-import {
-  useAlertDialog as useAlertDialog7,
-} from "@/components/ui/alert-dialog"
-import {
-  useCarousel as useCarousel8,
-} from "@/components/ui/carousel"
-import {
-  useCollapsibleContext as useCollapsibleContext7,
-} from "@/components/ui/collapsible"
-import {
-  useCommand as useCommand7,
-} from "@/components/ui/command"
-import {
-  useContextMenuContext as useContextMenuContext7,
-} from "@/components/ui/context-menu"
-import {
-  useDialog as useDialog7,
-} from "@/components/ui/dialog"
-import {
-  useDrawer as useDrawer7,
-} from "@/components/ui/drawer"
-import {
-  useDropdownMenuContext as useDropdownMenuContext7,
-} from "@/components/ui/dropdown-menu"
-import {
-  useFormStatus as useFormStatus7,
-} from "@/components/ui/form"
-import {
-  useHoverCard as useHoverCard7,
-} from "@/components/ui/hover-card"
-import {
-  useMenu as useMenu7,
-} from "@/components/ui/menu"
-import {
-  useMenubarContext as useMenubarContext7,
-} from "@/components/ui/menubar"
-import {
-  useNavigationMenuContext as useNavigationMenuContext7,
-} from "@/components/ui/navigation-menu"
-import {
-  useOptionalContext as useOptionalContext7,
-} from "@/components/ui/use-optional-context"
-import {
-  usePopover as usePopover8,
-} from "@/components/ui/popover"
-import {
-  useRadioGroupContext as useRadioGroupContext7,
-} from "@/components/ui/radio-group"
-import {
-  useResizableContext as useResizableContext7,
-} from "@/components/ui/resizable"
-import {
-  useSelectContext as useSelectContext7,
-} from "@/components/ui/select"
-import {
-  useSheet as useSheet8,
-} from "@/components/ui/sheet"
-import {
-  useTableContext as useTableContext7,
-} from "@/components/ui/table"
-import {
-  useTooltip as useTooltip8,
-} from "@/components/ui/tooltip"
-import {
-  useToast as useToast9,
-} from "@/components/ui/use-toast"
-import {
-  useTransitionStatus as useTransitionStatus8,
-} from "@/components/ui/use-transition-status"
-import {
-  useAccordionContext as useAccordionContext8,
-} from "@/components/ui/accordion"
-import {
-  useAlertDialog as useAlertDialog8,
-} from "@/components/ui/alert-dialog"
-import {
-  useCarousel as useCarousel9,
-} from "@/components/ui/carousel"
-import {
-  useCollapsibleContext as useCollapsibleContext8,
-} from "@/components/ui/collapsible"
-import {
-  useCommand as useCommand8,
-} from "@/components/ui/command"
-import {
-  useContextMenuContext as useContextMenuContext8,
-} from "@/components/ui/context-menu"
-import {
-  useDialog as useDialog8,
-} from "@/components/ui/dialog"
-import {
-  useDrawer as useDrawer8,
-} from "@/components/ui/drawer"
-import {
-  useDropdownMenuContext as useDropdownMenuContext8,
-} from "@/components/ui/dropdown-menu"
-import {
-  useFormStatus as useFormStatus8,
-} from "@/components/ui/form"
-import {
-  useHoverCard as useHoverCard8,
-} from "@/components/ui/hover-card"
-import {
-  useMenu as useMenu8,
-} from "@/components/ui/menu"
-import {
-  useMenubarContext as useMenubarContext8,
-} from "@/components/ui/menubar"
-import {
-  useNavigationMenuContext as useNavigationMenuContext8,
-} from "@/components/ui/navigation-menu"
-import {
-  useOptionalContext as useOptionalContext8,
-} from "@/components/ui/use-optional-context"
-import {
-  usePopover as usePopover9,
-} from "@/components/ui/popover"
-import {
-  useRadioGroupContext as useRadioGroupContext8,
-} from "@/components/ui/radio-group"
-import {
-  useResizableContext as useResizableContext8,
-} from "@/components/ui/resizable"
-import {
-  useSelectContext as useSelectContext8,
-} from "@/components/ui/select"
-import {
-  useSheet as useSheet9,
-} from "@/components/ui/sheet"
-import {
-  useTableContext as useTableContext8,
-} from "@/components/ui/table"
-import {
-  useTooltip as useTooltip9,
-} from "@/components/ui/tooltip"
-import {
-  useToast as useToast10,
-} from "@/components/ui/use-toast"
-import {
-  useTransitionStatus as useTransitionStatus9,
-} from "@/components/ui/use-transition-status"
-import {
-  useAccordionContext as useAccordionContext9,
-} from "@/components/ui/accordion"
-import {
-  useAlertDialog as useAlertDialog9,
-} from "@/components/ui/alert-dialog"
-import {
-  useCarousel as useCarousel10,
-} from "@/components/ui/carousel"
-import {
-  useCollapsibleContext as useCollapsibleContext9,
-} from "@/components/ui/collapsible"
-import {
-  useCommand as useCommand9,
-} from "@/components/ui/command"
-import {
-  useContextMenuContext as useContextMenuContext9,
-} from "@/components/ui/context-menu"
-import {
-  useDialog as useDialog9,
-} from "@/components/ui/dialog"
-import {
-  useDrawer as useDrawer9,
-} from "@/components/ui/drawer"
-import {
-  useDropdownMenuContext as useDropdownMenuContext9,
-} from "@/components/ui/dropdown-menu"
-import {
-  useFormStatus as useFormStatus9,
-} from "@/components/ui/form"
-import {
-  useHoverCard as useHoverCard9,
-} from "@/components/ui/hover-card"
-import {
-  useMenu as useMenu9,
-} from "@/components/ui/menu"
-import {
-  useMenubarContext as useMenubarContext9,
-} from "@/components/ui/menubar"
-import {
-  useNavigationMenuContext as useNavigationMenuContext9,
-} from "@/components/ui/navigation-menu"
-import {
-  useOptionalContext as useOptionalContext9,
-} from "@/components/ui/use-optional-context"
-import {
-  usePopover as usePopover10,
-} from "@/components/ui/popover"
-import {
-  useRadioGroupContext as useRadioGroupContext9,
-} from "@/components/ui/radio-group"
-import {
-  useResizableContext as useResizableContext9,
-} from "@/components/ui/resizable"
-import {
-  useSelectContext as useSelectContext9,
-} from "@/components/ui/select"
-import {
-  useSheet as useSheet10,
-} from "@/components/ui/sheet"
-import {
-  useTableContext as useTableContext9,
-} from "@/components/ui/table"
-import {
-  useTooltip as useTooltip10,
-} from "@/components/ui/tooltip"
-import {
-  useToast as useToast11,
-} from "@/components/ui/use-toast"
-import {
-  useTransitionStatus as useTransitionStatus10,
-} from "@/components/ui/use-transition-status"
-import {
-  useAccordionContext as useAccordionContext10,
-} from "@/components/ui/accordion"
-import {
-  useAlertDialog as useAlertDialog10,
-} from "@/components/ui/alert-dialog"
-import {
-  useCarousel as useCarousel11,
-} from "@/components/ui/carousel"
-import {
-  useCollapsibleContext as useCollapsibleContext10,
-} from "@/components/ui/collapsible"
-import {
-  useCommand as useCommand10,
-} from "@/components/ui/command"
-import {
-  useContextMenuContext as useContextMenuContext10,
-} from "@/components/ui/context-menu"
-import {
-  useDialog as useDialog10,
-} from "@/components/ui/dialog"
-import {
-  useDrawer as useDrawer10,
-} from "@/components/ui/drawer"
-import {
-  useDropdownMenuContext as useDropdownMenuContext10,
-} from "@/components/ui/dropdown-menu"
-import {
-  useFormStatus as useFormStatus10,
-} from "@/components/ui/form"
-import {
-  useHoverCard as useHoverCard10,
-} from "@/components/ui/hover-card"
-import {
-  useMenu as useMenu10,
-} from "@/components/ui/menu"
-import {
-  useMenubarContext as useMenubarContext10,
-} from "@/components/ui/menubar"
-import {
-  useNavigationMenuContext as useNavigationMenuContext10,
-} from "@/components/ui/navigation-menu"
-import {
-  useOptionalContext as useOptionalContext10,
-} from "@/components/ui/use-optional-context"
-import {
-  usePopover as usePopover11,
-} from "@/components/ui/popover"
-import {
-  useRadioGroupContext as useRadioGroupContext10,
-} from "@/components/ui/radio-group"
-import {
-  useResizableContext as useResizableContext10,
-} from "@/components/ui/resizable"
-import {
-  useSelectContext as useSelectContext10,
-} from "@/components/ui/select"
-import {
-  useSheet as useSheet11,
-} from "@/components/ui/sheet"
-import {
-  useTableContext as useTableContext10,
-} from "@/components/ui/table"
-import {
-  useTooltip as useTooltip11,
-} from "@/components/ui/tooltip"
-import {
-  useToast as useToast12,
-} from "@/components/ui/use-toast"
-import {
-  useTransitionStatus as useTransitionStatus11,
-} from "@/components/ui/use-transition-status"
-import {
-  useAccordionContext as useAccordionContext11,
-} from "@/components/ui/accordion"
-import {
-  useAlertDialog as useAlertDialog11,
-} from "@/components/ui/alert-dialog"
-import {
-  useCarousel as useCarousel12,
-} from "@/components/ui/carousel"
-import {
-  useCollapsibleContext as useCollapsibleContext11,
-} from "@/components/ui/collapsible"
-import {
-  useCommand as useCommand11,
-} from "@/components/ui/command"
-import {
-  useContextMenuContext as useContextMenuContext11,
-} from "@/components/ui/context-menu"
-import {
-  useDialog as useDialog11,
-} from "@/components/ui/dialog"
-import {
-  useDrawer as useDrawer11,
-} from "@/components/ui/drawer"
-import {
-  useDropdownMenuContext as useDropdownMenuContext11,
-} from "@/components/ui/dropdown-menu"
-import {
-  useFormStatus as useFormStatus11,
-} from "@/components/ui/form"
-import {
-  useHoverCard as useHoverCard11,
-} from "@/components/ui/hover-card"
-import {
-  useMenu as useMenu11,
-} from "@/components/ui/menu"
-import {
-  useMenubarContext as useMenubarContext11,
-} from "@/components/ui/menubar"
-import {
-  useNavigationMenuContext as useNavigationMenuContext11,
-} from "@/components/ui/navigation-menu"
-import {
-  useOptionalContext as useOptionalContext11,
-} from "@/components/ui/use-optional-context"
-import {
-  usePopover as usePopover12,
-} from "@/components/ui/popover"
-import {
-  useRadioGroupContext as useRadioGroupContext11,
-} from "@/components/ui/radio-group"
-import {
-  useResizableContext as useResizableContext11,
-} from "@/components/ui/resizable"
-import {
-  useSelectContext as useSelectContext11,
-} from "@/components/ui/select"
-import {
-  useSheet as useSheet12,
-} from "@/components/ui/sheet"
-import {
-  useTableContext as useTableContext11,
-} from "@/components/ui/table"
-import {
-  useTooltip as useTooltip12,
-} from "@/components/ui/tooltip"
-import {
-  useToast as useToast13,
-} from "@/components/ui/use-toast"
-import {
-  useTransitionStatus as useTransitionStatus12,
-} from "@/components/ui/use-transition-status"
-import {
+
+// Instead of importing so many UI components that aren't used, I'm simplifying the imports
+// This will make the file more maintainable
+
+const Dashboard = () => {
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: new Date(),
+    to: addMonths(new Date(), 1),
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [candidates, setCandidates] = useState<CandidateData[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchCandidates = async () => {
+      if (!user) return;
+      
+      setIsLoading(true);
+      try {
+        const data = await getUserCandidates(user.id);
+        setCandidates(data || []);
+      } catch (error: any) {
+        console.error('Error fetching candidates:', error);
+        setError(error?.message || 'Failed to load candidates');
+        toast({
+          title: 'Error',
+          description: 'Failed to load candidates',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchCandidates();
+  }, [user, toast]);
+
+  // Helper functions for statistics
+  const extractEducationLevel = (candidate: CandidateData) => {
+    if (!candidate.education || !Array.isArray(candidate.education) || candidate.education.length === 0) return null;
+    
+    // Sort education by date (assuming most have some form of date field)
+    const sortedEducation = [...candidate.education].sort((a, b) => {
+      const dateA = a.end_date ? new Date(a.end_date).getTime() : 0;
+      const dateB = b.end_date ? new Date(b.end_date).getTime() : 0;
+      return dateB - dateA;
+    });
+    
+    return sortedEducation[0].degree || sortedEducation[0].diploma || null;
+  };
+  
+  const extractSector = (candidate: CandidateData) => {
+    if (!candidate.experiences || !Array.isArray(candidate.experiences) || candidate.experiences.length === 0) return null;
+    
+    // Sort experiences by date (most recent first)
+    const sortedExperiences = [...candidate.experiences].sort((a, b) => {
+      const dateA = a.end_date ? new Date(a.end_date).getTime() : new Date().getTime();
+      const dateB = b.end_date ? new Date(b.end_date).getTime() : new Date().getTime();
+      return dateB - dateA;
+    });
+    
+    return sortedExperiences[0].sector || sortedExperiences[0].industry || null;
+  };
+
+  // Calculate statistics
+  const totalCandidates = candidates.length;
+  const activeCandidates = candidates.filter(c => c.status === 'active').length;
+  const candidatesWithEducation = candidates.filter(c => c.education && c.education.length > 0).length;
+  const candidatesWithExperience = candidates.filter(c => c.experiences && c.experiences.length > 0).length;
+  
+  const educationLevels = candidates
+    .map(extractEducationLevel)
+    .filter(Boolean)
+    .reduce((acc: Record<string, number>, level) => {
+      if (level) {
+        acc[level] = (acc[level] || 0) + 1;
+      }
+      return acc;
+    }, {});
+  
+  const sectors = candidates
+    .map(extractSector)
+    .filter(Boolean)
+    .reduce((acc: Record<string, number>, sector) => {
+      if (sector) {
+        acc[sector] = (acc[sector] || 0) + 1;
+      }
+      return acc;
+    }, {});
+
+  return (
+    <div className="p-8">
+      <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Candidates
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center">
+              <Users className="mr-2 text-muted-foreground" />
+              <span className="text-2xl font-bold">{totalCandidates}</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Active Candidates
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center">
+              <TrendingUp className="mr-2 text-muted-foreground" />
+              <span className="text-2xl font-bold">{activeCandidates}</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              With Experience
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center">
+              <Briefcase className="mr-2 text-muted-foreground" />
+              <span className="text-2xl font-bold">{candidatesWithExperience}</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              With Education
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center">
+              <GraduationCap className="mr-2 text-muted-foreground" />
+              <span className="text-2xl font-bold">{candidatesWithEducation}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {isLoading ? (
+        <div className="flex justify-center py-10">
+          <RefreshCw className="animate-spin h-8 w-8 text-muted-foreground" />
+        </div>
+      ) : error ? (
+        <div className="bg-destructive/10 border border-destructive/20 p-4 rounded-md flex items-center">
+          <AlertCircle className="h-5 w-5 text-destructive mr-2" />
+          <p className="text-destructive">{error}</p>
+        </div>
+      ) : candidates.length === 0 ? (
+        <div className="bg-muted p-6 rounded-md text-center">
+          <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <h3 className="text-lg font-medium mb-1">No Candidates Yet</h3>
+          <p className="text-muted-foreground">Start by uploading some resumes.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Education Levels</CardTitle>
+              <CardDescription>Distribution of candidates by highest education level</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {Object.keys(educationLevels).length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No education data available</p>
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(educationLevels).map(([level, count]) => (
+                    <div key={level} className="flex items-center">
+                      <div className="w-40 truncate text-sm">{level}</div>
+                      <div className="flex-1 mx-2 h-4 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full"
+                          style={{ width: `${(count / totalCandidates) * 100}%` }}
+                        />
+                      </div>
+                      <div className="w-10 text-right text-sm">{count}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Sectors</CardTitle>
+              <CardDescription>Distribution of candidates by sector</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {Object.keys(sectors).length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No sector data available</p>
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(sectors).map(([sector, count]) => (
+                    <div key={sector} className="flex items-center">
+                      <div className="w-40 truncate text-sm">{sector}</div>
+                      <div className="flex-1 mx-2 h-4 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full"
+                          style={{ width: `${(count / totalCandidates) * 100}%` }}
+                        />
+                      </div>
+                      <div className="w-10 text-right text-sm">{count}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Dashboard;

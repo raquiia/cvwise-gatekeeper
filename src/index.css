@@ -242,7 +242,7 @@
   .ai-button::before {
     @apply content-[''] absolute top-0 left-0 w-full h-full 
       bg-gradient-to-r from-white/0 via-white/20 to-white/0 
-      transform -translate-x-full transition-transform duration-800;
+      transform -translate-x-full transition-transform duration-700;
   }
   
   .ai-button:hover::before {
