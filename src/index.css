@@ -148,4 +148,104 @@
   .input-field {
     @apply py-2 px-4 border border-navy/10 hover:border-navy/20 focus:border-navy/30 rounded-md w-full bg-white/90 shadow-sm focus:shadow outline-none transition-all duration-300;
   }
+  
+  /* New AI-style utilities */
+  .ai-glass {
+    @apply backdrop-blur-xl bg-white/40 border border-white/30 shadow-md;
+  }
+  
+  .ai-gradient-bg {
+    @apply bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10;
+  }
+  
+  .ai-gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600;
+  }
+  
+  .ai-grid-bg {
+    @apply bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM5MDMzQUIiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PHBhdGggZD0iTTAgMGg2MHY2MEgweiIvPjwvZz48L2c+PC9zdmc+')];
+  }
+  
+  .ai-pulse {
+    animation: ai-pulse 3s infinite;
+  }
+  
+  @keyframes ai-pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+  
+  .ai-float {
+    animation: ai-float 6s ease-in-out infinite;
+  }
+  
+  @keyframes ai-float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  
+  .ai-glow {
+    filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.3));
+  }
+  
+  .ai-rotate {
+    animation: ai-rotate 20s linear infinite;
+  }
+  
+  @keyframes ai-rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  .ai-card {
+    @apply ai-glass rounded-xl relative overflow-hidden transition-all duration-500;
+  }
+  
+  .ai-card-accent {
+    @apply absolute -z-10 w-40 h-40 rounded-full blur-3xl opacity-20;
+  }
+  
+  .ai-card-accent-1 {
+    @apply bg-indigo-500 top-0 right-0;
+  }
+  
+  .ai-card-accent-2 {
+    @apply bg-purple-500 bottom-0 left-0;
+  }
+  
+  .ai-input {
+    @apply py-3 px-4 border border-purple-200/50 hover:border-purple-300/70 focus:border-purple-500/70 
+      rounded-xl w-full bg-white/60 backdrop-blur-sm shadow-sm focus:shadow-md 
+      outline-none transition-all duration-300;
+  }
+  
+  .ai-button {
+    @apply relative overflow-hidden rounded-xl py-2.5 px-4 font-medium transition-all duration-300
+      bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md 
+      hover:shadow-lg hover:scale-[1.02] active:scale-[0.98];
+  }
+  
+  .ai-button::before {
+    @apply content-[''] absolute top-0 left-0 w-full h-full 
+      bg-gradient-to-r from-white/0 via-white/20 to-white/0 
+      transform -translate-x-full transition-transform duration-800;
+  }
+  
+  .ai-button:hover::before {
+    @apply translate-x-full;
+  }
 }
