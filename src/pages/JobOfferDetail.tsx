@@ -39,7 +39,7 @@ const JobOfferDetail = () => {
   
   if (loading) {
     return (
-      <Layout className="py-8 bg-sand/30">
+      <Layout className="py-8 bg-gradient-to-br from-purple-50/50 to-white dark:from-navy-dark/90 dark:to-navy-dark">
         <LoadingState />
       </Layout>
     );
@@ -47,14 +47,14 @@ const JobOfferDetail = () => {
   
   if (error || !jobOffer) {
     return (
-      <Layout className="py-8 bg-sand/30">
+      <Layout className="py-8 bg-gradient-to-br from-purple-50/50 to-white dark:from-navy-dark/90 dark:to-navy-dark">
         <ErrorState error={error} onBackClick={() => navigate('/job-offers')} />
       </Layout>
     );
   }
   
   return (
-    <Layout className="py-8 bg-sand/30">
+    <Layout className="py-8 bg-gradient-to-br from-purple-50/50 to-white dark:from-navy-dark/90 dark:to-navy-dark">
       <div className="container mx-auto px-4">
         <JobOfferHeader 
           jobOffer={jobOffer}
