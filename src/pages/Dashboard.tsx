@@ -83,7 +83,8 @@ const Dashboard = () => {
   const candidatesWithEducation = candidates.filter(c => c.education && c.education.length > 0).length;
   const candidatesWithExperience = candidates.filter(c => c.experiences && c.experiences.length > 0).length;
   
-  const educationLevels = candidates
+  // Fix TypeScript errors by properly typing the education levels and sectors objects
+  const educationLevels: Record<string, number> = candidates
     .map(extractEducationLevel)
     .filter(Boolean)
     .reduce((acc: Record<string, number>, level) => {
@@ -93,7 +94,7 @@ const Dashboard = () => {
       return acc;
     }, {});
   
-  const sectors = candidates
+  const sectors: Record<string, number> = candidates
     .map(extractSector)
     .filter(Boolean)
     .reduce((acc: Record<string, number>, sector) => {
