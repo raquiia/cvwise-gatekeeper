@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, RefreshCw, Plus, Eye, Edit, Trash2, Briefcase, MapPin, Clock, Calendar, BarChart4 } from 'lucide-react';
+import { Loader2, RefreshCw, Plus, Eye, Edit, Trash2, Briefcase, MapPin, Clock, Calendar, BarChart4, Building } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Layout from '@/components/Layout';
 import { jobOfferService } from '@/services/data/jobOfferService';
