@@ -215,8 +215,8 @@ const Dashboard = () => {
     
     const sortedExperiences = [...candidate.experiences].sort((a, b) => {
       // Convert string dates to numeric timestamps for comparison
-      const dateA = a.end_date ? new Date(a.end_date).getTime() : Date.now();
-      const dateB = b.end_date ? new Date(b.end_date).getTime() : Date.now();
+      const dateA = a.end_date ? new Date(a.end_date || "").getTime() : Date.now();
+      const dateB = b.end_date ? new Date(b.end_date || "").getTime() : Date.now();
       return dateB - dateA;
     });
     
