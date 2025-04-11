@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart3, Users, FileText, Search, CheckCircle, 
@@ -593,4 +594,52 @@ const Dashboard = () => {
                             </div>
                             <p className="text-lg font-medium text-purple-700 dark:text-purple-300">Aucun candidat trouvé</p>
                             <p className="text-sm text-muted-foreground mt-1">
-                              <Link to="/resumes/upload" className="text-purple-600 hover:
+                              <Link to="/resumes/upload" className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 underline">
+                                Importez des CV
+                              </Link> pour commencer à créer des profils de candidats
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
+          
+          <div>
+            {!usersLoading && (
+              <div className="animate-fade-in">
+                <Card className="border-purple-200/30 dark:border-purple-800/20 overflow-hidden shadow-xl bg-white/50 dark:bg-navy-dark/30 backdrop-blur-sm">
+                  <CardHeader className="p-5 border-b border-purple-100/50 dark:border-purple-900/30 backdrop-blur-sm bg-gradient-to-r from-white/80 to-purple-50/80 dark:from-navy-dark/90 dark:to-purple-950/30">
+                    <CardTitle className="text-lg font-semibold text-navy-dark dark:text-sand">Statistiques utilisateurs</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <UserStats 
+                      activeUsersCount={realUsers.length}
+                      pendingUsersCount={0}
+                      recentUsers={realUsers.slice(0, 3).map(user => ({
+                        id: user.id,
+                        email: user.email || '',
+                        first_name: user.profile?.first_name || user.first_name || '',
+                        last_name: user.profile?.last_name || user.last_name || '',
+                        created_at: user.created_at,
+                        last_sign_in_at: user.last_sign_in_at
+                      }))}
+                      formatDate={formatDate}
+                      companiesCount={topCandidatesCount}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default Dashboard;
+
