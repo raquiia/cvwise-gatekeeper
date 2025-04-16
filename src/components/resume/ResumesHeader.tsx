@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, Sparkles, FileUp, FileDigit, FileText } from 'lucide-react';
+import { Upload, Sparkles, FileDigit, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const ResumesHeader: React.FC = () => {
