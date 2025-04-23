@@ -20,6 +20,7 @@ import JobOfferDetail from "./pages/JobOfferDetail";
 import Admin from "./pages/Admin";
 import AllUsers from "./pages/AllUsers";
 import NotFound from "./pages/NotFound";
+import UseCases from "./pages/UseCases";
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -108,6 +109,9 @@ const App = () => (
           <AllUsers />
         </ProtectedRoute>
       } />
+
+      {/* Nouvelle route pour les use cases */}
+      <Route path="/usecases" element={<UseCases />} />
       
       <Route path="*" element={<NotFound />} />
     </Routes>
