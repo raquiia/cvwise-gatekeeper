@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +14,9 @@ const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signIn, user } = useAuth();
+
+  // Special admin email
+  const adminEmail = 'guillaume.aubry@migso-pcubed.com';
 
   // Redirect if already logged in
   useEffect(() => {
@@ -156,6 +158,17 @@ const Login = () => {
         <div className="mt-4 text-center">
           <Link to="/" className="text-sm text-muted-foreground hover:text-navy-dark">
             Retour à l'accueil
+          </Link>
+        </div>
+        
+        {/* Add admin account shortcut */}
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <Link 
+            to={`/register?email=${adminEmail}`}
+            className="flex items-center justify-center gap-2 text-sm text-navy font-medium hover:text-navy-dark"
+          >
+            <Shield size={14} />
+            Créer un compte administrateur
           </Link>
         </div>
       </div>

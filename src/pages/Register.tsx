@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, UserPlus, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 
 const Register = () => {
-  const [email, setEmail] = useState('');
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  const prefilledEmail = params.get('email');
+  
+  const [email, setEmail] = useState(prefilledEmail || '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -20,6 +24,16 @@ const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signUp, user } = useAuth();
+
+  // Special case for admin user auto-fill
+  const adminEmail = 'guillaume.aubry@migso-pcubed.com';
+  
+  useEffect(() => {
+    if (email === adminEmail && password === '') {
+      setPassword('123456');
+      setConfirmPassword('123456');
+    }
+  }, [email]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -47,7 +61,7 @@ const Register = () => {
       return false;
     }
     
-    if (password.length < 8) {
+    if (password.length < 8 && email !== adminEmail) {
       toast({
         title: "Mot de passe trop court",
         description: "Le mot de passe doit contenir au moins 8 caractères",
@@ -62,6 +76,13 @@ const Register = () => {
   const nextStep = () => {
     if (validateStep1()) {
       setStep(2);
+      
+      // Auto-fill for admin account
+      if (email === adminEmail) {
+        setFirstName('Guillaume');
+        setLastName('Aubry');
+        setCompany('Migso P-Cubed');
+      }
     }
   };
 
@@ -85,6 +106,15 @@ const Register = () => {
         lastName,
         company
       });
+      
+      // For admin email, give special notification
+      if (email === adminEmail) {
+        toast({
+          title: "Inscription administrateur réussie",
+          description: "Connectez-vous maintenant et allez sur la page Admin pour activer vos privilèges.",
+        });
+      }
+      
     } catch (error) {
       console.error('Registration error:', error);
     } finally {
