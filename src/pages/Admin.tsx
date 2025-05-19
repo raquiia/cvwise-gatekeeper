@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, Settings, Shield, Building, RefreshCw, 
   UserCheck, AlertTriangle
@@ -16,6 +15,9 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useUserData } from '@/hooks/useUserData';
 import { formatDate } from '@/utils/dateFormatter';
+import { useToast, Button, Alert, AlertTitle, AlertDescription, InfoIcon } from '@radix-ui/react-toast';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 
 // Admin components
 import PendingUsersList from '@/components/admin/PendingUsersList';
@@ -138,8 +140,56 @@ const systemActivitiesData = [
 ];
 
 const Admin = () => {
-  const [pendingUsers, setPendingUsers] = useState(pendingUsersData);
   const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const userEmail = user?.email || '';
+  const defaultAdminEmail = 'guillaume.aubry@migso-pcubed.com';
+  const isDefaultAdmin = userEmail === defaultAdminEmail;
+
+  useEffect(() => {
+    // Redirect if the user is not logged in
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+  }, [user, navigate]);
+
+  const activateAdminRights = async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('set-admin', {
+        method: 'POST',
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Succès",
+        description: "Vos privilèges administrateur ont été activés.",
+      });
+      
+      // Reload the page after a short delay to reflect the changes
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+      
+    } catch (err: any) {
+      toast({
+        title: "Erreur",
+        description: err.message || "Impossible d'activer les privilèges administrateur.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [pendingUsers, setPendingUsers] = useState(pendingUsersData);
   const { realUsers, loading } = useUserData();
   
   const handleApproveUser = (userId: number) => {
@@ -178,130 +228,183 @@ const Admin = () => {
     }));
   
   return (
-    <Layout className="py-8" isAdminPage>
+    <Layout className="py-8 bg-sand/30">
       <div className="container mx-auto px-4">
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-navy-dark dark:text-sand mb-2">Administration</h1>
-          <p className="text-muted-foreground">
-            Gérez les utilisateurs, les paramètres système et contrôlez l'accès à l'application
+          <h1 className="text-2xl font-bold text-navy-dark mb-4">Administration</h1>
+          <p className="text-muted-foreground mb-2">
+            Gérez les paramètres administratifs de votre espace CVwise.
           </p>
+          
+          {isDefaultAdmin && (
+            <Alert className="mb-4 bg-blue-50 border-blue-200">
+              <InfoIcon className="h-4 w-4 text-blue-500" />
+              <AlertTitle className="text-blue-700">Activation des privilèges administrateur</AlertTitle>
+              <AlertDescription className="text-blue-600">
+                <p className="mb-2">
+                  Votre email correspond à l'administrateur par défaut, mais vous devez activer vos privilèges administrateur.
+                </p>
+                <Button 
+                  onClick={activateAdminRights} 
+                  disabled={loading}
+                  variant="outline"
+                  className="bg-blue-100 hover:bg-blue-200"
+                >
+                  {loading ? "Activation en cours..." : "Activer mes privilèges administrateur"}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-1">
+              <UserStats 
+                activeUsersCount={realUsers.length}
+                pendingUsersCount={pendingUsers.length}
+                recentUsers={recentUsers}
+                formatDate={formatDate}
+                companiesCount={companiesCount}
+              />
+            </div>
+            
+            <div className="md:col-span-3 space-y-6">
+              <PendingUsersList 
+                pendingUsers={pendingUsers}
+                onApproveUser={handleApproveUser}
+                onRejectUser={handleRejectUser}
+              />
+              
+              <ActiveUsersList 
+                users={realUsers}
+                loading={loading}
+                currentUserId={user?.id}
+                formatDate={formatDate}
+              />
+              
+              <ExampleUsersList users={activeUsersData} />
+            </div>
+          </div>
         </div>
-        
-        <Tabs defaultValue="users" className="mb-8">
-          <TabsList className="mb-6 bg-background/80 dark:bg-muted/10">
-            <TabsTrigger 
-              value="users" 
-              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-            >
-              <Users size={16} />
-              Utilisateurs
-            </TabsTrigger>
-            <TabsTrigger 
-              value="settings" 
-              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-            >
-              <Settings size={16} />
-              Paramètres
-            </TabsTrigger>
-            <TabsTrigger 
-              value="system" 
-              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-            >
-              <Shield size={16} />
-              Système
-            </TabsTrigger>
-            <TabsTrigger 
-              value="companies" 
-              className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-            >
-              <Building size={16} />
-              Entreprises
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="users">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="md:col-span-1">
-                <UserStats 
-                  activeUsersCount={realUsers.length}
-                  pendingUsersCount={pendingUsers.length}
-                  recentUsers={recentUsers}
-                  formatDate={formatDate}
-                  companiesCount={companiesCount}
-                />
-              </div>
-              
-              <div className="md:col-span-3 space-y-6">
-                <PendingUsersList 
-                  pendingUsers={pendingUsers}
-                  onApproveUser={handleApproveUser}
-                  onRejectUser={handleRejectUser}
-                />
-                
-                <ActiveUsersList 
-                  users={realUsers}
-                  loading={loading}
-                  currentUserId={user?.id}
-                  formatDate={formatDate}
-                />
-                
-                <ExampleUsersList users={activeUsersData} />
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="settings">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2">
-                <AppSettings />
-              </div>
-              
-              <div>
-                <SystemActivities activities={systemActivitiesData} />
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="system">
-            <Card className="dark:border-border/10">
-              <CardHeader>
-                <CardTitle>Statut du système</CardTitle>
-                <CardDescription>
-                  Paramètres avancés et informations système
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="p-8 text-center">
-                    <p className="text-muted-foreground">
-                      Cette section est en cours de développement.
-                    </p>
-                  </div>
+
+        {/* Admin sections */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Tabs defaultValue="users" className="mb-8">
+            <TabsList className="mb-6 bg-background/80 dark:bg-muted/10">
+              <TabsTrigger 
+                value="users" 
+                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+              >
+                <Users size={16} />
+                Utilisateurs
+              </TabsTrigger>
+              <TabsTrigger 
+                value="settings" 
+                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+              >
+                <Settings size={16} />
+                Paramètres
+              </TabsTrigger>
+              <TabsTrigger 
+                value="system" 
+                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+              >
+                <Shield size={16} />
+                Système
+              </TabsTrigger>
+              <TabsTrigger 
+                value="companies" 
+                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+              >
+                <Building size={16} />
+                Entreprises
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="users">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="md:col-span-1">
+                  <UserStats 
+                    activeUsersCount={realUsers.length}
+                    pendingUsersCount={pendingUsers.length}
+                    recentUsers={recentUsers}
+                    formatDate={formatDate}
+                    companiesCount={companiesCount}
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="companies">
-            <Card className="dark:border-border/10">
-              <CardHeader>
-                <CardTitle>Gestion des entreprises</CardTitle>
-                <CardDescription>
-                  Ajoutez, modifiez ou supprimez des entreprises
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="p-8 text-center">
-                    <p className="text-muted-foreground">
-                      Cette section est en cours de développement.
-                    </p>
-                  </div>
+                
+                <div className="md:col-span-3 space-y-6">
+                  <PendingUsersList 
+                    pendingUsers={pendingUsers}
+                    onApproveUser={handleApproveUser}
+                    onRejectUser={handleRejectUser}
+                  />
+                  
+                  <ActiveUsersList 
+                    users={realUsers}
+                    loading={loading}
+                    currentUserId={user?.id}
+                    formatDate={formatDate}
+                  />
+                  
+                  <ExampleUsersList users={activeUsersData} />
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="settings">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2">
+                  <AppSettings />
+                </div>
+                
+                <div>
+                  <SystemActivities activities={systemActivitiesData} />
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="system">
+              <Card className="dark:border-border/10">
+                <CardHeader>
+                  <CardTitle>Statut du système</CardTitle>
+                  <CardDescription>
+                    Paramètres avancés et informations système
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="p-8 text-center">
+                      <p className="text-muted-foreground">
+                        Cette section est en cours de développement.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="companies">
+              <Card className="dark:border-border/10">
+                <CardHeader>
+                  <CardTitle>Gestion des entreprises</CardTitle>
+                  <CardDescription>
+                    Ajoutez, modifiez ou supprimez des entreprises
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="p-8 text-center">
+                      <p className="text-muted-foreground">
+                        Cette section est en cours de développement.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </Layout>
   );
