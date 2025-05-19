@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Settings, Shield, Building, RefreshCw, 
-  UserCheck, AlertTriangle
+  UserCheck, AlertTriangle, Info as InfoIcon
 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,9 +16,11 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useUserData } from '@/hooks/useUserData';
 import { formatDate } from '@/utils/dateFormatter';
-import { useToast, Button, Alert, AlertTitle, AlertDescription, InfoIcon } from '@radix-ui/react-toast';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 // Admin components
 import PendingUsersList from '@/components/admin/PendingUsersList';
@@ -143,7 +146,7 @@ const Admin = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+  const [activationLoading, setActivationLoading] = useState(false);
   const userEmail = user?.email || '';
   const defaultAdminEmail = 'guillaume.aubry@migso-pcubed.com';
   const isDefaultAdmin = userEmail === defaultAdminEmail;
@@ -158,7 +161,7 @@ const Admin = () => {
 
   const activateAdminRights = async () => {
     try {
-      setLoading(true);
+      setActivationLoading(true);
       
       const { data, error } = await supabase.functions.invoke('set-admin', {
         method: 'POST',
@@ -185,12 +188,12 @@ const Admin = () => {
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setActivationLoading(false);
     }
   };
 
   const [pendingUsers, setPendingUsers] = useState(pendingUsersData);
-  const { realUsers, loading } = useUserData();
+  const { realUsers, loading: usersLoading } = useUserData();
   
   const handleApproveUser = (userId: number) => {
     const userToApprove = pendingUsers.find(user => user.id === userId);
@@ -247,11 +250,11 @@ const Admin = () => {
                 </p>
                 <Button 
                   onClick={activateAdminRights} 
-                  disabled={loading}
+                  disabled={activationLoading}
                   variant="outline"
                   className="bg-blue-100 hover:bg-blue-200"
                 >
-                  {loading ? "Activation en cours..." : "Activer mes privilèges administrateur"}
+                  {activationLoading ? "Activation en cours..." : "Activer mes privilèges administrateur"}
                 </Button>
               </AlertDescription>
             </Alert>
@@ -277,7 +280,7 @@ const Admin = () => {
               
               <ActiveUsersList 
                 users={realUsers}
-                loading={loading}
+                loading={usersLoading}
                 currentUserId={user?.id}
                 formatDate={formatDate}
               />
@@ -342,7 +345,7 @@ const Admin = () => {
                   
                   <ActiveUsersList 
                     users={realUsers}
-                    loading={loading}
+                    loading={usersLoading}
                     currentUserId={user?.id}
                     formatDate={formatDate}
                   />
