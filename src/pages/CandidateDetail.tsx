@@ -134,10 +134,11 @@ const CandidateDetail = () => {
 
   const handleStatusChange = (newStatus: string) => {
     if (candidate) {
-      setCandidate({
-        ...candidate,
+      // Utilisation de la fonction de mise à jour qui accepte un état précédent
+      setCandidate(prevCandidate => ({
+        ...prevCandidate!,
         detailed_status: newStatus
-      });
+      }));
     }
   };
 
