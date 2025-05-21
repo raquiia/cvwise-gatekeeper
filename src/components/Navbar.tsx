@@ -10,7 +10,8 @@ import {
   FileText,
   BarChart,
   Users,
-  Briefcase
+  Briefcase,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -24,7 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const Navbar = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const location = useLocation();
   const isMobile = useIsMobile();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -73,6 +74,11 @@ const Navbar = () => {
                 <NavLink href="/job-offers" icon={Briefcase}>
                   Offres d'emploi
                 </NavLink>
+                {isAdmin && (
+                  <NavLink href="/admin" icon={ShieldCheck}>
+                    Administration
+                  </NavLink>
+                )}
               </>
             ) : (
               <>
@@ -104,6 +110,14 @@ const Navbar = () => {
                           <span>Profile</span>
                         </Link>
                       </DropdownMenuItem>
+                      {isAdmin && (
+                        <DropdownMenuItem asChild>
+                          <Link to="/admin">
+                            <ShieldCheck className="mr-2 h-4 w-4" />
+                            <span>Administration</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem asChild onClick={signOut}>
                         <button className="w-full flex items-center">
                           <LogOut className="mr-2 h-4 w-4" />
@@ -169,6 +183,11 @@ const Navbar = () => {
               <NavLink href="/job-offers" icon={Briefcase}>
                 Offres d'emploi
               </NavLink>
+              {isAdmin && (
+                <NavLink href="/admin" icon={ShieldCheck}>
+                  Administration
+                </NavLink>
+              )}
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
