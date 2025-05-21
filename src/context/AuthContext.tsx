@@ -12,6 +12,7 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, userData: any) => Promise<void>;
   signOut: () => Promise<void>;
+  isAdmin: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,15 +21,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Check if user is admin based on profile or email
+  const checkAdminStatus = async (user: User | null) => {
+    if (!user) return false;
+    
+    try {
+      // Check if user has admin role in profiles
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.is_admin === true) {
+        return true;
+      }
+      
+      // Owner of platform should always have admin access regardless of profile status
+      const userEmail = user.email?.toLowerCase();
+      if (userEmail) {
+        // Add any email that should always have admin access
+        const adminEmails = ['guillaume.aubry@migso-pcubed.com'];
+        return adminEmails.includes(userEmail);
+      }
+      
+      return false;
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         console.log('Auth state changed:', event);
         setSession(session);
         setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Check admin status when user is signed in
+          const adminStatus = await checkAdminStatus(session.user);
+          setIsAdmin(adminStatus);
+        }
         
         if (event === 'SIGNED_IN') {
           toast({
@@ -50,9 +89,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        // Check admin status on initial load
+        const adminStatus = await checkAdminStatus(session.user);
+        setIsAdmin(adminStatus);
+      }
+      
       setLoading(false);
     });
 
@@ -124,7 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

@@ -29,7 +29,7 @@ import UserStats from '@/components/admin/UserStats';
 import SystemActivities from '@/components/admin/SystemActivities';
 import AppSettings from '@/components/admin/AppSettings';
 
-// Mock data
+// Mock data for pending users
 const pendingUsersData = [
   {
     id: 1,
@@ -60,6 +60,7 @@ const pendingUsersData = [
   }
 ];
 
+// Mock data for active users
 const activeUsersData = [
   {
     id: 101,
@@ -103,6 +104,7 @@ const activeUsersData = [
   }
 ];
 
+// Mock data for system activities
 const systemActivitiesData = [
   {
     id: 1,
@@ -142,21 +144,22 @@ const systemActivitiesData = [
 ];
 
 const Admin = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [activationLoading, setActivationLoading] = useState(false);
   const userEmail = user?.email || '';
   const defaultAdminEmail = 'guillaume.aubry@migso-pcubed.com';
-  const isDefaultAdmin = userEmail === defaultAdminEmail;
+  const isDefaultAdmin = userEmail.toLowerCase() === defaultAdminEmail.toLowerCase();
 
+  // Clear previous useEffect that was redirecting users
   useEffect(() => {
-    // Redirect if the user is not logged in
+    // Just ensure the user is logged in
     if (!user) {
       navigate('/login');
       return;
     }
-    // No additional redirects here - we want the admin page to be accessible
+    // No additional redirects - allow access to the admin page
   }, [user, navigate]);
 
   const activateAdminRights = async () => {
@@ -240,13 +243,13 @@ const Admin = () => {
             Gérez les paramètres administratifs de votre espace CVwise.
           </p>
           
-          {isDefaultAdmin && (
+          {!isAdmin && (
             <Alert className="mb-4 bg-blue-50 border-blue-200">
               <InfoIcon className="h-4 w-4 text-blue-500" />
               <AlertTitle className="text-blue-700">Activation des privilèges administrateur</AlertTitle>
               <AlertDescription className="text-blue-600">
                 <p className="mb-2">
-                  Votre email correspond à l'administrateur par défaut, mais vous devez activer vos privilèges administrateur.
+                  Vous n'avez pas encore les privilèges administrateur. Veuillez les activer pour accéder à toutes les fonctionnalités.
                 </p>
                 <Button 
                   onClick={activateAdminRights} 

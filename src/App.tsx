@@ -37,6 +37,23 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Admin route component
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading, isAdmin } = useAuth();
+  
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Chargement...</div>;
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  // Always allow access to Admin pages for all authenticated users
+  // Admin functionality will be controlled inside the Admin component
+  return <>{children}</>;
+};
+
 const App = () => (
   <TooltipProvider>
     <Routes>
@@ -77,7 +94,7 @@ const App = () => (
         </ProtectedRoute>
       } />
       
-      {/* Nouvelles routes pour les offres d'emploi */}
+      {/* Job offer routes */}
       <Route path="/job-offers" element={
         <ProtectedRoute>
           <JobOffers />
@@ -99,18 +116,19 @@ const App = () => (
         </ProtectedRoute>
       } />
       
+      {/* Admin routes - always accessible for authenticated users */}
       <Route path="/admin" element={
-        <ProtectedRoute>
+        <AdminRoute>
           <Admin />
-        </ProtectedRoute>
+        </AdminRoute>
       } />
       <Route path="/admin/users" element={
-        <ProtectedRoute>
+        <AdminRoute>
           <AllUsers />
-        </ProtectedRoute>
+        </AdminRoute>
       } />
 
-      {/* Nouvelle route pour les use cases */}
+      {/* Public routes */}
       <Route path="/usecases" element={<UseCases />} />
       
       <Route path="*" element={<NotFound />} />
