@@ -157,6 +157,7 @@ const Admin = () => {
       navigate('/login');
       return;
     }
+    // Suppression de la redirection basée sur l'état admin pour permettre l'accès à la page
   }, [user, navigate]);
 
   const activateAdminRights = async () => {
@@ -193,7 +194,7 @@ const Admin = () => {
   };
 
   const [pendingUsers, setPendingUsers] = useState(pendingUsersData);
-  const { realUsers, loading: usersLoading } = useUserData();
+  const { realUsers, loading: usersDataLoading } = useUserData();
   
   const handleApproveUser = (userId: number) => {
     const userToApprove = pendingUsers.find(user => user.id === userId);
@@ -280,7 +281,7 @@ const Admin = () => {
               
               <ActiveUsersList 
                 users={realUsers}
-                loading={usersLoading}
+                loading={usersDataLoading}
                 currentUserId={user?.id}
                 formatDate={formatDate}
               />
@@ -345,7 +346,7 @@ const Admin = () => {
                   
                   <ActiveUsersList 
                     users={realUsers}
-                    loading={usersLoading}
+                    loading={usersDataLoading}
                     currentUserId={user?.id}
                     formatDate={formatDate}
                   />
