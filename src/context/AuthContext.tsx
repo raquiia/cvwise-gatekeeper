@@ -57,56 +57,90 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    let mounted = true;
+    
+    // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event, newSession) => {
         console.log('Auth state changed:', event);
-        setSession(session);
-        setUser(session?.user ?? null);
         
-        if (session?.user) {
+        if (!mounted) return;
+        
+        if (newSession) {
+          setSession(newSession);
+          setUser(newSession.user);
+          
           // Check admin status when user is signed in
-          const adminStatus = await checkAdminStatus(session.user);
+          const adminStatus = await checkAdminStatus(newSession.user);
           setIsAdmin(adminStatus);
-        }
-        
-        if (event === 'SIGNED_IN') {
-          toast({
-            title: "Connexion réussie",
-            description: "Bienvenue sur CVwise",
-          });
-          // Don't force navigation to dashboard if user is trying to access admin
-          const currentPath = window.location.pathname;
-          if (currentPath !== '/admin') {
-            navigate('/dashboard');
+          
+          // Only show toast for SIGNED_IN event to prevent multiple toasts
+          if (event === 'SIGNED_IN') {
+            toast({
+              title: "Connexion réussie",
+              description: "Bienvenue sur CVwise",
+            });
+            
+            // Navigate to dashboard if not already there or on admin page
+            const currentPath = window.location.pathname;
+            if (currentPath !== '/admin' && currentPath !== '/dashboard') {
+              navigate('/dashboard');
+            }
           }
         } else if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
+          setIsAdmin(false);
+          
           toast({
             title: "Déconnexion réussie",
             description: "À bientôt !",
           });
           navigate('/');
         }
+        
+        // Always ensure loading is set to false after auth state change is processed
+        setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        // Check admin status on initial load
-        const adminStatus = await checkAdminStatus(session.user);
-        setIsAdmin(adminStatus);
+    // Check for existing session
+    const checkSession = async () => {
+      try {
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
+        
+        if (currentSession) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+          
+          // Check admin status on initial load
+          const adminStatus = await checkAdminStatus(currentSession.user);
+          setIsAdmin(adminStatus);
+        }
+        
+        // Always set loading to false, even if there's no session
+        setLoading(false);
+      } catch (error) {
+        console.error('Error checking session:', error);
+        if (mounted) {
+          setLoading(false);
+        }
       }
-      
-      setLoading(false);
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    checkSession();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [toast, navigate]);
 
   const signIn = async (email: string, password: string) => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       
       if (error) {
@@ -115,15 +149,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: error.message,
           variant: "destructive",
         });
+        setLoading(false);
         throw error;
       }
+      // Loading state will be cleared by the onAuthStateChange listener
     } catch (error: any) {
       console.error('Error signing in:', error);
+      setLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, userData: any) => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -142,6 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: error.message,
           variant: "destructive",
         });
+        setLoading(false);
         throw error;
       }
       
@@ -151,14 +190,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       navigate('/registration-pending');
+      setLoading(false);
     } catch (error: any) {
       console.error('Error signing up:', error);
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
     try {
+      setLoading(true);
       await supabase.auth.signOut();
+      // Loading state will be cleared by the onAuthStateChange listener
     } catch (error: any) {
       console.error('Error signing out:', error);
       toast({
@@ -166,6 +209,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: error.message,
         variant: "destructive",
       });
+      setLoading(false);
     }
   };
 
