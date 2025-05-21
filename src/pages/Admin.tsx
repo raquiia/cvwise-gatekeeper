@@ -30,7 +30,7 @@ import SystemActivities from '@/components/admin/SystemActivities';
 import AppSettings from '@/components/admin/AppSettings';
 import UserManagement from '@/components/admin/UserManagement';
 
-// Mock data for pending users
+// Mock data pour les utilisateurs en attente
 const pendingUsersData = [
   {
     id: 1,
@@ -61,7 +61,7 @@ const pendingUsersData = [
   }
 ];
 
-// Mock data for active users
+// Mock data pour les utilisateurs actifs
 const activeUsersData = [
   {
     id: 101,
@@ -105,7 +105,7 @@ const activeUsersData = [
   }
 ];
 
-// Mock data for system activities
+// Mock data pour les activités système
 const systemActivitiesData = [
   {
     id: 1,
@@ -153,14 +153,12 @@ const Admin = () => {
   const defaultAdminEmail = 'guillaume.aubry@migso-pcubed.com';
   const isDefaultAdmin = userEmail.toLowerCase() === defaultAdminEmail.toLowerCase();
 
-  // Clear previous useEffect that was redirecting users
+  // Redirection si l'utilisateur n'est pas connecté
   useEffect(() => {
-    // Just ensure the user is logged in
     if (!user) {
       navigate('/login');
       return;
     }
-    // No additional redirects - allow access to the admin page
   }, [user, navigate]);
 
   const activateAdminRights = async () => {
@@ -180,7 +178,7 @@ const Admin = () => {
         description: "Vos privilèges administrateur ont été activés.",
       });
       
-      // Reload the page after a short delay to reflect the changes
+      // Rafraîchir la page après un court délai pour refléter les changements
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -210,7 +208,7 @@ const Admin = () => {
     setPendingUsers(prev => prev.filter(user => user.id !== userId));
   };
   
-  // Extract unique companies count from real users
+  // Extraction du nombre d'entreprises uniques
   const uniqueCompanies = new Set(
     realUsers
       .filter(user => user.profile?.company || user.company)
@@ -263,77 +261,54 @@ const Admin = () => {
               </AlertDescription>
             </Alert>
           )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-1">
-              <UserStats 
-                activeUsersCount={realUsers.length}
-                pendingUsersCount={pendingUsers.length}
-                recentUsers={recentUsers}
-                formatDate={formatDate}
-                companiesCount={companiesCount}
-              />
-            </div>
-            
-            <div className="md:col-span-3 space-y-6">
-              <PendingUsersList 
-                pendingUsers={pendingUsers}
-                onApproveUser={handleApproveUser}
-                onRejectUser={handleRejectUser}
-              />
-              
-              <ActiveUsersList 
-                users={realUsers}
-                loading={usersDataLoading}
-                currentUserId={user?.id}
-                formatDate={formatDate}
-              />
-              
-              <ExampleUsersList users={activeUsersData} />
-            </div>
-          </div>
         </div>
 
-        {/* Admin sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Tabs defaultValue="users" className="mb-8">
-            <TabsList className="mb-6 bg-background/80 dark:bg-muted/10">
-              <TabsTrigger 
-                value="users" 
-                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-              >
-                <Users size={16} />
-                Utilisateurs
-              </TabsTrigger>
+        {/* Interface principale d'administration */}
+        {isAdmin && (
+          <Tabs defaultValue="create-user" className="mb-8">
+            <TabsList className="mb-6 bg-background/80 dark:bg-muted/10 w-full flex overflow-x-auto">
               <TabsTrigger 
                 value="create-user" 
-                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+                className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
               >
                 <UserPlus size={16} />
                 Créer un utilisateur
               </TabsTrigger>
               <TabsTrigger 
+                value="users" 
+                className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+              >
+                <Users size={16} />
+                Liste des utilisateurs
+              </TabsTrigger>
+              <TabsTrigger 
                 value="settings" 
-                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+                className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
               >
                 <Settings size={16} />
                 Paramètres
               </TabsTrigger>
               <TabsTrigger 
                 value="system" 
-                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+                className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
               >
                 <Shield size={16} />
                 Système
               </TabsTrigger>
               <TabsTrigger 
                 value="companies" 
-                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+                className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
               >
                 <Building size={16} />
                 Entreprises
               </TabsTrigger>
             </TabsList>
+            
+            <TabsContent value="create-user" className="mt-4">
+              <div className="max-w-2xl mx-auto">
+                <UserManagement />
+              </div>
+            </TabsContent>
             
             <TabsContent value="users">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -360,24 +335,8 @@ const Admin = () => {
                     currentUserId={user?.id}
                     formatDate={formatDate}
                   />
-                  
-                  <ExampleUsersList users={activeUsersData} />
                 </div>
               </div>
-            </TabsContent>
-            
-            <TabsContent value="create-user">
-              {isAdmin ? (
-                <UserManagement />
-              ) : (
-                <Alert className="bg-blue-50 border-blue-200">
-                  <InfoIcon className="h-4 w-4 text-blue-500" />
-                  <AlertTitle className="text-blue-700">Privilèges requis</AlertTitle>
-                  <AlertDescription className="text-blue-600">
-                    Vous devez activer les privilèges administrateur pour pouvoir créer de nouveaux utilisateurs.
-                  </AlertDescription>
-                </Alert>
-              )}
             </TabsContent>
             
             <TabsContent value="settings">
@@ -432,7 +391,25 @@ const Admin = () => {
               </Card>
             </TabsContent>
           </Tabs>
-        </div>
+        )}
+        
+        {/* Section affichée pour les non-admins ou en attente d'activation des droits */}
+        {!isAdmin && (
+          <div className="text-center p-8 bg-white dark:bg-navy-dark/20 rounded-lg shadow-sm">
+            <Shield size={48} className="mx-auto mb-4 text-navy-dark opacity-50" />
+            <h2 className="text-xl font-semibold mb-2">Accès restreint</h2>
+            <p className="text-muted-foreground mb-4">
+              L'accès complet au panneau d'administration nécessite des privilèges administrateur.
+            </p>
+            <Button 
+              onClick={activateAdminRights} 
+              disabled={activationLoading}
+              className="bg-navy-dark text-white hover:bg-navy"
+            >
+              {activationLoading ? "Activation en cours..." : "Activer mes privilèges administrateur"}
+            </Button>
+          </div>
+        )}
       </div>
     </Layout>
   );
