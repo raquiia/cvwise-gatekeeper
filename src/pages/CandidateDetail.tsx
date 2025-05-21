@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -16,9 +15,12 @@ import ProfileTab from '@/components/candidates/detail/ProfileTab';
 import ExperienceTab from '@/components/candidates/detail/ExperienceTab';
 import EducationTab from '@/components/candidates/detail/EducationTab';
 import DetailsTab from '@/components/candidates/detail/DetailsTab';
+import NotesTab from '@/components/candidates/detail/NotesTab';
 import CandidateLoading from '@/components/candidates/detail/CandidateLoading';
 import CandidateError from '@/components/candidates/detail/CandidateError';
 import DataMissingAlert from '@/components/candidates/detail/DataMissingAlert';
+import StatusSelector from '@/components/candidates/detail/StatusSelector';
+import ExportProfileButton from '@/components/candidates/detail/ExportProfileButton';
 
 const CandidateDetail = () => {
   const { candidateId } = useParams<{ candidateId: string }>();
@@ -130,6 +132,15 @@ const CandidateDetail = () => {
     });
   };
 
+  const handleStatusChange = (newStatus: string) => {
+    if (candidate) {
+      setCandidate({
+        ...candidate,
+        detailed_status: newStatus
+      });
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -173,6 +184,11 @@ const CandidateDetail = () => {
             </div>
             
             <div className="flex gap-2 mt-4 md:mt-0">
+              <StatusSelector 
+                candidateId={candidate.id || ''} 
+                onStatusChange={handleStatusChange} 
+              />
+              
               <Button 
                 variant="outline"
                 onClick={() => navigate(`/candidates/${candidateId}/job-match`)}
@@ -181,6 +197,7 @@ const CandidateDetail = () => {
                 <Briefcase size={16} className="mr-2 group-hover:scale-110 transition-transform duration-300" />
                 <span>Match d'emploi</span>
               </Button>
+              
               <Button 
                 variant="outline" 
                 onClick={() => toast({
@@ -192,12 +209,8 @@ const CandidateDetail = () => {
                 <Edit size={16} className="mr-2 group-hover:scale-110 transition-transform duration-300" />
                 <span>Éditer</span>
               </Button>
-              <Button 
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md transition-all duration-300 hover:shadow-lg border-0 group"
-              >
-                <FileText size={16} className="mr-2 group-hover:scale-110 transition-transform duration-300" />
-                <span>Voir le CV</span>
-              </Button>
+              
+              <ExportProfileButton candidate={candidate} />
             </div>
           </div>
         </div>
@@ -233,6 +246,12 @@ const CandidateDetail = () => {
                 Formation
               </TabsTrigger>
               <TabsTrigger 
+                value="notes" 
+                className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
+              >
+                Notes
+              </TabsTrigger>
+              <TabsTrigger 
                 value="details" 
                 className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
               >
@@ -266,6 +285,14 @@ const CandidateDetail = () => {
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
                 <EducationTab candidate={candidate} />
+              </TabsContent>
+              
+              <TabsContent 
+                value="notes"
+                className="animate-fade-in rounded-xl relative overflow-hidden bg-white/70 backdrop-blur-sm border border-navy/10 shadow-md"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
+                <NotesTab candidate={candidate} />
               </TabsContent>
               
               <TabsContent 

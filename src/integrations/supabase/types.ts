@@ -66,6 +66,44 @@ export type Database = {
           },
         ]
       }
+      candidate_notes: {
+        Row: {
+          candidate_id: string
+          content: string
+          created_at: string
+          enhanced_content: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          candidate_id: string
+          content: string
+          created_at?: string
+          enhanced_content?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          candidate_id?: string
+          content?: string
+          created_at?: string
+          enhanced_content?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_notes_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidates: {
         Row: {
           availability: string | null
@@ -75,6 +113,7 @@ export type Database = {
           continuous_training: Json | null
           contract_type: string | null
           created_at: string | null
+          detailed_status: string | null
           education: Json | null
           email: string | null
           experiences: Json | null
@@ -116,6 +155,7 @@ export type Database = {
           continuous_training?: Json | null
           contract_type?: string | null
           created_at?: string | null
+          detailed_status?: string | null
           education?: Json | null
           email?: string | null
           experiences?: Json | null
@@ -157,6 +197,7 @@ export type Database = {
           continuous_training?: Json | null
           contract_type?: string | null
           created_at?: string | null
+          detailed_status?: string | null
           education?: Json | null
           email?: string | null
           experiences?: Json | null
@@ -510,6 +551,7 @@ export type Database = {
           continuous_training: Json | null
           contract_type: string | null
           created_at: string | null
+          detailed_status: string | null
           education: Json | null
           email: string | null
           experiences: Json | null
