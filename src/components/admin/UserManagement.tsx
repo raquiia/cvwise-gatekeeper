@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { UsersPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import CreateUserForm from './CreateUserForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -9,7 +9,7 @@ const UserManagement = () => {
     <Card className="dark:border-border/10">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <UsersPlus size={20} className="text-navy-dark" />
+          <UserPlus size={20} className="text-navy-dark" />
           Créer un nouvel utilisateur
         </CardTitle>
         <CardDescription>
