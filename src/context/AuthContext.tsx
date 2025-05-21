@@ -57,22 +57,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    console.log('AuthContext initializing...');
     let mounted = true;
     
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
+      (event, newSession) => {
         console.log('Auth state changed:', event);
         
         if (!mounted) return;
         
         if (newSession) {
+          // Update state synchronously
           setSession(newSession);
           setUser(newSession.user);
           
-          // Check admin status when user is signed in
-          const adminStatus = await checkAdminStatus(newSession.user);
-          setIsAdmin(adminStatus);
+          // Check admin status asynchronously
+          setTimeout(async () => {
+            if (!mounted) return;
+            const adminStatus = await checkAdminStatus(newSession.user);
+            setIsAdmin(adminStatus);
+          }, 0);
           
           // Only show toast for SIGNED_IN event to prevent multiple toasts
           if (event === 'SIGNED_IN') {
@@ -101,20 +106,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for existing session
     const checkSession = async () => {
       try {
+        console.log('Checking for existing session...');
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         if (!mounted) return;
         
         if (currentSession) {
+          // Update state synchronously
           setSession(currentSession);
           setUser(currentSession.user);
           
-          // Check admin status on initial load
-          const adminStatus = await checkAdminStatus(currentSession.user);
-          setIsAdmin(adminStatus);
+          // Check admin status asynchronously
+          setTimeout(async () => {
+            if (!mounted) return;
+            const adminStatus = await checkAdminStatus(currentSession.user);
+            setIsAdmin(adminStatus);
+          }, 0);
         }
         
         // Always set loading to false, even if there's no session
+        console.log('Setting loading to false');
         setLoading(false);
       } catch (error) {
         console.error('Error checking session:', error);
