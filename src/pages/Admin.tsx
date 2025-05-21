@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Settings, Shield, Building, RefreshCw, 
-  UserCheck, AlertTriangle, Info as InfoIcon
+  UserCheck, AlertTriangle, Info as InfoIcon, UserPlus
 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -28,6 +28,7 @@ import ExampleUsersList from '@/components/admin/ExampleUsersList';
 import UserStats from '@/components/admin/UserStats';
 import SystemActivities from '@/components/admin/SystemActivities';
 import AppSettings from '@/components/admin/AppSettings';
+import UserManagement from '@/components/admin/UserManagement';
 
 // Mock data for pending users
 const pendingUsersData = [
@@ -305,6 +306,13 @@ const Admin = () => {
                 Utilisateurs
               </TabsTrigger>
               <TabsTrigger 
+                value="create-user" 
+                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+              >
+                <UserPlus size={16} />
+                Créer un utilisateur
+              </TabsTrigger>
+              <TabsTrigger 
                 value="settings" 
                 className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
               >
@@ -356,6 +364,20 @@ const Admin = () => {
                   <ExampleUsersList users={activeUsersData} />
                 </div>
               </div>
+            </TabsContent>
+            
+            <TabsContent value="create-user">
+              {isAdmin ? (
+                <UserManagement />
+              ) : (
+                <Alert className="bg-blue-50 border-blue-200">
+                  <InfoIcon className="h-4 w-4 text-blue-500" />
+                  <AlertTitle className="text-blue-700">Privilèges requis</AlertTitle>
+                  <AlertDescription className="text-blue-600">
+                    Vous devez activer les privilèges administrateur pour pouvoir créer de nouveaux utilisateurs.
+                  </AlertDescription>
+                </Alert>
+              )}
             </TabsContent>
             
             <TabsContent value="settings">
