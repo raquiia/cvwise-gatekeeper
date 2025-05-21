@@ -7,10 +7,13 @@ import 'jspdf-autotable';
 import { toast } from '@/hooks/use-toast';
 import autoTable from 'jspdf-autotable';
 
-// Extend the jsPDF type to include autoTable
+// Extend the jsPDF type to include autoTable and previousAutoTable
 declare module 'jspdf' {
   interface jsPDF {
     autoTable: typeof autoTable;
+    previousAutoTable?: {
+      finalY: number;
+    };
   }
 }
 
