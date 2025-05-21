@@ -145,13 +145,11 @@ const systemActivitiesData = [
 ];
 
 const Admin = () => {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [activationLoading, setActivationLoading] = useState(false);
-  const userEmail = user?.email || '';
-  const defaultAdminEmail = 'guillaume.aubry@migso-pcubed.com';
-  const isDefaultAdmin = userEmail.toLowerCase() === defaultAdminEmail.toLowerCase();
+  const [pendingUsers, setPendingUsers] = useState(pendingUsersData);
+  const { realUsers, loading: usersDataLoading } = useUserData();
 
   // Redirection si l'utilisateur n'est pas connecté
   useEffect(() => {
@@ -161,42 +159,6 @@ const Admin = () => {
     }
   }, [user, navigate]);
 
-  const activateAdminRights = async () => {
-    try {
-      setActivationLoading(true);
-      
-      const { data, error } = await supabase.functions.invoke('set-admin', {
-        method: 'POST',
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "Succès",
-        description: "Vos privilèges administrateur ont été activés.",
-      });
-      
-      // Rafraîchir la page après un court délai pour refléter les changements
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-      
-    } catch (err: any) {
-      toast({
-        title: "Erreur",
-        description: err.message || "Impossible d'activer les privilèges administrateur.",
-        variant: "destructive"
-      });
-    } finally {
-      setActivationLoading(false);
-    }
-  };
-
-  const [pendingUsers, setPendingUsers] = useState(pendingUsersData);
-  const { realUsers, loading: usersDataLoading } = useUserData();
-  
   const handleApproveUser = (userId: number) => {
     const userToApprove = pendingUsers.find(user => user.id === userId);
     if (userToApprove) {
@@ -241,175 +203,135 @@ const Admin = () => {
           <p className="text-muted-foreground mb-2">
             Gérez les paramètres administratifs de votre espace CVwise.
           </p>
-          
-          {!isAdmin && (
-            <Alert className="mb-4 bg-blue-50 border-blue-200">
-              <InfoIcon className="h-4 w-4 text-blue-500" />
-              <AlertTitle className="text-blue-700">Activation des privilèges administrateur</AlertTitle>
-              <AlertDescription className="text-blue-600">
-                <p className="mb-2">
-                  Vous n'avez pas encore les privilèges administrateur. Veuillez les activer pour accéder à toutes les fonctionnalités.
-                </p>
-                <Button 
-                  onClick={activateAdminRights} 
-                  disabled={activationLoading}
-                  variant="outline"
-                  className="bg-blue-100 hover:bg-blue-200"
-                >
-                  {activationLoading ? "Activation en cours..." : "Activer mes privilèges administrateur"}
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
         </div>
 
-        {/* Interface principale d'administration */}
-        {isAdmin && (
-          <Tabs defaultValue="create-user" className="mb-8">
-            <TabsList className="mb-6 bg-background/80 dark:bg-muted/10 w-full flex overflow-x-auto">
-              <TabsTrigger 
-                value="create-user" 
-                className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-              >
-                <UserPlus size={16} />
-                Créer un utilisateur
-              </TabsTrigger>
-              <TabsTrigger 
-                value="users" 
-                className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-              >
-                <Users size={16} />
-                Liste des utilisateurs
-              </TabsTrigger>
-              <TabsTrigger 
-                value="settings" 
-                className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-              >
-                <Settings size={16} />
-                Paramètres
-              </TabsTrigger>
-              <TabsTrigger 
-                value="system" 
-                className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-              >
-                <Shield size={16} />
-                Système
-              </TabsTrigger>
-              <TabsTrigger 
-                value="companies" 
-                className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-              >
-                <Building size={16} />
-                Entreprises
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="create-user" className="mt-4">
-              <div className="max-w-2xl mx-auto">
-                <UserManagement />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="users">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="md:col-span-1">
-                  <UserStats 
-                    activeUsersCount={realUsers.length}
-                    pendingUsersCount={pendingUsers.length}
-                    recentUsers={recentUsers}
-                    formatDate={formatDate}
-                    companiesCount={companiesCount}
-                  />
-                </div>
-                
-                <div className="md:col-span-3 space-y-6">
-                  <PendingUsersList 
-                    pendingUsers={pendingUsers}
-                    onApproveUser={handleApproveUser}
-                    onRejectUser={handleRejectUser}
-                  />
-                  
-                  <ActiveUsersList 
-                    users={realUsers}
-                    loading={usersDataLoading}
-                    currentUserId={user?.id}
-                    formatDate={formatDate}
-                  />
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="settings">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2">
-                  <AppSettings />
-                </div>
-                
-                <div>
-                  <SystemActivities activities={systemActivitiesData} />
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="system">
-              <Card className="dark:border-border/10">
-                <CardHeader>
-                  <CardTitle>Statut du système</CardTitle>
-                  <CardDescription>
-                    Paramètres avancés et informations système
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-8 text-center">
-                      <p className="text-muted-foreground">
-                        Cette section est en cours de développement.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="companies">
-              <Card className="dark:border-border/10">
-                <CardHeader>
-                  <CardTitle>Gestion des entreprises</CardTitle>
-                  <CardDescription>
-                    Ajoutez, modifiez ou supprimez des entreprises
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="p-8 text-center">
-                      <p className="text-muted-foreground">
-                        Cette section est en cours de développement.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        )}
-        
-        {/* Section affichée pour les non-admins ou en attente d'activation des droits */}
-        {!isAdmin && (
-          <div className="text-center p-8 bg-white dark:bg-navy-dark/20 rounded-lg shadow-sm">
-            <Shield size={48} className="mx-auto mb-4 text-navy-dark opacity-50" />
-            <h2 className="text-xl font-semibold mb-2">Accès restreint</h2>
-            <p className="text-muted-foreground mb-4">
-              L'accès complet au panneau d'administration nécessite des privilèges administrateur.
-            </p>
-            <Button 
-              onClick={activateAdminRights} 
-              disabled={activationLoading}
-              className="bg-navy-dark text-white hover:bg-navy"
+        {/* Interface principale d'administration - toujours affichée, sans vérification des droits */}
+        <Tabs defaultValue="create-user" className="mb-8">
+          <TabsList className="mb-6 bg-background/80 dark:bg-muted/10 w-full flex overflow-x-auto">
+            <TabsTrigger 
+              value="create-user" 
+              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
             >
-              {activationLoading ? "Activation en cours..." : "Activer mes privilèges administrateur"}
-            </Button>
-          </div>
-        )}
+              <UserPlus size={16} />
+              Créer un utilisateur
+            </TabsTrigger>
+            <TabsTrigger 
+              value="users" 
+              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+            >
+              <Users size={16} />
+              Liste des utilisateurs
+            </TabsTrigger>
+            <TabsTrigger 
+              value="settings" 
+              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+            >
+              <Settings size={16} />
+              Paramètres
+            </TabsTrigger>
+            <TabsTrigger 
+              value="system" 
+              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+            >
+              <Shield size={16} />
+              Système
+            </TabsTrigger>
+            <TabsTrigger 
+              value="companies" 
+              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+            >
+              <Building size={16} />
+              Entreprises
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="create-user" className="mt-4">
+            <div className="max-w-2xl mx-auto">
+              <UserManagement />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="users">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="md:col-span-1">
+                <UserStats 
+                  activeUsersCount={realUsers.length}
+                  pendingUsersCount={pendingUsers.length}
+                  recentUsers={recentUsers}
+                  formatDate={formatDate}
+                  companiesCount={companiesCount}
+                />
+              </div>
+              
+              <div className="md:col-span-3 space-y-6">
+                <PendingUsersList 
+                  pendingUsers={pendingUsers}
+                  onApproveUser={handleApproveUser}
+                  onRejectUser={handleRejectUser}
+                />
+                
+                <ActiveUsersList 
+                  users={realUsers}
+                  loading={usersDataLoading}
+                  currentUserId={user?.id}
+                  formatDate={formatDate}
+                />
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="settings">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2">
+                <AppSettings />
+              </div>
+              
+              <div>
+                <SystemActivities activities={systemActivitiesData} />
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="system">
+            <Card className="dark:border-border/10">
+              <CardHeader>
+                <CardTitle>Statut du système</CardTitle>
+                <CardDescription>
+                  Paramètres avancés et informations système
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-8 text-center">
+                    <p className="text-muted-foreground">
+                      Cette section est en cours de développement.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="companies">
+            <Card className="dark:border-border/10">
+              <CardHeader>
+                <CardTitle>Gestion des entreprises</CardTitle>
+                <CardDescription>
+                  Ajoutez, modifiez ou supprimez des entreprises
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-8 text-center">
+                    <p className="text-muted-foreground">
+                      Cette section est en cours de développement.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
