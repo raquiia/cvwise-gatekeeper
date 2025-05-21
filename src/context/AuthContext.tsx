@@ -80,12 +80,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               title: "Connexion réussie",
               description: "Bienvenue sur CVwise",
             });
-            
-            // Navigate to dashboard if not already there or on admin page
-            const currentPath = window.location.pathname;
-            if (currentPath !== '/admin' && currentPath !== '/dashboard') {
-              navigate('/dashboard');
-            }
           }
         } else if (event === 'SIGNED_OUT') {
           setSession(null);
@@ -107,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for existing session
     const checkSession = async () => {
       try {
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         if (!mounted) return;
         
@@ -130,6 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
+    // Execute the check session function
     checkSession();
 
     return () => {

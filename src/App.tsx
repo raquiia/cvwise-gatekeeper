@@ -22,17 +22,20 @@ import AllUsers from "./pages/AllUsers";
 import NotFound from "./pages/NotFound";
 import UseCases from "./pages/UseCases";
 
+// Loading component
+const Loading = () => (
+  <div className="flex flex-col items-center justify-center h-screen bg-sand/30">
+    <div className="w-16 h-16 border-4 border-navy border-t-transparent rounded-full animate-spin"></div>
+    <p className="mt-4 text-navy">Chargement...</p>
+  </div>
+);
+
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-sand/30">
-        <div className="w-16 h-16 border-4 border-navy border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-navy">Chargement...</p>
-      </div>
-    );
+    return <Loading />;
   }
   
   if (!user) {
@@ -47,19 +50,14 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-sand/30">
-        <div className="w-16 h-16 border-4 border-navy border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-navy">Chargement...</p>
-      </div>
-    );
+    return <Loading />;
   }
   
   if (!user) {
     return <Navigate to="/login" replace />;
   }
   
-  // Always allow access to Admin pages for all authenticated users
+  // Allow access to Admin pages for all authenticated users
   // Admin functionality will be controlled inside the Admin component
   return <>{children}</>;
 };
