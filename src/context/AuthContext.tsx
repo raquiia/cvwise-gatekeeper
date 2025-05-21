@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,7 +35,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             title: "Connexion réussie",
             description: "Bienvenue sur CVwise",
           });
-          navigate('/dashboard');
+          // Don't force navigation to dashboard if user is trying to access admin
+          const currentPath = window.location.pathname;
+          if (currentPath !== '/admin') {
+            navigate('/dashboard');
+          }
         } else if (event === 'SIGNED_OUT') {
           toast({
             title: "Déconnexion réussie",

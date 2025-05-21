@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Settings, Shield, Building, RefreshCw, 
@@ -157,7 +156,7 @@ const Admin = () => {
       navigate('/login');
       return;
     }
-    // Suppression de la redirection basée sur l'état admin pour permettre l'accès à la page
+    // No additional redirects here - we want the admin page to be accessible
   }, [user, navigate]);
 
   const activateAdminRights = async () => {
