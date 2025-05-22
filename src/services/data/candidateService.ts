@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -215,8 +216,9 @@ export const candidateService = {
       const { id, ...updateData } = options;
       
       // Use the new bypass RLS function to avoid recursion issues
+      // Use type assertion to bypass TypeScript's type checking for the RPC function name
       const { data, error } = await supabase.rpc(
-        'update_candidate_bypass_rls', 
+        'update_candidate_bypass_rls' as any, 
         {
           p_candidate_id: id,
           p_data: updateData
