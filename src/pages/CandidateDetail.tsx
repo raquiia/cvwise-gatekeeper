@@ -125,11 +125,10 @@ const CandidateDetail = () => {
   }, [candidateId]);
 
   const handleEditCandidate = () => {
-    // This is a placeholder for future functionality
-    toast({
-      title: "Fonctionnalité à venir",
-      description: "L'édition du profil candidat sera bientôt disponible",
-    });
+    // Rediriger vers la page d'édition au lieu d'afficher un toast
+    if (candidateId) {
+      navigate(`/candidates/${candidateId}/edit`);
+    }
   };
 
   const handleStatusChange = (newStatus: string) => {
@@ -201,10 +200,7 @@ const CandidateDetail = () => {
               
               <Button 
                 variant="outline" 
-                onClick={() => toast({
-                  title: "Fonctionnalité à venir",
-                  description: "L'édition du profil candidat sera bientôt disponible",
-                })}
+                onClick={handleEditCandidate}
                 className="bg-white/80 border-navy/20 hover:border-navy/30 hover:bg-white/90 text-navy transition-all duration-300 group"
               >
                 <Edit size={16} className="mr-2 group-hover:scale-110 transition-transform duration-300" />
