@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, MoreHorizontal, Eye, Trash, Tag } from 'lucide-react';
@@ -157,11 +158,18 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   // Construct display name
   const fullName = `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Sans nom';
   
+  // Get the status value, ensuring it's a string and not an object
+  const statusValue = typeof candidate.detailed_status === 'string' 
+    ? candidate.detailed_status 
+    : (candidate.detailed_status && typeof candidate.detailed_status === 'object' && 'value' in candidate.detailed_status)
+      ? candidate.detailed_status.value
+      : 'initial';
+  
   // Status cell to be placed before or after name
   const statusCell = (
     <TableCell className="hidden md:table-cell">
-      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusClass(candidate.detailed_status)}`}>
-        {CANDIDATE_STATUS_LABELS[candidate.detailed_status || 'initial'] || 'Initial'}
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusClass(statusValue)}`}>
+        {CANDIDATE_STATUS_LABELS[statusValue] || 'Initial'}
       </span>
     </TableCell>
   );

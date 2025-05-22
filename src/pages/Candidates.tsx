@@ -85,7 +85,16 @@ const Candidates = () => {
     let result = [...candidates];
     
     if (selectedStatus) {
-      result = result.filter(candidate => candidate.detailed_status === selectedStatus);
+      // Filter by detailed_status which is now correctly stored as a string
+      result = result.filter(candidate => {
+        const candidateStatus = typeof candidate.detailed_status === 'string' 
+          ? candidate.detailed_status 
+          : (candidate.detailed_status && typeof candidate.detailed_status === 'object' && 'value' in candidate.detailed_status)
+            ? candidate.detailed_status.value
+            : 'initial';
+        
+        return candidateStatus === selectedStatus;
+      });
     }
     
     setFilteredCandidates(result);
