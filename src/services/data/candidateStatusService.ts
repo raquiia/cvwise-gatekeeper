@@ -32,19 +32,27 @@ export const candidateStatusService = {
     try {
       console.log("Updating candidate status:", { candidateId, status });
       
-      // Method 1: Try direct database update first (most reliable)
+      // Check if status is valid
+      if (!Object.values(CANDIDATE_STATUSES).includes(status as any)) {
+        console.error("Invalid status:", status);
+        toast({
+          title: "Erreur",
+          description: `Statut invalide: ${status}`,
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      // Method 1: Try using the RPC function first
       try {
-        console.log("Trying direct database update first");
-        const { error } = await supabase
-          .from('candidates')
-          .update({ 
-            detailed_status: status, 
-            updated_at: new Date().toISOString() 
-          })
-          .eq('id', candidateId);
+        console.log("Trying rpc function first");
+        const { error } = await supabase.rpc('update_candidate_status', {
+          p_candidate_id: candidateId,
+          p_detailed_status: status
+        });
         
         if (error) {
-          console.error("Direct update error:", error);
+          console.error("RPC Error:", error);
           throw error;
         }
         
@@ -54,37 +62,63 @@ export const candidateStatusService = {
         });
         
         return true;
-      } catch (directError) {
-        console.log("Direct update failed, trying edge function", directError);
-        
-        // Method 2: Try the edge function as fallback
-        const response = await supabase.functions.invoke('update_candidate_status', { 
-          body: { 
-            candidate_id: candidateId,
-            detailed_status: status
+      } catch (rpcError) {
+        console.log("RPC function failed, trying edge function", rpcError);
+      
+        // Method 2: Try the edge function
+        try {
+          console.log("Trying edge function");
+          const response = await supabase.functions.invoke('update_candidate_status', { 
+            body: { 
+              candidate_id: candidateId,
+              detailed_status: status
+            }
+          });
+          
+          if (response.error) {
+            console.error("Function Error:", response.error);
+            throw response.error;
           }
-        });
-        
-        if (response.error) {
-          console.error("Function Error:", response.error);
-          throw response.error;
+          
+          console.log("Function Result:", response.data);
+          
+          toast({
+            title: "Statut mis à jour",
+            description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
+          });
+          
+          return true;
+        } catch (functionError) {
+          console.error("Edge function failed, trying direct DB update", functionError);
+          
+          // Method 3: Try direct database update as final fallback
+          const { error } = await supabase
+            .from('candidates')
+            .update({ 
+              detailed_status: status, 
+              updated_at: new Date().toISOString() 
+            })
+            .eq('id', candidateId);
+          
+          if (error) {
+            console.error("Direct update error:", error);
+            throw error;
+          }
+          
+          toast({
+            title: "Statut mis à jour",
+            description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
+          });
+          
+          return true;
         }
-        
-        console.log("Function Result:", response.data);
-        
-        toast({
-          title: "Statut mis à jour",
-          description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
-        });
-        
-        return true;
       }
     } catch (error: any) {
       console.error('Error updating candidate status:', error);
       
       toast({
         title: "Erreur",
-        description: `Impossible de mettre à jour le statut: ${error.message}`,
+        description: `Impossible de mettre à jour le statut: ${error.message || 'Erreur inconnue'}`,
         variant: "destructive",
       });
       
@@ -97,36 +131,54 @@ export const candidateStatusService = {
     try {
       console.log("Getting candidate status for:", candidateId);
       
-      // Try direct query first (most reliable)
+      // Method 1: Try using the RPC function first
       try {
-        console.log("Trying direct query first");
-        const { data, error } = await supabase
-          .from('candidates')
-          .select('detailed_status')
-          .eq('id', candidateId)
-          .single();
+        console.log("Trying RPC function first");
+        const { data: rpcData, error: rpcError } = await supabase.rpc(
+          'get_candidate_status',
+          { p_candidate_id: candidateId }
+        );
         
-        if (error) {
-          console.error("Direct query error:", error);
-          throw error;
+        if (rpcError) {
+          console.error("RPC Error:", rpcError);
+          throw rpcError;
         }
         
-        return data?.detailed_status || null;
-      } catch (directError) {
-        console.log("Direct query failed, trying edge function", directError);
+        return rpcData || null;
+      } catch (rpcError) {
+        console.log("RPC call failed, trying edge function", rpcError);
         
-        // Try the edge function as fallback
-        const response = await supabase.functions.invoke('get_candidate_status', {
-          body: { candidate_id: candidateId }
-        });
-        
-        if (response.error) {
-          console.error("Function Error:", response.error);
-          throw response.error;
+        // Method 2: Try the edge function as fallback
+        try {
+          console.log("Trying edge function");
+          const response = await supabase.functions.invoke('get_candidate_status', {
+            body: { candidate_id: candidateId }
+          });
+          
+          if (response.error) {
+            console.error("Function Error:", response.error);
+            throw response.error;
+          }
+          
+          console.log("Function Result:", response.data);
+          return response.data?.status as string || null;
+        } catch (functionError) {
+          console.error("Edge function failed, trying direct query", functionError);
+          
+          // Method 3: Try direct query as final fallback
+          const { data, error } = await supabase
+            .from('candidates')
+            .select('detailed_status')
+            .eq('id', candidateId)
+            .single();
+          
+          if (error) {
+            console.error("Direct query error:", error);
+            throw error;
+          }
+          
+          return data?.detailed_status || null;
         }
-        
-        console.log("Function Result:", response.data);
-        return response.data?.status as string || null;
       }
     } catch (error: any) {
       console.error('Error fetching candidate status:', error);

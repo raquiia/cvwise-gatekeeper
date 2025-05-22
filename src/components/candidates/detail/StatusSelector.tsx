@@ -37,6 +37,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [loadAttempts, setLoadAttempts] = useState<number>(0);
+  const [maxRetries] = useState<number>(3);
   
   // Load current status
   useEffect(() => {
@@ -51,13 +52,22 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
       try {
         const status = await candidateStatusService.getCandidateStatus(candidateId);
         console.log("Loaded status:", status);
-        setCurrentStatus(status || CANDIDATE_STATUSES.INITIAL);
+        
+        if (status) {
+          setCurrentStatus(status);
+        } else {
+          // If status is null, use initial and try again if under retry limit
+          if (loadAttempts < maxRetries) {
+            setLoadAttempts(prev => prev + 1);
+            setTimeout(loadCurrentStatus, 1000 * Math.pow(2, loadAttempts)); // Exponential backoff
+          }
+        }
       } catch (error) {
         console.error("Error loading status:", error);
-        // If we've tried less than 3 times, retry after a delay
-        if (loadAttempts < 2) {
+        // If we've tried less than max retries, retry after a delay
+        if (loadAttempts < maxRetries) {
           setLoadAttempts(prev => prev + 1);
-          setTimeout(loadCurrentStatus, 1000);
+          setTimeout(loadCurrentStatus, 1000 * Math.pow(2, loadAttempts)); // Exponential backoff
         }
       } finally {
         setIsLoading(false);
@@ -65,7 +75,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
     };
     
     loadCurrentStatus();
-  }, [candidateId, loadAttempts]);
+  }, [candidateId, loadAttempts, maxRetries]);
   
   // Change status
   const handleStatusChange = async (status: string) => {
@@ -82,9 +92,21 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         if (onStatusChange) {
           onStatusChange(status);
         }
+      } else {
+        // Show error and try again
+        toast({
+          title: "Erreur de mise à jour",
+          description: "La mise à jour du statut a échoué. Veuillez réessayer.",
+          variant: "destructive",
+        });
       }
     } catch (error: any) {
       console.error("Error updating status:", error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de mettre à jour le statut",
+        variant: "destructive",
+      });
     } finally {
       setIsUpdating(false);
     }

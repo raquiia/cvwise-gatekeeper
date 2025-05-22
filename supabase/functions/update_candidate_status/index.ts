@@ -8,6 +8,19 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Valid status values
+const VALID_STATUSES = [
+  'initial',
+  'contact',
+  'prequalification',
+  'ec1',
+  'ec2',
+  'presentation_client',
+  'en_mission',
+  'refus',
+  'ancien_employe'
+];
+
 serve(async (req) => {
   // Handle CORS preflight request
   if (req.method === "OPTIONS") {
@@ -50,6 +63,22 @@ serve(async (req) => {
         }
       );
     }
+    
+    // Validate status value
+    if (!VALID_STATUSES.includes(detailed_status)) {
+      return new Response(
+        JSON.stringify({
+          error: `Invalid status value: ${detailed_status}. Valid values are: ${VALID_STATUSES.join(', ')}`,
+        }),
+        { 
+          status: 400, 
+          headers: { 
+            "Content-Type": "application/json",
+            ...corsHeaders 
+          } 
+        }
+      );
+    }
 
     // Create Supabase client with the project URL and service key
     const supabaseClient = createClient(
@@ -57,7 +86,38 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
 
-    // Directly update the candidates table to avoid recursion issues
+    // First try using the RPC function which should avoid recursion issues
+    try {
+      const { data: rpcData, error: rpcError } = await supabaseClient.rpc(
+        'update_candidate_status',
+        {
+          p_candidate_id: candidate_id,
+          p_detailed_status: detailed_status
+        }
+      );
+      
+      if (rpcError) {
+        console.error("RPC Error:", rpcError);
+        throw rpcError;
+      }
+      
+      if (rpcData === true) {
+        return new Response(
+          JSON.stringify({ success: true }),
+          { 
+            headers: { 
+              "Content-Type": "application/json",
+              ...corsHeaders 
+            } 
+          }
+        );
+      }
+    } catch (rpcError) {
+      console.error("Error using RPC function:", rpcError);
+      // Continue to direct update as fallback
+    }
+
+    // Fallback: Direct update if RPC fails
     const { data, error } = await supabaseClient
       .from('candidates')
       .update({ 
