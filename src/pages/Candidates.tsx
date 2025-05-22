@@ -10,7 +10,44 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { semanticMatchingService } from '@/services/semantic/semanticMatchingService';
-import { CANDIDATE_STATUSES } from '@/services/data/candidateStatusService';
+import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
+
+// Helper function to extract status from candidate
+const extractCandidateStatus = (candidate: CandidateData): string => {
+  // Default status if extraction fails
+  let statusValue = 'initial';
+  
+  try {
+    if (candidate.detailed_status === undefined || candidate.detailed_status === null) {
+      return statusValue;
+    }
+    
+    // If it's directly a string, use it
+    if (typeof candidate.detailed_status === 'string') {
+      return candidate.detailed_status;
+    }
+    
+    // If it's an object, try to extract the status
+    if (typeof candidate.detailed_status === 'object' && candidate.detailed_status !== null) {
+      const statusObj = candidate.detailed_status as Record<string, any>;
+      
+      // Try common status field names
+      if ('value' in statusObj && typeof statusObj.value === 'string') {
+        return statusObj.value;
+      }
+      if ('status' in statusObj && typeof statusObj.status === 'string') {
+        return statusObj.status;
+      }
+      if ('name' in statusObj && typeof statusObj.name === 'string') {
+        return statusObj.name;
+      }
+    }
+  } catch (err) {
+    console.error("Error extracting candidate status:", err);
+  }
+  
+  return statusValue;
+};
 
 const Candidates = () => {
   const [candidates, setCandidates] = useState<CandidateData[]>([]);
@@ -84,31 +121,9 @@ const Candidates = () => {
     let result = [...candidates];
     
     if (selectedStatus) {
-      // Extract the status value safely from each candidate
+      // Filter candidates by selected status using the helper function
       result = result.filter(candidate => {
-        // Initialize with a default status
-        let candidateStatus: string = 'initial';
-        
-        // Handle string status
-        if (typeof candidate.detailed_status === 'string') {
-          candidateStatus = candidate.detailed_status;
-        } 
-        // Handle object status with value property
-        else if (
-          candidate.detailed_status && 
-          typeof candidate.detailed_status === 'object' && 
-          candidate.detailed_status !== null
-        ) {
-          const detailedStatus = candidate.detailed_status as any;
-          
-          if ('value' in detailedStatus) {
-            candidateStatus = detailedStatus.value;
-          } else if ('status' in detailedStatus) {
-            candidateStatus = detailedStatus.status;
-          } else if ('name' in detailedStatus) {
-            candidateStatus = detailedStatus.name;
-          }
-        }
+        const candidateStatus = extractCandidateStatus(candidate);
         
         // Log for debugging
         console.log(`Candidate ${candidate.id} status: ${candidateStatus}, selected: ${selectedStatus}, match: ${candidateStatus === selectedStatus}`);
@@ -168,28 +183,9 @@ const Candidates = () => {
     let result = [...candidates];
     
     if (selectedStatus) {
+      // Filter by status using the helper function
       result = result.filter(candidate => {
-        // Extract status using the same logic as above
-        let candidateStatus: string = 'initial';
-        
-        if (typeof candidate.detailed_status === 'string') {
-          candidateStatus = candidate.detailed_status;
-        } else if (
-          candidate.detailed_status && 
-          typeof candidate.detailed_status === 'object' && 
-          candidate.detailed_status !== null
-        ) {
-          const detailedStatus = candidate.detailed_status as any;
-          
-          if ('value' in detailedStatus) {
-            candidateStatus = detailedStatus.value;
-          } else if ('status' in detailedStatus) {
-            candidateStatus = detailedStatus.status;
-          } else if ('name' in detailedStatus) {
-            candidateStatus = detailedStatus.name;
-          }
-        }
-        
+        const candidateStatus = extractCandidateStatus(candidate);
         return candidateStatus === selectedStatus;
       });
     }
@@ -276,28 +272,9 @@ const Candidates = () => {
     setSemanticSearch('');
     
     if (selectedStatus) {
+      // Filter only by status using the helper function
       setFilteredCandidates(candidates.filter(candidate => {
-        // Extract status using the same logic as above
-        let candidateStatus: string = 'initial';
-        
-        if (typeof candidate.detailed_status === 'string') {
-          candidateStatus = candidate.detailed_status;
-        } else if (
-          candidate.detailed_status && 
-          typeof candidate.detailed_status === 'object' && 
-          candidate.detailed_status !== null
-        ) {
-          const detailedStatus = candidate.detailed_status as any;
-          
-          if ('value' in detailedStatus) {
-            candidateStatus = detailedStatus.value;
-          } else if ('status' in detailedStatus) {
-            candidateStatus = detailedStatus.status;
-          } else if ('name' in detailedStatus) {
-            candidateStatus = detailedStatus.name;
-          }
-        }
-        
+        const candidateStatus = extractCandidateStatus(candidate);
         return candidateStatus === selectedStatus;
       }));
     } else {

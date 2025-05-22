@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, MoreHorizontal, Eye, Trash, Tag } from 'lucide-react';
@@ -94,7 +93,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     
     return candidate.skills.slice(0, 3).map((skill, index) => (
       <span key={index} className="inline-flex items-center px-2 py-1 mr-1 mb-1 text-xs font-medium rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
-        {typeof skill === 'object' ? skill.name || '' : skill}
+        {typeof skill === 'object' && skill !== null ? (skill as any).name || '' : skill}
       </span>
     ));
   };
@@ -115,6 +114,43 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     }
   };
 
+  // Extract status from candidate with safer type handling
+  const extractCandidateStatus = (): string => {
+    // Default status if extraction fails
+    let statusValue = 'initial';
+    
+    try {
+      if (candidate.detailed_status === undefined || candidate.detailed_status === null) {
+        return statusValue;
+      }
+      
+      // If it's directly a string, use it
+      if (typeof candidate.detailed_status === 'string') {
+        return candidate.detailed_status;
+      }
+      
+      // If it's an object, try to extract the status
+      if (typeof candidate.detailed_status === 'object' && candidate.detailed_status !== null) {
+        const statusObj = candidate.detailed_status as Record<string, any>;
+        
+        // Try common status field names
+        if ('value' in statusObj && typeof statusObj.value === 'string') {
+          return statusObj.value;
+        }
+        if ('status' in statusObj && typeof statusObj.status === 'string') {
+          return statusObj.status;
+        }
+        if ('name' in statusObj && typeof statusObj.name === 'string') {
+          return statusObj.name;
+        }
+      }
+    } catch (err) {
+      console.error("Error extracting candidate status:", err);
+    }
+    
+    return statusValue;
+  };
+  
   // Get status class based on status value
   const getStatusClass = (status?: string) => {
     if (!status) return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
@@ -158,41 +194,16 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   // Construct display name
   const fullName = `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Sans nom';
   
-  // Extract the status value safely
-  let statusValue: string = 'initial';
+  // Extract the status value using the helper function
+  const statusValue = extractCandidateStatus();
   
-  // Handle string status
-  if (typeof candidate.detailed_status === 'string') {
-    statusValue = candidate.detailed_status;
-  } 
-  // Handle object status with value property
-  else if (
-    candidate.detailed_status && 
-    typeof candidate.detailed_status === 'object' && 
-    candidate.detailed_status !== null
-  ) {
-    // Try to access common patterns for status objects
-    const detailedStatus = candidate.detailed_status as any;
-    
-    if ('value' in detailedStatus) {
-      statusValue = detailedStatus.value;
-    } else if ('status' in detailedStatus) {
-      statusValue = detailedStatus.status;
-    } else if ('name' in detailedStatus) {
-      statusValue = detailedStatus.name;
-    }
-  }
-  
-  // Ensure we have a valid status or fallback to initial
-  if (!statusValue || typeof statusValue !== 'string') {
-    statusValue = 'initial';
-  }
-  
-  // Log the status extraction for debugging
-  console.log('Candidate status extraction:', {
+  // Debug log for status extraction
+  console.log('CandidateTableRow - Status extraction:', {
+    candidateName: fullName,
     candidateId: candidate.id,
-    originalStatus: candidate.detailed_status,
-    extractedStatus: statusValue
+    rawStatus: candidate.detailed_status,
+    extractedStatus: statusValue,
+    statusLabel: CANDIDATE_STATUS_LABELS[statusValue] || 'Initial'
   });
   
   // Status cell to be placed before or after name
