@@ -24,7 +24,7 @@ const candidateSchema = z.object({
   phone: z.string().optional().or(z.literal("")),
   position: z.string().optional().or(z.literal("")),
   location: z.string().optional().or(z.literal("")),
-  years_experience: z.number().optional().or(z.literal("")),
+  years_experience: z.union([z.number(), z.literal("")]).optional(),
   company: z.string().optional().or(z.literal("")),
   status: z.string().optional().or(z.literal("")),
   detailed_status: z.string().optional().or(z.literal("")),
@@ -125,10 +125,21 @@ const CandidateEdit = () => {
     }
 
     try {
+      // Fix for the TypeScript error: ensure years_experience is properly typed
+      const processedValues = {
+        ...values,
+        // Convert empty string to undefined, or ensure it's a number
+        years_experience: values.years_experience === "" 
+          ? undefined 
+          : typeof values.years_experience === "string"
+            ? parseInt(values.years_experience, 10) 
+            : values.years_experience
+      };
+
       // Convertir les valeurs du formulaire en UpdateCandidateOptions
       const updateData = {
         id: candidateId,
-        ...values,
+        ...processedValues,
         // Conserver les champs qui ne sont pas dans le formulaire
         user_id: originalCandidate.user_id,
         resume_id: originalCandidate.resume_id,
