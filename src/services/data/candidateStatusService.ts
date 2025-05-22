@@ -199,15 +199,34 @@ export const candidateStatusService = {
           
           // If it's an object, try to extract status
           if (typeof detailedStatus === 'object' && detailedStatus !== null) {
-            if ('value' in detailedStatus && detailedStatus.value) {
-              return String(detailedStatus.value);
+            // Cast to Record<string, any> to avoid TypeScript errors
+            const statusObj = detailedStatus as Record<string, any>;
+            
+            // Log the actual structure for debugging
+            console.log(`Status object for ${candidateId}:`, statusObj);
+            
+            // Try to extract from different possible structures
+            if ('value' in statusObj && statusObj['value'] !== undefined) {
+              return String(statusObj['value']);
             }
-            if ('status' in detailedStatus && detailedStatus.status) {
-              return String(detailedStatus.status);
+            
+            if ('status' in statusObj && statusObj['status'] !== undefined) {
+              return String(statusObj['status']);
             }
-            if ('name' in detailedStatus && detailedStatus.name) {
-              return String(detailedStatus.name);
+            
+            if ('name' in statusObj && statusObj['name'] !== undefined) {
+              return String(statusObj['name']);
             }
+            
+            // If we have _type field, it might be a Supabase special format
+            if ('_type' in statusObj && statusObj['_type'] === 'undefined' && 'value' in statusObj) {
+              // This appears to be the issue - we're getting {_type: 'undefined', value: 'undefined'}
+              // Instead of returning 'undefined', return our default
+              return 'initial';
+            }
+            
+            // If we have an object but couldn't extract a value, log it for debugging
+            console.warn('Could not extract status from object:', statusObj);
           }
           
           return 'initial'; // Default fallback
@@ -219,3 +238,4 @@ export const candidateStatusService = {
     }
   }
 };
+
