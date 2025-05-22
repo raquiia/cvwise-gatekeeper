@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, MoreHorizontal, Eye, Trash, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,7 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
+import { CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
 
 interface CandidateTableRowProps {
   candidate: CandidateData;
@@ -48,8 +47,27 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [candidateStatus, setCandidateStatus] = useState('initial');
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // Load the candidate status from the service when the component mounts
+  useEffect(() => {
+    if (candidate && candidate.id) {
+      const loadStatus = async () => {
+        try {
+          const status = await candidateStatusService.getCandidateStatus(candidate.id);
+          if (status) {
+            setCandidateStatus(status);
+          }
+        } catch (error) {
+          console.error("Error loading candidate status:", error);
+        }
+      };
+      
+      loadStatus();
+    }
+  }, [candidate]);
   
   const handleViewCandidate = () => {
     if (candidate.id) {
@@ -115,59 +133,6 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     }
   };
 
-  // Extract status from candidate - Updated implementation
-  const extractCandidateStatus = (): string => {
-    // Default status
-    let statusValue = 'initial';
-    
-    try {
-      // If detailed_status is undefined or null, return default
-      if (candidate.detailed_status === undefined || candidate.detailed_status === null) {
-        return statusValue;
-      }
-      
-      // If it's directly a string
-      if (typeof candidate.detailed_status === 'string') {
-        return candidate.detailed_status;
-      }
-      
-      // If it's an object
-      if (typeof candidate.detailed_status === 'object' && candidate.detailed_status !== null) {
-        const statusObj = candidate.detailed_status as Record<string, any>;
-        
-        // Log the actual structure for debugging
-        console.log(`Status object for ${candidate.id}:`, statusObj);
-        
-        // Try to extract from different possible structures
-        if ('value' in statusObj && statusObj.value !== undefined) {
-          return String(statusObj.value);
-        }
-        
-        if ('status' in statusObj && statusObj.status !== undefined) {
-          return String(statusObj.status);
-        }
-        
-        if ('name' in statusObj && statusObj.name !== undefined) {
-          return String(statusObj.name);
-        }
-        
-        // If we have _type field, it might be a Supabase special format
-        if ('_type' in statusObj && statusObj._type === 'undefined' && 'value' in statusObj) {
-          // This appears to be the issue - we're getting {_type: 'undefined', value: 'undefined'}
-          // Instead of returning 'undefined', return our default
-          return statusValue;
-        }
-        
-        // If we have an object but couldn't extract a value, log it for debugging
-        console.warn('Could not extract status from object:', statusObj);
-      }
-    } catch (err) {
-      console.error("Error extracting candidate status:", err);
-    }
-    
-    return statusValue;
-  };
-  
   // Get status class based on status value
   const getStatusClass = (status?: string) => {
     if (!status) return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
@@ -211,23 +176,19 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   // Construct display name
   const fullName = `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Sans nom';
   
-  // Extract the status value using the helper function
-  const statusValue = extractCandidateStatus();
-  
   // Debug log for status extraction
-  console.log('CandidateTableRow - Status extraction:', {
+  console.log('CandidateTableRow - Status display:', {
     candidateName: fullName,
     candidateId: candidate.id,
-    rawStatus: candidate.detailed_status,
-    extractedStatus: statusValue,
-    statusLabel: CANDIDATE_STATUS_LABELS[statusValue] || 'Initial'
+    statusFromService: candidateStatus,
+    statusLabel: CANDIDATE_STATUS_LABELS[candidateStatus] || 'Initial'
   });
   
   // Status cell to be placed before or after name
   const statusCell = (
     <TableCell className="hidden md:table-cell">
-      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusClass(statusValue)}`}>
-        {CANDIDATE_STATUS_LABELS[statusValue] || 'Initial'}
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusClass(candidateStatus)}`}>
+        {CANDIDATE_STATUS_LABELS[candidateStatus] || 'Initial'}
       </span>
     </TableCell>
   );
