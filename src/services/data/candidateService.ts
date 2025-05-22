@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -174,7 +173,7 @@ export const candidateService = {
       throw new Error(`Failed to get candidates: ${error.message}`);
     }
   },
-
+  
   getCandidateById: async (candidateId: string): Promise<CandidateData> => {
     try {
       const { data, error } = await supabase.rpc('get_candidate_by_id', {
@@ -215,12 +214,14 @@ export const candidateService = {
     try {
       const { id, ...updateData } = options;
       
-      const { data, error } = await supabase
-        .from('candidates')
-        .update(updateData)
-        .eq('id', id)
-        .select('*')
-        .single();
+      // Use the new bypass RLS function to avoid recursion issues
+      const { data, error } = await supabase.rpc(
+        'update_candidate_bypass_rls', 
+        {
+          p_candidate_id: id,
+          p_data: updateData
+        }
+      );
       
       if (error) throw error;
       return formatCandidateData(data);
