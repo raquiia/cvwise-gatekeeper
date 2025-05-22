@@ -17,6 +17,16 @@ declare module 'jspdf' {
   }
 }
 
+// Fonction pour obtenir le nom complet du type de note
+const getNoteTypeLabel = (noteType?: string) => {
+  switch (noteType) {
+    case 'precal': return 'Pré-qualification';
+    case 'ec1': return 'Entretien 1er Tour';
+    case 'ec2': return 'Entretien 2nd Tour';
+    default: return 'Note générale';
+  }
+};
+
 export const candidateProfilePdfService = {
   generateCandidateProfilePdf: async (
     candidate: CandidateData, 
@@ -156,7 +166,8 @@ export const candidateProfilePdfService = {
           doc.setFontSize(14);
           doc.setFont(undefined, 'bold');
           const noteDate = new Date(note.created_at || '').toLocaleDateString('fr-FR');
-          doc.text(`Note du ${noteDate}`, 14, yPos);
+          const noteTypeLabel = getNoteTypeLabel(note.note_type);
+          doc.text(`${noteTypeLabel} - ${noteDate}`, 14, yPos);
           
           doc.setFontSize(12);
           doc.setFont(undefined, 'normal');

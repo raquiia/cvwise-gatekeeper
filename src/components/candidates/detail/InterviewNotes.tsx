@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { CandidateNote, candidateNotesService } from '@/services/data/candidateNotesService';
+import { CandidateNote, NoteType, candidateNotesService } from '@/services/data/candidateNotesService';
 import { useAuth } from '@/context/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PencilLine, Trash2, FileEdit, FilePlus, Check, Loader2 } from 'lucide-react';
@@ -21,23 +21,86 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import { 
+  Form, 
+  FormControl, 
+  FormField, 
+  FormItem, 
+  FormLabel 
+} from '@/components/ui/form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { Badge } from '@/components/ui/badge';
 
 interface InterviewNotesProps {
   candidateId: string;
 }
 
+const noteSchema = z.object({
+  content: z.string().min(1, { message: 'Le contenu est requis' }),
+  note_type: z.enum(['general', 'precal', 'ec1', 'ec2'], {
+    required_error: "Veuillez sélectionner un type de note",
+  }),
+});
+
+type NoteFormValues = z.infer<typeof noteSchema>;
+
+// Fonction pour obtenir la couleur de badge selon le type de note
+const getNoteTypeBadgeColor = (noteType: NoteType) => {
+  switch (noteType) {
+    case 'precal': return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
+    case 'ec1': return 'bg-amber-100 text-amber-800 hover:bg-amber-200';
+    case 'ec2': return 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200';
+    default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
+  }
+};
+
+// Fonction pour obtenir le nom complet du type de note
+const getNoteTypeLabel = (noteType?: NoteType) => {
+  switch (noteType) {
+    case 'precal': return 'Pré-qualification';
+    case 'ec1': return 'Entretien 1er Tour';
+    case 'ec2': return 'Entretien 2nd Tour';
+    default: return 'Note générale';
+  }
+};
+
 const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [notes, setNotes] = useState<CandidateNote[]>([]);
-  const [newNoteContent, setNewNoteContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
   const [isLoadingNotes, setIsLoadingNotes] = useState(true);
+  const [activeTab, setActiveTab] = useState<string>("all");
+  const [editNoteType, setEditNoteType] = useState<NoteType>('general');
   
+  // Formulaire de la nouvelle note
+  const form = useForm<NoteFormValues>({
+    resolver: zodResolver(noteSchema),
+    defaultValues: {
+      content: '',
+      note_type: 'general',
+    },
+  });
+
   // Charger les notes au chargement du composant
   useEffect(() => {
     loadNotes();
@@ -50,11 +113,11 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
     setIsLoadingNotes(false);
   };
   
-  const handleSubmitNote = async () => {
-    if (!newNoteContent.trim() || !user?.id) {
+  const handleSubmitNote = async (values: NoteFormValues) => {
+    if (!user?.id) {
       toast({
         title: "Erreur",
-        description: "Veuillez saisir une note",
+        description: "Vous devez être connecté pour ajouter une note",
         variant: "destructive",
       });
       return;
@@ -65,11 +128,12 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
     const result = await candidateNotesService.addNote({
       candidate_id: candidateId,
       user_id: user.id,
-      content: newNoteContent,
+      content: values.content,
+      note_type: values.note_type,
     });
     
     if (result) {
-      setNewNoteContent('');
+      form.reset();
       await loadNotes();
     }
     
@@ -96,6 +160,7 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
   const handleStartEdit = (note: CandidateNote) => {
     setEditingNoteId(note.id || null);
     setEditContent(note.content);
+    setEditNoteType(note.note_type || 'general');
   };
   
   const handleCancelEdit = () => {
@@ -105,7 +170,10 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
   
   const handleSaveEdit = async () => {
     if (editingNoteId && editContent.trim()) {
-      await candidateNotesService.updateNote(editingNoteId, { content: editContent });
+      await candidateNotesService.updateNote(editingNoteId, { 
+        content: editContent,
+        note_type: editNoteType
+      });
       setEditingNoteId(null);
       setEditContent('');
       await loadNotes();
@@ -127,6 +195,12 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
   const cancelDelete = () => {
     setDeleteNoteId(null);
   };
+
+  // Filtrer les notes selon l'onglet actif
+  const filteredNotes = notes.filter(note => {
+    if (activeTab === 'all') return true;
+    return note.note_type === activeTab;
+  });
   
   return (
     <Card className="mt-6">
@@ -141,55 +215,110 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
           {/* Zone d'ajout de note */}
           <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-4">
             <h3 className="text-sm font-medium mb-2">Ajouter une nouvelle note</h3>
-            <Textarea
-              placeholder="Saisissez vos notes d'entretien ici..."
-              className="min-h-[120px] mb-3"
-              value={newNoteContent}
-              onChange={(e) => setNewNoteContent(e.target.value)}
-            />
-            <div className="flex justify-end">
-              <Button
-                onClick={handleSubmitNote}
-                disabled={isSubmitting || !newNoteContent.trim()}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Enregistrement...
-                  </>
-                ) : (
-                  <>
-                    <FilePlus className="mr-2 h-4 w-4" />
-                    Ajouter la note
-                  </>
-                )}
-              </Button>
-            </div>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleSubmitNote)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="note_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type de note</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner le type de note" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="general">Note générale</SelectItem>
+                          <SelectItem value="precal">Pré-qualification</SelectItem>
+                          <SelectItem value="ec1">Entretien 1er Tour</SelectItem>
+                          <SelectItem value="ec2">Entretien 2nd Tour</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contenu</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Saisissez vos notes d'entretien ici..."
+                          className="min-h-[120px]"
+                          {...field}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Enregistrement...
+                      </>
+                    ) : (
+                      <>
+                        <FilePlus className="mr-2 h-4 w-4" />
+                        Ajouter la note
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </div>
           
           <Separator />
+          
+          {/* Filtres par type de note */}
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full grid grid-cols-4">
+              <TabsTrigger value="all">Toutes</TabsTrigger>
+              <TabsTrigger value="precal">Pré-qualification</TabsTrigger>
+              <TabsTrigger value="ec1">1er Tour</TabsTrigger>
+              <TabsTrigger value="ec2">2nd Tour</TabsTrigger>
+            </TabsList>
+          </Tabs>
           
           {/* Liste des notes */}
           {isLoadingNotes ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : notes.length === 0 ? (
+          ) : filteredNotes.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <p>Aucune note d'entretien pour ce candidat</p>
+              <p>Aucune note d'entretien pour ce candidat{activeTab !== 'all' ? ' avec ce type de filtre' : ''}</p>
             </div>
           ) : (
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-6">
-                {notes.map((note) => (
+                {filteredNotes.map((note) => (
                   <div 
                     key={note.id} 
                     className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md p-4 shadow-sm"
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs text-muted-foreground">
-                        {note.created_at && format(new Date(note.created_at), 'PPP à HH:mm', { locale: fr })}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-muted-foreground">
+                          {note.created_at && format(new Date(note.created_at), 'PPP à HH:mm', { locale: fr })}
+                        </span>
+                        <Badge className={getNoteTypeBadgeColor(note.note_type || 'general')}>
+                          {getNoteTypeLabel(note.note_type)}
+                        </Badge>
+                      </div>
                       <div className="flex space-x-1">
                         {editingNoteId !== note.id && (
                           <>
@@ -215,6 +344,20 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
                     
                     {editingNoteId === note.id ? (
                       <div className="space-y-2">
+                        <Select 
+                          value={editNoteType} 
+                          onValueChange={(value: NoteType) => setEditNoteType(value)}
+                        >
+                          <SelectTrigger className="w-full mb-2">
+                            <SelectValue placeholder="Type de note" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="general">Note générale</SelectItem>
+                            <SelectItem value="precal">Pré-qualification</SelectItem>
+                            <SelectItem value="ec1">Entretien 1er Tour</SelectItem>
+                            <SelectItem value="ec2">Entretien 2nd Tour</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <Textarea
                           value={editContent}
                           onChange={(e) => setEditContent(e.target.value)}

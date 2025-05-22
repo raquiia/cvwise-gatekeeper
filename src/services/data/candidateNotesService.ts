@@ -2,11 +2,14 @@
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
+export type NoteType = 'precal' | 'ec1' | 'ec2' | 'general';
+
 export interface CandidateNote {
   id?: string;
   candidate_id: string;
   user_id: string;
   content: string;
+  note_type: NoteType;
   enhanced_content?: string;
   created_at?: string;
   updated_at?: string;
