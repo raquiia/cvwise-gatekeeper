@@ -20,8 +20,8 @@ export interface CandidateData {
   id?: string;
   resume_id?: string;
   user_id: string;
-  first_name: string;
-  last_name: string;
+  first_name: string; // Changed from optional to required
+  last_name: string; // Changed from optional to required
   email?: string;
   phone?: string;
   position?: string;

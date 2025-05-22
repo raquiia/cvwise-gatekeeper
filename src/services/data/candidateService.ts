@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -6,8 +7,8 @@ export interface CandidateData {
   id?: string;
   user_id?: string;
   resume_id?: string;
-  first_name?: string;
-  last_name?: string;
+  first_name: string; // Changed from optional to required
+  last_name: string; // Changed from optional to required
   email?: string;
   phone?: string;
   position?: string;
@@ -49,7 +50,45 @@ export interface CandidateData {
 }
 
 // Define options for creating and updating candidates
-export interface CreateCandidateOptions extends Omit<CandidateData, 'id'> {}
+export interface CreateCandidateOptions {
+  user_id: string; // Required
+  first_name: string; // Required
+  last_name: string; // Required
+  resume_id?: string;
+  email?: string;
+  phone?: string;
+  position?: string;
+  years_experience?: number;
+  location?: string;
+  skills?: any[];
+  score?: number;
+  status?: string;
+  detailed_status?: string;
+  company?: string;
+  experiences?: any[];
+  education?: any[];
+  certifications?: any[];
+  languages?: any[];
+  publications?: any[];
+  interests?: string;
+  professional_references?: any[];
+  availability?: string;
+  salary_expectations?: string;
+  mobility?: string;
+  contract_type?: string;
+  remote_preference?: string;
+  travel_willingness?: string;
+  professional_networks?: any[];
+  continuous_training?: any[];
+  career_objectives?: string;
+  professional_values?: string;
+  work_authorization?: string;
+  special_permits?: any[];
+  industries?: any[];
+  projects?: any[];
+  profile_completeness?: number;
+}
+
 export interface UpdateCandidateOptions extends Partial<Omit<CandidateData, 'id'>> {
   id: string;
 }
