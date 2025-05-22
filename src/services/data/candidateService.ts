@@ -1,22 +1,22 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
 // Defining the complete CandidateData interface with all properties
 export interface CandidateData {
   id?: string;
-  user_id: string;
+  user_id?: string;
   resume_id?: string;
-  first_name: string;
-  last_name: string;
+  first_name?: string;
+  last_name?: string;
   email?: string;
   phone?: string;
   position?: string;
   years_experience?: number;
   location?: string;
-  skills?: string[];
+  skills?: any[];
   score?: number;
   status?: string;
+  detailed_status?: string;
   company?: string;
   created_at?: string;
   updated_at?: string;
@@ -40,7 +40,7 @@ export interface CandidateData {
   career_objectives?: string;
   professional_values?: string;
   work_authorization?: string;
-  special_permits?: string[];
+  special_permits?: any[];
   industries?: any[];
   projects?: any[];
   profile_completeness?: number;
@@ -85,6 +85,7 @@ const formatCandidateData = (candidate: any): CandidateData => {
     skills: ensureArray(candidate.skills),
     score: candidate.score,
     status: candidate.status,
+    detailed_status: candidate.detailed_status,
     company: candidate.company,
     created_at: candidate.created_at,
     updated_at: candidate.updated_at,

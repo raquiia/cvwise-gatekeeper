@@ -544,6 +544,10 @@ export type Database = {
           last_updated_at: string
         }[]
       }
+      get_candidate_status: {
+        Args: { p_candidate_id: string }
+        Returns: string
+      }
       get_candidates_by_ids: {
         Args: { candidate_ids: string[] }
         Returns: {
@@ -724,6 +728,10 @@ export type Database = {
           p_file_size: number
         }
         Returns: string
+      }
+      update_candidate_status: {
+        Args: { p_candidate_id: string; p_detailed_status: string }
+        Returns: boolean
       }
     }
     Enums: {

@@ -32,17 +32,19 @@ export const candidateStatusService = {
     try {
       console.log("Updating candidate status:", { candidateId, status });
       
-      const { error, data } = await supabase.rpc('update_candidate_status', { 
-        p_candidate_id: candidateId,
-        p_detailed_status: status
+      const { error, data } = await supabase.functions.invoke('update_candidate_status', { 
+        body: { 
+          candidate_id: candidateId,
+          detailed_status: status
+        }
       });
       
       if (error) {
-        console.error("RPC Error:", error);
+        console.error("Function Error:", error);
         throw error;
       }
       
-      console.log("RPC Result:", data);
+      console.log("Function Result:", data);
       
       toast({
         title: "Statut mis à jour",
@@ -53,9 +55,9 @@ export const candidateStatusService = {
     } catch (error: any) {
       console.error('Error updating candidate status:', error);
       
-      // Tentative de fallback avec la méthode directe si le RPC échoue
+      // Tentative de fallback avec la méthode directe si la fonction échoue
       try {
-        console.log("Trying direct update after RPC failure");
+        console.log("Trying direct update after function failure");
         const { error: directError } = await supabase
           .from('candidates')
           .update({ detailed_status: status })
@@ -89,23 +91,23 @@ export const candidateStatusService = {
     try {
       console.log("Getting candidate status for:", candidateId);
       
-      const { data, error } = await supabase.rpc('get_candidate_status', {
-        p_candidate_id: candidateId
+      const { data, error } = await supabase.functions.invoke('get_candidate_status', {
+        body: { candidate_id: candidateId }
       });
       
       if (error) {
-        console.error("RPC Error:", error);
+        console.error("Function Error:", error);
         throw error;
       }
       
-      console.log("RPC Result:", data);
-      return data || null;
+      console.log("Function Result:", data);
+      return data?.status as string || null;
     } catch (error: any) {
       console.error('Error fetching candidate status:', error);
       
-      // Tentative de fallback avec la méthode directe si le RPC échoue
+      // Tentative de fallback avec la méthode directe si la fonction échoue
       try {
-        console.log("Trying direct query after RPC failure");
+        console.log("Trying direct query after function failure");
         const { data: directData, error: directError } = await supabase
           .from('candidates')
           .select('detailed_status')
