@@ -24,14 +24,6 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  -- Validate the status value (match the values used in the frontend)
-  IF p_detailed_status NOT IN (
-    'initial', 'contact', 'prequalification', 'ec1', 'ec2', 
-    'presentation_client', 'en_mission', 'refus', 'ancien_employe'
-  ) THEN
-    RAISE EXCEPTION 'Invalid status value: %', p_detailed_status;
-  END IF;
-
   -- Update the candidate status directly
   UPDATE candidates 
   SET 
