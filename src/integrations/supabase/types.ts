@@ -73,6 +73,7 @@ export type Database = {
           created_at: string
           enhanced_content: string | null
           id: string
+          note_type: string
           updated_at: string
           user_id: string
         }
@@ -82,6 +83,7 @@ export type Database = {
           created_at?: string
           enhanced_content?: string | null
           id?: string
+          note_type?: string
           updated_at?: string
           user_id: string
         }
@@ -91,6 +93,7 @@ export type Database = {
           created_at?: string
           enhanced_content?: string | null
           id?: string
+          note_type?: string
           updated_at?: string
           user_id?: string
         }
