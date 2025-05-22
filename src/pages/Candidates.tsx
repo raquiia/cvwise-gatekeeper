@@ -83,7 +83,7 @@ const Candidates = () => {
     let result = [...candidates];
     
     if (selectedStatus) {
-      result = result.filter(candidate => candidate.status === selectedStatus);
+      result = result.filter(candidate => candidate.detailed_status === selectedStatus);
     }
     
     setFilteredCandidates(result);
@@ -137,7 +137,7 @@ const Candidates = () => {
     let result = [...candidates];
     
     if (selectedStatus) {
-      result = result.filter(candidate => candidate.status === selectedStatus);
+      result = result.filter(candidate => candidate.detailed_status === selectedStatus);
     }
     
     if (location) {
@@ -222,7 +222,7 @@ const Candidates = () => {
     setSemanticSearch('');
     
     if (selectedStatus) {
-      setFilteredCandidates(candidates.filter(candidate => candidate.status === selectedStatus));
+      setFilteredCandidates(candidates.filter(candidate => candidate.detailed_status === selectedStatus));
     } else {
       setFilteredCandidates(candidates);
     }

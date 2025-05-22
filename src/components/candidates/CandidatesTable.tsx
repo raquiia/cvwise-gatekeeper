@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle, AlertTriangle, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,7 @@ import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
 import { candidateMatchingService } from '@/services/data/candidateMatchingService';
 import { Table, TableHeader, TableRow, TableHead, TableBody } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
+import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 
 interface CandidatesTableProps {
   candidates: CandidateData[];
@@ -281,6 +281,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                 <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden lg:table-cell">Localisation</TableHead>
                 <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden lg:table-cell">Expérience</TableHead>
                 <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Compétences</TableHead>
+                <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden md:table-cell">Statut</TableHead>
                 <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden md:table-cell">Mise à jour</TableHead>
                 <TableHead className="text-center text-sm font-medium text-navy-dark dark:text-sand">Actions</TableHead>
               </TableRow>
@@ -288,7 +289,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={9} className="p-8 text-center text-muted-foreground">
                     <div className="flex flex-col items-center justify-center py-12">
                       <div className="w-12 h-12 rounded-full border-4 border-t-purple-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
                       <p className="mt-4 text-purple-700 dark:text-purple-300 font-medium">Chargement des candidats...</p>
@@ -297,7 +298,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                 </TableRow>
               ) : validCandidates.length === 0 ? (
                 <TableRow>
-                  <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={9} className="p-8 text-center text-muted-foreground">
                     <div className="flex flex-col items-center justify-center py-12">
                       <div className="w-20 h-20 text-purple-300 dark:text-purple-700 opacity-50">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
