@@ -45,7 +45,7 @@ export const candidateStatusService = {
       
       // Method 1: Try using the RPC function first
       try {
-        console.log("Trying rpc function first");
+        console.log("Trying RPC function first");
         const { error } = await supabase.rpc('update_candidate_status', {
           p_candidate_id: candidateId,
           p_detailed_status: status
@@ -56,6 +56,7 @@ export const candidateStatusService = {
           throw error;
         }
         
+        console.log("RPC function succeeded");
         toast({
           title: "Statut mis à jour",
           description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
@@ -82,12 +83,16 @@ export const candidateStatusService = {
           
           console.log("Function Result:", response.data);
           
-          toast({
-            title: "Statut mis à jour",
-            description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
-          });
-          
-          return true;
+          if (response.data?.success) {
+            toast({
+              title: "Statut mis à jour",
+              description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
+            });
+            
+            return true;
+          } else {
+            throw new Error("La fonction de mise à jour du statut a échoué");
+          }
         } catch (functionError) {
           console.error("Edge function failed, trying direct DB update", functionError);
           
@@ -105,6 +110,7 @@ export const candidateStatusService = {
             throw error;
           }
           
+          console.log("Direct update successful");
           toast({
             title: "Statut mis à jour",
             description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
@@ -144,6 +150,7 @@ export const candidateStatusService = {
           throw rpcError;
         }
         
+        console.log("RPC function succeeded:", rpcData);
         return rpcData || null;
       } catch (rpcError) {
         console.log("RPC call failed, trying edge function", rpcError);
@@ -177,6 +184,7 @@ export const candidateStatusService = {
             throw error;
           }
           
+          console.log("Direct query successful:", data);
           return data?.detailed_status || null;
         }
       }

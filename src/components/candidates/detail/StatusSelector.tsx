@@ -50,6 +50,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
       
       setIsLoading(true);
       try {
+        console.log("Loading status for candidate:", candidateId);
         const status = await candidateStatusService.getCandidateStatus(candidateId);
         console.log("Loaded status:", status);
         
@@ -58,16 +59,24 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         } else {
           // If status is null, use initial and try again if under retry limit
           if (loadAttempts < maxRetries) {
+            console.log(`Status load attempt ${loadAttempts + 1}/${maxRetries}`);
             setLoadAttempts(prev => prev + 1);
             setTimeout(loadCurrentStatus, 1000 * Math.pow(2, loadAttempts)); // Exponential backoff
+          } else {
+            console.log("Maximum retry attempts reached, using initial status");
+            setCurrentStatus(CANDIDATE_STATUSES.INITIAL);
           }
         }
       } catch (error) {
         console.error("Error loading status:", error);
         // If we've tried less than max retries, retry after a delay
         if (loadAttempts < maxRetries) {
+          console.log(`Status load retry ${loadAttempts + 1}/${maxRetries}`);
           setLoadAttempts(prev => prev + 1);
           setTimeout(loadCurrentStatus, 1000 * Math.pow(2, loadAttempts)); // Exponential backoff
+        } else {
+          console.log("Maximum retry attempts reached, using initial status");
+          setCurrentStatus(CANDIDATE_STATUSES.INITIAL);
         }
       } finally {
         setIsLoading(false);
@@ -88,11 +97,13 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
       const success = await candidateStatusService.updateCandidateStatus(candidateId, status);
       
       if (success) {
+        console.log("Status updated successfully to:", status);
         setCurrentStatus(status);
         if (onStatusChange) {
           onStatusChange(status);
         }
       } else {
+        console.error("Failed to update status");
         // Show error and try again
         toast({
           title: "Erreur de mise à jour",
@@ -137,7 +148,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
             </>
           ) : (
             <>
-              Statut: {CANDIDATE_STATUS_LABELS[currentStatus]}
+              Statut: {CANDIDATE_STATUS_LABELS[currentStatus] || 'Inconnu'}
               <ChevronDown className="ml-2 h-4 w-4" />
             </>
           )}
