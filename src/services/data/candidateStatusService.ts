@@ -32,32 +32,9 @@ export const candidateStatusService = {
     try {
       console.log("Updating candidate status:", { candidateId, status });
       
-      // Method 1: Use direct update with our candidate service
+      // Méthode 1: Essayer d'abord la fonction edge pour éviter les problèmes de récursion
       try {
-        const { error } = await supabase
-          .from('candidates')
-          .update({ detailed_status: status })
-          .eq('id', candidateId);
-        
-        if (error) {
-          console.error("Direct update error:", error);
-          // If we get the recursion error, try the function method
-          if (error.message?.includes('recursion')) {
-            throw new Error('Recursion error, trying function method');
-          }
-          throw error;
-        }
-        
-        toast({
-          title: "Statut mis à jour",
-          description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
-        });
-        
-        return true;
-      } catch (directError) {
-        console.log("Direct update failed, trying function method");
-        
-        // Method 2: Try with the function
+        console.log("Trying edge function first");
         const { error, data } = await supabase.functions.invoke('update_candidate_status', { 
           body: { 
             candidate_id: candidateId,
@@ -71,6 +48,26 @@ export const candidateStatusService = {
         }
         
         console.log("Function Result:", data);
+        
+        toast({
+          title: "Statut mis à jour",
+          description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
+        });
+        
+        return true;
+      } catch (functionError) {
+        console.log("Function update failed, trying direct update", functionError);
+        
+        // Méthode 2: Essayer avec la mise à jour directe
+        const { error } = await supabase
+          .from('candidates')
+          .update({ detailed_status: status, updated_at: new Date().toISOString() })
+          .eq('id', candidateId);
+        
+        if (error) {
+          console.error("Direct update error:", error);
+          throw error;
+        }
         
         toast({
           title: "Statut mis à jour",
@@ -97,28 +94,9 @@ export const candidateStatusService = {
     try {
       console.log("Getting candidate status for:", candidateId);
       
-      // Method 1: First try direct query as it's simpler
+      // Méthode 1: Essayer d'abord la fonction edge pour éviter les problèmes de récursion
       try {
-        const { data, error } = await supabase
-          .from('candidates')
-          .select('detailed_status')
-          .eq('id', candidateId)
-          .single();
-        
-        if (error) {
-          console.error("Direct query error:", error);
-          // If we get recursion error, try the function method
-          if (error.message?.includes('recursion')) {
-            throw new Error('Recursion error, trying function method');
-          }
-          throw error;
-        }
-        
-        return data?.detailed_status || null;
-      } catch (directError) {
-        console.log("Direct query failed, trying function method");
-        
-        // Method 2: Try with the function
+        console.log("Trying edge function first");
         const { data, error } = await supabase.functions.invoke('get_candidate_status', {
           body: { candidate_id: candidateId }
         });
@@ -130,6 +108,22 @@ export const candidateStatusService = {
         
         console.log("Function Result:", data);
         return data?.status as string || null;
+      } catch (functionError) {
+        console.log("Function query failed, trying direct query", functionError);
+        
+        // Méthode 2: Essayer avec la requête directe
+        const { data, error } = await supabase
+          .from('candidates')
+          .select('detailed_status')
+          .eq('id', candidateId)
+          .single();
+        
+        if (error) {
+          console.error("Direct query error:", error);
+          throw error;
+        }
+        
+        return data?.detailed_status || null;
       }
     } catch (error: any) {
       console.error('Error fetching candidate status:', error);

@@ -34,6 +34,7 @@ interface CandidateTableRowProps {
   hideScore?: boolean;
   scoreIsMatchScore?: boolean;
   matchDetails?: any;
+  statusFirst?: boolean;
 }
 
 const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
@@ -42,7 +43,8 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   onCandidateDeleted,
   hideScore = false,
   scoreIsMatchScore = false,
-  matchDetails
+  matchDetails,
+  statusFirst = false
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -156,8 +158,20 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   // Construct display name
   const fullName = `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Sans nom';
   
+  // Status cell to be placed before or after name
+  const statusCell = (
+    <TableCell className="hidden md:table-cell">
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusClass(candidate.detailed_status)}`}>
+        {CANDIDATE_STATUS_LABELS[candidate.detailed_status || 'initial'] || 'Initial'}
+      </span>
+    </TableCell>
+  );
+  
   return (
     <TableRow className="border-b border-purple-100/30 dark:border-purple-900/10 hover:bg-purple-50/50 dark:hover:bg-purple-900/20 transition-colors">
+      {/* Status cell first if requested */}
+      {statusFirst && statusCell}
+      
       <TableCell>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-200 to-indigo-200 dark:from-purple-800 dark:to-indigo-900 flex items-center justify-center text-purple-700 dark:text-purple-300 font-medium">
@@ -169,33 +183,38 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
           </div>
         </div>
       </TableCell>
+      
       <TableCell>
         {candidate.position || 'Non spécifié'}
       </TableCell>
+      
       <TableCell>
         {candidate.company || 'Non spécifié'}
       </TableCell>
+      
       <TableCell className="hidden lg:table-cell">
         {candidate.location || 'Non spécifié'}
       </TableCell>
+      
       <TableCell className="hidden lg:table-cell">
         {candidate.years_experience 
           ? `${candidate.years_experience} an${candidate.years_experience > 1 ? 's' : ''}` 
           : 'Non spécifié'}
       </TableCell>
+      
       <TableCell>
         <div className="flex flex-wrap max-w-[200px]">
           {formatSkills()}
         </div>
       </TableCell>
-      <TableCell className="hidden md:table-cell">
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusClass(candidate.detailed_status)}`}>
-          {CANDIDATE_STATUS_LABELS[candidate.detailed_status || 'initial'] || 'Initial'}
-        </span>
-      </TableCell>
+      
+      {/* Status cell later if not requested first */}
+      {!statusFirst && statusCell}
+      
       <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
         {formatDate(candidate.updated_at)}
       </TableCell>
+      
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
           <Button

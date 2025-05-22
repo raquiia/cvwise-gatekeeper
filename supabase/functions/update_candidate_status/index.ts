@@ -57,14 +57,15 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
 
-    // Call the RPC function
-    const { data, error } = await supabaseClient.rpc(
-      "update_candidate_status",
-      {
-        p_candidate_id: candidate_id,
-        p_detailed_status: detailed_status,
-      }
-    );
+    // Utiliser directement la mise à jour de la table pour éviter les problèmes de récursion
+    const { data, error } = await supabaseClient
+      .from('candidates')
+      .update({ 
+        detailed_status: detailed_status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', candidate_id)
+      .select();
 
     if (error) {
       console.error("Error updating candidate status:", error);

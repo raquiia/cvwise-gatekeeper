@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle, AlertTriangle, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -275,13 +276,13 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
           <Table>
             <TableHeader className="bg-gradient-to-r from-purple-50/80 to-white/80 dark:from-purple-900/20 dark:to-navy-dark/40">
               <TableRow className="border-none hover:bg-transparent">
+                <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden md:table-cell">Statut</TableHead>
                 <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Nom</TableHead>
                 <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Poste</TableHead>
                 <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Entreprise</TableHead>
                 <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden lg:table-cell">Localisation</TableHead>
                 <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden lg:table-cell">Expérience</TableHead>
                 <TableHead className="text-sm font-medium text-navy-dark dark:text-sand">Compétences</TableHead>
-                <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden md:table-cell">Statut</TableHead>
                 <TableHead className="text-sm font-medium text-navy-dark dark:text-sand hidden md:table-cell">Mise à jour</TableHead>
                 <TableHead className="text-center text-sm font-medium text-navy-dark dark:text-sand">Actions</TableHead>
               </TableRow>
@@ -322,6 +323,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                     hideScore={true}
                     scoreIsMatchScore={!!activeJobOfferId}
                     matchDetails={candidate.matchDetails}
+                    statusFirst={true}
                   />
                 ))
               )}

@@ -8,18 +8,22 @@ SET search_path = public
 AS $$
 DECLARE
   v_candidate_exists BOOLEAN;
+  v_user_id UUID;
 BEGIN
-  -- Using a simpler check to avoid recursion issues
+  -- Récupérer l'ID de l'utilisateur courant
+  v_user_id := auth.uid();
+  
+  -- Vérifier que le candidat existe et appartient à l'utilisateur actuel
   SELECT EXISTS(
     SELECT 1 FROM candidates c 
-    WHERE c.id = p_candidate_id
+    WHERE c.id = p_candidate_id AND c.user_id = v_user_id
   ) INTO v_candidate_exists;
   
   IF NOT v_candidate_exists THEN
     RETURN FALSE;
   END IF;
 
-  -- Update the candidate status directly
+  -- Mettre à jour le statut du candidat directement
   UPDATE candidates 
   SET 
     detailed_status = p_detailed_status,
@@ -39,19 +43,23 @@ SET search_path = public
 AS $$
 DECLARE
   v_status TEXT;
+  v_user_id UUID;
   v_candidate_exists BOOLEAN;
 BEGIN
-  -- Using a simpler check to avoid recursion issues
+  -- Récupérer l'ID de l'utilisateur courant
+  v_user_id := auth.uid();
+  
+  -- Vérifier que le candidat existe et appartient à l'utilisateur actuel
   SELECT EXISTS(
     SELECT 1 FROM candidates c 
-    WHERE c.id = p_candidate_id
+    WHERE c.id = p_candidate_id AND c.user_id = v_user_id
   ) INTO v_candidate_exists;
   
   IF NOT v_candidate_exists THEN
     RETURN NULL;
   END IF;
 
-  -- Get the candidate status directly
+  -- Récupérer le statut du candidat directement
   SELECT detailed_status INTO v_status
   FROM candidates
   WHERE id = p_candidate_id;

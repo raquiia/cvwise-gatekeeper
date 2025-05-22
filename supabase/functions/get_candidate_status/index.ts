@@ -57,13 +57,12 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
 
-    // Call the RPC function
-    const { data, error } = await supabaseClient.rpc(
-      "get_candidate_status",
-      {
-        p_candidate_id: candidate_id,
-      }
-    );
+    // Utiliser directement la requête de base de données pour éviter les problèmes de récursion
+    const { data, error } = await supabaseClient
+      .from('candidates')
+      .select('detailed_status')
+      .eq('id', candidate_id)
+      .single();
 
     if (error) {
       console.error("Error getting candidate status:", error);
@@ -80,7 +79,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ status: data }),
+      JSON.stringify({ status: data?.detailed_status }),
       { 
         headers: { 
           "Content-Type": "application/json",
