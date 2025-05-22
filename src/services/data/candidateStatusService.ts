@@ -5,21 +5,25 @@ import { supabase } from '@/integrations/supabase/client';
 export const CANDIDATE_STATUSES = {
   INITIAL: 'initial',
   CONTACT: 'contact',
-  ENTRETIEN: 'entretien',
+  PREQUALIFICATION: 'prequalification',
+  EC1: 'ec1',
+  EC2: 'ec2',
   PRESENTATION_CLIENT: 'presentation_client',
   EN_MISSION: 'en_mission',
   REFUS: 'refus',
-  ANNULE: 'annule'
+  ANCIEN_EMPLOYE: 'ancien_employe'
 };
 
 export const CANDIDATE_STATUS_LABELS: Record<string, string> = {
   'initial': 'Initial',
   'contact': 'Prise de contact',
-  'entretien': 'Entretien',
+  'prequalification': 'Préqualification',
+  'ec1': 'EC1',
+  'ec2': 'EC2',
   'presentation_client': 'Présentation client',
   'en_mission': 'En mission',
   'refus': 'Refusé',
-  'annule': 'Annulé'
+  'ancien_employe': 'Ancien employé'
 };
 
 export const candidateStatusService = {

@@ -14,11 +14,13 @@ import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } f
 const STATUS_COLORS: Record<string, string> = {
   'initial': 'bg-gray-500 hover:bg-gray-600',
   'contact': 'bg-blue-500 hover:bg-blue-600',
-  'entretien': 'bg-purple-500 hover:bg-purple-600',
+  'prequalification': 'bg-cyan-500 hover:bg-cyan-600',
+  'ec1': 'bg-violet-500 hover:bg-violet-600',
+  'ec2': 'bg-indigo-500 hover:bg-indigo-600',
   'presentation_client': 'bg-amber-500 hover:bg-amber-600',
   'en_mission': 'bg-emerald-500 hover:bg-emerald-600',
   'refus': 'bg-red-500 hover:bg-red-600',
-  'annule': 'bg-slate-500 hover:bg-slate-600'
+  'ancien_employe': 'bg-slate-500 hover:bg-slate-600'
 };
 
 interface StatusSelectorProps {
