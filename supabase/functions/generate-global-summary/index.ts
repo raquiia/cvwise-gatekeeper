@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Configuration, OpenAIApi } from "https://esm.sh/openai@3.3.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,11 +31,7 @@ serve(async (req) => {
       throw new Error("L'identifiant du candidat est requis");
     }
 
-    // Configurer OpenAI
-    const configuration = new Configuration({ apiKey: openaiApiKey });
-    const openai = new OpenAIApi(configuration);
-
-    // Appel à l'API OpenAI pour générer le résumé global
+    // Appel direct à l'API OpenAI sans utiliser le client OpenAI
     const prompt = `
     Voici l'ensemble des notes d'entretien pour un candidat:
 
@@ -54,24 +49,39 @@ serve(async (req) => {
     Format ta réponse en plusieurs paragraphes bien organisés avec des sections clairement définies.
     `;
 
-    const response = await openai.createChatCompletion({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: "Tu es un assistant RH expert qui synthétise des notes d'entretien pour créer un compte-rendu global complet et professionnel."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openaiApiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "Tu es un assistant RH expert qui synthétise des notes d'entretien pour créer un compte-rendu global complet et professionnel."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      })
     });
 
+    // Vérifier si la réponse est OK
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Erreur OpenAI:", errorData);
+      throw new Error(`Erreur API OpenAI: ${response.status} ${response.statusText}`);
+    }
+
     // Extraire le résumé global généré
-    const globalSummary = response.data.choices[0]?.message?.content || "";
+    const data = await response.json();
+    const globalSummary = data.choices[0]?.message?.content || "";
 
     return new Response(
       JSON.stringify({ globalSummary }),
