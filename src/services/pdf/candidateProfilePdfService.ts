@@ -1,371 +1,272 @@
 
-// Import required packages and services
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { CandidateData } from '../data/candidateService';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { candidateNotesService } from '@/services/data/candidateNotesService';
+import { CandidateData } from '@/services/data/candidateService';
+import { CandidateNote } from '@/services/data/candidateNotesService';
+import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 
-export const generateCandidateProfilePdf = async (candidate: CandidateData): Promise<string> => {
-  // Create a new PDF document
-  const doc = new jsPDF();
-  
-  // Set default font
-  doc.setFont('helvetica');
-  
-  // Add header
-  doc.setFontSize(22);
-  doc.setTextColor(30, 64, 175); // Blue color
-  doc.text('Profil Candidat', 105, 20, { align: 'center' });
-  
-  // Add candidate name
-  doc.setFontSize(18);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`${candidate.first_name} ${candidate.last_name}`, 105, 30, { align: 'center' });
-  
-  // Add position and company if available
-  if (candidate.position || candidate.company) {
-    let positionText = '';
-    if (candidate.position) positionText += candidate.position;
-    if (candidate.company) positionText += candidate.position ? ` - ${candidate.company}` : candidate.company;
+// Fonction pour générer un PDF de profil candidat
+export const generateCandidateProfilePdf = async (
+  candidate: CandidateData,
+  notes: CandidateNote[] = []
+): Promise<void> => {
+  try {
+    const doc = new jsPDF();
     
-    doc.setFontSize(14);
-    doc.setTextColor(100, 100, 100);
-    doc.text(positionText, 105, 38, { align: 'center' });
-  }
-  
-  // Add generated date
-  const today = format(new Date(), 'dd MMMM yyyy', { locale: fr });
-  doc.setFontSize(10);
-  doc.setTextColor(150, 150, 150);
-  doc.text(`Généré le ${today}`, 105, 45, { align: 'center' });
-  
-  // Add horizontal line
-  doc.setDrawColor(200, 200, 200);
-  doc.line(20, 50, 190, 50);
-  
-  // Set starting y position for content sections
-  let yPos = 60;
-  
-  // Add contact information section
-  yPos = addSectionTitle(doc, 'Informations de contact', yPos);
-  
-  const contactInfo = [
-    ['Email', candidate.email || 'Non spécifié'],
-    ['Téléphone', candidate.phone || 'Non spécifié'],
-    ['Localisation', candidate.location || 'Non spécifié']
-  ];
-  
-  autoTable(doc, {
-    startY: yPos,
-    head: [],
-    body: contactInfo,
-    theme: 'plain',
-    styles: { fontSize: 11, cellPadding: 2 },
-    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } },
-  });
-  
-  yPos = (doc as any).lastAutoTable.finalY + 10;
-  
-  // Add professional experience section if available
-  if (candidate.experiences && Array.isArray(candidate.experiences) && candidate.experiences.length > 0) {
-    yPos = addSectionTitle(doc, 'Expérience professionnelle', yPos);
+    // Ajout de l'en-tête
+    const headerText = `${candidate.first_name} ${candidate.last_name}`;
+    doc.setFontSize(16);
+    doc.setTextColor(44, 62, 80); // Couleur foncée pour l'en-tête
+    doc.text(headerText, 105, 20, { align: 'center' });
     
-    candidate.experiences.forEach((exp: any, index: number) => {
-      // Check if we need to add a new page for this experience
-      if (yPos > 250) {
+    // Informations de base
+    doc.setFontSize(11);
+    doc.setTextColor(52, 73, 94); // Couleur bleu-gris
+    
+    let yPosition = 35;
+    
+    // Position et statut
+    if (candidate.position) {
+      doc.setFont(undefined, 'bold');
+      doc.text(`Poste: `, 20, yPosition);
+      doc.setFont(undefined, 'normal');
+      doc.text(`${candidate.position}`, 40, yPosition);
+      yPosition += 7;
+    }
+    
+    if (candidate.detailed_status) {
+      doc.setFont(undefined, 'bold');
+      doc.text(`Statut: `, 20, yPosition);
+      doc.setFont(undefined, 'normal');
+      doc.text(`${CANDIDATE_STATUS_LABELS[candidate.detailed_status] || candidate.detailed_status}`, 40, yPosition);
+      yPosition += 7;
+    }
+    
+    // Coordonnées
+    if (candidate.email || candidate.phone) {
+      doc.setFont(undefined, 'bold');
+      doc.text('Contact:', 20, yPosition);
+      doc.setFont(undefined, 'normal');
+      yPosition += 7;
+      
+      if (candidate.email) {
+        doc.text(`Email: ${candidate.email}`, 25, yPosition);
+        yPosition += 7;
+      }
+      
+      if (candidate.phone) {
+        doc.text(`Tél: ${candidate.phone}`, 25, yPosition);
+        yPosition += 7;
+      }
+      
+      if (candidate.location) {
+        doc.text(`Localisation: ${candidate.location}`, 25, yPosition);
+        yPosition += 7;
+      }
+    }
+    
+    // Ligne de séparation
+    yPosition += 3;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, yPosition, 190, yPosition);
+    yPosition += 10;
+    
+    // Expériences professionnelles
+    if (candidate.experiences && candidate.experiences.length > 0) {
+      doc.setFontSize(14);
+      doc.setTextColor(41, 128, 185); // Couleur bleue
+      doc.text('Expériences Professionnelles', 20, yPosition);
+      doc.setTextColor(52, 73, 94); // Retour à la couleur standard
+      doc.setFontSize(11);
+      yPosition += 10;
+      
+      candidate.experiences.forEach((exp: any) => {
+        // Date de l'expérience
+        const dateRange = `${exp.start_date || '?'} - ${exp.end_date || 'Présent'}`;
+        doc.setFont(undefined, 'bold');
+        doc.text(dateRange, 20, yPosition);
+        
+        // Position et entreprise
+        const positionText = `${exp.title || 'Poste non spécifié'}`;
+        doc.text(positionText, 80, yPosition);
+        
+        if (exp.company) {
+          doc.setFont(undefined, 'normal');
+          doc.text(`${exp.company}`, 150, yPosition);
+        }
+        
+        yPosition += 7;
+        
+        // Description de l'expérience
+        if (exp.description) {
+          doc.setFont(undefined, 'normal');
+          const descriptionLines = doc.splitTextToSize(exp.description, 150);
+          if (yPosition + (descriptionLines.length * 7) > 280) {
+            doc.addPage();
+            yPosition = 20;
+          }
+          doc.text(descriptionLines, 25, yPosition);
+          yPosition += descriptionLines.length * 7;
+        }
+        
+        yPosition += 5;
+      });
+      
+      // Ligne de séparation
+      yPosition += 3;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, yPosition, 190, yPosition);
+      yPosition += 10;
+    }
+    
+    // Formation
+    if (candidate.education && candidate.education.length > 0) {
+      if (yPosition > 240) {
         doc.addPage();
-        yPos = 20;
+        yPosition = 20;
       }
       
-      doc.setFontSize(12);
-      doc.setTextColor(0, 0, 0);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`${exp.title || 'Poste non spécifié'}${exp.company ? ' - ' + exp.company : ''}`, 20, yPos);
+      doc.setFontSize(14);
+      doc.setTextColor(41, 128, 185); // Couleur bleue
+      doc.text('Formation', 20, yPosition);
+      doc.setTextColor(52, 73, 94); // Retour à la couleur standard
+      doc.setFontSize(11);
+      yPosition += 10;
       
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 100, 100);
-      
-      const dateText = formatExperienceDates(exp.start_date, exp.end_date);
-      doc.text(dateText, 20, yPos + 5);
-      
-      if (exp.description) {
-        doc.setFontSize(10);
-        doc.setTextColor(50, 50, 50);
-        const descLines = doc.splitTextToSize(exp.description, 170);
-        doc.text(descLines, 20, yPos + 10);
-        yPos += 10 + (descLines.length * 5);
-      }
-      
-      yPos += 10;
-      
-      // Add a separator line between experiences (except after the last one)
-      if (index < candidate.experiences.length - 1) {
-        doc.setDrawColor(230, 230, 230);
-        doc.line(20, yPos - 2, 190, yPos - 2);
-      }
-    });
-    
-    yPos += 5;
-  }
-  
-  // Add education section if available
-  if (candidate.education && Array.isArray(candidate.education) && candidate.education.length > 0) {
-    // Check if we need to add a new page for education
-    if (yPos > 230) {
-      doc.addPage();
-      yPos = 20;
-    }
-    
-    yPos = addSectionTitle(doc, 'Formation', yPos);
-    
-    candidate.education.forEach((edu: any, index: number) => {
-      doc.setFontSize(12);
-      doc.setTextColor(0, 0, 0);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`${edu.degree || 'Diplôme non spécifié'}${edu.institution ? ' - ' + edu.institution : ''}`, 20, yPos);
-      
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 100, 100);
-      
-      const dateText = formatExperienceDates(edu.start_date, edu.end_date);
-      doc.text(dateText, 20, yPos + 5);
-      
-      if (edu.description) {
-        doc.setFontSize(10);
-        doc.setTextColor(50, 50, 50);
-        const descLines = doc.splitTextToSize(edu.description, 170);
-        doc.text(descLines, 20, yPos + 10);
-        yPos += 10 + (descLines.length * 5);
-      }
-      
-      yPos += 10;
-      
-      // Add a separator line between education entries (except after the last one)
-      if (index < candidate.education.length - 1) {
-        doc.setDrawColor(230, 230, 230);
-        doc.line(20, yPos - 2, 190, yPos - 2);
-      }
-    });
-    
-    yPos += 5;
-  }
-  
-  // Add skills section if available
-  if (candidate.skills && (Array.isArray(candidate.skills) || typeof candidate.skills === 'object') && Object.keys(candidate.skills).length > 0) {
-    // Check if we need to add a new page for skills
-    if (yPos > 240) {
-      doc.addPage();
-      yPos = 20;
-    }
-    
-    yPos = addSectionTitle(doc, 'Compétences', yPos);
-    
-    let skillsList: string[] = [];
-    if (Array.isArray(candidate.skills)) {
-      skillsList = candidate.skills.map(skill => typeof skill === 'string' ? skill : String(skill));
-    } else {
-      skillsList = Object.values(candidate.skills).map(skill => typeof skill === 'string' ? skill : String(skill));
-    }
-    
-    // Split skills into rows of 3-4 skills each
-    const skillsChunks = [];
-    for (let i = 0; i < skillsList.length; i += 3) {
-      skillsChunks.push(skillsList.slice(i, i + 3).join(' • '));
-    }
-    
-    doc.setFontSize(10);
-    doc.setTextColor(50, 50, 50);
-    
-    skillsChunks.forEach((chunk, index) => {
-      doc.text(chunk, 20, yPos + (index * 6));
-    });
-    
-    yPos += (skillsChunks.length * 6) + 10;
-  }
-  
-  // Add languages section if available
-  if (candidate.languages && Array.isArray(candidate.languages) && candidate.languages.length > 0) {
-    // Check if we need to add a new page for languages
-    if (yPos > 250) {
-      doc.addPage();
-      yPos = 20;
-    }
-    
-    yPos = addSectionTitle(doc, 'Langues', yPos);
-    
-    const languagesData = candidate.languages.map((lang: any) => {
-      const language = typeof lang === 'string' ? lang : (lang.language || 'Non spécifié');
-      const level = typeof lang === 'object' ? (lang.level || 'Non spécifié') : 'Non spécifié';
-      return [language, level];
-    });
-    
-    autoTable(doc, {
-      startY: yPos,
-      head: [],
-      body: languagesData,
-      theme: 'plain',
-      styles: { fontSize: 11, cellPadding: 2 },
-      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } },
-    });
-    
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-  }
-  
-  // Add notes if available
-  try {
-    // Fetch notes for the candidate
-    if (candidate.id) {
-      const notes = await candidateNotesService.getCandidateNotes(candidate.id);
-      
-      if (notes && notes.length > 0) {
-        // Check if we need to add a new page for notes
-        if (yPos > 220) {
-          doc.addPage();
-          yPos = 20;
+      candidate.education.forEach((edu: any) => {
+        const dateRange = `${edu.start_date || '?'} - ${edu.end_date || 'Présent'}`;
+        doc.setFont(undefined, 'bold');
+        doc.text(dateRange, 20, yPosition);
+        doc.text(`${edu.degree || 'Diplôme non spécifié'}`, 80, yPosition);
+        
+        if (edu.school) {
+          doc.setFont(undefined, 'normal');
+          doc.text(edu.school, 150, yPosition);
         }
         
-        yPos = addSectionTitle(doc, 'Notes', yPos);
+        yPosition += 7;
         
-        // Group notes by type
-        const notesByType: Record<string, any[]> = {};
-        
-        notes.forEach(note => {
-          const type = note.note_type || 'global';
-          if (!notesByType[type]) {
-            notesByType[type] = [];
-          }
-          notesByType[type].push(note);
-        });
-        
-        // Display notes by type
-        for (const [type, typeNotes] of Object.entries(notesByType)) {
-          let typeLabel = '';
-          
-          switch (type) {
-            case 'prequalification':
-              typeLabel = 'Préqualification';
-              break;
-            case 'ec1':
-              typeLabel = 'EC1 (Premier Entretien)';
-              break;
-            case 'ec2':
-              typeLabel = 'EC2 (Second Entretien)';
-              break;
-            case 'global':
-              typeLabel = 'Synthèse Globale';
-              break;
-            default:
-              typeLabel = 'Note';
-          }
-          
-          doc.setFontSize(12);
-          doc.setTextColor(30, 64, 175); // Blue color
-          doc.setFont('helvetica', 'bold');
-          doc.text(typeLabel, 20, yPos);
-          yPos += 6;
-          
-          typeNotes.forEach((note, index) => {
-            const content = note.enhanced_content || note.content;
-            
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(50, 50, 50);
-            
-            const createdDate = note.created_at ? format(new Date(note.created_at), 'dd/MM/yyyy', { locale: fr }) : '';
-            if (createdDate) {
-              doc.text(`Date: ${createdDate}`, 20, yPos);
-              yPos += 5;
-            }
-            
-            const contentLines = doc.splitTextToSize(content, 170);
-            doc.text(contentLines, 20, yPos);
-            
-            yPos += (contentLines.length * 5) + 10;
-            
-            // Add space between notes
-            if (index < typeNotes.length - 1) {
-              doc.setDrawColor(230, 230, 230);
-              doc.line(20, yPos - 3, 190, yPos - 3);
-              yPos += 5;
-            }
-            
-            // Check if we need to add a new page
-            if (yPos > 270 && (index < typeNotes.length - 1 || Object.entries(notesByType).indexOf([type, typeNotes]) < Object.entries(notesByType).length - 1)) {
-              doc.addPage();
-              yPos = 20;
-            }
-          });
-          
-          yPos += 5;
+        // Description de la formation
+        if (edu.description) {
+          doc.setFont(undefined, 'normal');
+          const descriptionLines = doc.splitTextToSize(edu.description, 150);
+          doc.text(descriptionLines, 25, yPosition);
+          yPosition += descriptionLines.length * 7;
         }
-      }
-    }
-  } catch (error) {
-    console.error('Error adding notes to PDF:', error);
-  }
-  
-  // Add footer with page numbers
-  const totalPages = doc.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text(`Page ${i} sur ${totalPages}`, 105, 290, { align: 'center' });
-  }
-  
-  // Return the PDF as a data URL
-  return doc.output('datauristring');
-};
-
-// Helper function to add a section title
-const addSectionTitle = (doc: jsPDF, title: string, yPos: number): number => {
-  doc.setFontSize(14);
-  doc.setTextColor(30, 64, 175); // Blue color
-  doc.setFont('helvetica', 'bold');
-  doc.text(title, 20, yPos);
-  
-  // Add a light blue underline
-  doc.setDrawColor(30, 64, 175);
-  doc.line(20, yPos + 1, 20 + doc.getTextWidth(title), yPos + 1);
-  
-  return yPos + 8;
-};
-
-// Helper function to format experience dates
-const formatExperienceDates = (startDate: string | undefined, endDate: string | undefined): string => {
-  if (!startDate) return 'Dates non spécifiées';
-  
-  let formattedStart = '';
-  let formattedEnd = '';
-  
-  try {
-    // Try to parse and format the start date
-    const parsedStart = new Date(startDate);
-    if (!isNaN(parsedStart.getTime())) {
-      formattedStart = format(parsedStart, 'MMM yyyy', { locale: fr });
-    } else {
-      formattedStart = startDate;
+        
+        yPosition += 5;
+      });
+      
+      // Ligne de séparation
+      yPosition += 3;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, yPosition, 190, yPosition);
+      yPosition += 10;
     }
     
-    // Try to parse and format the end date if it exists
-    if (endDate) {
-      const parsedEnd = new Date(endDate);
-      if (!isNaN(parsedEnd.getTime())) {
-        formattedEnd = format(parsedEnd, 'MMM yyyy', { locale: fr });
-      } else {
-        formattedEnd = endDate;
+    // Compétences
+    if (candidate.skills && candidate.skills.length > 0) {
+      if (yPosition > 250) {
+        doc.addPage();
+        yPosition = 20;
       }
-    } else {
-      formattedEnd = 'Présent';
+      
+      doc.setFontSize(14);
+      doc.setTextColor(41, 128, 185); // Couleur bleue
+      doc.text('Compétences', 20, yPosition);
+      doc.setTextColor(52, 73, 94); // Retour à la couleur standard
+      doc.setFontSize(11);
+      yPosition += 10;
+      
+      const skills = candidate.skills.map((skill: any) => {
+        if (typeof skill === 'string') return skill;
+        return skill.name || '';
+      }).filter(Boolean);
+      
+      // Afficher les compétences sur plusieurs colonnes
+      const skillsPerRow = 3;
+      const skillRows = Math.ceil(skills.length / skillsPerRow);
+      
+      for (let i = 0; i < skillRows; i++) {
+        for (let j = 0; j < skillsPerRow; j++) {
+          const index = i * skillsPerRow + j;
+          if (index < skills.length) {
+            doc.text(`• ${skills[index]}`, 20 + j * 60, yPosition);
+          }
+        }
+        yPosition += 7;
+      }
+      
+      // Ligne de séparation
+      yPosition += 3;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, yPosition, 190, yPosition);
+      yPosition += 10;
     }
     
-    return `${formattedStart} - ${formattedEnd}`;
+    // Notes
+    if (notes && notes.length > 0) {
+      if (yPosition > 240) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      
+      doc.setFontSize(14);
+      doc.setTextColor(41, 128, 185); // Couleur bleue
+      doc.text('Notes', 20, yPosition);
+      doc.setTextColor(52, 73, 94); // Retour à la couleur standard
+      doc.setFontSize(11);
+      yPosition += 10;
+      
+      // Table des notes
+      const notesData = notes.map((note) => {
+        const date = new Date(note.created_at).toLocaleDateString();
+        // Tronquer le contenu s'il est trop long
+        let content = note.content;
+        if (content && content.length > 80) {
+          content = content.substring(0, 77) + '...';
+        }
+        
+        const noteType = note.note_type || 'global';
+        
+        return [date, noteType, content];
+      });
+      
+      autoTable(doc, {
+        startY: yPosition,
+        head: [['Date', 'Type', 'Contenu']],
+        body: notesData,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [41, 128, 185],
+          textColor: 255,
+          fontStyle: 'bold'
+        },
+        styles: {
+          fontSize: 10
+        },
+        columnStyles: {
+          0: { cellWidth: 25 }, // Date
+          1: { cellWidth: 30 }, // Type
+          2: { cellWidth: 'auto' } // Contenu
+        }
+      });
+      
+      // Mise à jour de la position Y après le tableau
+      // @ts-ignore - la propriété lastAutoTable existe bien sur jsPDF grâce au plugin autotable
+      yPosition = doc.lastAutoTable.finalY + 10;
+    }
+    
+    // Téléchargement du PDF
+    const fileName = `${candidate.last_name.toUpperCase()}_${candidate.first_name}_CV_${new Date().toISOString().slice(0, 10)}.pdf`;
+    doc.save(fileName);
+    
   } catch (error) {
-    // If date parsing fails, return the raw dates
-    return `${startDate || ''} - ${endDate || 'Présent'}`;
+    console.error("Erreur lors de la génération du PDF:", error);
+    throw error;
   }
+};
+
+export default {
+  generateCandidateProfilePdf
 };

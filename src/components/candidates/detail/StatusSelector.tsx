@@ -39,10 +39,22 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   // Charger le statut actuel
   useEffect(() => {
     const loadCurrentStatus = async () => {
+      if (!candidateId) {
+        console.error("No candidate ID provided");
+        setIsLoading(false);
+        return;
+      }
+      
       setIsLoading(true);
-      const status = await candidateStatusService.getCandidateStatus(candidateId);
-      setCurrentStatus(status || CANDIDATE_STATUSES.INITIAL);
-      setIsLoading(false);
+      try {
+        const status = await candidateStatusService.getCandidateStatus(candidateId);
+        console.log("Loaded status:", status);
+        setCurrentStatus(status || CANDIDATE_STATUSES.INITIAL);
+      } catch (error) {
+        console.error("Error loading status:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     loadCurrentStatus();
@@ -50,17 +62,25 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   
   // Changer le statut
   const handleStatusChange = async (status: string) => {
+    if (status === currentStatus) return; // Ne rien faire si le statut est déjà celui sélectionné
+    
+    console.log("Changing status to:", status);
     setIsUpdating(true);
-    const success = await candidateStatusService.updateCandidateStatus(candidateId, status);
     
-    if (success) {
-      setCurrentStatus(status);
-      if (onStatusChange) {
-        onStatusChange(status);
+    try {
+      const success = await candidateStatusService.updateCandidateStatus(candidateId, status);
+      
+      if (success) {
+        setCurrentStatus(status);
+        if (onStatusChange) {
+          onStatusChange(status);
+        }
       }
+    } catch (error) {
+      console.error("Error updating status:", error);
+    } finally {
+      setIsUpdating(false);
     }
-    
-    setIsUpdating(false);
   };
   
   // Déterminer la couleur du bouton en fonction du statut actuel

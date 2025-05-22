@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
-import { CandidateNote, candidateNotesService } from '@/services/data/candidateNotesService';
-import { candidateProfilePdfService } from '@/services/pdf/candidateProfilePdfService';
+import { candidateNotesService } from '@/services/data/candidateNotesService';
+import { generateCandidateProfilePdf } from '@/services/pdf/candidateProfilePdfService';
 import { useToast } from '@/hooks/use-toast';
 
 interface ExportProfileButtonProps {
@@ -23,7 +23,12 @@ const ExportProfileButton: React.FC<ExportProfileButtonProps> = ({ candidate }) 
       const notes = await candidateNotesService.getNotesForCandidate(candidate.id || '');
       
       // Générer et télécharger le PDF
-      await candidateProfilePdfService.generateCandidateProfilePdf(candidate, notes);
+      await generateCandidateProfilePdf(candidate, notes);
+      
+      toast({
+        title: "Exportation réussie",
+        description: "Le profil du candidat a été exporté en PDF.",
+      });
     } catch (error: any) {
       toast({
         title: "Erreur d'exportation",
