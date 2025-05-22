@@ -2,7 +2,7 @@
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-export type NoteType = 'precal' | 'ec1' | 'ec2' | 'general';
+export type NoteType = 'precal' | 'ec1' | 'ec2' | 'global';
 
 export interface CandidateNote {
   id?: string;
@@ -30,8 +30,8 @@ export const candidateNotesService = {
       // Adapter les données pour s'assurer que note_type existe
       const notesWithType = data?.map(note => ({
         ...note,
-        // Assurer que note_type est disponible, sinon utiliser 'general'
-        note_type: (note as any).note_type || 'general' as NoteType
+        // Assurer que note_type est disponible, sinon utiliser 'global' comme fallback
+        note_type: (note as any).note_type || 'global' as NoteType
       })) as CandidateNote[] || [];
       
       return notesWithType;
@@ -161,5 +161,88 @@ export const candidateNotesService = {
       });
       return null;
     }
+  },
+  
+  // Générer un compte-rendu global basé sur toutes les notes du candidat
+  generateGlobalSummary: async (candidateId: string): Promise<CandidateNote | null> => {
+    try {
+      // Récupérer toutes les notes existantes pour le candidat
+      const notes = await candidateNotesService.getNotesForCandidate(candidateId);
+      
+      if (notes.length === 0) {
+        toast({
+          title: "Information",
+          description: "Aucune note à synthétiser pour ce candidat",
+        });
+        return null;
+      }
+      
+      // Préparer le contenu pour l'appel à OpenAI
+      const notesContent = notes
+        .filter(note => note.note_type !== 'global') // Exclure les notes globales précédentes
+        .map(note => {
+          const type = getNoteTypeLabel(note.note_type);
+          const content = note.enhanced_content || note.content;
+          return `--- ${type} ---\n${content}`;
+        })
+        .join('\n\n');
+      
+      // Appel à la fonction Edge pour générer le résumé global
+      const { data, error } = await supabase.functions.invoke('generate-global-summary', {
+        body: { notesContent, candidateId }
+      });
+      
+      if (error) throw error;
+      
+      if (!data || !data.globalSummary) {
+        throw new Error("La génération du résumé a échoué");
+      }
+      
+      const userId = notes[0]?.user_id; // Utiliser l'ID de l'utilisateur des notes existantes
+      
+      if (!userId) {
+        throw new Error("Impossible de déterminer l'utilisateur");
+      }
+      
+      // Créer une nouvelle note de type global
+      const newGlobalNote: Omit<CandidateNote, 'id' | 'created_at' | 'updated_at'> = {
+        candidate_id: candidateId,
+        user_id: userId,
+        note_type: 'global',
+        content: data.globalSummary,
+      };
+      
+      // Enregistrer la note globale
+      const result = await candidateNotesService.addNote(newGlobalNote);
+      
+      if (result) {
+        toast({
+          title: "Compte-rendu global généré",
+          description: "Le compte-rendu global a été créé avec succès",
+        });
+        return result;
+      }
+      
+      return null;
+    } catch (error: any) {
+      console.error('Error generating global summary:', error);
+      toast({
+        title: "Erreur",
+        description: `Impossible de générer le compte-rendu global: ${error.message}`,
+        variant: "destructive",
+      });
+      return null;
+    }
+  }
+};
+
+// Fonction pour obtenir le nom complet du type de note
+export const getNoteTypeLabel = (noteType?: NoteType): string => {
+  switch (noteType) {
+    case 'precal': return 'Pré-qualification';
+    case 'ec1': return 'Entretien 1er Tour';
+    case 'ec2': return 'Entretien 2nd Tour';
+    case 'global': return 'Compte-rendu global';
+    default: return 'Note';
   }
 };

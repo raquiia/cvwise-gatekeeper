@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { CandidateNote, NoteType, candidateNotesService } from '@/services/data/candidateNotesService';
+import { CandidateNote, NoteType, candidateNotesService, getNoteTypeLabel } from '@/services/data/candidateNotesService';
 import { useAuth } from '@/context/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { PencilLine, Trash2, FileEdit, FilePlus, Check, Loader2 } from 'lucide-react';
+import { PencilLine, Trash2, FileEdit, FilePlus, Check, Loader2, FileText, ListFilter } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -45,6 +45,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Badge } from '@/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface InterviewNotesProps {
   candidateId: string;
@@ -52,7 +58,7 @@ interface InterviewNotesProps {
 
 const noteSchema = z.object({
   content: z.string().min(1, { message: 'Le contenu est requis' }),
-  note_type: z.enum(['general', 'precal', 'ec1', 'ec2'], {
+  note_type: z.enum(['precal', 'ec1', 'ec2'], {
     required_error: "Veuillez sélectionner un type de note",
   }),
 });
@@ -65,17 +71,8 @@ const getNoteTypeBadgeColor = (noteType: NoteType) => {
     case 'precal': return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
     case 'ec1': return 'bg-amber-100 text-amber-800 hover:bg-amber-200';
     case 'ec2': return 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200';
+    case 'global': return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
     default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
-  }
-};
-
-// Fonction pour obtenir le nom complet du type de note
-const getNoteTypeLabel = (noteType?: NoteType) => {
-  switch (noteType) {
-    case 'precal': return 'Pré-qualification';
-    case 'ec1': return 'Entretien 1er Tour';
-    case 'ec2': return 'Entretien 2nd Tour';
-    default: return 'Note générale';
   }
 };
 
@@ -85,19 +82,20 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
   const [notes, setNotes] = useState<CandidateNote[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
+  const [isGeneratingGlobal, setIsGeneratingGlobal] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
   const [isLoadingNotes, setIsLoadingNotes] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("all");
-  const [editNoteType, setEditNoteType] = useState<NoteType>('general');
+  const [editNoteType, setEditNoteType] = useState<NoteType>('precal');
   
   // Formulaire de la nouvelle note
   const form = useForm<NoteFormValues>({
     resolver: zodResolver(noteSchema),
     defaultValues: {
       content: '',
-      note_type: 'general',
+      note_type: 'precal',
     },
   });
 
@@ -157,10 +155,24 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
     setIsEnhancing(false);
   };
   
+  const handleGenerateGlobalSummary = async () => {
+    setIsGeneratingGlobal(true);
+    
+    const result = await candidateNotesService.generateGlobalSummary(candidateId);
+    
+    if (result) {
+      await loadNotes();
+      // Basculer vers l'onglet global après génération
+      setActiveTab('global');
+    }
+    
+    setIsGeneratingGlobal(false);
+  };
+  
   const handleStartEdit = (note: CandidateNote) => {
     setEditingNoteId(note.id || null);
     setEditContent(note.content);
-    setEditNoteType(note.note_type || 'general');
+    setEditNoteType(note.note_type);
   };
   
   const handleCancelEdit = () => {
@@ -201,6 +213,9 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
     if (activeTab === 'all') return true;
     return note.note_type === activeTab;
   });
+
+  // Vérifier s'il existe déjà une note globale
+  const hasGlobalNote = notes.some(note => note.note_type === 'global');
   
   return (
     <Card className="mt-6">
@@ -233,7 +248,6 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="general">Note générale</SelectItem>
                           <SelectItem value="precal">Pré-qualification</SelectItem>
                           <SelectItem value="ec1">Entretien 1er Tour</SelectItem>
                           <SelectItem value="ec2">Entretien 2nd Tour</SelectItem>
@@ -283,15 +297,49 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
           
           <Separator />
           
-          {/* Filtres par type de note */}
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="w-full grid grid-cols-4">
-              <TabsTrigger value="all">Toutes</TabsTrigger>
-              <TabsTrigger value="precal">Pré-qualification</TabsTrigger>
-              <TabsTrigger value="ec1">1er Tour</TabsTrigger>
-              <TabsTrigger value="ec2">2nd Tour</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            {/* Filtres par type de note */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
+              <TabsList className="w-full grid grid-cols-5">
+                <TabsTrigger value="all">Toutes</TabsTrigger>
+                <TabsTrigger value="precal">Pré-qual</TabsTrigger>
+                <TabsTrigger value="ec1">1er Tour</TabsTrigger>
+                <TabsTrigger value="ec2">2nd Tour</TabsTrigger>
+                <TabsTrigger value="global">Global</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            
+            {/* Bouton de génération du compte-rendu global */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full md:w-auto"
+                    onClick={handleGenerateGlobalSummary}
+                    disabled={isGeneratingGlobal || (notes.length === 0 || (notes.length === 1 && notes[0]?.note_type === 'global'))}
+                  >
+                    {isGeneratingGlobal ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Génération en cours...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Générer un compte-rendu global
+                      </>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {notes.length === 0 
+                    ? "Ajoutez des notes d'entretien avant de générer un compte-rendu global" 
+                    : "Génère un compte-rendu global basé sur toutes les notes existantes"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           
           {/* Liste des notes */}
           {isLoadingNotes ? (
@@ -315,7 +363,7 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
                         <span className="text-xs text-muted-foreground">
                           {note.created_at && format(new Date(note.created_at), 'PPP à HH:mm', { locale: fr })}
                         </span>
-                        <Badge className={getNoteTypeBadgeColor(note.note_type || 'general')}>
+                        <Badge className={getNoteTypeBadgeColor(note.note_type)}>
                           {getNoteTypeLabel(note.note_type)}
                         </Badge>
                       </div>
@@ -326,6 +374,7 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
                               variant="ghost" 
                               size="sm"
                               onClick={() => handleStartEdit(note)}
+                              disabled={note.note_type === 'global'} // Désactiver l'édition pour les notes globales
                             >
                               <FileEdit className="h-4 w-4" />
                             </Button>
@@ -346,13 +395,13 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
                       <div className="space-y-2">
                         <Select 
                           value={editNoteType} 
-                          onValueChange={(value: NoteType) => setEditNoteType(value)}
+                          onValueChange={(value: NoteType) => setEditNoteType(value as NoteType)}
+                          disabled={note.note_type === 'global'} // Désactiver le changement de type pour les notes globales
                         >
                           <SelectTrigger className="w-full mb-2">
                             <SelectValue placeholder="Type de note" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="general">Note générale</SelectItem>
                             <SelectItem value="precal">Pré-qualification</SelectItem>
                             <SelectItem value="ec1">Entretien 1er Tour</SelectItem>
                             <SelectItem value="ec2">Entretien 2nd Tour</SelectItem>
@@ -388,7 +437,7 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
                           {note.enhanced_content || note.content}
                         </div>
                         
-                        {!note.enhanced_content && (
+                        {!note.enhanced_content && note.note_type !== 'global' && (
                           <div className="mt-4">
                             <Button 
                               variant="outline" 

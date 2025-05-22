@@ -1,6 +1,6 @@
 
 import { CandidateData } from '@/services/data/candidateService';
-import { CandidateNote } from '@/services/data/candidateNotesService';
+import { CandidateNote, getNoteTypeLabel } from '@/services/data/candidateNotesService';
 import { ensureArray, ensureStringArray } from '@/utils/candidateUtils';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
@@ -16,16 +16,6 @@ declare module 'jspdf' {
     };
   }
 }
-
-// Fonction pour obtenir le nom complet du type de note
-const getNoteTypeLabel = (noteType?: string) => {
-  switch (noteType) {
-    case 'precal': return 'Pré-qualification';
-    case 'ec1': return 'Entretien 1er Tour';
-    case 'ec2': return 'Entretien 2nd Tour';
-    default: return 'Note générale';
-  }
-};
 
 export const candidateProfilePdfService = {
   generateCandidateProfilePdf: async (
