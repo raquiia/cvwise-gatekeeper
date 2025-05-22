@@ -158,16 +158,42 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   // Construct display name
   const fullName = `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Sans nom';
   
-  // Get the status value, ensuring it's a string and not an object
-  // Fixed type checking to avoid 'never' type error
-  const statusValue = typeof candidate.detailed_status === 'string' 
-    ? candidate.detailed_status 
-    : (candidate.detailed_status && 
-       typeof candidate.detailed_status === 'object' && 
-       candidate.detailed_status !== null && 
-       'value' in (candidate.detailed_status as Record<string, unknown>))
-      ? (candidate.detailed_status as Record<string, string>).value
-      : 'initial';
+  // Extract the status value safely
+  let statusValue: string = 'initial';
+  
+  // Handle string status
+  if (typeof candidate.detailed_status === 'string') {
+    statusValue = candidate.detailed_status;
+  } 
+  // Handle object status with value property
+  else if (
+    candidate.detailed_status && 
+    typeof candidate.detailed_status === 'object' && 
+    candidate.detailed_status !== null
+  ) {
+    // Try to access common patterns for status objects
+    const detailedStatus = candidate.detailed_status as any;
+    
+    if ('value' in detailedStatus) {
+      statusValue = detailedStatus.value;
+    } else if ('status' in detailedStatus) {
+      statusValue = detailedStatus.status;
+    } else if ('name' in detailedStatus) {
+      statusValue = detailedStatus.name;
+    }
+  }
+  
+  // Ensure we have a valid status or fallback to initial
+  if (!statusValue || typeof statusValue !== 'string') {
+    statusValue = 'initial';
+  }
+  
+  // Log the status extraction for debugging
+  console.log('Candidate status extraction:', {
+    candidateId: candidate.id,
+    originalStatus: candidate.detailed_status,
+    extractedStatus: statusValue
+  });
   
   // Status cell to be placed before or after name
   const statusCell = (

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -85,17 +84,34 @@ const Candidates = () => {
     let result = [...candidates];
     
     if (selectedStatus) {
-      // Filter by detailed_status which is now correctly stored as a string
-      // Fixed type checking to avoid 'never' type error
+      // Extract the status value safely from each candidate
       result = result.filter(candidate => {
-        const candidateStatus = typeof candidate.detailed_status === 'string' 
-          ? candidate.detailed_status 
-          : (candidate.detailed_status && 
-             typeof candidate.detailed_status === 'object' && 
-             candidate.detailed_status !== null &&
-             'value' in (candidate.detailed_status as Record<string, unknown>))
-            ? (candidate.detailed_status as Record<string, string>).value
-            : 'initial';
+        // Initialize with a default status
+        let candidateStatus: string = 'initial';
+        
+        // Handle string status
+        if (typeof candidate.detailed_status === 'string') {
+          candidateStatus = candidate.detailed_status;
+        } 
+        // Handle object status with value property
+        else if (
+          candidate.detailed_status && 
+          typeof candidate.detailed_status === 'object' && 
+          candidate.detailed_status !== null
+        ) {
+          const detailedStatus = candidate.detailed_status as any;
+          
+          if ('value' in detailedStatus) {
+            candidateStatus = detailedStatus.value;
+          } else if ('status' in detailedStatus) {
+            candidateStatus = detailedStatus.status;
+          } else if ('name' in detailedStatus) {
+            candidateStatus = detailedStatus.name;
+          }
+        }
+        
+        // Log for debugging
+        console.log(`Candidate ${candidate.id} status: ${candidateStatus}, selected: ${selectedStatus}, match: ${candidateStatus === selectedStatus}`);
         
         return candidateStatus === selectedStatus;
       });
@@ -152,7 +168,30 @@ const Candidates = () => {
     let result = [...candidates];
     
     if (selectedStatus) {
-      result = result.filter(candidate => candidate.detailed_status === selectedStatus);
+      result = result.filter(candidate => {
+        // Extract status using the same logic as above
+        let candidateStatus: string = 'initial';
+        
+        if (typeof candidate.detailed_status === 'string') {
+          candidateStatus = candidate.detailed_status;
+        } else if (
+          candidate.detailed_status && 
+          typeof candidate.detailed_status === 'object' && 
+          candidate.detailed_status !== null
+        ) {
+          const detailedStatus = candidate.detailed_status as any;
+          
+          if ('value' in detailedStatus) {
+            candidateStatus = detailedStatus.value;
+          } else if ('status' in detailedStatus) {
+            candidateStatus = detailedStatus.status;
+          } else if ('name' in detailedStatus) {
+            candidateStatus = detailedStatus.name;
+          }
+        }
+        
+        return candidateStatus === selectedStatus;
+      });
     }
     
     if (location) {
@@ -237,7 +276,30 @@ const Candidates = () => {
     setSemanticSearch('');
     
     if (selectedStatus) {
-      setFilteredCandidates(candidates.filter(candidate => candidate.detailed_status === selectedStatus));
+      setFilteredCandidates(candidates.filter(candidate => {
+        // Extract status using the same logic as above
+        let candidateStatus: string = 'initial';
+        
+        if (typeof candidate.detailed_status === 'string') {
+          candidateStatus = candidate.detailed_status;
+        } else if (
+          candidate.detailed_status && 
+          typeof candidate.detailed_status === 'object' && 
+          candidate.detailed_status !== null
+        ) {
+          const detailedStatus = candidate.detailed_status as any;
+          
+          if ('value' in detailedStatus) {
+            candidateStatus = detailedStatus.value;
+          } else if ('status' in detailedStatus) {
+            candidateStatus = detailedStatus.status;
+          } else if ('name' in detailedStatus) {
+            candidateStatus = detailedStatus.name;
+          }
+        }
+        
+        return candidateStatus === selectedStatus;
+      }));
     } else {
       setFilteredCandidates(candidates);
     }
