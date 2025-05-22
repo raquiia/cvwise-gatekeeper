@@ -27,11 +27,12 @@ export const candidateNotesService = {
       
       if (error) throw error;
       
-      // Vérifier que note_type existe, sinon attribuer 'general' comme valeur par défaut
+      // Adapter les données pour s'assurer que note_type existe
       const notesWithType = data?.map(note => ({
         ...note,
-        note_type: note.note_type || 'general' as NoteType
-      })) || [];
+        // Assurer que note_type est disponible, sinon utiliser 'general'
+        note_type: (note as any).note_type || 'general' as NoteType
+      })) as CandidateNote[] || [];
       
       return notesWithType;
     } catch (error: any) {
