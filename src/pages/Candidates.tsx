@@ -86,11 +86,15 @@ const Candidates = () => {
     
     if (selectedStatus) {
       // Filter by detailed_status which is now correctly stored as a string
+      // Fixed type checking to avoid 'never' type error
       result = result.filter(candidate => {
         const candidateStatus = typeof candidate.detailed_status === 'string' 
           ? candidate.detailed_status 
-          : (candidate.detailed_status && typeof candidate.detailed_status === 'object' && 'value' in candidate.detailed_status)
-            ? candidate.detailed_status.value
+          : (candidate.detailed_status && 
+             typeof candidate.detailed_status === 'object' && 
+             candidate.detailed_status !== null &&
+             'value' in (candidate.detailed_status as Record<string, unknown>))
+            ? (candidate.detailed_status as Record<string, string>).value
             : 'initial';
         
         return candidateStatus === selectedStatus;

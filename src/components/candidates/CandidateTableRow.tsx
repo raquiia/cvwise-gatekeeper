@@ -159,10 +159,14 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   const fullName = `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Sans nom';
   
   // Get the status value, ensuring it's a string and not an object
+  // Fixed type checking to avoid 'never' type error
   const statusValue = typeof candidate.detailed_status === 'string' 
     ? candidate.detailed_status 
-    : (candidate.detailed_status && typeof candidate.detailed_status === 'object' && 'value' in candidate.detailed_status)
-      ? candidate.detailed_status.value
+    : (candidate.detailed_status && 
+       typeof candidate.detailed_status === 'object' && 
+       candidate.detailed_status !== null && 
+       'value' in (candidate.detailed_status as Record<string, unknown>))
+      ? (candidate.detailed_status as Record<string, string>).value
       : 'initial';
   
   // Status cell to be placed before or after name
