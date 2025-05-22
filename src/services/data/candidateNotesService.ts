@@ -26,7 +26,14 @@ export const candidateNotesService = {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data || [];
+      
+      // Vérifier que note_type existe, sinon attribuer 'general' comme valeur par défaut
+      const notesWithType = data?.map(note => ({
+        ...note,
+        note_type: note.note_type || 'general' as NoteType
+      })) || [];
+      
+      return notesWithType;
     } catch (error: any) {
       console.error('Error fetching candidate notes:', error);
       toast({
@@ -55,7 +62,7 @@ export const candidateNotesService = {
         description: "La note a été enregistrée avec succès",
       });
       
-      return data;
+      return data as CandidateNote;
     } catch (error: any) {
       console.error('Error adding candidate note:', error);
       toast({
@@ -84,7 +91,7 @@ export const candidateNotesService = {
         description: "La note a été mise à jour avec succès",
       });
       
-      return data;
+      return data as CandidateNote;
     } catch (error: any) {
       console.error('Error updating candidate note:', error);
       toast({
