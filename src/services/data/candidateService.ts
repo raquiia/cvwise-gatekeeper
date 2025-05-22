@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -214,7 +215,7 @@ export const candidateService = {
     try {
       const { id, ...updateData } = options;
       
-      // Use the secure RPC function to bypass RLS issues
+      // Use the secure RPC function we created to bypass RLS issues
       const { data, error } = await supabase.rpc(
         'update_candidate_secure',
         {
@@ -224,7 +225,7 @@ export const candidateService = {
       );
       
       if (error) throw error;
-      return formatCandidateData(data);
+      return formatCandidateData(data[0]); // Note: This returns an array, so we take the first element
     } catch (error: any) {
       console.error('Error in updateCandidate:', error);
       throw new Error(`Failed to update candidate: ${error.message}`);

@@ -456,6 +456,10 @@ export type Database = {
         Args: { p_file_name: string; p_user_id: string }
         Returns: boolean
       }
+      check_profile_ownership: {
+        Args: { profile_id: string }
+        Returns: boolean
+      }
       delete_candidate_secure: {
         Args: { candidate_id_param: string }
         Returns: boolean
