@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
+import { toast } from '@/hooks/use-toast';
 
 // Définition des couleurs par statut
 const STATUS_COLORS: Record<string, string> = {
@@ -35,6 +36,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   const [currentStatus, setCurrentStatus] = useState<string>(CANDIDATE_STATUSES.INITIAL);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [loadAttempts, setLoadAttempts] = useState<number>(0);
   
   // Charger le statut actuel
   useEffect(() => {
@@ -52,13 +54,18 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         setCurrentStatus(status || CANDIDATE_STATUSES.INITIAL);
       } catch (error) {
         console.error("Error loading status:", error);
+        // If we've tried less than 3 times, retry after a delay
+        if (loadAttempts < 2) {
+          setLoadAttempts(prev => prev + 1);
+          setTimeout(loadCurrentStatus, 1000);
+        }
       } finally {
         setIsLoading(false);
       }
     };
     
     loadCurrentStatus();
-  }, [candidateId]);
+  }, [candidateId, loadAttempts]);
   
   // Changer le statut
   const handleStatusChange = async (status: string) => {
@@ -75,9 +82,20 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         if (onStatusChange) {
           onStatusChange(status);
         }
+      } else {
+        toast({
+          title: "Erreur de mise à jour",
+          description: "Le changement de statut a échoué. Veuillez réessayer.",
+          variant: "destructive",
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating status:", error);
+      toast({
+        title: "Erreur",
+        description: `Impossible de mettre à jour le statut: ${error.message}`,
+        variant: "destructive",
+      });
     } finally {
       setIsUpdating(false);
     }
