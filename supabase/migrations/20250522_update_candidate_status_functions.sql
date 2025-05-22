@@ -1,5 +1,6 @@
 
 -- Fix for infinite recursion issues in update_candidate_status function
+-- and add proper check for valid status values
 CREATE OR REPLACE FUNCTION public.update_candidate_status(p_candidate_id uuid, p_detailed_status text)
 RETURNS boolean
 LANGUAGE plpgsql
@@ -10,10 +11,10 @@ DECLARE
   v_candidate_exists BOOLEAN;
   v_user_id UUID;
 BEGIN
-  -- Récupérer l'ID de l'utilisateur courant
+  -- Get the current user ID
   v_user_id := auth.uid();
   
-  -- Vérifier que le candidat existe et appartient à l'utilisateur actuel
+  -- Check that the candidate exists and belongs to the current user
   SELECT EXISTS(
     SELECT 1 FROM candidates c 
     WHERE c.id = p_candidate_id AND c.user_id = v_user_id
@@ -23,7 +24,15 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  -- Mettre à jour le statut du candidat directement
+  -- Validate the status value (match the values used in the frontend)
+  IF p_detailed_status NOT IN (
+    'initial', 'contact', 'prequalification', 'ec1', 'ec2', 
+    'presentation_client', 'en_mission', 'refus', 'ancien_employe'
+  ) THEN
+    RAISE EXCEPTION 'Invalid status value: %', p_detailed_status;
+  END IF;
+
+  -- Update the candidate status directly
   UPDATE candidates 
   SET 
     detailed_status = p_detailed_status,
@@ -46,10 +55,10 @@ DECLARE
   v_user_id UUID;
   v_candidate_exists BOOLEAN;
 BEGIN
-  -- Récupérer l'ID de l'utilisateur courant
+  -- Get the current user ID
   v_user_id := auth.uid();
   
-  -- Vérifier que le candidat existe et appartient à l'utilisateur actuel
+  -- Check that the candidate exists and belongs to the current user
   SELECT EXISTS(
     SELECT 1 FROM candidates c 
     WHERE c.id = p_candidate_id AND c.user_id = v_user_id
@@ -59,7 +68,7 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  -- Récupérer le statut du candidat directement
+  -- Get the candidate status directly
   SELECT detailed_status INTO v_status
   FROM candidates
   WHERE id = p_candidate_id;

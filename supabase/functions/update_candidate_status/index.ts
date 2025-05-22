@@ -51,13 +51,34 @@ serve(async (req) => {
       );
     }
 
+    // Validate detailed_status before proceeding
+    const validStatuses = [
+      'initial', 'contact', 'prequalification', 'ec1', 'ec2', 
+      'presentation_client', 'en_mission', 'refus', 'ancien_employe'
+    ];
+
+    if (!validStatuses.includes(detailed_status)) {
+      return new Response(
+        JSON.stringify({ 
+          error: `Invalid status value: ${detailed_status}. Valid values are: ${validStatuses.join(', ')}` 
+        }),
+        { 
+          status: 400, 
+          headers: { 
+            "Content-Type": "application/json",
+            ...corsHeaders 
+          } 
+        }
+      );
+    }
+
     // Create Supabase client with the project URL and service key
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") || "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
 
-    // Utiliser directement la mise à jour de la table pour éviter les problèmes de récursion
+    // Directly update the candidates table to avoid recursion issues
     const { data, error } = await supabaseClient
       .from('candidates')
       .update({ 

@@ -27,27 +27,27 @@ export const CANDIDATE_STATUS_LABELS: Record<string, string> = {
 };
 
 export const candidateStatusService = {
-  // Mettre à jour le statut détaillé d'un candidat
+  // Update the detailed status of a candidate
   updateCandidateStatus: async (candidateId: string, status: string): Promise<boolean> => {
     try {
       console.log("Updating candidate status:", { candidateId, status });
       
-      // Méthode 1: Essayer d'abord la fonction edge pour éviter les problèmes de récursion
+      // Method 1: Try the edge function first
       try {
         console.log("Trying edge function first");
-        const { error, data } = await supabase.functions.invoke('update_candidate_status', { 
+        const response = await supabase.functions.invoke('update_candidate_status', { 
           body: { 
             candidate_id: candidateId,
             detailed_status: status
           }
         });
         
-        if (error) {
-          console.error("Function Error:", error);
-          throw error;
+        if (response.error) {
+          console.error("Function Error:", response.error);
+          throw response.error;
         }
         
-        console.log("Function Result:", data);
+        console.log("Function Result:", response.data);
         
         toast({
           title: "Statut mis à jour",
@@ -58,7 +58,7 @@ export const candidateStatusService = {
       } catch (functionError) {
         console.log("Function update failed, trying direct update", functionError);
         
-        // Méthode 2: Essayer avec la mise à jour directe
+        // Method 2: Try direct update
         const { error } = await supabase
           .from('candidates')
           .update({ detailed_status: status, updated_at: new Date().toISOString() })
@@ -89,29 +89,29 @@ export const candidateStatusService = {
     }
   },
   
-  // Récupérer le statut détaillé d'un candidat
+  // Get the detailed status of a candidate
   getCandidateStatus: async (candidateId: string): Promise<string | null> => {
     try {
       console.log("Getting candidate status for:", candidateId);
       
-      // Méthode 1: Essayer d'abord la fonction edge pour éviter les problèmes de récursion
+      // Method 1: Try the edge function first
       try {
         console.log("Trying edge function first");
-        const { data, error } = await supabase.functions.invoke('get_candidate_status', {
+        const response = await supabase.functions.invoke('get_candidate_status', {
           body: { candidate_id: candidateId }
         });
         
-        if (error) {
-          console.error("Function Error:", error);
-          throw error;
+        if (response.error) {
+          console.error("Function Error:", response.error);
+          throw response.error;
         }
         
-        console.log("Function Result:", data);
-        return data?.status as string || null;
+        console.log("Function Result:", response.data);
+        return response.data?.status as string || null;
       } catch (functionError) {
         console.log("Function query failed, trying direct query", functionError);
         
-        // Méthode 2: Essayer avec la requête directe
+        // Method 2: Try direct query
         const { data, error } = await supabase
           .from('candidates')
           .select('detailed_status')

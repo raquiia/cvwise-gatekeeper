@@ -11,7 +11,7 @@ import {
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
 import { toast } from '@/hooks/use-toast';
 
-// Définition des couleurs par statut
+// Define colors by status
 const STATUS_COLORS: Record<string, string> = {
   'initial': 'bg-gray-500 hover:bg-gray-600',
   'contact': 'bg-blue-500 hover:bg-blue-600',
@@ -38,7 +38,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [loadAttempts, setLoadAttempts] = useState<number>(0);
   
-  // Charger le statut actuel
+  // Load current status
   useEffect(() => {
     const loadCurrentStatus = async () => {
       if (!candidateId) {
@@ -67,9 +67,9 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
     loadCurrentStatus();
   }, [candidateId, loadAttempts]);
   
-  // Changer le statut
+  // Change status
   const handleStatusChange = async (status: string) => {
-    if (status === currentStatus) return; // Ne rien faire si le statut est déjà celui sélectionné
+    if (status === currentStatus) return; // Do nothing if status is already selected
     
     console.log("Changing status to:", status);
     setIsUpdating(true);
@@ -82,26 +82,15 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         if (onStatusChange) {
           onStatusChange(status);
         }
-      } else {
-        toast({
-          title: "Erreur de mise à jour",
-          description: "Le changement de statut a échoué. Veuillez réessayer.",
-          variant: "destructive",
-        });
       }
     } catch (error: any) {
       console.error("Error updating status:", error);
-      toast({
-        title: "Erreur",
-        description: `Impossible de mettre à jour le statut: ${error.message}`,
-        variant: "destructive",
-      });
     } finally {
       setIsUpdating(false);
     }
   };
   
-  // Déterminer la couleur du bouton en fonction du statut actuel
+  // Determine button color based on current status
   const buttonColorClass = STATUS_COLORS[currentStatus] || 'bg-gray-500 hover:bg-gray-600';
   
   if (isLoading) {
