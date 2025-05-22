@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle, AlertTriangle, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,7 @@ import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
 import { candidateMatchingService } from '@/services/data/candidateMatchingService';
 import { Table, TableHeader, TableRow, TableHead, TableBody } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
-import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
+import { CANDIDATE_STATUS_LABELS, CANDIDATE_STATUSES } from '@/services/data/candidateStatusService';
 
 interface CandidatesTableProps {
   candidates: CandidateData[];
@@ -69,6 +68,13 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     
     // Copy candidates to avoid mutation issues
     const updatedCandidates = [...candidates];
+    
+    // Log candidates to ensure detailed_status is present
+    console.log("Candidates with detailed status:", updatedCandidates.map(c => ({
+      id: c.id,
+      name: `${c.first_name} ${c.last_name}`,
+      detailed_status: c.detailed_status
+    })));
     
     // Sort candidates based on sort criteria
     sortCandidates(updatedCandidates, sortBy);
@@ -184,18 +190,17 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                 <DropdownMenuItem onClick={() => onStatusChange(null)}>
                   Tous
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onStatusChange('active')}>
-                  <CheckCircle size={14} className="mr-2 text-emerald-500" />
-                  Actifs
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onStatusChange('qualification')}>
-                  <AlertTriangle size={14} className="mr-2 text-amber-500" />
-                  En qualification
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onStatusChange('inactive')}>
-                  <XCircle size={14} className="mr-2 text-red-500" />
-                  Inactifs
-                </DropdownMenuItem>
+                
+                {/* Updated dropdown items for each status */}
+                {Object.entries(CANDIDATE_STATUS_LABELS).map(([value, label]) => (
+                  <DropdownMenuItem 
+                    key={value} 
+                    onClick={() => onStatusChange(value)}
+                    className={selectedStatus === value ? "bg-purple-50 dark:bg-purple-900/20" : ""}
+                  >
+                    {label}
+                  </DropdownMenuItem>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -303,7 +308,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                     <div className="flex flex-col items-center justify-center py-12">
                       <div className="w-20 h-20 text-purple-300 dark:text-purple-700 opacity-50">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87m-4-12a4 4 0 010 7.75" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 010 7.75" />
                         </svg>
                       </div>
                       <p className="mt-4 text-lg font-medium text-purple-700 dark:text-purple-300">Aucun candidat trouvé</p>
