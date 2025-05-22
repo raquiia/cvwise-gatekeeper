@@ -185,7 +185,32 @@ export const candidateStatusService = {
           }
           
           console.log("Direct query successful:", data);
-          return data?.detailed_status || null;
+          
+          // Enhanced processing to handle various return formats
+          if (!data) return null;
+          
+          const detailedStatus = data.detailed_status;
+          if (!detailedStatus) return null;
+          
+          // If it's a string, return it
+          if (typeof detailedStatus === 'string') {
+            return detailedStatus;
+          }
+          
+          // If it's an object, try to extract status
+          if (typeof detailedStatus === 'object' && detailedStatus !== null) {
+            if ('value' in detailedStatus && detailedStatus.value) {
+              return String(detailedStatus.value);
+            }
+            if ('status' in detailedStatus && detailedStatus.status) {
+              return String(detailedStatus.status);
+            }
+            if ('name' in detailedStatus && detailedStatus.name) {
+              return String(detailedStatus.name);
+            }
+          }
+          
+          return 'initial'; // Default fallback
         }
       }
     } catch (error: any) {

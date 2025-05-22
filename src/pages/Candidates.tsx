@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -12,35 +13,51 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import { semanticMatchingService } from '@/services/semantic/semanticMatchingService';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 
-// Helper function to extract status from candidate
+// Helper function to extract status from candidate - Enhanced version
 const extractCandidateStatus = (candidate: CandidateData): string => {
   // Default status if extraction fails
   let statusValue = 'initial';
   
   try {
+    // If detailed_status is undefined or null, return default
     if (candidate.detailed_status === undefined || candidate.detailed_status === null) {
       return statusValue;
     }
     
-    // If it's directly a string, use it
+    // If it's directly a string
     if (typeof candidate.detailed_status === 'string') {
       return candidate.detailed_status;
     }
     
-    // If it's an object, try to extract the status
+    // If it's an object
     if (typeof candidate.detailed_status === 'object' && candidate.detailed_status !== null) {
       const statusObj = candidate.detailed_status as Record<string, any>;
       
-      // Try common status field names
-      if ('value' in statusObj && typeof statusObj.value === 'string') {
-        return statusObj.value;
+      // Log the actual structure for debugging
+      console.log(`Status object for ${candidate.id}:`, statusObj);
+      
+      // Try to extract from different possible structures
+      if ('value' in statusObj && statusObj.value !== undefined) {
+        return String(statusObj.value);
       }
-      if ('status' in statusObj && typeof statusObj.status === 'string') {
-        return statusObj.status;
+      
+      if ('status' in statusObj && statusObj.status !== undefined) {
+        return String(statusObj.status);
       }
-      if ('name' in statusObj && typeof statusObj.name === 'string') {
-        return statusObj.name;
+      
+      if ('name' in statusObj && statusObj.name !== undefined) {
+        return String(statusObj.name);
       }
+      
+      // If we have _type field, it might be a Supabase special format
+      if ('_type' in statusObj && statusObj._type === 'undefined' && 'value' in statusObj) {
+        // This appears to be the issue - we're getting {_type: 'undefined', value: 'undefined'}
+        // Instead of returning 'undefined', return our default
+        return statusValue;
+      }
+      
+      // If we have an object but couldn't extract a value, log it for debugging
+      console.warn('Could not extract status from object:', statusObj);
     }
   } catch (err) {
     console.error("Error extracting candidate status:", err);
@@ -89,6 +106,16 @@ const Candidates = () => {
         const sortedCandidates = [...data].sort((a, b) => 
           new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
         );
+        
+        // Log all candidates' status for debugging
+        sortedCandidates.forEach(candidate => {
+          const extractedStatus = extractCandidateStatus(candidate);
+          console.log(`Candidate ${candidate.id} (${candidate.first_name} ${candidate.last_name}) status:`, {
+            rawStatus: candidate.detailed_status,
+            extractedStatus: extractedStatus
+          });
+        });
+        
         setCandidates(sortedCandidates);
         setFilteredCandidates(sortedCandidates);
       } else {
@@ -121,7 +148,7 @@ const Candidates = () => {
     let result = [...candidates];
     
     if (selectedStatus) {
-      // Filter candidates by selected status using the helper function
+      // Filter candidates by selected status using the enhanced helper function
       result = result.filter(candidate => {
         const candidateStatus = extractCandidateStatus(candidate);
         
@@ -183,7 +210,7 @@ const Candidates = () => {
     let result = [...candidates];
     
     if (selectedStatus) {
-      // Filter by status using the helper function
+      // Filter by status using the enhanced helper function
       result = result.filter(candidate => {
         const candidateStatus = extractCandidateStatus(candidate);
         return candidateStatus === selectedStatus;
@@ -272,7 +299,7 @@ const Candidates = () => {
     setSemanticSearch('');
     
     if (selectedStatus) {
-      // Filter only by status using the helper function
+      // Filter only by status using the enhanced helper function
       setFilteredCandidates(candidates.filter(candidate => {
         const candidateStatus = extractCandidateStatus(candidate);
         return candidateStatus === selectedStatus;

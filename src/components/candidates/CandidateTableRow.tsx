@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, MoreHorizontal, Eye, Trash, Tag } from 'lucide-react';
@@ -114,35 +115,51 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     }
   };
 
-  // Extract status from candidate with safer type handling
+  // Extract status from candidate - Updated implementation
   const extractCandidateStatus = (): string => {
-    // Default status if extraction fails
+    // Default status
     let statusValue = 'initial';
     
     try {
+      // If detailed_status is undefined or null, return default
       if (candidate.detailed_status === undefined || candidate.detailed_status === null) {
         return statusValue;
       }
       
-      // If it's directly a string, use it
+      // If it's directly a string
       if (typeof candidate.detailed_status === 'string') {
         return candidate.detailed_status;
       }
       
-      // If it's an object, try to extract the status
+      // If it's an object
       if (typeof candidate.detailed_status === 'object' && candidate.detailed_status !== null) {
         const statusObj = candidate.detailed_status as Record<string, any>;
         
-        // Try common status field names
-        if ('value' in statusObj && typeof statusObj.value === 'string') {
-          return statusObj.value;
+        // Log the actual structure for debugging
+        console.log(`Status object for ${candidate.id}:`, statusObj);
+        
+        // Try to extract from different possible structures
+        if ('value' in statusObj && statusObj.value !== undefined) {
+          return String(statusObj.value);
         }
-        if ('status' in statusObj && typeof statusObj.status === 'string') {
-          return statusObj.status;
+        
+        if ('status' in statusObj && statusObj.status !== undefined) {
+          return String(statusObj.status);
         }
-        if ('name' in statusObj && typeof statusObj.name === 'string') {
-          return statusObj.name;
+        
+        if ('name' in statusObj && statusObj.name !== undefined) {
+          return String(statusObj.name);
         }
+        
+        // If we have _type field, it might be a Supabase special format
+        if ('_type' in statusObj && statusObj._type === 'undefined' && 'value' in statusObj) {
+          // This appears to be the issue - we're getting {_type: 'undefined', value: 'undefined'}
+          // Instead of returning 'undefined', return our default
+          return statusValue;
+        }
+        
+        // If we have an object but couldn't extract a value, log it for debugging
+        console.warn('Could not extract status from object:', statusObj);
       }
     } catch (err) {
       console.error("Error extracting candidate status:", err);
