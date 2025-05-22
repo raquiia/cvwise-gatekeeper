@@ -214,13 +214,14 @@ export const candidateService = {
     try {
       const { id, ...updateData } = options;
       
-      // Use a direct update instead of RPC function to bypass RLS issues
-      const { data, error } = await supabase
-        .from('candidates')
-        .update(updateData)
-        .eq('id', id)
-        .select('*')
-        .single();
+      // Use the secure RPC function to bypass RLS issues
+      const { data, error } = await supabase.rpc(
+        'update_candidate_secure',
+        {
+          p_candidate_id: id,
+          p_data: updateData
+        }
+      );
       
       if (error) throw error;
       return formatCandidateData(data);
