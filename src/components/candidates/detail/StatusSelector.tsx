@@ -36,8 +36,6 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   const [currentStatus, setCurrentStatus] = useState<string>(CANDIDATE_STATUSES.INITIAL);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
-  const [loadAttempts, setLoadAttempts] = useState<number>(0);
-  const [maxRetries] = useState<number>(3);
   
   // Load current status
   useEffect(() => {
@@ -57,34 +55,19 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         if (status) {
           setCurrentStatus(status);
         } else {
-          // If status is null, use initial and try again if under retry limit
-          if (loadAttempts < maxRetries) {
-            console.log(`Status load attempt ${loadAttempts + 1}/${maxRetries}`);
-            setLoadAttempts(prev => prev + 1);
-            setTimeout(loadCurrentStatus, 1000 * Math.pow(2, loadAttempts)); // Exponential backoff
-          } else {
-            console.log("Maximum retry attempts reached, using initial status");
-            setCurrentStatus(CANDIDATE_STATUSES.INITIAL);
-          }
+          console.log("No status found, using initial");
+          setCurrentStatus(CANDIDATE_STATUSES.INITIAL);
         }
       } catch (error) {
         console.error("Error loading status:", error);
-        // If we've tried less than max retries, retry after a delay
-        if (loadAttempts < maxRetries) {
-          console.log(`Status load retry ${loadAttempts + 1}/${maxRetries}`);
-          setLoadAttempts(prev => prev + 1);
-          setTimeout(loadCurrentStatus, 1000 * Math.pow(2, loadAttempts)); // Exponential backoff
-        } else {
-          console.log("Maximum retry attempts reached, using initial status");
-          setCurrentStatus(CANDIDATE_STATUSES.INITIAL);
-        }
+        setCurrentStatus(CANDIDATE_STATUSES.INITIAL);
       } finally {
         setIsLoading(false);
       }
     };
     
     loadCurrentStatus();
-  }, [candidateId, loadAttempts, maxRetries]);
+  }, [candidateId]);
   
   // Change status
   const handleStatusChange = async (status: string) => {
@@ -104,7 +87,6 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         }
       } else {
         console.error("Failed to update status");
-        // Show error and try again
         toast({
           title: "Erreur de mise à jour",
           description: "La mise à jour du statut a échoué. Veuillez réessayer.",

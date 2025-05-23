@@ -43,12 +43,12 @@ export const candidateStatusService = {
         return false;
       }
       
-      // Method 1: Try using the RPC function first
+      // Simplified approach: Use the secure RPC function first, then fall back to direct update if needed
       try {
-        console.log("Trying RPC function first");
-        const { error } = await supabase.rpc('update_candidate_status', {
+        console.log("Using secure RPC function for status update");
+        const { data, error } = await supabase.rpc('update_candidate_secure', {
           p_candidate_id: candidateId,
-          p_detailed_status: status
+          p_data: { detailed_status: status }
         });
         
         if (error) {
@@ -56,71 +56,27 @@ export const candidateStatusService = {
           throw error;
         }
         
-        console.log("RPC function succeeded");
+        console.log("Status update succeeded via secure RPC");
         toast({
           title: "Statut mis à jour",
           description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
         });
         
         return true;
-      } catch (rpcError) {
-        console.log("RPC function failed, trying edge function", rpcError);
-      
-        // Method 2: Try the edge function
-        try {
-          console.log("Trying edge function");
-          const response = await supabase.functions.invoke('update_candidate_status', { 
-            body: { 
-              candidate_id: candidateId,
-              detailed_status: status
-            }
-          });
-          
-          if (response.error) {
-            console.error("Function Error:", response.error);
-            throw response.error;
-          }
-          
-          console.log("Function Result:", response.data);
-          
-          if (response.data?.success) {
-            toast({
-              title: "Statut mis à jour",
-              description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
-            });
-            
-            return true;
-          } else {
-            throw new Error("La fonction de mise à jour du statut a échoué");
-          }
-        } catch (functionError) {
-          console.error("Edge function failed, trying direct DB update", functionError);
-          
-          // Method 3: Try direct database update as final fallback
-          const { error } = await supabase
-            .from('candidates')
-            .update({ 
-              detailed_status: status, 
-              updated_at: new Date().toISOString() 
-            })
-            .eq('id', candidateId);
-          
-          if (error) {
-            console.error("Direct update error:", error);
-            throw error;
-          }
-          
-          console.log("Direct update successful");
-          toast({
-            title: "Statut mis à jour",
-            description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
-          });
-          
-          return true;
-        }
+      } catch (updateError) {
+        console.error("Status update failed:", updateError);
+        
+        // Show error toast
+        toast({
+          title: "Erreur",
+          description: `Impossible de mettre à jour le statut: ${updateError.message || 'Erreur inconnue'}`,
+          variant: "destructive",
+        });
+        
+        return false;
       }
     } catch (error: any) {
-      console.error('Error updating candidate status:', error);
+      console.error('Error in updateCandidateStatus:', error);
       
       toast({
         title: "Erreur",
@@ -137,105 +93,28 @@ export const candidateStatusService = {
     try {
       console.log("Getting candidate status for:", candidateId);
       
-      // Method 1: Try using the RPC function first
-      try {
-        console.log("Trying RPC function first");
-        const { data: rpcData, error: rpcError } = await supabase.rpc(
-          'get_candidate_status',
-          { p_candidate_id: candidateId }
-        );
-        
-        if (rpcError) {
-          console.error("RPC Error:", rpcError);
-          throw rpcError;
-        }
-        
-        console.log("RPC function succeeded:", rpcData);
-        return rpcData || null;
-      } catch (rpcError) {
-        console.log("RPC call failed, trying edge function", rpcError);
-        
-        // Method 2: Try the edge function as fallback
-        try {
-          console.log("Trying edge function");
-          const response = await supabase.functions.invoke('get_candidate_status', {
-            body: { candidate_id: candidateId }
-          });
-          
-          if (response.error) {
-            console.error("Function Error:", response.error);
-            throw response.error;
-          }
-          
-          console.log("Function Result:", response.data);
-          return response.data?.status as string || null;
-        } catch (functionError) {
-          console.error("Edge function failed, trying direct query", functionError);
-          
-          // Method 3: Try direct query as final fallback
-          const { data, error } = await supabase
-            .from('candidates')
-            .select('detailed_status')
-            .eq('id', candidateId)
-            .single();
-          
-          if (error) {
-            console.error("Direct query error:", error);
-            throw error;
-          }
-          
-          console.log("Direct query successful:", data);
-          
-          // Enhanced processing to handle various return formats
-          if (!data) return null;
-          
-          const detailedStatus = data.detailed_status;
-          if (!detailedStatus) return null;
-          
-          // If it's a string, return it
-          if (typeof detailedStatus === 'string') {
-            return detailedStatus;
-          }
-          
-          // If it's an object, try to extract status
-          if (typeof detailedStatus === 'object' && detailedStatus !== null) {
-            // Cast to Record<string, any> to avoid TypeScript errors
-            const statusObj = detailedStatus as Record<string, any>;
-            
-            // Log the actual structure for debugging
-            console.log(`Status object for ${candidateId}:`, statusObj);
-            
-            // Try to extract from different possible structures
-            if ('value' in statusObj && statusObj['value'] !== undefined) {
-              return String(statusObj['value']);
-            }
-            
-            if ('status' in statusObj && statusObj['status'] !== undefined) {
-              return String(statusObj['status']);
-            }
-            
-            if ('name' in statusObj && statusObj['name'] !== undefined) {
-              return String(statusObj['name']);
-            }
-            
-            // If we have _type field, it might be a Supabase special format
-            if ('_type' in statusObj && statusObj['_type'] === 'undefined' && 'value' in statusObj) {
-              // This appears to be the issue - we're getting {_type: 'undefined', value: 'undefined'}
-              // Instead of returning 'undefined', return our default
-              return 'initial';
-            }
-            
-            // If we have an object but couldn't extract a value, log it for debugging
-            console.warn('Could not extract status from object:', statusObj);
-          }
-          
-          return 'initial'; // Default fallback
-        }
+      // Use the secure method to get candidate details
+      const { data, error } = await supabase.rpc('get_candidate_by_id_bypassing_rls', {
+        candidate_id_param: candidateId
+      });
+      
+      if (error) {
+        console.error("Error fetching candidate status:", error);
+        return null;
       }
+      
+      if (!data || data.length === 0) {
+        console.log("No candidate found with ID:", candidateId);
+        return null;
+      }
+      
+      const candidate = Array.isArray(data) ? data[0] : data;
+      console.log("Retrieved candidate with status:", candidate.detailed_status);
+      
+      return candidate.detailed_status || 'initial';
     } catch (error: any) {
       console.error('Error fetching candidate status:', error);
       return null;
     }
   }
 };
-

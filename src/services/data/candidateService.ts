@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -215,7 +214,10 @@ export const candidateService = {
     try {
       const { id, ...updateData } = options;
       
-      // Use the secure RPC function we created to bypass RLS issues
+      console.log('Updating candidate with ID:', id);
+      console.log('Update data:', updateData);
+      
+      // Use the secure RPC function to bypass RLS issues
       const { data, error } = await supabase.rpc(
         'update_candidate_secure',
         {
@@ -224,7 +226,16 @@ export const candidateService = {
         }
       );
       
-      if (error) throw error;
+      if (error) {
+        console.error('RPC Error:', error);
+        throw error;
+      }
+      
+      if (!data || data.length === 0) {
+        throw new Error('Update returned no data');
+      }
+      
+      console.log('Update successful, returned data:', data);
       return formatCandidateData(data[0]); // Note: This returns an array, so we take the first element
     } catch (error: any) {
       console.error('Error in updateCandidate:', error);
@@ -307,15 +318,22 @@ export const candidateService = {
   
   updateCandidateStatus: async (candidateId: string, status: string): Promise<CandidateData> => {
     try {
-      const { data, error } = await supabase
-        .from('candidates')
-        .update({ status })
-        .eq('id', candidateId)
-        .select('*')
-        .single();
+      // Use the same secure update method for consistency
+      const { data, error } = await supabase.rpc(
+        'update_candidate_secure',
+        {
+          p_candidate_id: candidateId,
+          p_data: { status }
+        }
+      );
       
       if (error) throw error;
-      return formatCandidateData(data);
+      
+      if (!data || data.length === 0) {
+        throw new Error('Update status returned no data');
+      }
+      
+      return formatCandidateData(data[0]);
     } catch (error: any) {
       console.error('Error in updateCandidateStatus:', error);
       throw new Error(`Failed to update candidate status: ${error.message}`);
