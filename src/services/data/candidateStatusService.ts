@@ -26,6 +26,13 @@ export const CANDIDATE_STATUS_LABELS: Record<string, string> = {
   'ancien_employe': 'Ancien employé'
 };
 
+// Define interfaces for better type safety
+interface CandidateWithStatus {
+  id?: string;
+  detailed_status?: string;
+  [key: string]: any;
+}
+
 export const candidateStatusService = {
   // Update the detailed status of a candidate
   updateCandidateStatus: async (candidateId: string, status: string): Promise<boolean> => {
@@ -43,12 +50,12 @@ export const candidateStatusService = {
         return false;
       }
       
-      // Simplified approach: Use the secure RPC function first, then fall back to direct update if needed
+      // Use the secure RPC function specifically for updating the status
       try {
-        console.log("Using secure RPC function for status update");
-        const { data, error } = await supabase.rpc('update_candidate_secure', {
+        console.log("Using update_candidate_status RPC function");
+        const { data, error } = await supabase.rpc('update_candidate_status', {
           p_candidate_id: candidateId,
-          p_data: { detailed_status: status }
+          p_detailed_status: status
         });
         
         if (error) {
@@ -56,24 +63,34 @@ export const candidateStatusService = {
           throw error;
         }
         
-        console.log("Status update succeeded via secure RPC");
+        console.log("Status update succeeded via RPC:", data);
         toast({
           title: "Statut mis à jour",
           description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
         });
         
         return true;
-      } catch (updateError) {
-        console.error("Status update failed:", updateError);
+      } catch (rpcError) {
+        console.error("RPC update failed, trying fallback:", rpcError);
         
-        // Show error toast
-        toast({
-          title: "Erreur",
-          description: `Impossible de mettre à jour le statut: ${updateError.message || 'Erreur inconnue'}`,
-          variant: "destructive",
+        // Fallback to using update_candidate_secure
+        const { data, error } = await supabase.rpc('update_candidate_secure', {
+          p_candidate_id: candidateId,
+          p_data: { detailed_status: status }
         });
         
-        return false;
+        if (error) {
+          console.error("Fallback update error:", error);
+          throw error;
+        }
+        
+        console.log("Status update succeeded via fallback method");
+        toast({
+          title: "Statut mis à jour",
+          description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
+        });
+        
+        return true;
       }
     } catch (error: any) {
       console.error('Error in updateCandidateStatus:', error);
@@ -93,28 +110,46 @@ export const candidateStatusService = {
     try {
       console.log("Getting candidate status for:", candidateId);
       
-      // Use the secure method to get candidate details
-      const { data, error } = await supabase.rpc('get_candidate_by_id_bypassing_rls', {
-        candidate_id_param: candidateId
-      });
-      
-      if (error) {
-        console.error("Error fetching candidate status:", error);
-        return null;
+      // Try using the dedicated status function first
+      try {
+        console.log("Attempting to get status via get_candidate_status RPC");
+        const { data, error } = await supabase.rpc('get_candidate_status', {
+          p_candidate_id: candidateId
+        });
+        
+        if (error) {
+          console.error("RPC Error for status:", error);
+          throw error;
+        }
+        
+        console.log("Retrieved status via dedicated RPC:", data);
+        return data || 'initial';
+      } catch (rpcError) {
+        console.error("Status RPC failed, falling back to get_candidate_by_id:", rpcError);
+        
+        // Fallback to getting the full candidate
+        const { data, error } = await supabase.rpc('get_candidate_by_id_bypassing_rls', {
+          candidate_id_param: candidateId
+        });
+        
+        if (error) {
+          console.error("Error fetching candidate:", error);
+          return null;
+        }
+        
+        if (!data || data.length === 0) {
+          console.log("No candidate found with ID:", candidateId);
+          return null;
+        }
+        
+        const candidate = Array.isArray(data) ? data[0] : data;
+        
+        // Properly type the candidate with detailed_status
+        const candidateWithStatus = candidate as CandidateWithStatus;
+        console.log("Retrieved candidate with status:", candidateWithStatus.detailed_status);
+        
+        return candidateWithStatus.detailed_status || 'initial';
       }
-      
-      if (!data || data.length === 0) {
-        console.log("No candidate found with ID:", candidateId);
-        return null;
-      }
-      
-      const candidate = Array.isArray(data) ? data[0] : data;
-      
-      // Type assertion to specify that detailed_status property exists
-      const candidateWithStatus = candidate as { detailed_status?: string };
-      console.log("Retrieved candidate with status:", candidateWithStatus.detailed_status);
-      
-      return candidateWithStatus.detailed_status || 'initial';
     } catch (error: any) {
       console.error('Error fetching candidate status:', error);
       return null;
