@@ -109,9 +109,12 @@ export const candidateStatusService = {
       }
       
       const candidate = Array.isArray(data) ? data[0] : data;
-      console.log("Retrieved candidate with status:", candidate.detailed_status);
       
-      return candidate.detailed_status || 'initial';
+      // Type assertion to specify that detailed_status property exists
+      const candidateWithStatus = candidate as { detailed_status?: string };
+      console.log("Retrieved candidate with status:", candidateWithStatus.detailed_status);
+      
+      return candidateWithStatus.detailed_status || 'initial';
     } catch (error: any) {
       console.error('Error fetching candidate status:', error);
       return null;
