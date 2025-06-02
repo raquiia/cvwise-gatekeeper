@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -69,23 +68,23 @@ const CandidateEdit = () => {
         const formData = extractFormDataFromCandidate(data);
         console.log('📝 Extracted form data:', JSON.stringify(formData, null, 2));
         
-        // Reset the entire form with new data
+        // CRITICAL DEBUG: Let's see what the actual raw data looks like for key fields
+        console.log('🔍 RAW FIELD ANALYSIS:');
+        console.log('- company raw:', data.company, 'type:', typeof data.company);
+        console.log('- remote_preference raw:', data.remote_preference, 'type:', typeof data.remote_preference);
+        console.log('- mobility raw:', data.mobility, 'type:', typeof data.mobility);
+        console.log('- availability raw:', data.availability, 'type:', typeof data.availability);
+        console.log('- salary_expectations raw:', data.salary_expectations, 'type:', typeof data.salary_expectations);
+        console.log('- contract_type raw:', data.contract_type, 'type:', typeof data.contract_type);
+        
+        // Reset the form with extracted data
         form.reset(formData);
         
-        // Also explicitly set each field to ensure they're properly populated
-        Object.entries(formData).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            console.log(`Setting form field ${key} to:`, value);
-            form.setValue(key as keyof FormValues, value, { 
-              shouldDirty: false,
-              shouldTouch: false,
-              shouldValidate: false 
-            });
-          }
-        });
-        
-        // Force a re-render by triggering watch
-        console.log('✅ Form values after population:', form.getValues());
+        // Force trigger a re-render by logging current form state
+        setTimeout(() => {
+          console.log('✅ Form values after reset:', form.getValues());
+          console.log('🎯 Form watch values:', form.watch());
+        }, 100);
         
       } catch (err: any) {
         console.error("❌ Error loading candidate:", err);
@@ -115,9 +114,21 @@ const CandidateEdit = () => {
       const latestCandidate = await candidateService.getCandidateById(candidateId);
       console.log('📊 Latest candidate data before update:', JSON.stringify(latestCandidate, null, 2));
       
-      // Fix for the TypeScript error: ensure years_experience is properly typed
-      const processedValues = {
+      // CRITICAL FIX: Ensure we're sending clean string values, not complex objects
+      const cleanValues = {
         ...values,
+        // Ensure all string fields are actually strings
+        company: typeof values.company === 'string' ? values.company : '',
+        remote_preference: typeof values.remote_preference === 'string' ? values.remote_preference : '',
+        mobility: typeof values.mobility === 'string' ? values.mobility : '',
+        availability: typeof values.availability === 'string' ? values.availability : '',
+        salary_expectations: typeof values.salary_expectations === 'string' ? values.salary_expectations : '',
+        contract_type: typeof values.contract_type === 'string' ? values.contract_type : '',
+        travel_willingness: typeof values.travel_willingness === 'string' ? values.travel_willingness : '',
+        career_objectives: typeof values.career_objectives === 'string' ? values.career_objectives : '',
+        professional_values: typeof values.professional_values === 'string' ? values.professional_values : '',
+        work_authorization: typeof values.work_authorization === 'string' ? values.work_authorization : '',
+        interests: typeof values.interests === 'string' ? values.interests : '',
         years_experience: values.years_experience === "" 
           ? undefined 
           : typeof values.years_experience === "string"
@@ -125,10 +136,12 @@ const CandidateEdit = () => {
             : values.years_experience
       };
 
+      console.log('🧹 Cleaned values before sending:', JSON.stringify(cleanValues, null, 2));
+
       // Prepare update data preserving existing values that aren't being updated
       const updateData = {
         id: candidateId,
-        ...processedValues,
+        ...cleanValues,
         // Preserve important system fields from latest data
         user_id: latestCandidate.user_id,
         resume_id: latestCandidate.resume_id,
