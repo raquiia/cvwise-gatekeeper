@@ -26,9 +26,8 @@ const candidateSchema = z.object({
   years_experience: z.union([z.number(), z.literal("")]).optional(),
   company: z.string().optional().or(z.literal("")),
   status: z.string().optional().or(z.literal("")),
-  detailed_status: z.string().optional().or(z.literal("")),
   skills: z.array(z.any()).optional(),
-  // Autres champs optionnels
+  // Remove detailed_status from the form schema to avoid conflicts
   availability: z.string().optional().or(z.literal("")),
   salary_expectations: z.string().optional().or(z.literal("")),
   mobility: z.string().optional().or(z.literal("")),
@@ -61,7 +60,7 @@ const CandidateEdit = () => {
       position: '',
       location: '',
       skills: [],
-      // Autres champs
+      // Remove detailed_status from the form schema to avoid conflicts
     }
   });
 
@@ -89,7 +88,7 @@ const CandidateEdit = () => {
           years_experience: data.years_experience || undefined,
           company: data.company || '',
           status: data.status || '',
-          detailed_status: data.detailed_status || '',
+          // Don't include detailed_status in the form to avoid conflicts
           skills: data.skills || [],
           availability: data.availability || '',
           salary_expectations: data.salary_expectations || '',
@@ -136,12 +135,15 @@ const CandidateEdit = () => {
       };
 
       // Convertir les valeurs du formulaire en UpdateCandidateOptions
+      // Don't include detailed_status to let the service handle status mapping
       const updateData = {
         id: candidateId,
         ...processedValues,
         // Conserver les champs qui ne sont pas dans le formulaire
         user_id: originalCandidate.user_id,
         resume_id: originalCandidate.resume_id,
+        // Preserve the existing detailed_status
+        detailed_status: originalCandidate.detailed_status,
       };
 
       await candidateService.updateCandidate(updateData);
@@ -326,7 +328,11 @@ const CandidateEdit = () => {
                     id="years_experience"
                     type="number"
                     {...form.register('years_experience', {
-                      setValueAs: (v) => v === "" ? undefined : parseInt(v, 10)
+                      setValueAs: (v) => v === "" 
+                        ? undefined 
+                        : typeof v === "string"
+                          ? parseInt(v, 10) 
+                          : v
                     })}
                     placeholder="Nombre d'années"
                     className="border-navy/20"
@@ -388,6 +394,7 @@ const CandidateEdit = () => {
                       <SelectItem value="passive">Passif</SelectItem>
                       <SelectItem value="contacted">Contacté</SelectItem>
                       <SelectItem value="interview">Entretien</SelectItem>
+                      <SelectItem value="qualification">Qualification</SelectItem>
                       <SelectItem value="offer">Offre</SelectItem>
                       <SelectItem value="rejected">Rejeté</SelectItem>
                       <SelectItem value="hired">Embauché</SelectItem>
@@ -395,15 +402,7 @@ const CandidateEdit = () => {
                   </Select>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="detailed_status">Statut détaillé</Label>
-                  <Input
-                    id="detailed_status"
-                    {...form.register('detailed_status')}
-                    placeholder="Description du statut"
-                    className="border-navy/20"
-                  />
-                </div>
+                {/* Remove the detailed_status field from the form to avoid conflicts */}
               </div>
               
               <div className="space-y-2">

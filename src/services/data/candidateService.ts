@@ -92,6 +92,12 @@ export interface UpdateCandidateOptions extends Partial<Omit<CandidateData, 'id'
   id: string;
 }
 
+// Valid status values for detailed_status field
+const VALID_DETAILED_STATUSES = [
+  'initial', 'contact', 'prequalification', 'ec1', 'ec2', 
+  'presentation_client', 'en_mission', 'refus', 'ancien_employe'
+];
+
 // Format candidate data from DB to our application format
 const formatCandidateData = (candidate: any): CandidateData => {
   if (!candidate) return null as unknown as CandidateData;
@@ -217,6 +223,38 @@ export const candidateService = {
       console.log('Updating candidate with ID:', id);
       console.log('Update data:', updateData);
       
+      // Handle status validation - if status is provided but detailed_status is not,
+      // we need to map the status to a valid detailed_status or clear it
+      if (updateData.status && !updateData.detailed_status) {
+        // Map common status values to valid detailed_status values
+        const statusMapping: Record<string, string> = {
+          'active': 'contact',
+          'passive': 'initial',
+          'contacted': 'contact',
+          'interview': 'ec1',
+          'qualification': 'prequalification',
+          'offer': 'presentation_client',
+          'rejected': 'refus',
+          'hired': 'en_mission'
+        };
+        
+        const mappedStatus = statusMapping[updateData.status];
+        if (mappedStatus) {
+          updateData.detailed_status = mappedStatus;
+          console.log(`Mapped status "${updateData.status}" to detailed_status "${mappedStatus}"`);
+        } else {
+          // If we can't map it, clear the detailed_status to avoid constraint violation
+          updateData.detailed_status = 'initial';
+          console.log(`Unknown status "${updateData.status}", setting detailed_status to "initial"`);
+        }
+      }
+      
+      // Validate detailed_status if provided
+      if (updateData.detailed_status && !VALID_DETAILED_STATUSES.includes(updateData.detailed_status)) {
+        console.warn(`Invalid detailed_status "${updateData.detailed_status}", setting to "initial"`);
+        updateData.detailed_status = 'initial';
+      }
+      
       // Use the secure RPC function to bypass RLS issues
       const { data, error } = await supabase.rpc(
         'update_candidate_secure',
@@ -236,7 +274,7 @@ export const candidateService = {
       }
       
       console.log('Update successful, returned data:', data);
-      return formatCandidateData(data[0]); // Note: This returns an array, so we take the first element
+      return formatCandidateData(data[0]);
     } catch (error: any) {
       console.error('Error in updateCandidate:', error);
       throw new Error(`Failed to update candidate: ${error.message}`);
