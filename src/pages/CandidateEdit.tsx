@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -57,7 +58,18 @@ const CandidateEdit = () => {
       phone: '',
       position: '',
       location: '',
+      company: '',
       skills: [],
+      availability: '',
+      salary_expectations: '',
+      mobility: '',
+      contract_type: '',
+      remote_preference: '',
+      travel_willingness: '',
+      career_objectives: '',
+      professional_values: '',
+      work_authorization: '',
+      interests: ''
     }
   });
 
@@ -65,41 +77,76 @@ const CandidateEdit = () => {
   const populateFormWithCandidateData = (data: CandidateData) => {
     console.log('Populating form with candidate data:', data);
     
-    // Build form data object with explicit checks for actual values
+    // Helper function to safely get string values
+    const safeString = (value: any): string => {
+      if (value === null || value === undefined) return '';
+      if (typeof value === 'string') return value;
+      if (typeof value === 'object' && value.value !== undefined) {
+        return String(value.value || '');
+      }
+      return String(value);
+    };
+
+    // Helper function to safely get number values  
+    const safeNumber = (value: any): number | undefined => {
+      if (value === null || value === undefined) return undefined;
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        const parsed = parseInt(value, 10);
+        return isNaN(parsed) ? undefined : parsed;
+      }
+      if (typeof value === 'object' && value.value !== undefined) {
+        const parsed = parseInt(String(value.value), 10);
+        return isNaN(parsed) ? undefined : parsed;
+      }
+      return undefined;
+    };
+
+    // Helper function to safely get array values
+    const safeArray = (value: any): any[] => {
+      if (Array.isArray(value)) return value;
+      if (value === null || value === undefined) return [];
+      if (typeof value === 'string') {
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [value];
+        }
+      }
+      return [];
+    };
+    
+    // Build form data object with explicit safe extraction
     const formData = {
-      first_name: data.first_name || '',
-      last_name: data.last_name || '',
-      email: data.email || '',
-      phone: data.phone || '',
-      position: data.position || '',
-      location: data.location || '',
-      years_experience: data.years_experience || undefined,
-      company: data.company || '',
-      skills: data.skills || [],
-      availability: data.availability || '',
-      salary_expectations: data.salary_expectations || '',
-      mobility: data.mobility || '',
-      contract_type: data.contract_type || '',
-      remote_preference: data.remote_preference || '',
-      travel_willingness: data.travel_willingness || '',
-      career_objectives: data.career_objectives || '',
-      professional_values: data.professional_values || '',
-      work_authorization: data.work_authorization || '',
-      interests: data.interests || ''
+      first_name: safeString(data.first_name),
+      last_name: safeString(data.last_name),
+      email: safeString(data.email),
+      phone: safeString(data.phone),
+      position: safeString(data.position),
+      location: safeString(data.location),
+      years_experience: safeNumber(data.years_experience),
+      company: safeString(data.company),
+      skills: safeArray(data.skills),
+      availability: safeString(data.availability),
+      salary_expectations: safeString(data.salary_expectations),
+      mobility: safeString(data.mobility),
+      contract_type: safeString(data.contract_type),
+      remote_preference: safeString(data.remote_preference),
+      travel_willingness: safeString(data.travel_willingness),
+      career_objectives: safeString(data.career_objectives),
+      professional_values: safeString(data.professional_values),
+      work_authorization: safeString(data.work_authorization),
+      interests: safeString(data.interests)
     };
     
     console.log('Form data being set:', formData);
     console.log('Company field value:', formData.company);
     console.log('Remote preference field value:', formData.remote_preference);
-    console.log('Mobility field value:', formData.mobility);
+    console.log('Contract type field value:', formData.contract_type);
     
     // Use reset to populate the entire form at once
     form.reset(formData);
-    
-    // Force trigger form state update
-    setTimeout(() => {
-      console.log('Form values after reset:', form.getValues());
-    }, 100);
   };
 
   useEffect(() => {
@@ -130,27 +177,6 @@ const CandidateEdit = () => {
 
     fetchCandidate();
   }, [candidateId]);
-
-  // Re-fetch data when component becomes visible again
-  useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (!document.hidden && candidateId && originalCandidate) {
-        try {
-          console.log('Page became visible, refreshing candidate data');
-          const freshData = await candidateService.getCandidateById(candidateId);
-          console.log('Refreshed candidate data:', freshData);
-          
-          setOriginalCandidate(freshData);
-          populateFormWithCandidateData(freshData);
-        } catch (err: any) {
-          console.error("Error refreshing candidate data:", err);
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [candidateId, originalCandidate]);
 
   const onSubmit = async (values: FormValues) => {
     if (!candidateId || !originalCandidate) {
@@ -271,6 +297,9 @@ const CandidateEdit = () => {
     );
   }
 
+  // Get current form values for controlled components
+  const formValues = form.watch();
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -309,7 +338,6 @@ const CandidateEdit = () => {
                     {...form.register('first_name')}
                     placeholder="Prénom"
                     className="border-navy/20"
-                    value={form.watch('first_name') || ''}
                   />
                   {form.formState.errors.first_name && (
                     <p className="text-sm text-red-500">{form.formState.errors.first_name.message}</p>
@@ -323,7 +351,6 @@ const CandidateEdit = () => {
                     {...form.register('last_name')}
                     placeholder="Nom"
                     className="border-navy/20"
-                    value={form.watch('last_name') || ''}
                   />
                   {form.formState.errors.last_name && (
                     <p className="text-sm text-red-500">{form.formState.errors.last_name.message}</p>
@@ -338,7 +365,6 @@ const CandidateEdit = () => {
                     {...form.register('email')}
                     placeholder="Email"
                     className="border-navy/20"
-                    value={form.watch('email') || ''}
                   />
                   {form.formState.errors.email && (
                     <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
@@ -352,7 +378,6 @@ const CandidateEdit = () => {
                     {...form.register('phone')}
                     placeholder="Téléphone"
                     className="border-navy/20"
-                    value={form.watch('phone') || ''}
                   />
                 </div>
               </div>
@@ -365,7 +390,6 @@ const CandidateEdit = () => {
                     {...form.register('position')}
                     placeholder="Poste actuel ou recherché"
                     className="border-navy/20"
-                    value={form.watch('position') || ''}
                   />
                 </div>
                 
@@ -376,7 +400,6 @@ const CandidateEdit = () => {
                     {...form.register('location')}
                     placeholder="Ville, Pays"
                     className="border-navy/20"
-                    value={form.watch('location') || ''}
                   />
                 </div>
                 
@@ -387,7 +410,6 @@ const CandidateEdit = () => {
                     {...form.register('company')}
                     placeholder="Entreprise actuelle"
                     className="border-navy/20"
-                    value={form.watch('company') || ''}
                   />
                 </div>
                 
@@ -405,7 +427,6 @@ const CandidateEdit = () => {
                     })}
                     placeholder="Nombre d'années"
                     className="border-navy/20"
-                    value={form.watch('years_experience') || ''}
                   />
                 </div>
               </div>
@@ -413,7 +434,7 @@ const CandidateEdit = () => {
               <div className="space-y-2">
                 <Label>Compétences</Label>
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {form.watch('skills')?.map((skill, index) => (
+                  {formValues.skills?.map((skill, index) => (
                     <div key={index} className="bg-navy/10 px-3 py-1 rounded-full flex items-center">
                       <span>{skill}</span>
                       <button 
@@ -456,7 +477,6 @@ const CandidateEdit = () => {
                   {...form.register('availability')}
                   placeholder="Disponibilité"
                   className="border-navy/20"
-                  value={form.watch('availability') || ''}
                 />
               </div>
               
@@ -468,7 +488,6 @@ const CandidateEdit = () => {
                     {...form.register('salary_expectations')}
                     placeholder="Prétentions salariales"
                     className="border-navy/20"
-                    value={form.watch('salary_expectations') || ''}
                   />
                 </div>
                 
@@ -479,7 +498,6 @@ const CandidateEdit = () => {
                     {...form.register('mobility')}
                     placeholder="Mobilité géographique"
                     className="border-navy/20"
-                    value={form.watch('mobility') || ''}
                   />
                 </div>
               </div>
@@ -488,7 +506,7 @@ const CandidateEdit = () => {
                 <div className="space-y-2">
                   <Label htmlFor="contract_type">Type de contrat</Label>
                   <Select
-                    value={form.watch('contract_type') || ''}
+                    value={formValues.contract_type || ''}
                     onValueChange={(value) => {
                       console.log('Setting contract_type to:', value);
                       form.setValue('contract_type', value);
@@ -511,7 +529,7 @@ const CandidateEdit = () => {
                 <div className="space-y-2">
                   <Label htmlFor="remote_preference">Préférence de télétravail</Label>
                   <Select
-                    value={form.watch('remote_preference') || ''}
+                    value={formValues.remote_preference || ''}
                     onValueChange={(value) => {
                       console.log('Setting remote_preference to:', value);
                       form.setValue('remote_preference', value);
@@ -537,7 +555,6 @@ const CandidateEdit = () => {
                   {...form.register('interests')}
                   placeholder="Centres d'intérêt"
                   className="border-navy/20 min-h-24"
-                  value={form.watch('interests') || ''}
                 />
               </div>
               
@@ -548,7 +565,6 @@ const CandidateEdit = () => {
                   {...form.register('career_objectives')}
                   placeholder="Objectifs de carrière"
                   className="border-navy/20 min-h-24"
-                  value={form.watch('career_objectives') || ''}
                 />
               </div>
               
@@ -559,7 +575,6 @@ const CandidateEdit = () => {
                   {...form.register('professional_values')}
                   placeholder="Valeurs professionnelles"
                   className="border-navy/20 min-h-24"
-                  value={form.watch('professional_values') || ''}
                 />
               </div>
               
