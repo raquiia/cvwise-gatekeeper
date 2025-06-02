@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -143,6 +142,7 @@ const formatCandidateData = (candidate: any): CandidateData => {
   console.log('- contract_type raw:', candidate.contract_type);
   console.log('- remote_preference raw:', candidate.remote_preference);
   console.log('- mobility raw:', candidate.mobility);
+  console.log('- detailed_status raw:', candidate.detailed_status);
 
   const formatted = {
     id: candidate.id,
@@ -158,7 +158,7 @@ const formatCandidateData = (candidate: any): CandidateData => {
     skills: ensureArray(candidate.skills),
     score: extractNumberValue(candidate.score),
     status: extractStringValue(candidate.status) || 'pending',
-    detailed_status: extractStringValue(candidate.detailed_status),
+    detailed_status: extractStringValue(candidate.detailed_status) || 'initial',
     company: extractStringValue(candidate.company),
     created_at: candidate.created_at,
     updated_at: candidate.updated_at,
@@ -191,6 +191,7 @@ const formatCandidateData = (candidate: any): CandidateData => {
   console.log('- contract_type formatted:', formatted.contract_type);
   console.log('- remote_preference formatted:', formatted.remote_preference);
   console.log('- mobility formatted:', formatted.mobility);
+  console.log('- detailed_status formatted:', formatted.detailed_status);
 
   return formatted;
 };
@@ -259,13 +260,14 @@ export const candidateService = {
       console.log('Updating candidate with ID:', id);
       console.log('Update data received:', updateData);
       
-      // CRITICAL FIX: Never interfere with status fields if they are explicitly provided
-      // Remove any automatic status mapping logic that could override user intentions
-      
-      // Validate detailed_status if provided, but don't modify it
-      if (updateData.detailed_status && !VALID_DETAILED_STATUSES.includes(updateData.detailed_status)) {
-        console.warn(`Invalid detailed_status "${updateData.detailed_status}", removing from update`);
-        delete updateData.detailed_status;
+      // Ensure detailed_status has a valid value if it's being set
+      if (updateData.detailed_status !== undefined) {
+        if (!updateData.detailed_status || updateData.detailed_status === '') {
+          updateData.detailed_status = 'initial';
+        } else if (!VALID_DETAILED_STATUSES.includes(updateData.detailed_status)) {
+          console.warn(`Invalid detailed_status "${updateData.detailed_status}", setting to initial`);
+          updateData.detailed_status = 'initial';
+        }
       }
       
       console.log('Final update data being sent to RPC:', updateData);
