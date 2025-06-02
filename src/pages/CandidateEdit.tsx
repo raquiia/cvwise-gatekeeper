@@ -65,7 +65,7 @@ const CandidateEdit = () => {
   const populateFormWithCandidateData = (data: CandidateData) => {
     console.log('Populating form with candidate data:', data);
     
-    // Build form data object with explicit undefined checks
+    // Build form data object with explicit checks for actual values
     const formData = {
       first_name: data.first_name || '',
       last_name: data.last_name || '',
@@ -74,7 +74,7 @@ const CandidateEdit = () => {
       position: data.position || '',
       location: data.location || '',
       years_experience: data.years_experience || undefined,
-      company: data.company || '', // CRITICAL: Ensure company data is preserved
+      company: data.company || '',
       skills: data.skills || [],
       availability: data.availability || '',
       salary_expectations: data.salary_expectations || '',
@@ -88,17 +88,18 @@ const CandidateEdit = () => {
       interests: data.interests || ''
     };
     
-    console.log('Setting form with data:', formData);
-    console.log('Company specifically:', formData.company);
-    console.log('Remote preference specifically:', formData.remote_preference);
+    console.log('Form data being set:', formData);
+    console.log('Company field value:', formData.company);
+    console.log('Remote preference field value:', formData.remote_preference);
+    console.log('Mobility field value:', formData.mobility);
     
-    // Reset form with new data
+    // Use reset to populate the entire form at once
     form.reset(formData);
     
-    // Force update form state to ensure all fields are populated
-    Object.entries(formData).forEach(([key, value]) => {
-      form.setValue(key as keyof FormValues, value as any);
-    });
+    // Force trigger form state update
+    setTimeout(() => {
+      console.log('Form values after reset:', form.getValues());
+    }, 100);
   };
 
   useEffect(() => {
@@ -308,6 +309,7 @@ const CandidateEdit = () => {
                     {...form.register('first_name')}
                     placeholder="Prénom"
                     className="border-navy/20"
+                    value={form.watch('first_name') || ''}
                   />
                   {form.formState.errors.first_name && (
                     <p className="text-sm text-red-500">{form.formState.errors.first_name.message}</p>
@@ -321,6 +323,7 @@ const CandidateEdit = () => {
                     {...form.register('last_name')}
                     placeholder="Nom"
                     className="border-navy/20"
+                    value={form.watch('last_name') || ''}
                   />
                   {form.formState.errors.last_name && (
                     <p className="text-sm text-red-500">{form.formState.errors.last_name.message}</p>
@@ -335,6 +338,7 @@ const CandidateEdit = () => {
                     {...form.register('email')}
                     placeholder="Email"
                     className="border-navy/20"
+                    value={form.watch('email') || ''}
                   />
                   {form.formState.errors.email && (
                     <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
@@ -348,6 +352,7 @@ const CandidateEdit = () => {
                     {...form.register('phone')}
                     placeholder="Téléphone"
                     className="border-navy/20"
+                    value={form.watch('phone') || ''}
                   />
                 </div>
               </div>
@@ -360,6 +365,7 @@ const CandidateEdit = () => {
                     {...form.register('position')}
                     placeholder="Poste actuel ou recherché"
                     className="border-navy/20"
+                    value={form.watch('position') || ''}
                   />
                 </div>
                 
@@ -370,6 +376,7 @@ const CandidateEdit = () => {
                     {...form.register('location')}
                     placeholder="Ville, Pays"
                     className="border-navy/20"
+                    value={form.watch('location') || ''}
                   />
                 </div>
                 
@@ -380,6 +387,7 @@ const CandidateEdit = () => {
                     {...form.register('company')}
                     placeholder="Entreprise actuelle"
                     className="border-navy/20"
+                    value={form.watch('company') || ''}
                   />
                 </div>
                 
@@ -397,6 +405,7 @@ const CandidateEdit = () => {
                     })}
                     placeholder="Nombre d'années"
                     className="border-navy/20"
+                    value={form.watch('years_experience') || ''}
                   />
                 </div>
               </div>
@@ -447,6 +456,7 @@ const CandidateEdit = () => {
                   {...form.register('availability')}
                   placeholder="Disponibilité"
                   className="border-navy/20"
+                  value={form.watch('availability') || ''}
                 />
               </div>
               
@@ -458,6 +468,7 @@ const CandidateEdit = () => {
                     {...form.register('salary_expectations')}
                     placeholder="Prétentions salariales"
                     className="border-navy/20"
+                    value={form.watch('salary_expectations') || ''}
                   />
                 </div>
                 
@@ -468,6 +479,7 @@ const CandidateEdit = () => {
                     {...form.register('mobility')}
                     placeholder="Mobilité géographique"
                     className="border-navy/20"
+                    value={form.watch('mobility') || ''}
                   />
                 </div>
               </div>
@@ -525,6 +537,7 @@ const CandidateEdit = () => {
                   {...form.register('interests')}
                   placeholder="Centres d'intérêt"
                   className="border-navy/20 min-h-24"
+                  value={form.watch('interests') || ''}
                 />
               </div>
               
@@ -535,6 +548,7 @@ const CandidateEdit = () => {
                   {...form.register('career_objectives')}
                   placeholder="Objectifs de carrière"
                   className="border-navy/20 min-h-24"
+                  value={form.watch('career_objectives') || ''}
                 />
               </div>
               
@@ -545,6 +559,7 @@ const CandidateEdit = () => {
                   {...form.register('professional_values')}
                   placeholder="Valeurs professionnelles"
                   className="border-navy/20 min-h-24"
+                  value={form.watch('professional_values') || ''}
                 />
               </div>
               

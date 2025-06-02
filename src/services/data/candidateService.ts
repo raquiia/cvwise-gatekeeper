@@ -108,7 +108,7 @@ const safeExtractValue = (field: any): string | undefined => {
     return undefined;
   }
   
-  // If it's already a string and not empty or "undefined", return it directly
+  // If it's already a string, return it directly (unless it's "undefined" or empty)
   if (typeof field === 'string') {
     if (field === '' || field === 'undefined') {
       return undefined;
@@ -118,26 +118,38 @@ const safeExtractValue = (field: any): string | undefined => {
   
   // Handle object format like {_type: "undefined", value: "some_value"} or {value: "some_value"}
   if (typeof field === 'object' && !Array.isArray(field)) {
-    // If it has the _type: "undefined" structure, skip it
-    if (field._type === 'undefined') {
-      return undefined;
-    }
-    
-    // If it has a value property, use it
-    if (field.value !== undefined) {
+    // If it has the _type: "undefined" structure, check the value
+    if (field._type === 'undefined' && field.value) {
       if (field.value === "undefined" || field.value === "") {
         return undefined;
       }
-      return typeof field.value === 'string' ? field.value : String(field.value);
+      return String(field.value);
     }
     
-    // If it's some other object, try to stringify it
+    // If it has a value property, use it
+    if (field.value !== undefined && field.value !== null) {
+      if (field.value === "undefined" || field.value === "") {
+        return undefined;
+      }
+      return String(field.value);
+    }
+    
+    // Try to stringify the object if it's not empty
+    try {
+      const stringified = JSON.stringify(field);
+      if (stringified !== '{}' && stringified !== 'null') {
+        return stringified;
+      }
+    } catch (e) {
+      // If can't stringify, return undefined
+    }
+    
     return undefined;
   }
   
   // For any other type, convert to string if it's not empty
   const stringValue = String(field);
-  return (stringValue === '' || stringValue === 'undefined') ? undefined : stringValue;
+  return (stringValue === '' || stringValue === 'undefined' || stringValue === 'null') ? undefined : stringValue;
 };
 
 // Helper function to safely extract number values
