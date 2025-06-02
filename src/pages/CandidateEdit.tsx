@@ -90,16 +90,36 @@ const CandidateEdit = () => {
     console.log('Form data to set:', formData);
     console.log('Specific values - remote_preference:', data.remote_preference, 'mobility:', data.mobility);
     
-    // Reset the form with new data to ensure all fields are updated
-    form.reset(formData);
+    // Reset the form completely first
+    form.reset();
     
-    // Force update the form values to ensure Select components get the right values
+    // Then set all values explicitly
     setTimeout(() => {
-      Object.entries(formData).forEach(([key, value]) => {
-        form.setValue(key as any, value, { shouldDirty: false, shouldTouch: false });
-      });
-      console.log('Form values after force update:', form.getValues());
-    }, 100);
+      console.log('Setting form values...');
+      form.setValue('first_name', formData.first_name);
+      form.setValue('last_name', formData.last_name);
+      form.setValue('email', formData.email);
+      form.setValue('phone', formData.phone);
+      form.setValue('position', formData.position);
+      form.setValue('location', formData.location);
+      form.setValue('years_experience', formData.years_experience);
+      form.setValue('company', formData.company);
+      form.setValue('skills', formData.skills);
+      form.setValue('availability', formData.availability);
+      form.setValue('salary_expectations', formData.salary_expectations);
+      form.setValue('mobility', formData.mobility);
+      form.setValue('contract_type', formData.contract_type);
+      form.setValue('remote_preference', formData.remote_preference);
+      form.setValue('travel_willingness', formData.travel_willingness);
+      form.setValue('career_objectives', formData.career_objectives);
+      form.setValue('professional_values', formData.professional_values);
+      form.setValue('work_authorization', formData.work_authorization);
+      form.setValue('interests', formData.interests);
+      
+      console.log('Form values after setting:', form.getValues());
+      console.log('Remote preference after setting:', form.getValues('remote_preference'));
+      console.log('Mobility after setting:', form.getValues('mobility'));
+    }, 200);
   };
 
   useEffect(() => {
@@ -311,7 +331,6 @@ const CandidateEdit = () => {
                     {...form.register('first_name')}
                     placeholder="Prénom"
                     className="border-navy/20"
-                    key={`first_name_${originalCandidate?.first_name}`}
                   />
                   {form.formState.errors.first_name && (
                     <p className="text-sm text-red-500">{form.formState.errors.first_name.message}</p>
@@ -325,7 +344,6 @@ const CandidateEdit = () => {
                     {...form.register('last_name')}
                     placeholder="Nom"
                     className="border-navy/20"
-                    key={`last_name_${originalCandidate?.last_name}`}
                   />
                   {form.formState.errors.last_name && (
                     <p className="text-sm text-red-500">{form.formState.errors.last_name.message}</p>
@@ -340,7 +358,6 @@ const CandidateEdit = () => {
                     {...form.register('email')}
                     placeholder="Email"
                     className="border-navy/20"
-                    key={`email_${originalCandidate?.email}`}
                   />
                   {form.formState.errors.email && (
                     <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
@@ -354,7 +371,6 @@ const CandidateEdit = () => {
                     {...form.register('phone')}
                     placeholder="Téléphone"
                     className="border-navy/20"
-                    key={`phone_${originalCandidate?.phone}`}
                   />
                 </div>
               </div>
@@ -367,7 +383,6 @@ const CandidateEdit = () => {
                     {...form.register('position')}
                     placeholder="Poste actuel ou recherché"
                     className="border-navy/20"
-                    key={`position_${originalCandidate?.position}`}
                   />
                 </div>
                 
@@ -378,7 +393,6 @@ const CandidateEdit = () => {
                     {...form.register('location')}
                     placeholder="Ville, Pays"
                     className="border-navy/20"
-                    key={`location_${originalCandidate?.location}`}
                   />
                 </div>
                 
@@ -389,7 +403,6 @@ const CandidateEdit = () => {
                     {...form.register('company')}
                     placeholder="Entreprise actuelle"
                     className="border-navy/20"
-                    key={`company_${originalCandidate?.company}`}
                   />
                 </div>
                 
@@ -407,7 +420,6 @@ const CandidateEdit = () => {
                     })}
                     placeholder="Nombre d'années"
                     className="border-navy/20"
-                    key={`years_experience_${originalCandidate?.years_experience}`}
                   />
                 </div>
               </div>
@@ -458,7 +470,6 @@ const CandidateEdit = () => {
                   {...form.register('availability')}
                   placeholder="Disponibilité"
                   className="border-navy/20"
-                  key={`availability_${originalCandidate?.availability}`}
                 />
               </div>
               
@@ -470,7 +481,6 @@ const CandidateEdit = () => {
                     {...form.register('salary_expectations')}
                     placeholder="Prétentions salariales"
                     className="border-navy/20"
-                    key={`salary_expectations_${originalCandidate?.salary_expectations}`}
                   />
                 </div>
                 
@@ -538,7 +548,6 @@ const CandidateEdit = () => {
                   {...form.register('interests')}
                   placeholder="Centres d'intérêt"
                   className="border-navy/20 min-h-24"
-                  key={`interests_${originalCandidate?.interests}`}
                 />
               </div>
               
@@ -549,7 +558,6 @@ const CandidateEdit = () => {
                   {...form.register('career_objectives')}
                   placeholder="Objectifs de carrière"
                   className="border-navy/20 min-h-24"
-                  key={`career_objectives_${originalCandidate?.career_objectives}`}
                 />
               </div>
               
@@ -560,7 +568,6 @@ const CandidateEdit = () => {
                   {...form.register('professional_values')}
                   placeholder="Valeurs professionnelles"
                   className="border-navy/20 min-h-24"
-                  key={`professional_values_${originalCandidate?.professional_values}`}
                 />
               </div>
               
