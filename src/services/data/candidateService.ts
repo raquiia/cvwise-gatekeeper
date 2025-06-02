@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -98,13 +99,20 @@ const VALID_DETAILED_STATUSES = [
   'presentation_client', 'en_mission', 'refus', 'ancien_employe'
 ];
 
-// Helper function to safely extract string values from potentially malformed data
-const extractStringValue = (field: any): string => {
-  if (!field) return '';
-  if (typeof field === 'string') return field;
-  if (typeof field === 'object' && !Array.isArray(field) && field._type === 'undefined') return '';
-  if (typeof field === 'object' && !Array.isArray(field) && field.value !== undefined) return field.value || '';
-  return String(field || '');
+// IMPROVED: Helper function to safely extract string values preserving existing data
+const extractStringValue = (field: any): string | undefined => {
+  if (field === null || field === undefined) return undefined;
+  if (typeof field === 'string') {
+    // Return undefined for empty strings to distinguish from actual empty values
+    return field === '' ? undefined : field;
+  }
+  if (typeof field === 'object' && !Array.isArray(field) && field._type === 'undefined') return undefined;
+  if (typeof field === 'object' && !Array.isArray(field) && field.value !== undefined) {
+    const value = field.value;
+    return typeof value === 'string' && value !== '' ? value : undefined;
+  }
+  const stringValue = String(field || '');
+  return stringValue === '' ? undefined : stringValue;
 };
 
 // Helper function to safely extract number values
@@ -120,7 +128,7 @@ const extractNumberValue = (field: any): number | undefined => {
   return isNaN(parsed) ? undefined : parsed;
 };
 
-// Format candidate data from DB to our application format
+// IMPROVED: Format candidate data preserving all existing values
 const formatCandidateData = (candidate: any): CandidateData => {
   if (!candidate) return null as unknown as CandidateData;
   
@@ -158,8 +166,8 @@ const formatCandidateData = (candidate: any): CandidateData => {
     skills: ensureArray(candidate.skills),
     score: extractNumberValue(candidate.score),
     status: extractStringValue(candidate.status) || 'pending',
-    // CRITICAL FIX: Don't override existing detailed_status with 'initial'
-    detailed_status: extractStringValue(candidate.detailed_status) || 'initial',
+    // CRITICAL FIX: Preserve the actual detailed_status value, don't default to 'initial'
+    detailed_status: extractStringValue(candidate.detailed_status),
     company: extractStringValue(candidate.company),
     created_at: candidate.created_at,
     updated_at: candidate.updated_at,

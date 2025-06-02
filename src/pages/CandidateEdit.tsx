@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -47,7 +48,7 @@ const CandidateEdit = () => {
   const [error, setError] = useState<string | null>(null);
   const [originalCandidate, setOriginalCandidate] = useState<CandidateData | null>(null);
   const [skillsInput, setSkillsInput] = useState('');
-  const [formKey, setFormKey] = useState(0); // Add a key to force form re-render
+  const [formKey, setFormKey] = useState(0);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(candidateSchema),
@@ -62,7 +63,7 @@ const CandidateEdit = () => {
     }
   });
 
-  // Function to update form with candidate data
+  // IMPROVED: Function to update form with candidate data preserving all values
   const updateFormWithData = (data: CandidateData) => {
     console.log('Updating form with fresh candidate data:', data);
     
@@ -93,6 +94,8 @@ const CandidateEdit = () => {
     console.log('- remote_preference:', data.remote_preference);
     console.log('- mobility:', data.mobility);
     console.log('- contract_type:', data.contract_type);
+    console.log('- availability:', data.availability);
+    console.log('- salary_expectations:', data.salary_expectations);
     
     // Reset the entire form with new data
     form.reset(formData);
@@ -175,7 +178,6 @@ const CandidateEdit = () => {
       // Fix for the TypeScript error: ensure years_experience is properly typed
       const processedValues = {
         ...values,
-        // Convert empty string to undefined, or ensure it's a number
         years_experience: values.years_experience === "" 
           ? undefined 
           : typeof values.years_experience === "string"
@@ -188,7 +190,7 @@ const CandidateEdit = () => {
       const updateData = {
         id: candidateId,
         ...processedValues,
-        // CRITICAL: Preserve all fields from the latest data to avoid overwrites
+        // Preserve important system fields
         user_id: latestCandidate.user_id,
         resume_id: latestCandidate.resume_id,
         status: latestCandidate.status, // Keep the existing status
