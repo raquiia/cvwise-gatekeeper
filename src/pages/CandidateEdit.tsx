@@ -61,18 +61,11 @@ const CandidateEdit = () => {
     }
   });
 
-  // CRITICAL FIX: Updated function to handle data population correctly
-  const updateFormWithData = (data: CandidateData) => {
-    console.log('Updating form with candidate data:', data);
+  // CRITICAL FIX: Properly populate form with candidate data
+  const populateFormWithCandidateData = (data: CandidateData) => {
+    console.log('Populating form with candidate data:', data);
     
-    // Log specific values we're interested in
-    console.log('Key values being set:');
-    console.log('- remote_preference:', data.remote_preference);
-    console.log('- mobility:', data.mobility);
-    console.log('- contract_type:', data.contract_type);
-    console.log('- availability:', data.availability);
-    console.log('- salary_expectations:', data.salary_expectations);
-    
+    // Build form data object with explicit undefined checks
     const formData = {
       first_name: data.first_name || '',
       last_name: data.last_name || '',
@@ -81,7 +74,7 @@ const CandidateEdit = () => {
       position: data.position || '',
       location: data.location || '',
       years_experience: data.years_experience || undefined,
-      company: data.company || '',
+      company: data.company || '', // CRITICAL: Ensure company data is preserved
       skills: data.skills || [],
       availability: data.availability || '',
       salary_expectations: data.salary_expectations || '',
@@ -95,15 +88,17 @@ const CandidateEdit = () => {
       interests: data.interests || ''
     };
     
-    console.log('Setting form values:', formData);
+    console.log('Setting form with data:', formData);
+    console.log('Company specifically:', formData.company);
+    console.log('Remote preference specifically:', formData.remote_preference);
     
-    // Reset the form completely with new data
+    // Reset form with new data
     form.reset(formData);
     
-    // Force re-render to ensure Select components update properly
-    setTimeout(() => {
-      form.trigger(); // This will re-validate and re-render
-    }, 100);
+    // Force update form state to ensure all fields are populated
+    Object.entries(formData).forEach(([key, value]) => {
+      form.setValue(key as keyof FormValues, value as any);
+    });
   };
 
   useEffect(() => {
@@ -118,12 +113,11 @@ const CandidateEdit = () => {
         setLoading(true);
         console.log('Fetching candidate data for editing:', candidateId);
         
-        // Always fetch fresh data from the server
         const data = await candidateService.getCandidateById(candidateId);
-        console.log('Fetched candidate data:', data);
+        console.log('Raw fetched candidate data:', data);
         
         setOriginalCandidate(data);
-        updateFormWithData(data);
+        populateFormWithCandidateData(data);
         
       } catch (err: any) {
         console.error("Error loading candidate:", err);
@@ -134,7 +128,7 @@ const CandidateEdit = () => {
     };
 
     fetchCandidate();
-  }, [candidateId, form]);
+  }, [candidateId]);
 
   // Re-fetch data when component becomes visible again
   useEffect(() => {
@@ -146,7 +140,7 @@ const CandidateEdit = () => {
           console.log('Refreshed candidate data:', freshData);
           
           setOriginalCandidate(freshData);
-          updateFormWithData(freshData);
+          populateFormWithCandidateData(freshData);
         } catch (err: any) {
           console.error("Error refreshing candidate data:", err);
         }
@@ -185,18 +179,17 @@ const CandidateEdit = () => {
             : values.years_experience
       };
 
-      // CRITICAL FIX: Prepare update data but DON'T include detailed_status
-      // This ensures we preserve the existing status instead of potentially overwriting it
+      // CRITICAL FIX: Prepare update data preserving existing values that aren't being updated
       const updateData = {
         id: candidateId,
         ...processedValues,
-        // Preserve important system fields
+        // Preserve important system fields from latest data
         user_id: latestCandidate.user_id,
         resume_id: latestCandidate.resume_id,
-        status: latestCandidate.status, // Keep the existing status
-        // DON'T include detailed_status to preserve the current value
+        status: latestCandidate.status,
+        detailed_status: latestCandidate.detailed_status, // Preserve existing detailed_status
         score: latestCandidate.score,
-        // Preserve all complex fields
+        // Preserve all complex fields that aren't in the form
         experiences: latestCandidate.experiences,
         education: latestCandidate.education,
         certifications: latestCandidate.certifications,

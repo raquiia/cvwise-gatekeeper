@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -98,29 +99,45 @@ const VALID_DETAILED_STATUSES = [
   'presentation_client', 'en_mission', 'refus', 'ancien_employe'
 ];
 
-// FIXED: Helper function to safely extract string values preserving existing data
-const extractStringValue = (field: any): string | undefined => {
-  if (field === null || field === undefined) return undefined;
+// FIXED: Helper function to safely extract values - preserving actual data
+const safeExtractValue = (field: any): string | undefined => {
+  console.log('Processing field:', field, 'Type:', typeof field);
   
-  // Handle the special object format: {_type: "undefined", value: "undefined"}
-  if (typeof field === 'object' && !Array.isArray(field)) {
-    if (field._type === 'undefined') return undefined;
-    if (field.value !== undefined) {
-      // If value is "undefined" string, treat as undefined
-      if (field.value === "undefined") return undefined;
-      return typeof field.value === 'string' && field.value !== '' ? field.value : undefined;
-    }
-    // If it's an object but doesn't have the _type structure, return undefined
+  // If null or undefined, return undefined
+  if (field === null || field === undefined) {
     return undefined;
   }
   
+  // If it's already a string and not empty or "undefined", return it directly
   if (typeof field === 'string') {
-    // Return undefined for empty strings or "undefined" string to distinguish from actual values
-    return (field === '' || field === "undefined") ? undefined : field;
+    if (field === '' || field === 'undefined') {
+      return undefined;
+    }
+    return field;
   }
   
-  const stringValue = String(field || '');
-  return (stringValue === '' || stringValue === "undefined") ? undefined : stringValue;
+  // Handle object format like {_type: "undefined", value: "some_value"} or {value: "some_value"}
+  if (typeof field === 'object' && !Array.isArray(field)) {
+    // If it has the _type: "undefined" structure, skip it
+    if (field._type === 'undefined') {
+      return undefined;
+    }
+    
+    // If it has a value property, use it
+    if (field.value !== undefined) {
+      if (field.value === "undefined" || field.value === "") {
+        return undefined;
+      }
+      return typeof field.value === 'string' ? field.value : String(field.value);
+    }
+    
+    // If it's some other object, try to stringify it
+    return undefined;
+  }
+  
+  // For any other type, convert to string if it's not empty
+  const stringValue = String(field);
+  return (stringValue === '' || stringValue === 'undefined') ? undefined : stringValue;
 };
 
 // Helper function to safely extract number values
@@ -136,9 +153,11 @@ const extractNumberValue = (field: any): number | undefined => {
   return isNaN(parsed) ? undefined : parsed;
 };
 
-// IMPROVED: Format candidate data preserving all existing values
+// CRITICAL FIX: Format candidate data to preserve all existing values
 const formatCandidateData = (candidate: any): CandidateData => {
   if (!candidate) return null as unknown as CandidateData;
+  
+  console.log('Raw candidate data received:', candidate);
   
   // Convert JSON fields to arrays if they're strings or ensure they're arrays
   const ensureArray = (field: Json | null): any[] => {
@@ -154,39 +173,22 @@ const formatCandidateData = (candidate: any): CandidateData => {
     return Array.isArray(field) ? field : [field];
   };
 
-  console.log('Formatting candidate data, raw values:');
-  console.log('- contract_type raw:', candidate.contract_type);
-  console.log('- remote_preference raw:', candidate.remote_preference);
-  console.log('- mobility raw:', candidate.mobility);
-  console.log('- detailed_status raw:', candidate.detailed_status);
-
-  // CRITICAL FIX: Preserve actual string values directly when they exist
-  const safeExtractField = (field: any): string | undefined => {
-    // If it's already a simple string and not empty, keep it
-    if (typeof field === 'string' && field !== '' && field !== 'undefined') {
-      return field;
-    }
-    // Otherwise use the extraction logic
-    return extractStringValue(field);
-  };
-
   const formatted = {
     id: candidate.id,
     user_id: candidate.user_id,
     resume_id: candidate.resume_id,
     first_name: candidate.first_name,
     last_name: candidate.last_name,
-    email: safeExtractField(candidate.email),
-    phone: safeExtractField(candidate.phone),
-    position: safeExtractField(candidate.position),
+    email: safeExtractValue(candidate.email),
+    phone: safeExtractValue(candidate.phone),
+    position: safeExtractValue(candidate.position),
     years_experience: extractNumberValue(candidate.years_experience),
-    location: safeExtractField(candidate.location),
+    location: safeExtractValue(candidate.location),
     skills: ensureArray(candidate.skills),
     score: extractNumberValue(candidate.score),
-    status: safeExtractField(candidate.status) || 'pending',
-    // CRITICAL FIX: Preserve the actual detailed_status value
-    detailed_status: safeExtractField(candidate.detailed_status),
-    company: safeExtractField(candidate.company),
+    status: safeExtractValue(candidate.status) || 'pending',
+    detailed_status: safeExtractValue(candidate.detailed_status),
+    company: safeExtractValue(candidate.company), // CRITICAL: This must preserve the actual company value
     created_at: candidate.created_at,
     updated_at: candidate.updated_at,
     experiences: ensureArray(candidate.experiences),
@@ -194,19 +196,19 @@ const formatCandidateData = (candidate: any): CandidateData => {
     certifications: ensureArray(candidate.certifications),
     languages: ensureArray(candidate.languages),
     publications: ensureArray(candidate.publications),
-    interests: safeExtractField(candidate.interests),
+    interests: safeExtractValue(candidate.interests),
     professional_references: ensureArray(candidate.professional_references),
-    availability: safeExtractField(candidate.availability),
-    salary_expectations: safeExtractField(candidate.salary_expectations),
-    mobility: safeExtractField(candidate.mobility),
-    contract_type: safeExtractField(candidate.contract_type),
-    remote_preference: safeExtractField(candidate.remote_preference),
-    travel_willingness: safeExtractField(candidate.travel_willingness),
+    availability: safeExtractValue(candidate.availability),
+    salary_expectations: safeExtractValue(candidate.salary_expectations),
+    mobility: safeExtractValue(candidate.mobility),
+    contract_type: safeExtractValue(candidate.contract_type),
+    remote_preference: safeExtractValue(candidate.remote_preference),
+    travel_willingness: safeExtractValue(candidate.travel_willingness),
     professional_networks: ensureArray(candidate.professional_networks),
     continuous_training: ensureArray(candidate.continuous_training),
-    career_objectives: safeExtractField(candidate.career_objectives),
-    professional_values: safeExtractField(candidate.professional_values),
-    work_authorization: safeExtractField(candidate.work_authorization),
+    career_objectives: safeExtractValue(candidate.career_objectives),
+    professional_values: safeExtractValue(candidate.professional_values),
+    work_authorization: safeExtractValue(candidate.work_authorization),
     special_permits: ensureArray(candidate.special_permits),
     industries: ensureArray(candidate.industries),
     projects: ensureArray(candidate.projects),
@@ -214,11 +216,10 @@ const formatCandidateData = (candidate: any): CandidateData => {
     last_updated_at: candidate.last_updated_at
   };
 
-  console.log('Formatted values:');
-  console.log('- contract_type formatted:', formatted.contract_type);
-  console.log('- remote_preference formatted:', formatted.remote_preference);
-  console.log('- mobility formatted:', formatted.mobility);
-  console.log('- detailed_status formatted:', formatted.detailed_status);
+  console.log('Formatted candidate data:', formatted);
+  console.log('Company value specifically:', formatted.company);
+  console.log('Remote preference value specifically:', formatted.remote_preference);
+  console.log('Mobility value specifically:', formatted.mobility);
 
   return formatted;
 };
