@@ -23,7 +23,6 @@ const CandidateEdit = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [originalCandidate, setOriginalCandidate] = useState<CandidateData | null>(null);
-  const [formInitialized, setFormInitialized] = useState(false);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(candidateSchema),
@@ -49,30 +48,6 @@ const CandidateEdit = () => {
     }
   });
 
-  const populateFormWithCandidateData = (data: CandidateData) => {
-    console.log('Populating form with candidate data:', data);
-    
-    const formData = extractFormDataFromCandidate(data);
-    
-    console.log('Extracted form data for population:', formData);
-    
-    // Reset the form with the extracted data
-    form.reset(formData);
-    
-    // Force update of form values by setting them individually
-    // This ensures Select components and other controlled inputs are properly updated
-    Object.entries(formData).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        form.setValue(key as keyof FormValues, value, { shouldDirty: false });
-      }
-    });
-    
-    // Mark form as initialized
-    setFormInitialized(true);
-    
-    console.log('Form populated with data:', form.getValues());
-  };
-
   useEffect(() => {
     const fetchCandidate = async () => {
       if (!candidateId) {
@@ -83,16 +58,37 @@ const CandidateEdit = () => {
 
       try {
         setLoading(true);
-        console.log('Fetching candidate data for editing:', candidateId);
+        console.log('🔄 Fetching candidate data for editing:', candidateId);
         
         const data = await candidateService.getCandidateById(candidateId);
-        console.log('Raw fetched candidate data:', data);
+        console.log('📥 Raw fetched candidate data:', JSON.stringify(data, null, 2));
         
         setOriginalCandidate(data);
-        populateFormWithCandidateData(data);
+        
+        // Extract and log the form data
+        const formData = extractFormDataFromCandidate(data);
+        console.log('📝 Extracted form data:', JSON.stringify(formData, null, 2));
+        
+        // Reset the entire form with new data
+        form.reset(formData);
+        
+        // Also explicitly set each field to ensure they're properly populated
+        Object.entries(formData).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            console.log(`Setting form field ${key} to:`, value);
+            form.setValue(key as keyof FormValues, value, { 
+              shouldDirty: false,
+              shouldTouch: false,
+              shouldValidate: false 
+            });
+          }
+        });
+        
+        // Force a re-render by triggering watch
+        console.log('✅ Form values after population:', form.getValues());
         
       } catch (err: any) {
-        console.error("Error loading candidate:", err);
+        console.error("❌ Error loading candidate:", err);
         setError(`Une erreur s'est produite lors du chargement des données: ${err.message}`);
       } finally {
         setLoading(false);
@@ -100,7 +96,7 @@ const CandidateEdit = () => {
     };
 
     fetchCandidate();
-  }, [candidateId]);
+  }, [candidateId, form]);
 
   const onSubmit = async (values: FormValues) => {
     if (!candidateId || !originalCandidate) {
@@ -113,11 +109,11 @@ const CandidateEdit = () => {
     }
 
     try {
-      console.log('Submitting form with values:', values);
+      console.log('💾 Submitting form with values:', JSON.stringify(values, null, 2));
       
       // Re-fetch the latest data to ensure we have the most current version
       const latestCandidate = await candidateService.getCandidateById(candidateId);
-      console.log('Latest candidate data before update:', latestCandidate);
+      console.log('📊 Latest candidate data before update:', JSON.stringify(latestCandidate, null, 2));
       
       // Fix for the TypeScript error: ensure years_experience is properly typed
       const processedValues = {
@@ -154,10 +150,10 @@ const CandidateEdit = () => {
         profile_completeness: latestCandidate.profile_completeness
       };
 
-      console.log('Final update data being sent:', updateData);
+      console.log('🚀 Final update data being sent:', JSON.stringify(updateData, null, 2));
 
       const updatedCandidate = await candidateService.updateCandidate(updateData);
-      console.log('Update successful, result:', updatedCandidate);
+      console.log('✅ Update successful, result:', JSON.stringify(updatedCandidate, null, 2));
       
       toast({
         title: "Succès",
@@ -166,7 +162,7 @@ const CandidateEdit = () => {
       
       navigate(`/candidates/${candidateId}`);
     } catch (error: any) {
-      console.error("Erreur lors de la mise à jour:", error);
+      console.error("❌ Erreur lors de la mise à jour:", error);
       toast({
         title: "Erreur",
         description: `Échec de la mise à jour: ${error.message}`,
@@ -207,8 +203,8 @@ const CandidateEdit = () => {
     );
   }
 
-  // Only watch form values if form has been initialized to prevent empty state issues
-  const formValues = formInitialized ? form.watch() : form.getValues();
+  // Always get current form values for display
+  const formValues = form.watch();
 
   return (
     <Layout>
