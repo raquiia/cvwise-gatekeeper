@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -89,14 +88,18 @@ const CandidateEdit = () => {
     };
     
     console.log('Form data to set:', formData);
+    console.log('Specific values - remote_preference:', data.remote_preference, 'mobility:', data.mobility);
     
     // Reset the form with new data to ensure all fields are updated
     form.reset(formData);
     
-    // Also manually set each field to ensure they update
-    Object.entries(formData).forEach(([key, value]) => {
-      form.setValue(key as any, value);
-    });
+    // Force update the form values to ensure Select components get the right values
+    setTimeout(() => {
+      Object.entries(formData).forEach(([key, value]) => {
+        form.setValue(key as any, value, { shouldDirty: false, shouldTouch: false });
+      });
+      console.log('Form values after force update:', form.getValues());
+    }, 100);
   };
 
   useEffect(() => {
@@ -478,7 +481,6 @@ const CandidateEdit = () => {
                     {...form.register('mobility')}
                     placeholder="Mobilité géographique"
                     className="border-navy/20"
-                    key={`mobility_${originalCandidate?.mobility}`}
                   />
                 </div>
               </div>
@@ -488,8 +490,10 @@ const CandidateEdit = () => {
                   <Label htmlFor="contract_type">Type de contrat</Label>
                   <Select
                     value={form.watch('contract_type') || ''}
-                    onValueChange={(value) => form.setValue('contract_type', value)}
-                    key={`contract_type_${originalCandidate?.contract_type}`}
+                    onValueChange={(value) => {
+                      console.log('Setting contract_type to:', value);
+                      form.setValue('contract_type', value);
+                    }}
                   >
                     <SelectTrigger className="border-navy/20">
                       <SelectValue placeholder="Sélectionnez un type de contrat" />
@@ -509,8 +513,10 @@ const CandidateEdit = () => {
                   <Label htmlFor="remote_preference">Préférence de télétravail</Label>
                   <Select
                     value={form.watch('remote_preference') || ''}
-                    onValueChange={(value) => form.setValue('remote_preference', value)}
-                    key={`remote_preference_${originalCandidate?.remote_preference}`}
+                    onValueChange={(value) => {
+                      console.log('Setting remote_preference to:', value);
+                      form.setValue('remote_preference', value);
+                    }}
                   >
                     <SelectTrigger className="border-navy/20">
                       <SelectValue placeholder="Sélectionnez une préférence" />
