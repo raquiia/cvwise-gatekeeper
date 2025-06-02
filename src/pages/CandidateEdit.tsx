@@ -47,7 +47,6 @@ const CandidateEdit = () => {
   const [error, setError] = useState<string | null>(null);
   const [originalCandidate, setOriginalCandidate] = useState<CandidateData | null>(null);
   const [skillsInput, setSkillsInput] = useState('');
-  const [formKey, setFormKey] = useState(0);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(candidateSchema),
@@ -62,9 +61,17 @@ const CandidateEdit = () => {
     }
   });
 
-  // IMPROVED: Function to update form with candidate data preserving all values
+  // CRITICAL FIX: Updated function to handle data population correctly
   const updateFormWithData = (data: CandidateData) => {
-    console.log('Updating form with fresh candidate data:', data);
+    console.log('Updating form with candidate data:', data);
+    
+    // Log specific values we're interested in
+    console.log('Key values being set:');
+    console.log('- remote_preference:', data.remote_preference);
+    console.log('- mobility:', data.mobility);
+    console.log('- contract_type:', data.contract_type);
+    console.log('- availability:', data.availability);
+    console.log('- salary_expectations:', data.salary_expectations);
     
     const formData = {
       first_name: data.first_name || '',
@@ -88,21 +95,15 @@ const CandidateEdit = () => {
       interests: data.interests || ''
     };
     
-    console.log('Form data to set:', formData);
-    console.log('IMPORTANT - Checking specific values:');
-    console.log('- remote_preference:', data.remote_preference);
-    console.log('- mobility:', data.mobility);
-    console.log('- contract_type:', data.contract_type);
-    console.log('- availability:', data.availability);
-    console.log('- salary_expectations:', data.salary_expectations);
+    console.log('Setting form values:', formData);
     
-    // Reset the entire form with new data
+    // Reset the form completely with new data
     form.reset(formData);
     
-    // Force a re-render to ensure Select components update
-    setFormKey(prev => prev + 1);
-    
-    console.log('Form values after reset:', form.getValues());
+    // Force re-render to ensure Select components update properly
+    setTimeout(() => {
+      form.trigger(); // This will re-validate and re-render
+    }, 100);
   };
 
   useEffect(() => {
@@ -117,7 +118,7 @@ const CandidateEdit = () => {
         setLoading(true);
         console.log('Fetching candidate data for editing:', candidateId);
         
-        // Always fetch fresh data from the server to ensure we have the latest version
+        // Always fetch fresh data from the server
         const data = await candidateService.getCandidateById(candidateId);
         console.log('Fetched candidate data:', data);
         
@@ -133,9 +134,9 @@ const CandidateEdit = () => {
     };
 
     fetchCandidate();
-  }, [candidateId]);
+  }, [candidateId, form]);
 
-  // Re-fetch data when component becomes visible again (when user navigates back to edit)
+  // Re-fetch data when component becomes visible again
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (!document.hidden && candidateId && originalCandidate) {
@@ -305,7 +306,7 @@ const CandidateEdit = () => {
             <CardTitle>Informations personnelles</CardTitle>
           </CardHeader>
           <CardContent>
-            <form key={formKey} onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="first_name">Prénom <span className="text-red-500">*</span></Label>

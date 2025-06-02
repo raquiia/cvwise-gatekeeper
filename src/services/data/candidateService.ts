@@ -110,7 +110,7 @@ const extractStringValue = (field: any): string | undefined => {
       if (field.value === "undefined") return undefined;
       return typeof field.value === 'string' && field.value !== '' ? field.value : undefined;
     }
-    // If it's an object but doesn't have the _type structure, convert to string
+    // If it's an object but doesn't have the _type structure, return undefined
     return undefined;
   }
   
@@ -160,23 +160,33 @@ const formatCandidateData = (candidate: any): CandidateData => {
   console.log('- mobility raw:', candidate.mobility);
   console.log('- detailed_status raw:', candidate.detailed_status);
 
+  // CRITICAL FIX: Preserve actual string values directly when they exist
+  const safeExtractField = (field: any): string | undefined => {
+    // If it's already a simple string and not empty, keep it
+    if (typeof field === 'string' && field !== '' && field !== 'undefined') {
+      return field;
+    }
+    // Otherwise use the extraction logic
+    return extractStringValue(field);
+  };
+
   const formatted = {
     id: candidate.id,
     user_id: candidate.user_id,
     resume_id: candidate.resume_id,
     first_name: candidate.first_name,
     last_name: candidate.last_name,
-    email: extractStringValue(candidate.email),
-    phone: extractStringValue(candidate.phone),
-    position: extractStringValue(candidate.position),
+    email: safeExtractField(candidate.email),
+    phone: safeExtractField(candidate.phone),
+    position: safeExtractField(candidate.position),
     years_experience: extractNumberValue(candidate.years_experience),
-    location: extractStringValue(candidate.location),
+    location: safeExtractField(candidate.location),
     skills: ensureArray(candidate.skills),
     score: extractNumberValue(candidate.score),
-    status: extractStringValue(candidate.status) || 'pending',
-    // CRITICAL FIX: Preserve the actual detailed_status value, don't default to 'initial'
-    detailed_status: extractStringValue(candidate.detailed_status),
-    company: extractStringValue(candidate.company),
+    status: safeExtractField(candidate.status) || 'pending',
+    // CRITICAL FIX: Preserve the actual detailed_status value
+    detailed_status: safeExtractField(candidate.detailed_status),
+    company: safeExtractField(candidate.company),
     created_at: candidate.created_at,
     updated_at: candidate.updated_at,
     experiences: ensureArray(candidate.experiences),
@@ -184,19 +194,19 @@ const formatCandidateData = (candidate: any): CandidateData => {
     certifications: ensureArray(candidate.certifications),
     languages: ensureArray(candidate.languages),
     publications: ensureArray(candidate.publications),
-    interests: extractStringValue(candidate.interests),
+    interests: safeExtractField(candidate.interests),
     professional_references: ensureArray(candidate.professional_references),
-    availability: extractStringValue(candidate.availability),
-    salary_expectations: extractStringValue(candidate.salary_expectations),
-    mobility: extractStringValue(candidate.mobility),
-    contract_type: extractStringValue(candidate.contract_type),
-    remote_preference: extractStringValue(candidate.remote_preference),
-    travel_willingness: extractStringValue(candidate.travel_willingness),
+    availability: safeExtractField(candidate.availability),
+    salary_expectations: safeExtractField(candidate.salary_expectations),
+    mobility: safeExtractField(candidate.mobility),
+    contract_type: safeExtractField(candidate.contract_type),
+    remote_preference: safeExtractField(candidate.remote_preference),
+    travel_willingness: safeExtractField(candidate.travel_willingness),
     professional_networks: ensureArray(candidate.professional_networks),
     continuous_training: ensureArray(candidate.continuous_training),
-    career_objectives: extractStringValue(candidate.career_objectives),
-    professional_values: extractStringValue(candidate.professional_values),
-    work_authorization: extractStringValue(candidate.work_authorization),
+    career_objectives: safeExtractField(candidate.career_objectives),
+    professional_values: safeExtractField(candidate.professional_values),
+    work_authorization: safeExtractField(candidate.work_authorization),
     special_permits: ensureArray(candidate.special_permits),
     industries: ensureArray(candidate.industries),
     projects: ensureArray(candidate.projects),
