@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -99,77 +98,88 @@ const VALID_DETAILED_STATUSES = [
   'presentation_client', 'en_mission', 'refus', 'ancien_employe'
 ];
 
-// FIXED: Helper function to safely extract values - preserving actual data
-const safeExtractValue = (field: any): string | undefined => {
-  console.log('Processing field:', field, 'Type:', typeof field);
+// COMPLETELY NEW APPROACH: Direct value extraction without complex logic
+const simpleExtractValue = (field: any): string | undefined => {
+  console.log('🔍 Simple extracting field:', field, 'Type:', typeof field);
   
   // If null or undefined, return undefined
   if (field === null || field === undefined) {
+    console.log('⚪ Field is null/undefined');
     return undefined;
   }
   
-  // If it's already a string, return it directly (unless it's "undefined" or empty)
+  // If it's already a string and not empty/undefined
   if (typeof field === 'string') {
-    if (field === '' || field === 'undefined') {
+    if (field === '' || field === 'undefined' || field === 'null') {
+      console.log('⚪ Field is empty string or "undefined"');
       return undefined;
     }
+    console.log('✅ Field is valid string:', field);
     return field;
   }
   
-  // Handle object format like {_type: "undefined", value: "some_value"} or {value: "some_value"}
+  // If it's a number, convert to string
+  if (typeof field === 'number') {
+    console.log('✅ Field is number, converting:', field);
+    return String(field);
+  }
+  
+  // If it's an object, try to extract value
   if (typeof field === 'object' && !Array.isArray(field)) {
-    // If it has the _type: "undefined" structure, check the value
-    if (field._type === 'undefined' && field.value) {
-      if (field.value === "undefined" || field.value === "") {
+    console.log('🔄 Field is object, checking for value property');
+    
+    // Check for the problematic _type: undefined structure
+    if (field.hasOwnProperty('_type') && field._type === 'undefined') {
+      console.log('⚠️ Found _type: undefined structure, ignoring');
+      return undefined;
+    }
+    
+    // Check for simple value property
+    if (field.hasOwnProperty('value')) {
+      const value = field.value;
+      if (value === null || value === undefined || value === 'undefined' || value === '') {
+        console.log('⚪ Object.value is empty');
         return undefined;
       }
-      return String(field.value);
+      console.log('✅ Found object.value:', value);
+      return String(value);
     }
     
-    // If it has a value property, use it
-    if (field.value !== undefined && field.value !== null) {
-      if (field.value === "undefined" || field.value === "") {
-        return undefined;
-      }
-      return String(field.value);
-    }
-    
-    // Try to stringify the object if it's not empty
-    try {
-      const stringified = JSON.stringify(field);
-      if (stringified !== '{}' && stringified !== 'null') {
-        return stringified;
-      }
-    } catch (e) {
-      // If can't stringify, return undefined
-    }
-    
+    console.log('⚠️ Object has no recognizable value structure');
     return undefined;
   }
   
-  // For any other type, convert to string if it's not empty
-  const stringValue = String(field);
-  return (stringValue === '' || stringValue === 'undefined' || stringValue === 'null') ? undefined : stringValue;
+  console.log('⚠️ Unknown field type, converting to string');
+  return String(field);
 };
 
 // Helper function to safely extract number values
 const extractNumberValue = (field: any): number | undefined => {
-  if (!field) return undefined;
+  console.log('🔢 Extracting number from:', field);
+  
+  if (!field || field === null || field === undefined) return undefined;
   if (typeof field === 'number') return field;
-  if (typeof field === 'object' && !Array.isArray(field) && field._type === 'undefined') return undefined;
-  if (typeof field === 'object' && !Array.isArray(field) && field.value !== undefined) {
-    const val = field.value;
-    return typeof val === 'number' ? val : undefined;
+  
+  // Handle object structures
+  if (typeof field === 'object' && !Array.isArray(field)) {
+    if (field._type === 'undefined') return undefined;
+    if (field.hasOwnProperty('value')) {
+      const val = field.value;
+      if (val === null || val === undefined || val === 'undefined' || val === '') return undefined;
+      const parsed = parseInt(String(val), 10);
+      return isNaN(parsed) ? undefined : parsed;
+    }
   }
+  
   const parsed = parseInt(String(field), 10);
   return isNaN(parsed) ? undefined : parsed;
 };
 
-// CRITICAL FIX: Format candidate data to preserve all existing values
+// CRITICAL FIX: Completely rewrite the formatCandidateData function
 const formatCandidateData = (candidate: any): CandidateData => {
   if (!candidate) return null as unknown as CandidateData;
   
-  console.log('Raw candidate data received:', candidate);
+  console.log('🚀 RAW CANDIDATE DATA FROM DATABASE:', JSON.stringify(candidate, null, 2));
   
   // Convert JSON fields to arrays if they're strings or ensure they're arrays
   const ensureArray = (field: Json | null): any[] => {
@@ -191,16 +201,16 @@ const formatCandidateData = (candidate: any): CandidateData => {
     resume_id: candidate.resume_id,
     first_name: candidate.first_name,
     last_name: candidate.last_name,
-    email: safeExtractValue(candidate.email),
-    phone: safeExtractValue(candidate.phone),
-    position: safeExtractValue(candidate.position),
+    email: simpleExtractValue(candidate.email),
+    phone: simpleExtractValue(candidate.phone),
+    position: simpleExtractValue(candidate.position),
     years_experience: extractNumberValue(candidate.years_experience),
-    location: safeExtractValue(candidate.location),
+    location: simpleExtractValue(candidate.location),
     skills: ensureArray(candidate.skills),
     score: extractNumberValue(candidate.score),
-    status: safeExtractValue(candidate.status) || 'pending',
-    detailed_status: safeExtractValue(candidate.detailed_status),
-    company: safeExtractValue(candidate.company), // CRITICAL: This must preserve the actual company value
+    status: simpleExtractValue(candidate.status) || 'pending',
+    detailed_status: simpleExtractValue(candidate.detailed_status),
+    company: simpleExtractValue(candidate.company),
     created_at: candidate.created_at,
     updated_at: candidate.updated_at,
     experiences: ensureArray(candidate.experiences),
@@ -208,19 +218,19 @@ const formatCandidateData = (candidate: any): CandidateData => {
     certifications: ensureArray(candidate.certifications),
     languages: ensureArray(candidate.languages),
     publications: ensureArray(candidate.publications),
-    interests: safeExtractValue(candidate.interests),
+    interests: simpleExtractValue(candidate.interests),
     professional_references: ensureArray(candidate.professional_references),
-    availability: safeExtractValue(candidate.availability),
-    salary_expectations: safeExtractValue(candidate.salary_expectations),
-    mobility: safeExtractValue(candidate.mobility),
-    contract_type: safeExtractValue(candidate.contract_type),
-    remote_preference: safeExtractValue(candidate.remote_preference),
-    travel_willingness: safeExtractValue(candidate.travel_willingness),
+    availability: simpleExtractValue(candidate.availability),
+    salary_expectations: simpleExtractValue(candidate.salary_expectations),
+    mobility: simpleExtractValue(candidate.mobility),
+    contract_type: simpleExtractValue(candidate.contract_type),
+    remote_preference: simpleExtractValue(candidate.remote_preference),
+    travel_willingness: simpleExtractValue(candidate.travel_willingness),
     professional_networks: ensureArray(candidate.professional_networks),
     continuous_training: ensureArray(candidate.continuous_training),
-    career_objectives: safeExtractValue(candidate.career_objectives),
-    professional_values: safeExtractValue(candidate.professional_values),
-    work_authorization: safeExtractValue(candidate.work_authorization),
+    career_objectives: simpleExtractValue(candidate.career_objectives),
+    professional_values: simpleExtractValue(candidate.professional_values),
+    work_authorization: simpleExtractValue(candidate.work_authorization),
     special_permits: ensureArray(candidate.special_permits),
     industries: ensureArray(candidate.industries),
     projects: ensureArray(candidate.projects),
@@ -228,10 +238,12 @@ const formatCandidateData = (candidate: any): CandidateData => {
     last_updated_at: candidate.last_updated_at
   };
 
-  console.log('Formatted candidate data:', formatted);
-  console.log('Company value specifically:', formatted.company);
-  console.log('Remote preference value specifically:', formatted.remote_preference);
-  console.log('Mobility value specifically:', formatted.mobility);
+  console.log('🎯 FORMATTED CANDIDATE DATA:', JSON.stringify(formatted, null, 2));
+  console.log('🏢 Company value specifically:', formatted.company);
+  console.log('🏠 Remote preference value specifically:', formatted.remote_preference);
+  console.log('🚗 Mobility value specifically:', formatted.mobility);
+  console.log('📞 Phone value specifically:', formatted.phone);
+  console.log('📧 Email value specifically:', formatted.email);
 
   return formatted;
 };
@@ -259,18 +271,28 @@ export const candidateService = {
   
   getCandidateById: async (candidateId: string): Promise<CandidateData> => {
     try {
+      console.log('🔍 Fetching candidate by ID:', candidateId);
+      
       const { data, error } = await supabase.rpc('get_candidate_by_id', {
         candidate_id_param: candidateId
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ RPC Error:', error);
+        throw error;
+      }
+      
+      console.log('📥 RAW RPC RESPONSE:', JSON.stringify(data, null, 2));
       
       if (!data || data.length === 0) {
         throw new Error('Candidate not found');
       }
       
       // This should be formatted as a single CandidateData object
-      return formatCandidateData(data[0]);
+      const formatted = formatCandidateData(data[0]);
+      console.log('✅ FINAL FORMATTED RESULT:', JSON.stringify(formatted, null, 2));
+      
+      return formatted;
     } catch (error: any) {
       console.error('Error in getCandidateById:', error);
       throw new Error(`Failed to get candidate: ${error.message}`);

@@ -1,55 +1,31 @@
+
 import { CandidateData } from '@/services/data/candidateService';
 import { FormValues } from './candidateEditSchema';
 
-// IMPROVED: Better data extraction function that handles all data formats
+// COMPLETELY SIMPLIFIED: Direct value extraction
 export const extractValue = (field: any): string => {
-  console.log('Extracting value from field:', field, 'Type:', typeof field);
+  console.log('📝 Extracting value from field:', field, 'Type:', typeof field);
   
   // If null or undefined, return empty string
   if (field === null || field === undefined) {
+    console.log('⚪ Field is null/undefined, returning empty string');
     return '';
   }
   
-  // If it's already a string, return it directly
+  // If it's already a string, return it directly (unless it's "undefined")
   if (typeof field === 'string') {
+    if (field === 'undefined' || field === 'null') {
+      console.log('⚪ Field is "undefined" or "null" string, returning empty');
+      return '';
+    }
+    console.log('✅ Field is valid string:', field);
     return field;
   }
   
-  // Handle the special object format {_type: "undefined", value: "actual_value"} or {value: "actual_value"}
-  if (typeof field === 'object' && !Array.isArray(field)) {
-    // If it has the _type: "undefined" structure, check if there's a real value
-    if (field._type === 'undefined') {
-      // If the value is also "undefined" string, return empty
-      if (field.value === 'undefined' || field.value === undefined || field.value === null || field.value === '') {
-        return '';
-      }
-      // Otherwise return the actual value
-      return String(field.value);
-    }
-    
-    // If it has a value property, use it
-    if (field.hasOwnProperty('value')) {
-      if (field.value === 'undefined' || field.value === undefined || field.value === null || field.value === '') {
-        return '';
-      }
-      return String(field.value);
-    }
-    
-    // Try to stringify the object if it's not empty
-    try {
-      const stringified = JSON.stringify(field);
-      if (stringified !== '{}' && stringified !== 'null') {
-        return stringified;
-      }
-    } catch (e) {
-      console.error('Error stringifying field:', e);
-    }
-    
-    return '';
-  }
-  
   // For any other type, convert to string
-  return String(field);
+  const stringValue = String(field);
+  console.log('🔄 Converted field to string:', stringValue);
+  return stringValue === 'undefined' || stringValue === 'null' ? '' : stringValue;
 };
 
 // Helper function to safely get number values  
@@ -61,16 +37,6 @@ const safeNumber = (value: any): number | undefined => {
     const parsed = parseInt(value, 10);
     return isNaN(parsed) ? undefined : parsed;
   }
-  if (typeof value === 'object' && value !== null) {
-    if (value._type === 'undefined' && value.value !== undefined && value.value !== 'undefined' && value.value !== '') {
-      const parsed = parseInt(String(value.value), 10);
-      return isNaN(parsed) ? undefined : parsed;
-    }
-    if (value.value !== undefined && value.value !== 'undefined' && value.value !== '') {
-      const parsed = parseInt(String(value.value), 10);
-      return isNaN(parsed) ? undefined : parsed;
-    }
-  }
   return undefined;
 };
 
@@ -78,7 +44,6 @@ const safeNumber = (value: any): number | undefined => {
 const safeArray = (value: any): any[] => {
   if (Array.isArray(value)) return value;
   if (value === null || value === undefined) return [];
-  if (typeof value === 'object' && value._type === 'undefined') return [];
   if (typeof value === 'string') {
     if (value === '' || value === 'undefined') return [];
     try {
@@ -92,7 +57,7 @@ const safeArray = (value: any): any[] => {
 };
 
 export const extractFormDataFromCandidate = (data: CandidateData): FormValues => {
-  console.log('Extracting form data from candidate:', data);
+  console.log('🎯 EXTRACTING FORM DATA FROM CANDIDATE:', JSON.stringify(data, null, 2));
   
   const formData = {
     first_name: extractValue(data.first_name),
@@ -116,6 +81,10 @@ export const extractFormDataFromCandidate = (data: CandidateData): FormValues =>
     interests: extractValue(data.interests)
   };
   
-  console.log('Extracted form data:', formData);
+  console.log('🚀 FINAL EXTRACTED FORM DATA:', JSON.stringify(formData, null, 2));
+  console.log('🏢 Company extracted:', formData.company);
+  console.log('🏠 Remote preference extracted:', formData.remote_preference);
+  console.log('🚗 Mobility extracted:', formData.mobility);
+  
   return formData;
 };
