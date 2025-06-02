@@ -110,6 +110,8 @@ const extractStringValue = (field: any): string | undefined => {
       if (field.value === "undefined") return undefined;
       return typeof field.value === 'string' && field.value !== '' ? field.value : undefined;
     }
+    // If it's an object but doesn't have the _type structure, convert to string
+    return undefined;
   }
   
   if (typeof field === 'string') {
