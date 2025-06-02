@@ -223,13 +223,15 @@ export const candidateService = {
       console.log('Updating candidate with ID:', id);
       console.log('Update data:', updateData);
       
-      // Only handle status mapping if detailed_status is not explicitly provided
-      // and if status is being changed
-      if (updateData.status && !updateData.detailed_status) {
+      // CRITICAL: NEVER interfere with detailed_status if it's explicitly provided
+      // Only handle status mapping if detailed_status is not provided AND user is changing status field
+      if (updateData.status && updateData.detailed_status === undefined) {
+        console.log('Status provided without detailed_status, applying mapping');
+        
         // Map common status values to valid detailed_status values
         const statusMapping: Record<string, string> = {
           'active': 'contact',
-          'passive': 'initial',
+          'passive': 'initial', 
           'contacted': 'contact',
           'interview': 'ec1',
           'qualification': 'prequalification',
@@ -242,8 +244,13 @@ export const candidateService = {
         if (mappedStatus) {
           updateData.detailed_status = mappedStatus;
           console.log(`Mapped status "${updateData.status}" to detailed_status "${mappedStatus}"`);
+        } else {
+          console.log(`No mapping found for status "${updateData.status}", preserving existing detailed_status`);
         }
-        // Don't set a default detailed_status if mapping fails - preserve existing value
+      } else if (updateData.detailed_status !== undefined) {
+        console.log('Detailed status explicitly provided:', updateData.detailed_status);
+      } else {
+        console.log('No status changes requested');
       }
       
       // Validate detailed_status if provided

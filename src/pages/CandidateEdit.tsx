@@ -72,11 +72,16 @@ const CandidateEdit = () => {
 
       try {
         setLoading(true);
+        console.log('Fetching candidate data for editing:', candidateId);
+        
+        // Always fetch fresh data from the server to ensure we have the latest version
         const data = await candidateService.getCandidateById(candidateId);
+        console.log('Fetched candidate data:', data);
+        
         setOriginalCandidate(data);
         
         // Préremplir le formulaire avec les données du candidat
-        form.reset({
+        const formData = {
           first_name: data.first_name || '',
           last_name: data.last_name || '',
           email: data.email || '',
@@ -97,7 +102,10 @@ const CandidateEdit = () => {
           professional_values: data.professional_values || '',
           work_authorization: data.work_authorization || '',
           interests: data.interests || ''
-        });
+        };
+        
+        console.log('Setting form data:', formData);
+        form.reset(formData);
       } catch (err: any) {
         console.error("Error loading candidate:", err);
         setError(`Une erreur s'est produite lors du chargement des données: ${err.message}`);
@@ -120,6 +128,9 @@ const CandidateEdit = () => {
     }
 
     try {
+      console.log('Submitting form with values:', values);
+      console.log('Original candidate data:', originalCandidate);
+      
       // Fix for the TypeScript error: ensure years_experience is properly typed
       const processedValues = {
         ...values,
@@ -131,19 +142,35 @@ const CandidateEdit = () => {
             : values.years_experience
       };
 
-      // Convertir les valeurs du formulaire en UpdateCandidateOptions
-      // Explicitly preserve the detailed_status to prevent unwanted changes
+      // Prepare update data - NEVER include status mapping or detailed_status changes
       const updateData = {
         id: candidateId,
         ...processedValues,
-        // Conserver les champs qui ne sont pas dans le formulaire
+        // Preserve ALL original fields that shouldn't change
         user_id: originalCandidate.user_id,
         resume_id: originalCandidate.resume_id,
-        // Explicitly preserve the existing detailed_status - do not let it be overridden
+        // CRITICAL: Explicitly preserve the detailed_status to prevent any unwanted changes
         detailed_status: originalCandidate.detailed_status,
+        // Also preserve any other fields not in the form
+        experiences: originalCandidate.experiences,
+        education: originalCandidate.education,
+        certifications: originalCandidate.certifications,
+        languages: originalCandidate.languages,
+        publications: originalCandidate.publications,
+        professional_references: originalCandidate.professional_references,
+        professional_networks: originalCandidate.professional_networks,
+        continuous_training: originalCandidate.continuous_training,
+        special_permits: originalCandidate.special_permits,
+        industries: originalCandidate.industries,
+        projects: originalCandidate.projects,
+        profile_completeness: originalCandidate.profile_completeness,
+        score: originalCandidate.score
       };
 
-      await candidateService.updateCandidate(updateData);
+      console.log('Final update data:', updateData);
+
+      const updatedCandidate = await candidateService.updateCandidate(updateData);
+      console.log('Update successful, result:', updatedCandidate);
       
       toast({
         title: "Succès",
@@ -398,8 +425,6 @@ const CandidateEdit = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                
-                {/* Remove the detailed_status field from the form to avoid conflicts */}
               </div>
               
               <div className="space-y-2">
