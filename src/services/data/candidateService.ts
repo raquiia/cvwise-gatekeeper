@@ -158,6 +158,7 @@ const formatCandidateData = (candidate: any): CandidateData => {
     skills: ensureArray(candidate.skills),
     score: extractNumberValue(candidate.score),
     status: extractStringValue(candidate.status) || 'pending',
+    // CRITICAL FIX: Don't override existing detailed_status with 'initial'
     detailed_status: extractStringValue(candidate.detailed_status) || 'initial',
     company: extractStringValue(candidate.company),
     created_at: candidate.created_at,
@@ -260,8 +261,9 @@ export const candidateService = {
       console.log('Updating candidate with ID:', id);
       console.log('Update data received:', updateData);
       
-      // Ensure detailed_status has a valid value if it's being set
-      if (updateData.detailed_status !== undefined) {
+      // CRITICAL FIX: Only validate detailed_status if it's explicitly being updated
+      // Don't modify it if it's not provided in the update
+      if (updateData.hasOwnProperty('detailed_status') && updateData.detailed_status !== undefined) {
         if (!updateData.detailed_status || updateData.detailed_status === '') {
           updateData.detailed_status = 'initial';
         } else if (!VALID_DETAILED_STATUSES.includes(updateData.detailed_status)) {

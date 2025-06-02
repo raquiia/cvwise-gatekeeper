@@ -183,7 +183,8 @@ const CandidateEdit = () => {
             : values.years_experience
       };
 
-      // Prepare update data - preserve ALL original fields
+      // CRITICAL FIX: Prepare update data but DON'T include detailed_status
+      // This ensures we preserve the existing status instead of potentially overwriting it
       const updateData = {
         id: candidateId,
         ...processedValues,
@@ -191,7 +192,7 @@ const CandidateEdit = () => {
         user_id: latestCandidate.user_id,
         resume_id: latestCandidate.resume_id,
         status: latestCandidate.status, // Keep the existing status
-        detailed_status: latestCandidate.detailed_status, // Keep the existing detailed_status
+        // DON'T include detailed_status to preserve the current value
         score: latestCandidate.score,
         // Preserve all complex fields
         experiences: latestCandidate.experiences,
