@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -61,6 +62,43 @@ const CandidateEdit = () => {
     }
   });
 
+  // Function to update form with candidate data
+  const updateFormWithData = (data: CandidateData) => {
+    console.log('Updating form with fresh candidate data:', data);
+    
+    const formData = {
+      first_name: data.first_name || '',
+      last_name: data.last_name || '',
+      email: data.email || '',
+      phone: data.phone || '',
+      position: data.position || '',
+      location: data.location || '',
+      years_experience: data.years_experience || undefined,
+      company: data.company || '',
+      skills: data.skills || [],
+      availability: data.availability || '',
+      salary_expectations: data.salary_expectations || '',
+      mobility: data.mobility || '',
+      contract_type: data.contract_type || '',
+      remote_preference: data.remote_preference || '',
+      travel_willingness: data.travel_willingness || '',
+      career_objectives: data.career_objectives || '',
+      professional_values: data.professional_values || '',
+      work_authorization: data.work_authorization || '',
+      interests: data.interests || ''
+    };
+    
+    console.log('Form data to set:', formData);
+    
+    // Reset the form with new data to ensure all fields are updated
+    form.reset(formData);
+    
+    // Also manually set each field to ensure they update
+    Object.entries(formData).forEach(([key, value]) => {
+      form.setValue(key as any, value);
+    });
+  };
+
   useEffect(() => {
     const fetchCandidate = async () => {
       if (!candidateId) {
@@ -78,32 +116,8 @@ const CandidateEdit = () => {
         console.log('Fetched candidate data:', data);
         
         setOriginalCandidate(data);
+        updateFormWithData(data);
         
-        // Préremplir le formulaire avec les données du candidat
-        const formData = {
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          position: data.position || '',
-          location: data.location || '',
-          years_experience: data.years_experience || undefined,
-          company: data.company || '',
-          skills: data.skills || [],
-          availability: data.availability || '',
-          salary_expectations: data.salary_expectations || '',
-          mobility: data.mobility || '',
-          contract_type: data.contract_type || '',
-          remote_preference: data.remote_preference || '',
-          travel_willingness: data.travel_willingness || '',
-          career_objectives: data.career_objectives || '',
-          professional_values: data.professional_values || '',
-          work_authorization: data.work_authorization || '',
-          interests: data.interests || ''
-        };
-        
-        console.log('Setting form data:', formData);
-        form.reset(formData);
       } catch (err: any) {
         console.error("Error loading candidate:", err);
         setError(`Une erreur s'est produite lors du chargement des données: ${err.message}`);
@@ -113,7 +127,28 @@ const CandidateEdit = () => {
     };
 
     fetchCandidate();
-  }, [candidateId, form]);
+  }, [candidateId]);
+
+  // Re-fetch data when component becomes visible again (when user navigates back to edit)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden && candidateId && originalCandidate) {
+        try {
+          console.log('Page became visible, refreshing candidate data');
+          const freshData = await candidateService.getCandidateById(candidateId);
+          console.log('Refreshed candidate data:', freshData);
+          
+          setOriginalCandidate(freshData);
+          updateFormWithData(freshData);
+        } catch (err: any) {
+          console.error("Error refreshing candidate data:", err);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [candidateId, originalCandidate]);
 
   const onSubmit = async (values: FormValues) => {
     if (!candidateId || !originalCandidate) {
@@ -273,6 +308,7 @@ const CandidateEdit = () => {
                     {...form.register('first_name')}
                     placeholder="Prénom"
                     className="border-navy/20"
+                    key={`first_name_${originalCandidate?.first_name}`}
                   />
                   {form.formState.errors.first_name && (
                     <p className="text-sm text-red-500">{form.formState.errors.first_name.message}</p>
@@ -286,6 +322,7 @@ const CandidateEdit = () => {
                     {...form.register('last_name')}
                     placeholder="Nom"
                     className="border-navy/20"
+                    key={`last_name_${originalCandidate?.last_name}`}
                   />
                   {form.formState.errors.last_name && (
                     <p className="text-sm text-red-500">{form.formState.errors.last_name.message}</p>
@@ -300,6 +337,7 @@ const CandidateEdit = () => {
                     {...form.register('email')}
                     placeholder="Email"
                     className="border-navy/20"
+                    key={`email_${originalCandidate?.email}`}
                   />
                   {form.formState.errors.email && (
                     <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
@@ -313,6 +351,7 @@ const CandidateEdit = () => {
                     {...form.register('phone')}
                     placeholder="Téléphone"
                     className="border-navy/20"
+                    key={`phone_${originalCandidate?.phone}`}
                   />
                 </div>
               </div>
@@ -325,6 +364,7 @@ const CandidateEdit = () => {
                     {...form.register('position')}
                     placeholder="Poste actuel ou recherché"
                     className="border-navy/20"
+                    key={`position_${originalCandidate?.position}`}
                   />
                 </div>
                 
@@ -335,6 +375,7 @@ const CandidateEdit = () => {
                     {...form.register('location')}
                     placeholder="Ville, Pays"
                     className="border-navy/20"
+                    key={`location_${originalCandidate?.location}`}
                   />
                 </div>
                 
@@ -345,6 +386,7 @@ const CandidateEdit = () => {
                     {...form.register('company')}
                     placeholder="Entreprise actuelle"
                     className="border-navy/20"
+                    key={`company_${originalCandidate?.company}`}
                   />
                 </div>
                 
@@ -362,6 +404,7 @@ const CandidateEdit = () => {
                     })}
                     placeholder="Nombre d'années"
                     className="border-navy/20"
+                    key={`years_experience_${originalCandidate?.years_experience}`}
                   />
                 </div>
               </div>
@@ -412,6 +455,7 @@ const CandidateEdit = () => {
                   {...form.register('availability')}
                   placeholder="Disponibilité"
                   className="border-navy/20"
+                  key={`availability_${originalCandidate?.availability}`}
                 />
               </div>
               
@@ -423,6 +467,7 @@ const CandidateEdit = () => {
                     {...form.register('salary_expectations')}
                     placeholder="Prétentions salariales"
                     className="border-navy/20"
+                    key={`salary_expectations_${originalCandidate?.salary_expectations}`}
                   />
                 </div>
                 
@@ -433,6 +478,7 @@ const CandidateEdit = () => {
                     {...form.register('mobility')}
                     placeholder="Mobilité géographique"
                     className="border-navy/20"
+                    key={`mobility_${originalCandidate?.mobility}`}
                   />
                 </div>
               </div>
@@ -441,8 +487,9 @@ const CandidateEdit = () => {
                 <div className="space-y-2">
                   <Label htmlFor="contract_type">Type de contrat</Label>
                   <Select
-                    defaultValue={form.getValues('contract_type')}
+                    value={form.watch('contract_type') || ''}
                     onValueChange={(value) => form.setValue('contract_type', value)}
+                    key={`contract_type_${originalCandidate?.contract_type}`}
                   >
                     <SelectTrigger className="border-navy/20">
                       <SelectValue placeholder="Sélectionnez un type de contrat" />
@@ -461,8 +508,9 @@ const CandidateEdit = () => {
                 <div className="space-y-2">
                   <Label htmlFor="remote_preference">Préférence de télétravail</Label>
                   <Select
-                    defaultValue={form.getValues('remote_preference')}
+                    value={form.watch('remote_preference') || ''}
                     onValueChange={(value) => form.setValue('remote_preference', value)}
+                    key={`remote_preference_${originalCandidate?.remote_preference}`}
                   >
                     <SelectTrigger className="border-navy/20">
                       <SelectValue placeholder="Sélectionnez une préférence" />
@@ -484,6 +532,7 @@ const CandidateEdit = () => {
                   {...form.register('interests')}
                   placeholder="Centres d'intérêt"
                   className="border-navy/20 min-h-24"
+                  key={`interests_${originalCandidate?.interests}`}
                 />
               </div>
               
@@ -494,6 +543,7 @@ const CandidateEdit = () => {
                   {...form.register('career_objectives')}
                   placeholder="Objectifs de carrière"
                   className="border-navy/20 min-h-24"
+                  key={`career_objectives_${originalCandidate?.career_objectives}`}
                 />
               </div>
               
@@ -504,6 +554,7 @@ const CandidateEdit = () => {
                   {...form.register('professional_values')}
                   placeholder="Valeurs professionnelles"
                   className="border-navy/20 min-h-24"
+                  key={`professional_values_${originalCandidate?.professional_values}`}
                 />
               </div>
               
