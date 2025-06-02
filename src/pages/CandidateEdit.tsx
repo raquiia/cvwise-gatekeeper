@@ -23,6 +23,7 @@ const CandidateEdit = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [originalCandidate, setOriginalCandidate] = useState<CandidateData | null>(null);
+  const [formInitialized, setFormInitialized] = useState(false);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(candidateSchema),
@@ -53,21 +54,23 @@ const CandidateEdit = () => {
     
     const formData = extractFormDataFromCandidate(data);
     
-    console.log('Company field extracted:', formData.company);
-    console.log('Remote preference extracted:', formData.remote_preference);
-    console.log('Contract type extracted:', formData.contract_type);
+    console.log('Extracted form data for population:', formData);
     
-    // Use reset to populate the entire form at once
+    // Reset the form with the extracted data
     form.reset(formData);
     
-    // Force re-render by updating the form values
-    setTimeout(() => {
-      Object.keys(formData).forEach(key => {
-        if (key !== 'skills' && key !== 'years_experience') {
-          form.setValue(key as keyof FormValues, (formData as any)[key]);
-        }
-      });
-    }, 100);
+    // Force update of form values by setting them individually
+    // This ensures Select components and other controlled inputs are properly updated
+    Object.entries(formData).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        form.setValue(key as keyof FormValues, value, { shouldDirty: false });
+      }
+    });
+    
+    // Mark form as initialized
+    setFormInitialized(true);
+    
+    console.log('Form populated with data:', form.getValues());
   };
 
   useEffect(() => {
@@ -111,7 +114,6 @@ const CandidateEdit = () => {
 
     try {
       console.log('Submitting form with values:', values);
-      console.log('Original candidate data:', originalCandidate);
       
       // Re-fetch the latest data to ensure we have the most current version
       const latestCandidate = await candidateService.getCandidateById(candidateId);
@@ -127,7 +129,7 @@ const CandidateEdit = () => {
             : values.years_experience
       };
 
-      // CRITICAL FIX: Prepare update data preserving existing values that aren't being updated
+      // Prepare update data preserving existing values that aren't being updated
       const updateData = {
         id: candidateId,
         ...processedValues,
@@ -135,7 +137,7 @@ const CandidateEdit = () => {
         user_id: latestCandidate.user_id,
         resume_id: latestCandidate.resume_id,
         status: latestCandidate.status,
-        detailed_status: latestCandidate.detailed_status, // Preserve existing detailed_status
+        detailed_status: latestCandidate.detailed_status,
         score: latestCandidate.score,
         // Preserve all complex fields that aren't in the form
         experiences: latestCandidate.experiences,
@@ -205,8 +207,8 @@ const CandidateEdit = () => {
     );
   }
 
-  // Get current form values for controlled components
-  const formValues = form.watch();
+  // Only watch form values if form has been initialized to prevent empty state issues
+  const formValues = formInitialized ? form.watch() : form.getValues();
 
   return (
     <Layout>

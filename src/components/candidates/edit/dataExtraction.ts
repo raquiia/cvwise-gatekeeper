@@ -1,7 +1,7 @@
 import { CandidateData } from '@/services/data/candidateService';
 import { FormValues } from './candidateEditSchema';
 
-// IMPROVED: Better data extraction function that handles special object format
+// IMPROVED: Better data extraction function that handles all data formats
 export const extractValue = (field: any): string => {
   console.log('Extracting value from field:', field, 'Type:', typeof field);
   
@@ -15,12 +15,12 @@ export const extractValue = (field: any): string => {
     return field;
   }
   
-  // Handle the special object format {_type: "undefined", value: "undefined"} or {value: "something"}
+  // Handle the special object format {_type: "undefined", value: "actual_value"} or {value: "actual_value"}
   if (typeof field === 'object' && !Array.isArray(field)) {
     // If it has the _type: "undefined" structure, check if there's a real value
     if (field._type === 'undefined') {
       // If the value is also "undefined" string, return empty
-      if (field.value === 'undefined' || field.value === undefined || field.value === null) {
+      if (field.value === 'undefined' || field.value === undefined || field.value === null || field.value === '') {
         return '';
       }
       // Otherwise return the actual value
@@ -29,7 +29,7 @@ export const extractValue = (field: any): string => {
     
     // If it has a value property, use it
     if (field.hasOwnProperty('value')) {
-      if (field.value === 'undefined' || field.value === undefined || field.value === null) {
+      if (field.value === 'undefined' || field.value === undefined || field.value === null || field.value === '') {
         return '';
       }
       return String(field.value);
@@ -57,12 +57,19 @@ const safeNumber = (value: any): number | undefined => {
   if (value === null || value === undefined) return undefined;
   if (typeof value === 'number') return value;
   if (typeof value === 'string') {
+    if (value === '' || value === 'undefined') return undefined;
     const parsed = parseInt(value, 10);
     return isNaN(parsed) ? undefined : parsed;
   }
-  if (typeof value === 'object' && value.value !== undefined) {
-    const parsed = parseInt(String(value.value), 10);
-    return isNaN(parsed) ? undefined : parsed;
+  if (typeof value === 'object' && value !== null) {
+    if (value._type === 'undefined' && value.value !== undefined && value.value !== 'undefined' && value.value !== '') {
+      const parsed = parseInt(String(value.value), 10);
+      return isNaN(parsed) ? undefined : parsed;
+    }
+    if (value.value !== undefined && value.value !== 'undefined' && value.value !== '') {
+      const parsed = parseInt(String(value.value), 10);
+      return isNaN(parsed) ? undefined : parsed;
+    }
   }
   return undefined;
 };
@@ -71,7 +78,9 @@ const safeNumber = (value: any): number | undefined => {
 const safeArray = (value: any): any[] => {
   if (Array.isArray(value)) return value;
   if (value === null || value === undefined) return [];
+  if (typeof value === 'object' && value._type === 'undefined') return [];
   if (typeof value === 'string') {
+    if (value === '' || value === 'undefined') return [];
     try {
       const parsed = JSON.parse(value);
       return Array.isArray(parsed) ? parsed : [];
