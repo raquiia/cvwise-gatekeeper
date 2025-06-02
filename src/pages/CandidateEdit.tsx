@@ -25,7 +25,6 @@ const candidateSchema = z.object({
   location: z.string().optional().or(z.literal("")),
   years_experience: z.union([z.number(), z.literal("")]).optional(),
   company: z.string().optional().or(z.literal("")),
-  status: z.string().optional().or(z.literal("")),
   skills: z.array(z.any()).optional(),
   availability: z.string().optional().or(z.literal("")),
   salary_expectations: z.string().optional().or(z.literal("")),
@@ -90,7 +89,6 @@ const CandidateEdit = () => {
           location: data.location || '',
           years_experience: data.years_experience || undefined,
           company: data.company || '',
-          status: data.status || '',
           skills: data.skills || [],
           availability: data.availability || '',
           salary_expectations: data.salary_expectations || '',
@@ -131,6 +129,10 @@ const CandidateEdit = () => {
       console.log('Submitting form with values:', values);
       console.log('Original candidate data:', originalCandidate);
       
+      // Re-fetch the latest data to ensure we have the most current version
+      const latestCandidate = await candidateService.getCandidateById(candidateId);
+      console.log('Latest candidate data before update:', latestCandidate);
+      
       // Fix for the TypeScript error: ensure years_experience is properly typed
       const processedValues = {
         ...values,
@@ -142,32 +144,32 @@ const CandidateEdit = () => {
             : values.years_experience
       };
 
-      // Prepare update data - NEVER include status mapping or detailed_status changes
+      // Prepare update data - preserve ALL original fields
       const updateData = {
         id: candidateId,
         ...processedValues,
-        // Preserve ALL original fields that shouldn't change
-        user_id: originalCandidate.user_id,
-        resume_id: originalCandidate.resume_id,
-        // CRITICAL: Explicitly preserve the detailed_status to prevent any unwanted changes
-        detailed_status: originalCandidate.detailed_status,
-        // Also preserve any other fields not in the form
-        experiences: originalCandidate.experiences,
-        education: originalCandidate.education,
-        certifications: originalCandidate.certifications,
-        languages: originalCandidate.languages,
-        publications: originalCandidate.publications,
-        professional_references: originalCandidate.professional_references,
-        professional_networks: originalCandidate.professional_networks,
-        continuous_training: originalCandidate.continuous_training,
-        special_permits: originalCandidate.special_permits,
-        industries: originalCandidate.industries,
-        projects: originalCandidate.projects,
-        profile_completeness: originalCandidate.profile_completeness,
-        score: originalCandidate.score
+        // CRITICAL: Preserve all fields from the latest data to avoid overwrites
+        user_id: latestCandidate.user_id,
+        resume_id: latestCandidate.resume_id,
+        status: latestCandidate.status, // Keep the existing status
+        detailed_status: latestCandidate.detailed_status, // Keep the existing detailed_status
+        score: latestCandidate.score,
+        // Preserve all complex fields
+        experiences: latestCandidate.experiences,
+        education: latestCandidate.education,
+        certifications: latestCandidate.certifications,
+        languages: latestCandidate.languages,
+        publications: latestCandidate.publications,
+        professional_references: latestCandidate.professional_references,
+        professional_networks: latestCandidate.professional_networks,
+        continuous_training: latestCandidate.continuous_training,
+        special_permits: latestCandidate.special_permits,
+        industries: latestCandidate.industries,
+        projects: latestCandidate.projects,
+        profile_completeness: latestCandidate.profile_completeness
       };
 
-      console.log('Final update data:', updateData);
+      console.log('Final update data being sent:', updateData);
 
       const updatedCandidate = await candidateService.updateCandidate(updateData);
       console.log('Update successful, result:', updatedCandidate);
@@ -400,30 +402,6 @@ const CandidateEdit = () => {
                   >
                     Ajouter
                   </Button>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="status">Statut</Label>
-                  <Select
-                    defaultValue={form.getValues('status')}
-                    onValueChange={(value) => form.setValue('status', value)}
-                  >
-                    <SelectTrigger className="border-navy/20">
-                      <SelectValue placeholder="Sélectionnez un statut" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Actif</SelectItem>
-                      <SelectItem value="passive">Passif</SelectItem>
-                      <SelectItem value="contacted">Contacté</SelectItem>
-                      <SelectItem value="interview">Entretien</SelectItem>
-                      <SelectItem value="qualification">Qualification</SelectItem>
-                      <SelectItem value="offer">Offre</SelectItem>
-                      <SelectItem value="rejected">Rejeté</SelectItem>
-                      <SelectItem value="hired">Embauché</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
               

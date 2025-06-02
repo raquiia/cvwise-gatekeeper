@@ -221,43 +221,18 @@ export const candidateService = {
       const { id, ...updateData } = options;
       
       console.log('Updating candidate with ID:', id);
-      console.log('Update data:', updateData);
+      console.log('Update data received:', updateData);
       
-      // CRITICAL: NEVER interfere with detailed_status if it's explicitly provided
-      // Only handle status mapping if detailed_status is not provided AND user is changing status field
-      if (updateData.status && updateData.detailed_status === undefined) {
-        console.log('Status provided without detailed_status, applying mapping');
-        
-        // Map common status values to valid detailed_status values
-        const statusMapping: Record<string, string> = {
-          'active': 'contact',
-          'passive': 'initial', 
-          'contacted': 'contact',
-          'interview': 'ec1',
-          'qualification': 'prequalification',
-          'offer': 'presentation_client',
-          'rejected': 'refus',
-          'hired': 'en_mission'
-        };
-        
-        const mappedStatus = statusMapping[updateData.status];
-        if (mappedStatus) {
-          updateData.detailed_status = mappedStatus;
-          console.log(`Mapped status "${updateData.status}" to detailed_status "${mappedStatus}"`);
-        } else {
-          console.log(`No mapping found for status "${updateData.status}", preserving existing detailed_status`);
-        }
-      } else if (updateData.detailed_status !== undefined) {
-        console.log('Detailed status explicitly provided:', updateData.detailed_status);
-      } else {
-        console.log('No status changes requested');
-      }
+      // CRITICAL FIX: Never interfere with status fields if they are explicitly provided
+      // Remove any automatic status mapping logic that could override user intentions
       
-      // Validate detailed_status if provided
+      // Validate detailed_status if provided, but don't modify it
       if (updateData.detailed_status && !VALID_DETAILED_STATUSES.includes(updateData.detailed_status)) {
         console.warn(`Invalid detailed_status "${updateData.detailed_status}", removing from update`);
-        delete updateData.detailed_status; // Remove invalid status instead of setting default
+        delete updateData.detailed_status;
       }
+      
+      console.log('Final update data being sent to RPC:', updateData);
       
       // Use the secure RPC function to bypass RLS issues
       const { data, error } = await supabase.rpc(
@@ -287,7 +262,6 @@ export const candidateService = {
   
   deleteCandidate: async (candidateId: string, deleteResume: boolean = false): Promise<boolean> => {
     try {
-      // If deleteResume is true, we need to get the resume ID first
       let resumeId: string | null = null;
       
       if (deleteResume) {
@@ -303,13 +277,11 @@ export const candidateService = {
           }
         } catch (err) {
           console.warn('Failed to get resume_id for candidate:', err);
-          // Continue anyway as we can still delete the candidate
         }
       }
       
       console.log(`Starting deletion process for candidate ${candidateId}, resume: ${resumeId}`);
       
-      // Use the secure RPC function to bypass RLS issues
       const { data, error } = await supabase.rpc('delete_candidate_secure', {
         candidate_id_param: candidateId
       });
@@ -317,7 +289,6 @@ export const candidateService = {
       if (error) {
         console.error('Error during candidate deletion via RPC:', error);
         
-        // Format the error message using a safer approach
         const errorMessage = error && typeof error === 'object' && 'message' in error 
           ? String(error.message || 'Unknown error') 
           : 'Unknown error';
@@ -333,7 +304,6 @@ export const candidateService = {
       
       console.log(`Successfully deleted candidate ${candidateId} via secure RPC function`);
       
-      // If requested and resume exists, delete it too
       if (deleteResume && resumeId) {
         await handleResumeDelete(resumeId);
       }
@@ -342,7 +312,6 @@ export const candidateService = {
     } catch (error: unknown) {
       console.error('Error in deleteCandidate:', error);
       
-      // Format error message with proper type checking
       const errorMessage = error && 
         typeof error === 'object' && 'message' in error ? 
         String(error.message || 'Unknown error') : 
@@ -360,7 +329,6 @@ export const candidateService = {
   
   updateCandidateStatus: async (candidateId: string, status: string): Promise<CandidateData> => {
     try {
-      // Use the same secure update method for consistency
       const { data, error } = await supabase.rpc(
         'update_candidate_secure',
         {
@@ -393,10 +361,8 @@ async function handleResumeDelete(resumeId: string): Promise<void> {
     
     if (resumeError) {
       console.error('Error deleting resume:', resumeError);
-      // Continue anyway since candidate was deleted
     }
   } catch (resumeDeleteError) {
     console.error('Exception deleting resume:', resumeDeleteError);
-    // Continue anyway since candidate was deleted
   }
 }
