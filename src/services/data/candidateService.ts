@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -99,20 +98,27 @@ const VALID_DETAILED_STATUSES = [
   'presentation_client', 'en_mission', 'refus', 'ancien_employe'
 ];
 
-// IMPROVED: Helper function to safely extract string values preserving existing data
+// FIXED: Helper function to safely extract string values preserving existing data
 const extractStringValue = (field: any): string | undefined => {
   if (field === null || field === undefined) return undefined;
+  
+  // Handle the special object format: {_type: "undefined", value: "undefined"}
+  if (typeof field === 'object' && !Array.isArray(field)) {
+    if (field._type === 'undefined') return undefined;
+    if (field.value !== undefined) {
+      // If value is "undefined" string, treat as undefined
+      if (field.value === "undefined") return undefined;
+      return typeof field.value === 'string' && field.value !== '' ? field.value : undefined;
+    }
+  }
+  
   if (typeof field === 'string') {
-    // Return undefined for empty strings to distinguish from actual empty values
-    return field === '' ? undefined : field;
+    // Return undefined for empty strings or "undefined" string to distinguish from actual values
+    return (field === '' || field === "undefined") ? undefined : field;
   }
-  if (typeof field === 'object' && !Array.isArray(field) && field._type === 'undefined') return undefined;
-  if (typeof field === 'object' && !Array.isArray(field) && field.value !== undefined) {
-    const value = field.value;
-    return typeof value === 'string' && value !== '' ? value : undefined;
-  }
+  
   const stringValue = String(field || '');
-  return stringValue === '' ? undefined : stringValue;
+  return (stringValue === '' || stringValue === "undefined") ? undefined : stringValue;
 };
 
 // Helper function to safely extract number values
