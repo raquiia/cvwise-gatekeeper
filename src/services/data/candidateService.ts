@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -102,8 +103,8 @@ const VALID_DETAILED_STATUSES = [
 const extractStringValue = (field: any): string => {
   if (!field) return '';
   if (typeof field === 'string') return field;
-  if (typeof field === 'object' && field._type === 'undefined') return '';
-  if (typeof field === 'object' && field.value !== undefined) return field.value || '';
+  if (typeof field === 'object' && !Array.isArray(field) && field._type === 'undefined') return '';
+  if (typeof field === 'object' && !Array.isArray(field) && field.value !== undefined) return field.value || '';
   return String(field || '');
 };
 
@@ -111,8 +112,8 @@ const extractStringValue = (field: any): string => {
 const extractNumberValue = (field: any): number | undefined => {
   if (!field) return undefined;
   if (typeof field === 'number') return field;
-  if (typeof field === 'object' && field._type === 'undefined') return undefined;
-  if (typeof field === 'object' && field.value !== undefined) {
+  if (typeof field === 'object' && !Array.isArray(field) && field._type === 'undefined') return undefined;
+  if (typeof field === 'object' && !Array.isArray(field) && field.value !== undefined) {
     const val = field.value;
     return typeof val === 'number' ? val : undefined;
   }
@@ -127,7 +128,7 @@ const formatCandidateData = (candidate: any): CandidateData => {
   // Convert JSON fields to arrays if they're strings or ensure they're arrays
   const ensureArray = (field: Json | null): any[] => {
     if (!field) return [];
-    if (typeof field === 'object' && field._type === 'undefined') return [];
+    if (typeof field === 'object' && !Array.isArray(field) && field._type === 'undefined') return [];
     if (typeof field === 'string') {
       try {
         return JSON.parse(field);
