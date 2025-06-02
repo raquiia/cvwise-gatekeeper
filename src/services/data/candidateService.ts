@@ -98,6 +98,28 @@ const VALID_DETAILED_STATUSES = [
   'presentation_client', 'en_mission', 'refus', 'ancien_employe'
 ];
 
+// Helper function to safely extract string values from potentially malformed data
+const extractStringValue = (field: any): string => {
+  if (!field) return '';
+  if (typeof field === 'string') return field;
+  if (typeof field === 'object' && field._type === 'undefined') return '';
+  if (typeof field === 'object' && field.value !== undefined) return field.value || '';
+  return String(field || '');
+};
+
+// Helper function to safely extract number values
+const extractNumberValue = (field: any): number | undefined => {
+  if (!field) return undefined;
+  if (typeof field === 'number') return field;
+  if (typeof field === 'object' && field._type === 'undefined') return undefined;
+  if (typeof field === 'object' && field.value !== undefined) {
+    const val = field.value;
+    return typeof val === 'number' ? val : undefined;
+  }
+  const parsed = parseInt(String(field), 10);
+  return isNaN(parsed) ? undefined : parsed;
+};
+
 // Format candidate data from DB to our application format
 const formatCandidateData = (candidate: any): CandidateData => {
   if (!candidate) return null as unknown as CandidateData;
@@ -105,6 +127,7 @@ const formatCandidateData = (candidate: any): CandidateData => {
   // Convert JSON fields to arrays if they're strings or ensure they're arrays
   const ensureArray = (field: Json | null): any[] => {
     if (!field) return [];
+    if (typeof field === 'object' && field._type === 'undefined') return [];
     if (typeof field === 'string') {
       try {
         return JSON.parse(field);
@@ -115,22 +138,27 @@ const formatCandidateData = (candidate: any): CandidateData => {
     return Array.isArray(field) ? field : [field];
   };
 
-  return {
+  console.log('Formatting candidate data, raw values:');
+  console.log('- contract_type raw:', candidate.contract_type);
+  console.log('- remote_preference raw:', candidate.remote_preference);
+  console.log('- mobility raw:', candidate.mobility);
+
+  const formatted = {
     id: candidate.id,
     user_id: candidate.user_id,
     resume_id: candidate.resume_id,
     first_name: candidate.first_name,
     last_name: candidate.last_name,
-    email: candidate.email,
-    phone: candidate.phone,
-    position: candidate.position,
-    years_experience: candidate.years_experience,
-    location: candidate.location,
+    email: extractStringValue(candidate.email),
+    phone: extractStringValue(candidate.phone),
+    position: extractStringValue(candidate.position),
+    years_experience: extractNumberValue(candidate.years_experience),
+    location: extractStringValue(candidate.location),
     skills: ensureArray(candidate.skills),
-    score: candidate.score,
-    status: candidate.status,
-    detailed_status: candidate.detailed_status,
-    company: candidate.company,
+    score: extractNumberValue(candidate.score),
+    status: extractStringValue(candidate.status) || 'pending',
+    detailed_status: extractStringValue(candidate.detailed_status),
+    company: extractStringValue(candidate.company),
     created_at: candidate.created_at,
     updated_at: candidate.updated_at,
     experiences: ensureArray(candidate.experiences),
@@ -138,25 +166,32 @@ const formatCandidateData = (candidate: any): CandidateData => {
     certifications: ensureArray(candidate.certifications),
     languages: ensureArray(candidate.languages),
     publications: ensureArray(candidate.publications),
-    interests: candidate.interests,
+    interests: extractStringValue(candidate.interests),
     professional_references: ensureArray(candidate.professional_references),
-    availability: candidate.availability,
-    salary_expectations: candidate.salary_expectations,
-    mobility: candidate.mobility,
-    contract_type: candidate.contract_type,
-    remote_preference: candidate.remote_preference,
-    travel_willingness: candidate.travel_willingness,
+    availability: extractStringValue(candidate.availability),
+    salary_expectations: extractStringValue(candidate.salary_expectations),
+    mobility: extractStringValue(candidate.mobility),
+    contract_type: extractStringValue(candidate.contract_type),
+    remote_preference: extractStringValue(candidate.remote_preference),
+    travel_willingness: extractStringValue(candidate.travel_willingness),
     professional_networks: ensureArray(candidate.professional_networks),
     continuous_training: ensureArray(candidate.continuous_training),
-    career_objectives: candidate.career_objectives,
-    professional_values: candidate.professional_values,
-    work_authorization: candidate.work_authorization,
+    career_objectives: extractStringValue(candidate.career_objectives),
+    professional_values: extractStringValue(candidate.professional_values),
+    work_authorization: extractStringValue(candidate.work_authorization),
     special_permits: ensureArray(candidate.special_permits),
     industries: ensureArray(candidate.industries),
     projects: ensureArray(candidate.projects),
-    profile_completeness: candidate.profile_completeness,
+    profile_completeness: extractNumberValue(candidate.profile_completeness),
     last_updated_at: candidate.last_updated_at
   };
+
+  console.log('Formatted values:');
+  console.log('- contract_type formatted:', formatted.contract_type);
+  console.log('- remote_preference formatted:', formatted.remote_preference);
+  console.log('- mobility formatted:', formatted.mobility);
+
+  return formatted;
 };
 
 // Define the candidate service with all CRUD operations
