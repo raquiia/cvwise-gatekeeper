@@ -47,6 +47,7 @@ const CandidateEdit = () => {
   const [error, setError] = useState<string | null>(null);
   const [originalCandidate, setOriginalCandidate] = useState<CandidateData | null>(null);
   const [skillsInput, setSkillsInput] = useState('');
+  const [formKey, setFormKey] = useState(0); // Add a key to force form re-render
   
   const form = useForm<FormValues>({
     resolver: zodResolver(candidateSchema),
@@ -88,38 +89,18 @@ const CandidateEdit = () => {
     };
     
     console.log('Form data to set:', formData);
-    console.log('Specific values - remote_preference:', data.remote_preference, 'mobility:', data.mobility);
+    console.log('IMPORTANT - Checking specific values:');
+    console.log('- remote_preference:', data.remote_preference);
+    console.log('- mobility:', data.mobility);
+    console.log('- contract_type:', data.contract_type);
     
-    // Reset the form completely first
-    form.reset();
+    // Reset the entire form with new data
+    form.reset(formData);
     
-    // Then set all values explicitly
-    setTimeout(() => {
-      console.log('Setting form values...');
-      form.setValue('first_name', formData.first_name);
-      form.setValue('last_name', formData.last_name);
-      form.setValue('email', formData.email);
-      form.setValue('phone', formData.phone);
-      form.setValue('position', formData.position);
-      form.setValue('location', formData.location);
-      form.setValue('years_experience', formData.years_experience);
-      form.setValue('company', formData.company);
-      form.setValue('skills', formData.skills);
-      form.setValue('availability', formData.availability);
-      form.setValue('salary_expectations', formData.salary_expectations);
-      form.setValue('mobility', formData.mobility);
-      form.setValue('contract_type', formData.contract_type);
-      form.setValue('remote_preference', formData.remote_preference);
-      form.setValue('travel_willingness', formData.travel_willingness);
-      form.setValue('career_objectives', formData.career_objectives);
-      form.setValue('professional_values', formData.professional_values);
-      form.setValue('work_authorization', formData.work_authorization);
-      form.setValue('interests', formData.interests);
-      
-      console.log('Form values after setting:', form.getValues());
-      console.log('Remote preference after setting:', form.getValues('remote_preference'));
-      console.log('Mobility after setting:', form.getValues('mobility'));
-    }, 200);
+    // Force a re-render to ensure Select components update
+    setFormKey(prev => prev + 1);
+    
+    console.log('Form values after reset:', form.getValues());
   };
 
   useEffect(() => {
@@ -322,7 +303,7 @@ const CandidateEdit = () => {
             <CardTitle>Informations personnelles</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form key={formKey} onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="first_name">Prénom <span className="text-red-500">*</span></Label>
