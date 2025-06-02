@@ -27,7 +27,6 @@ const candidateSchema = z.object({
   company: z.string().optional().or(z.literal("")),
   status: z.string().optional().or(z.literal("")),
   skills: z.array(z.any()).optional(),
-  // Remove detailed_status from the form schema to avoid conflicts
   availability: z.string().optional().or(z.literal("")),
   salary_expectations: z.string().optional().or(z.literal("")),
   mobility: z.string().optional().or(z.literal("")),
@@ -60,7 +59,6 @@ const CandidateEdit = () => {
       position: '',
       location: '',
       skills: [],
-      // Remove detailed_status from the form schema to avoid conflicts
     }
   });
 
@@ -88,7 +86,6 @@ const CandidateEdit = () => {
           years_experience: data.years_experience || undefined,
           company: data.company || '',
           status: data.status || '',
-          // Don't include detailed_status in the form to avoid conflicts
           skills: data.skills || [],
           availability: data.availability || '',
           salary_expectations: data.salary_expectations || '',
@@ -135,14 +132,14 @@ const CandidateEdit = () => {
       };
 
       // Convertir les valeurs du formulaire en UpdateCandidateOptions
-      // Don't include detailed_status to let the service handle status mapping
+      // Explicitly preserve the detailed_status to prevent unwanted changes
       const updateData = {
         id: candidateId,
         ...processedValues,
         // Conserver les champs qui ne sont pas dans le formulaire
         user_id: originalCandidate.user_id,
         resume_id: originalCandidate.resume_id,
-        // Preserve the existing detailed_status
+        // Explicitly preserve the existing detailed_status - do not let it be overridden
         detailed_status: originalCandidate.detailed_status,
       };
 

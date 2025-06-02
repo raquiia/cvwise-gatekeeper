@@ -223,8 +223,8 @@ export const candidateService = {
       console.log('Updating candidate with ID:', id);
       console.log('Update data:', updateData);
       
-      // Handle status validation - if status is provided but detailed_status is not,
-      // we need to map the status to a valid detailed_status or clear it
+      // Only handle status mapping if detailed_status is not explicitly provided
+      // and if status is being changed
       if (updateData.status && !updateData.detailed_status) {
         // Map common status values to valid detailed_status values
         const statusMapping: Record<string, string> = {
@@ -242,17 +242,14 @@ export const candidateService = {
         if (mappedStatus) {
           updateData.detailed_status = mappedStatus;
           console.log(`Mapped status "${updateData.status}" to detailed_status "${mappedStatus}"`);
-        } else {
-          // If we can't map it, clear the detailed_status to avoid constraint violation
-          updateData.detailed_status = 'initial';
-          console.log(`Unknown status "${updateData.status}", setting detailed_status to "initial"`);
         }
+        // Don't set a default detailed_status if mapping fails - preserve existing value
       }
       
       // Validate detailed_status if provided
       if (updateData.detailed_status && !VALID_DETAILED_STATUSES.includes(updateData.detailed_status)) {
-        console.warn(`Invalid detailed_status "${updateData.detailed_status}", setting to "initial"`);
-        updateData.detailed_status = 'initial';
+        console.warn(`Invalid detailed_status "${updateData.detailed_status}", removing from update`);
+        delete updateData.detailed_status; // Remove invalid status instead of setting default
       }
       
       // Use the secure RPC function to bypass RLS issues
