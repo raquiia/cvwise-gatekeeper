@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -73,20 +72,61 @@ const CandidateEdit = () => {
     }
   });
 
+  // IMPROVED: Better data extraction function that handles special object format
+  const extractValue = (field: any): string => {
+    console.log('Extracting value from field:', field, 'Type:', typeof field);
+    
+    // If null or undefined, return empty string
+    if (field === null || field === undefined) {
+      return '';
+    }
+    
+    // If it's already a string, return it directly
+    if (typeof field === 'string') {
+      return field;
+    }
+    
+    // Handle the special object format {_type: "undefined", value: "undefined"} or {value: "something"}
+    if (typeof field === 'object' && !Array.isArray(field)) {
+      // If it has the _type: "undefined" structure, check if there's a real value
+      if (field._type === 'undefined') {
+        // If the value is also "undefined" string, return empty
+        if (field.value === 'undefined' || field.value === undefined || field.value === null) {
+          return '';
+        }
+        // Otherwise return the actual value
+        return String(field.value);
+      }
+      
+      // If it has a value property, use it
+      if (field.hasOwnProperty('value')) {
+        if (field.value === 'undefined' || field.value === undefined || field.value === null) {
+          return '';
+        }
+        return String(field.value);
+      }
+      
+      // Try to stringify the object if it's not empty
+      try {
+        const stringified = JSON.stringify(field);
+        if (stringified !== '{}' && stringified !== 'null') {
+          return stringified;
+        }
+      } catch (e) {
+        console.error('Error stringifying field:', e);
+      }
+      
+      return '';
+    }
+    
+    // For any other type, convert to string
+    return String(field);
+  };
+
   // CRITICAL FIX: Properly populate form with candidate data
   const populateFormWithCandidateData = (data: CandidateData) => {
     console.log('Populating form with candidate data:', data);
     
-    // Helper function to safely get string values
-    const safeString = (value: any): string => {
-      if (value === null || value === undefined) return '';
-      if (typeof value === 'string') return value;
-      if (typeof value === 'object' && value.value !== undefined) {
-        return String(value.value || '');
-      }
-      return String(value);
-    };
-
     // Helper function to safely get number values  
     const safeNumber = (value: any): number | undefined => {
       if (value === null || value === undefined) return undefined;
@@ -117,36 +157,45 @@ const CandidateEdit = () => {
       return [];
     };
     
-    // Build form data object with explicit safe extraction
+    // Extract values using the improved extraction function
     const formData = {
-      first_name: safeString(data.first_name),
-      last_name: safeString(data.last_name),
-      email: safeString(data.email),
-      phone: safeString(data.phone),
-      position: safeString(data.position),
-      location: safeString(data.location),
+      first_name: extractValue(data.first_name),
+      last_name: extractValue(data.last_name),
+      email: extractValue(data.email),
+      phone: extractValue(data.phone),
+      position: extractValue(data.position),
+      location: extractValue(data.location),
       years_experience: safeNumber(data.years_experience),
-      company: safeString(data.company),
+      company: extractValue(data.company),
       skills: safeArray(data.skills),
-      availability: safeString(data.availability),
-      salary_expectations: safeString(data.salary_expectations),
-      mobility: safeString(data.mobility),
-      contract_type: safeString(data.contract_type),
-      remote_preference: safeString(data.remote_preference),
-      travel_willingness: safeString(data.travel_willingness),
-      career_objectives: safeString(data.career_objectives),
-      professional_values: safeString(data.professional_values),
-      work_authorization: safeString(data.work_authorization),
-      interests: safeString(data.interests)
+      availability: extractValue(data.availability),
+      salary_expectations: extractValue(data.salary_expectations),
+      mobility: extractValue(data.mobility),
+      contract_type: extractValue(data.contract_type),
+      remote_preference: extractValue(data.remote_preference),
+      travel_willingness: extractValue(data.travel_willingness),
+      career_objectives: extractValue(data.career_objectives),
+      professional_values: extractValue(data.professional_values),
+      work_authorization: extractValue(data.work_authorization),
+      interests: extractValue(data.interests)
     };
     
-    console.log('Form data being set:', formData);
-    console.log('Company field value:', formData.company);
-    console.log('Remote preference field value:', formData.remote_preference);
-    console.log('Contract type field value:', formData.contract_type);
+    console.log('Extracted form data:', formData);
+    console.log('Company field extracted:', formData.company);
+    console.log('Remote preference extracted:', formData.remote_preference);
+    console.log('Contract type extracted:', formData.contract_type);
     
     // Use reset to populate the entire form at once
     form.reset(formData);
+    
+    // Force re-render by updating the form values
+    setTimeout(() => {
+      Object.keys(formData).forEach(key => {
+        if (key !== 'skills' && key !== 'years_experience') {
+          form.setValue(key as keyof FormValues, (formData as any)[key]);
+        }
+      });
+    }, 100);
   };
 
   useEffect(() => {
@@ -336,6 +385,8 @@ const CandidateEdit = () => {
                   <Input
                     id="first_name"
                     {...form.register('first_name')}
+                    value={formValues.first_name || ''}
+                    onChange={(e) => form.setValue('first_name', e.target.value)}
                     placeholder="Prénom"
                     className="border-navy/20"
                   />
@@ -349,6 +400,8 @@ const CandidateEdit = () => {
                   <Input
                     id="last_name"
                     {...form.register('last_name')}
+                    value={formValues.last_name || ''}
+                    onChange={(e) => form.setValue('last_name', e.target.value)}
                     placeholder="Nom"
                     className="border-navy/20"
                   />
@@ -363,6 +416,8 @@ const CandidateEdit = () => {
                     id="email"
                     type="email"
                     {...form.register('email')}
+                    value={formValues.email || ''}
+                    onChange={(e) => form.setValue('email', e.target.value)}
                     placeholder="Email"
                     className="border-navy/20"
                   />
@@ -376,6 +431,8 @@ const CandidateEdit = () => {
                   <Input
                     id="phone"
                     {...form.register('phone')}
+                    value={formValues.phone || ''}
+                    onChange={(e) => form.setValue('phone', e.target.value)}
                     placeholder="Téléphone"
                     className="border-navy/20"
                   />
@@ -388,6 +445,8 @@ const CandidateEdit = () => {
                   <Input
                     id="position"
                     {...form.register('position')}
+                    value={formValues.position || ''}
+                    onChange={(e) => form.setValue('position', e.target.value)}
                     placeholder="Poste actuel ou recherché"
                     className="border-navy/20"
                   />
@@ -398,6 +457,8 @@ const CandidateEdit = () => {
                   <Input
                     id="location"
                     {...form.register('location')}
+                    value={formValues.location || ''}
+                    onChange={(e) => form.setValue('location', e.target.value)}
                     placeholder="Ville, Pays"
                     className="border-navy/20"
                   />
@@ -408,6 +469,8 @@ const CandidateEdit = () => {
                   <Input
                     id="company"
                     {...form.register('company')}
+                    value={formValues.company || ''}
+                    onChange={(e) => form.setValue('company', e.target.value)}
                     placeholder="Entreprise actuelle"
                     className="border-navy/20"
                   />
@@ -425,6 +488,11 @@ const CandidateEdit = () => {
                           ? parseInt(v, 10) 
                           : v
                     })}
+                    value={formValues.years_experience || ''}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
+                      form.setValue('years_experience', value);
+                    }}
                     placeholder="Nombre d'années"
                     className="border-navy/20"
                   />
@@ -475,6 +543,8 @@ const CandidateEdit = () => {
                 <Input
                   id="availability"
                   {...form.register('availability')}
+                  value={formValues.availability || ''}
+                  onChange={(e) => form.setValue('availability', e.target.value)}
                   placeholder="Disponibilité"
                   className="border-navy/20"
                 />
@@ -486,6 +556,8 @@ const CandidateEdit = () => {
                   <Input
                     id="salary_expectations"
                     {...form.register('salary_expectations')}
+                    value={formValues.salary_expectations || ''}
+                    onChange={(e) => form.setValue('salary_expectations', e.target.value)}
                     placeholder="Prétentions salariales"
                     className="border-navy/20"
                   />
@@ -496,6 +568,8 @@ const CandidateEdit = () => {
                   <Input
                     id="mobility"
                     {...form.register('mobility')}
+                    value={formValues.mobility || ''}
+                    onChange={(e) => form.setValue('mobility', e.target.value)}
                     placeholder="Mobilité géographique"
                     className="border-navy/20"
                   />
@@ -553,6 +627,8 @@ const CandidateEdit = () => {
                 <Textarea
                   id="interests"
                   {...form.register('interests')}
+                  value={formValues.interests || ''}
+                  onChange={(e) => form.setValue('interests', e.target.value)}
                   placeholder="Centres d'intérêt"
                   className="border-navy/20 min-h-24"
                 />
@@ -563,6 +639,8 @@ const CandidateEdit = () => {
                 <Textarea
                   id="career_objectives"
                   {...form.register('career_objectives')}
+                  value={formValues.career_objectives || ''}
+                  onChange={(e) => form.setValue('career_objectives', e.target.value)}
                   placeholder="Objectifs de carrière"
                   className="border-navy/20 min-h-24"
                 />
@@ -573,6 +651,8 @@ const CandidateEdit = () => {
                 <Textarea
                   id="professional_values"
                   {...form.register('professional_values')}
+                  value={formValues.professional_values || ''}
+                  onChange={(e) => form.setValue('professional_values', e.target.value)}
                   placeholder="Valeurs professionnelles"
                   className="border-navy/20 min-h-24"
                 />
