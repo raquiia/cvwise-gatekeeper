@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -225,6 +226,15 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
     }
   };
 
+  const handleRowClick = (candidateId: string) => {
+    onViewCandidate(candidateId);
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>, candidateId: string) => {
+    e.stopPropagation(); // Empêche la propagation vers le TableRow
+    onSelectCandidate(candidateId, e.target.checked);
+  };
+
   const candidatesCount = candidates.length;
   const selectedCount = selectedCandidates.size;
 
@@ -291,17 +301,14 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                 )}
                 onMouseEnter={() => setHoveredRow(candidate.id!)}
                 onMouseLeave={() => setHoveredRow(null)}
-                onClick={() => onViewCandidate(candidate.id!)}
+                onClick={() => handleRowClick(candidate.id!)}
               >
                 {/* Checkbox */}
                 <TableCell className="py-3">
                   <input
                     type="checkbox"
                     checked={isSelected}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      onSelectCandidate(candidate.id!, e.target.checked);
-                    }}
+                    onChange={(e) => handleCheckboxChange(e, candidate.id!)}
                     className="w-4 h-4 rounded border-2 border-purple-300 text-purple-600 focus:ring-2 focus:ring-purple-500/25"
                   />
                 </TableCell>
