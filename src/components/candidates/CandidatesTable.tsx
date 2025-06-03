@@ -16,7 +16,7 @@ import ModernTableView from './ModernTableView';
 import { useToast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
 import { candidateMatchingService } from '@/services/data/candidateMatchingService';
-import { useContextualScoring } from '@/hooks/use-contextual-scoring';
+import { useOptimizedScoring } from '@/hooks/use-optimized-scoring';
 import { CANDIDATE_STATUS_LABELS, CANDIDATE_STATUSES } from '@/services/data/candidateStatusService';
 
 interface CandidatesTableProps {
@@ -36,7 +36,6 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
 }) => {
   const { toast } = useToast();
   const [jobOffers, setJobOffers] = useState<any[]>([]);
-  const [candidatesWithScores, setCandidatesWithScores] = useState<CandidateData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
@@ -46,7 +45,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     activeJobOfferTitle, 
     updateActiveJobOffer, 
     isJobSpecific 
-  } = useContextualScoring();
+  } = useOptimizedScoring();
   
   // Fetch job offers on component mount
   useEffect(() => {
@@ -68,26 +67,6 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     
     fetchJobOffers();
   }, [updateActiveJobOffer]);
-  
-  // Update candidate list when candidates change
-  useEffect(() => {
-    if (!candidates || candidates.length === 0) {
-      setCandidatesWithScores([]);
-      return;
-    }
-    
-    // Copy candidates to avoid mutation issues
-    const updatedCandidates = [...candidates];
-    
-    // Log candidates to ensure detailed_status is present
-    console.log("Candidates with detailed status:", updatedCandidates.map(c => ({
-      id: c.id,
-      name: `${c.first_name} ${c.last_name}`,
-      detailed_status: c.detailed_status
-    })));
-    
-    setCandidatesWithScores(updatedCandidates);
-  }, [candidates]);
   
   // Handle changing the active job offer
   const handleJobOfferChange = async (jobOfferId: string | null) => {
@@ -129,12 +108,6 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     }
   };
   
-  // Debug: Log the candidates data being received
-  console.log('CandidatesTable - received candidates:', candidates);
-  
-  // Check if we have valid candidates data
-  const validCandidates = Array.isArray(candidatesWithScores) ? candidatesWithScores : [];
-  
   const handleCandidateDeleted = () => {
     console.log('Candidate deleted, notifying parent component');
     toast({
@@ -158,10 +131,10 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   };
 
   const handleSelectAll = () => {
-    if (selectedCandidates.size === candidatesWithScores.length) {
+    if (selectedCandidates.size === candidates.length) {
       setSelectedCandidates(new Set());
     } else {
-      setSelectedCandidates(new Set(candidatesWithScores.map(c => c.id!).filter(Boolean)));
+      setSelectedCandidates(new Set(candidates.map(c => c.id!).filter(Boolean)));
     }
   };
   
@@ -225,7 +198,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
       {/* Content based on view mode */}
       {viewMode === 'table' ? (
         <ModernTableView
-          candidates={validCandidates}
+          candidates={candidates}
           selectedCandidates={selectedCandidates}
           onSelectCandidate={handleSelectCandidate}
           onSelectAll={handleSelectAll}
@@ -234,7 +207,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
         />
       ) : (
         <ModernCandidatesTable
-          candidates={validCandidates}
+          candidates={candidates}
           selectedStatus={selectedStatus}
           onStatusChange={onStatusChange}
           onViewCandidate={onViewCandidate}

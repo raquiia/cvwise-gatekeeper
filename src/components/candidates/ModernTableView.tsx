@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +22,7 @@ import { ensureStringArray } from '@/utils/candidateUtils';
 import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
-import { useContextualScoring } from '@/hooks/use-contextual-scoring';
+import { useOptimizedScoring } from '@/hooks/use-optimized-scoring';
 import { cn } from '@/lib/utils';
 
 interface ModernTableViewProps {
@@ -45,49 +44,45 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
 }) => {
   const { toast } = useToast();
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
-  const [candidateScores, setCandidateScores] = useState<Map<string, any>>(new Map());
-  const [loadingScores, setLoadingScores] = useState<Set<string>>(new Set());
   
-  const { calculateContextualScore, isJobSpecific } = useContextualScoring();
+  const { 
+    getCachedScore, 
+    isScoreLoading, 
+    calculateContextualScore, 
+    isJobSpecific 
+  } = useOptimizedScoring();
 
-  // Calculate scores for all candidates when component mounts or when job context changes
+  // Calculate scores progressively (lazy loading)
   useEffect(() => {
-    const calculateAllScores = async () => {
-      const newScores = new Map();
-      const loadingSet = new Set(candidates.map(c => c.id!));
-      setLoadingScores(loadingSet);
-
-      for (const candidate of candidates) {
-        if (candidate.id) {
-          try {
-            const score = await calculateContextualScore(candidate);
-            newScores.set(candidate.id, score);
-          } catch (error) {
-            console.error(`Error calculating score for candidate ${candidate.id}:`, error);
-            // Set a default score
-            newScores.set(candidate.id, {
-              overall: 0,
-              isJobSpecific: false,
-              matchContext: 'Erreur de calcul'
-            });
-          }
-          
-          // Remove from loading set
-          setLoadingScores(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(candidate.id!);
-            return newSet;
-          });
+    const calculateScoresProgressively = async () => {
+      // Calculate scores for visible candidates first (assuming first 10 are visible)
+      const visibleCandidates = candidates.slice(0, 10);
+      const remainingCandidates = candidates.slice(10);
+      
+      // Calculate visible candidates first
+      for (const candidate of visibleCandidates) {
+        if (candidate.id && !getCachedScore(candidate.id) && !isScoreLoading(candidate.id)) {
+          // Add small delay to prevent overwhelming the system
+          setTimeout(() => {
+            calculateContextualScore(candidate).catch(console.error);
+          }, 100);
         }
       }
       
-      setCandidateScores(newScores);
+      // Calculate remaining candidates with longer delays
+      remainingCandidates.forEach((candidate, index) => {
+        if (candidate.id && !getCachedScore(candidate.id) && !isScoreLoading(candidate.id)) {
+          setTimeout(() => {
+            calculateContextualScore(candidate).catch(console.error);
+          }, 1000 + (index * 200)); // Staggered calculation
+        }
+      });
     };
 
     if (candidates.length > 0) {
-      calculateAllScores();
+      calculateScoresProgressively();
     }
-  }, [candidates, calculateContextualScore, isJobSpecific]);
+  }, [candidates, calculateContextualScore, getCachedScore, isScoreLoading]);
 
   // Fonction pour générer une couleur basée sur les initiales
   const getAvatarColor = (firstName: string, lastName: string) => {
@@ -229,8 +224,8 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
   };
 
   const getScoreBadge = (candidateId: string) => {
-    const isLoading = loadingScores.has(candidateId);
-    const scoreData = candidateScores.get(candidateId);
+    const isLoading = isScoreLoading(candidateId);
+    const scoreData = getCachedScore(candidateId);
     
     if (isLoading) {
       return (
@@ -243,7 +238,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
     if (!scoreData) {
       return (
         <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200 text-xs px-2 py-1">
-          N/A
+          --
         </Badge>
       );
     }
@@ -518,7 +513,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                   </div>
                 </TableCell>
 
-                {/* Action - Bouton de suppression unique */}
+                {/* Action */}
                 <TableCell className="py-3">
                   <div className="flex justify-center">
                     <Button
