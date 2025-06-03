@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { CandidateData } from '@/services/data/candidateService';
+import { ensureArray } from '@/utils/candidateUtils';
 
 export interface StoredCandidateScore {
   id: string;
@@ -29,6 +30,20 @@ export interface ScoreDetails {
   };
 }
 
+// Helper function to safely extract education level
+const getEducationLevel = (education: any[]): string => {
+  if (!education || education.length === 0) {
+    return 'Non spécifié';
+  }
+  
+  const firstEducation = education[0];
+  if (typeof firstEducation === 'object' && firstEducation !== null) {
+    return (firstEducation as any).degree || (firstEducation as any).diploma || 'Non spécifié';
+  }
+  
+  return 'Non spécifié';
+};
+
 export const persistentScoringService = {
   /**
    * Get stored general score for a candidate
@@ -46,8 +61,8 @@ export const persistentScoringService = {
         return null;
       }
 
-      const skillsArray = Array.isArray(candidate.skills) ? candidate.skills : [];
-      const educationArray = Array.isArray(candidate.education) ? candidate.education : [];
+      const skillsArray = ensureArray(candidate.skills);
+      const educationArray = ensureArray(candidate.education);
       
       return {
         skills: Math.round((skillsArray.length / 10) * 100), // Approximate based on skills count
@@ -58,7 +73,7 @@ export const persistentScoringService = {
         details: {
           skillsCount: skillsArray.length,
           experienceYears: candidate.years_experience || 0,
-          educationLevel: educationArray.length > 0 ? educationArray[0]?.degree || 'Non spécifié' : 'Non spécifié',
+          educationLevel: getEducationLevel(educationArray),
           completenessPercentage: candidate.profile_completeness || 0
         }
       };
@@ -96,8 +111,8 @@ export const persistentScoringService = {
         .eq('id', candidateId)
         .single();
 
-      const skillsArray = Array.isArray(candidate?.skills) ? candidate.skills : [];
-      const educationArray = Array.isArray(candidate?.education) ? candidate.education : [];
+      const skillsArray = ensureArray(candidate?.skills);
+      const educationArray = ensureArray(candidate?.education);
 
       return {
         skills: jobScore.skills_score,
@@ -108,7 +123,7 @@ export const persistentScoringService = {
         details: {
           skillsCount: skillsArray.length,
           experienceYears: candidate?.years_experience || 0,
-          educationLevel: educationArray.length > 0 ? educationArray[0]?.degree || 'Non spécifié' : 'Non spécifié',
+          educationLevel: getEducationLevel(educationArray),
           completenessPercentage: jobScore.profile_completeness_score
         }
       };
