@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -235,6 +234,10 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
     onSelectCandidate(candidateId, e.target.checked);
   };
 
+  const handleCheckboxCellClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Empêche la propagation vers le TableRow
+  };
+
   const candidatesCount = candidates.length;
   const selectedCount = selectedCandidates.size;
 
@@ -304,7 +307,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                 onClick={() => handleRowClick(candidate.id!)}
               >
                 {/* Checkbox */}
-                <TableCell className="py-3">
+                <TableCell className="py-3" onClick={handleCheckboxCellClick}>
                   <input
                     type="checkbox"
                     checked={isSelected}
