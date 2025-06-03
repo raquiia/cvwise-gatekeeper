@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -8,17 +7,13 @@ import {
   MapPin, 
   Calendar, 
   TrendingUp, 
-  Edit, 
   Trash2, 
-  Eye,
   Star,
   Clock,
   Award,
   Briefcase,
   Mail,
   Phone,
-  ChevronRight,
-  MoreHorizontal,
   Building
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -28,14 +23,7 @@ import { calculateCandidateScore, getScoreEvaluation } from '@/services/scoring/
 import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
-import { formatDate } from '@/utils/dateFormatter';
 import { cn } from '@/lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 interface ModernTableViewProps {
   candidates: CandidateData[];
@@ -143,14 +131,11 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
 
   const getScoreBadge = (score: number) => {
     let bgColor = 'bg-red-100 text-red-700 border-red-200';
-    let label = 'Faible';
     
     if (score >= 80) {
       bgColor = 'bg-green-100 text-green-700 border-green-200';
-      label = 'Excellent';
     } else if (score >= 60) {
       bgColor = 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      label = 'Bon';
     }
 
     return (
@@ -163,7 +148,10 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
     );
   };
 
-  const handleDelete = async (candidateId: string) => {
+  const handleDelete = async (e: React.MouseEvent, candidateId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     try {
       await candidateService.deleteCandidate(candidateId, true);
       toast({
@@ -214,7 +202,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         </div>
       </div>
 
-      {/* Tableau */}
+      {/* Table */}
       <Table>
         <TableHeader>
           <TableRow className="border-b border-purple-200/30 bg-gradient-to-r from-purple-50/50 to-transparent dark:from-purple-950/20 hover:bg-purple-50/50 dark:hover:bg-purple-950/20">
@@ -222,11 +210,11 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-80">Candidat</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-24">Score</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-32">Statut</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand w-48">Entreprise actuelle</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-40">Poste recherché</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand hidden xl:table-cell w-24">Expérience</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand">Compétences</TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand hidden md:table-cell w-32">Dernière MAJ</TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand text-center w-28">Actions</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand text-center w-16">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -247,13 +235,17 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                 )}
                 onMouseEnter={() => setHoveredRow(candidate.id!)}
                 onMouseLeave={() => setHoveredRow(null)}
+                onClick={() => onViewCandidate(candidate.id!)}
               >
                 {/* Checkbox */}
                 <TableCell className="py-3">
                   <input
                     type="checkbox"
                     checked={isSelected}
-                    onChange={(e) => onSelectCandidate(candidate.id!, e.target.checked)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      onSelectCandidate(candidate.id!, e.target.checked);
+                    }}
                     className="w-4 h-4 rounded border-2 border-purple-300 text-purple-600 focus:ring-2 focus:ring-purple-500/25"
                   />
                 </TableCell>
@@ -278,12 +270,9 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                     </div>
                     
                     <div className="min-w-0 flex-1">
-                      <Link 
-                        to={`/candidates/${candidate.id}`}
-                        className="font-semibold text-navy-dark dark:text-sand hover:text-purple-700 dark:hover:text-purple-300 transition-colors duration-200 block"
-                      >
+                      <div className="font-semibold text-navy-dark dark:text-sand hover:text-purple-700 dark:hover:text-purple-300 transition-colors duration-200">
                         {candidate.first_name} {candidate.last_name}
-                      </Link>
+                      </div>
                       
                       {/* Email */}
                       {candidate.email && (
@@ -293,29 +282,18 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                         </div>
                       )}
                       
-                      {/* Entreprise et localisation sur la même ligne */}
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                        {candidate.company && (
-                          <div className="flex items-center gap-1">
-                            <Building size={11} />
-                            <span className="font-medium">{candidate.company}</span>
-                          </div>
-                        )}
-                        {candidate.company && candidate.location && (
-                          <span>•</span>
-                        )}
-                        {candidate.location && (
-                          <div className="flex items-center gap-1">
-                            <MapPin size={11} />
-                            <span>{candidate.location}</span>
-                          </div>
-                        )}
-                      </div>
+                      {/* Localisation */}
+                      {candidate.location && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <MapPin size={11} />
+                          <span>{candidate.location}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </TableCell>
 
-                {/* Score simplifié */}
+                {/* Score */}
                 <TableCell className="py-3">
                   {getScoreBadge(scoreBreakdown.overall)}
                 </TableCell>
@@ -323,6 +301,20 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                 {/* Statut */}
                 <TableCell className="py-3">
                   {getStatusBadge(candidate.detailed_status || 'initial')}
+                </TableCell>
+
+                {/* Entreprise actuelle */}
+                <TableCell className="py-3">
+                  {candidate.company ? (
+                    <div className="flex items-center gap-2">
+                      <Building size={14} className="text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                      <span className="text-sm font-medium text-navy-dark dark:text-sand truncate">
+                        {candidate.company}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground italic">Non renseignée</span>
+                  )}
                 </TableCell>
 
                 {/* Poste recherché */}
@@ -342,8 +334,8 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
 
                 {/* Compétences */}
                 <TableCell className="py-3">
-                  <div className="flex flex-wrap gap-1 max-w-xs">
-                    {skills.slice(0, 2).map((skill, idx) => (
+                  <div className="flex flex-wrap gap-1 max-w-sm">
+                    {skills.slice(0, 3).map((skill, idx) => (
                       <Badge 
                         key={idx} 
                         variant="outline" 
@@ -352,63 +344,31 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                         {skill}
                       </Badge>
                     ))}
-                    {skills.length > 2 && (
+                    {skills.length > 3 && (
                       <Badge 
                         variant="secondary" 
                         className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-1.5 py-0.5"
                       >
-                        +{skills.length - 2}
+                        +{skills.length - 3}
                       </Badge>
                     )}
                   </div>
                 </TableCell>
 
-                {/* Dernière MAJ */}
-                <TableCell className="hidden md:table-cell py-3">
-                  <div className="text-xs text-muted-foreground">
-                    {formatDate(candidate.updated_at || candidate.created_at || '')}
-                  </div>
-                </TableCell>
-
-                {/* Actions */}
+                {/* Action - Bouton de suppression unique */}
                 <TableCell className="py-3">
-                  <div className={cn(
-                    "flex items-center justify-center gap-1 transition-all duration-200",
-                    isHovered ? "opacity-100" : "opacity-60"
-                  )}>
+                  <div className="flex justify-center">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onViewCandidate(candidate.id!)}
-                      className="h-7 w-7 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                      onClick={(e) => handleDelete(e, candidate.id!)}
+                      className={cn(
+                        "h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-200",
+                        isHovered ? "opacity-100" : "opacity-60"
+                      )}
                     >
-                      <Eye size={13} />
+                      <Trash2 size={14} />
                     </Button>
-                    
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 hover:bg-purple-100 dark:hover:bg-purple-900/30"
-                        >
-                          <MoreHorizontal size={13} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-md border-purple-100/50 shadow-lg">
-                        <DropdownMenuItem onClick={() => onViewCandidate(candidate.id!)}>
-                          <Edit size={14} className="mr-2" />
-                          Modifier
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleDelete(candidate.id!)}
-                          className="text-red-600 focus:text-red-800"
-                        >
-                          <Trash2 size={14} className="mr-2" />
-                          Supprimer
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </div>
                 </TableCell>
               </TableRow>
