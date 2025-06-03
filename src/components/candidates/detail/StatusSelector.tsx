@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, updateCandidateStatus } from '@/services/data/candidateStatusService';
+import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, updateCandidateStatus, getCandidateStatus } from '@/services/data/candidateStatusService';
 import { toast } from '@/hooks/use-toast';
 
 // Define colors by status
@@ -37,6 +37,29 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
 }) => {
   const [currentStatus, setCurrentStatus] = useState<string>(propCurrentStatus || 'initial');
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [isLoadingStatus, setIsLoadingStatus] = useState<boolean>(false);
+  
+  // Charger le statut réel depuis la base de données
+  useEffect(() => {
+    const loadCurrentStatus = async () => {
+      if (candidateId && !propCurrentStatus) {
+        setIsLoadingStatus(true);
+        try {
+          const status = await getCandidateStatus(candidateId);
+          if (status && CANDIDATE_STATUSES.includes(status)) {
+            console.log('Loaded current status:', status);
+            setCurrentStatus(status);
+          }
+        } catch (error) {
+          console.error('Error loading current status:', error);
+        } finally {
+          setIsLoadingStatus(false);
+        }
+      }
+    };
+    
+    loadCurrentStatus();
+  }, [candidateId, propCurrentStatus]);
   
   // Utiliser le statut passé en prop si disponible
   useEffect(() => {
@@ -90,6 +113,15 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   
   // Determine button color based on current status
   const buttonColorClass = STATUS_COLORS[currentStatus] || 'bg-gray-500 hover:bg-gray-600';
+  
+  if (isLoadingStatus) {
+    return (
+      <Button className="bg-gray-400 hover:bg-gray-400 text-white" disabled>
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        Chargement...
+      </Button>
+    );
+  }
   
   return (
     <DropdownMenu>
