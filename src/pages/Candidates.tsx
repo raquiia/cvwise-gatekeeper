@@ -160,6 +160,12 @@ const CandidatesContent = () => {
     }
   };
 
+  // New function to handle candidate updates specifically
+  const handleCandidateUpdated = async () => {
+    console.log('Candidate updated, refreshing data...');
+    await fetchCandidates();
+  };
+
   useEffect(() => {
     fetchCandidates();
   }, [user]);
@@ -494,7 +500,7 @@ const CandidatesContent = () => {
               candidates={filteredCandidates}
               onViewCandidate={handleViewCandidate}
               onCandidateDeleted={fetchCandidates}
-              onCandidateUpdated={fetchCandidates}
+              onCandidateUpdated={handleCandidateUpdated}
             />
           ) : currentView === 'analytics' ? (
             <CandidatesAnalyticsView 

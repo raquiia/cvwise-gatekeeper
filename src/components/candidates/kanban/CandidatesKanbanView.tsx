@@ -33,10 +33,12 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
     // Group candidates by their status
     candidates.forEach(candidate => {
       const status = candidate.detailed_status || 'initial';
+      console.log(`Kanban: Candidate ${candidate.first_name} ${candidate.last_name} has status: ${status}`);
       if (groups[status]) {
         groups[status].push(candidate);
       } else {
         // Fallback for unknown statuses
+        console.warn(`Unknown status ${status}, placing in initial`);
         groups['initial'].push(candidate);
       }
     });
@@ -54,6 +56,7 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
           description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[newStatus]}"`,
         });
         
+        // Trigger refresh of parent data
         if (onCandidateUpdated) {
           onCandidateUpdated();
         }
@@ -67,6 +70,14 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
     }
     
     setDraggedCandidate(null);
+  };
+
+  // Handle status change from within cards
+  const handleStatusChange = () => {
+    console.log('Status changed in Kanban, triggering refresh');
+    if (onCandidateUpdated) {
+      onCandidateUpdated();
+    }
   };
 
   // Define the order of statuses for display
@@ -93,6 +104,7 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
             candidates={candidatesByStatus[status] || []}
             onViewCandidate={onViewCandidate}
             onCandidateDeleted={onCandidateDeleted}
+            onCandidateUpdated={handleStatusChange}
             onDrop={handleDrop}
           />
         ))}
