@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle, AlertTriangle, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { CandidateData } from '@/services/data/candidateService';
 import ModernCandidatesTable from './ModernCandidatesTable';
+import ModernTableView from './ModernTableView';
 import { useToast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
 import { candidateMatchingService } from '@/services/data/candidateMatchingService';
@@ -36,6 +36,8 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   const [activeJobOfferId, setActiveJobOfferId] = useState<string | null>(null);
   const [candidatesWithScores, setCandidatesWithScores] = useState<CandidateData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
   
   // Fetch job offers on component mount
   useEffect(() => {
@@ -133,6 +135,24 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
       onCandidateDeleted();
     }
   };
+
+  const handleSelectCandidate = (candidateId: string, selected: boolean) => {
+    const newSelected = new Set(selectedCandidates);
+    if (selected) {
+      newSelected.add(candidateId);
+    } else {
+      newSelected.delete(candidateId);
+    }
+    setSelectedCandidates(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedCandidates.size === candidatesWithScores.length) {
+      setSelectedCandidates(new Set());
+    } else {
+      setSelectedCandidates(new Set(candidatesWithScores.map(c => c.id!).filter(Boolean)));
+    }
+  };
   
   const getActiveJobOfferName = () => {
     if (!activeJobOfferId || !jobOffers || jobOffers.length === 0) return null;
@@ -183,14 +203,25 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
         </DropdownMenu>
       </div>
 
-      {/* Modern Table Component */}
-      <ModernCandidatesTable
-        candidates={validCandidates}
-        selectedStatus={selectedStatus}
-        onStatusChange={onStatusChange}
-        onViewCandidate={onViewCandidate}
-        onCandidateDeleted={handleCandidateDeleted}
-      />
+      {/* Content based on view mode */}
+      {viewMode === 'table' ? (
+        <ModernTableView
+          candidates={validCandidates}
+          selectedCandidates={selectedCandidates}
+          onSelectCandidate={handleSelectCandidate}
+          onSelectAll={handleSelectAll}
+          onViewCandidate={onViewCandidate}
+          onCandidateDeleted={handleCandidateDeleted}
+        />
+      ) : (
+        <ModernCandidatesTable
+          candidates={validCandidates}
+          selectedStatus={selectedStatus}
+          onStatusChange={onStatusChange}
+          onViewCandidate={onViewCandidate}
+          onCandidateDeleted={handleCandidateDeleted}
+        />
+      )}
     </div>
   );
 };
