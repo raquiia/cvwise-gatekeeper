@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { CandidateData } from '@/services/data/candidateService';
 import { CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
@@ -32,7 +33,7 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
       groups[status] = [];
     });
     
-    // Group candidates by their detailed_status
+    // Group candidates by their detailed_status with enhanced logging
     candidates.forEach((candidate, index) => {
       const rawStatus = candidate.detailed_status;
       const status = rawStatus || 'contact';
@@ -40,23 +41,25 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
       console.log(`🎯 Kanban grouping candidate ${index + 1}: ${candidate.first_name} ${candidate.last_name}`);
       console.log(`   📊 Raw detailed_status: "${rawStatus}"`);
       console.log(`   📊 Final status used: "${status}"`);
+      console.log(`   🔍 Status exists in labels: ${Object.keys(CANDIDATE_STATUS_LABELS).includes(status)}`);
       
       // Vérifier que le statut existe dans nos labels
       if (Object.keys(CANDIDATE_STATUS_LABELS).includes(status)) {
         groups[status].push(candidate);
-        console.log(`   ✅ Added to group "${status}"`);
+        console.log(`   ✅ Added to group "${status}" (total in group: ${groups[status].length})`);
       } else {
-        console.warn(`   ⚠️  Status "${status}" not found in CANDIDATE_STATUS_LABELS, using contact`);
+        console.warn(`   ⚠️ Status "${status}" not found in CANDIDATE_STATUS_LABELS, using contact`);
         groups['contact'].push(candidate);
+        console.log(`   ⚠️ Added to contact group instead (total in contact: ${groups['contact'].length})`);
       }
     });
     
-    // Debug: Afficher la répartition finale
+    // Debug: Afficher la répartition finale avec détails
     console.log('📊 Final Kanban distribution:');
     Object.entries(groups).forEach(([status, candidates]) => {
-      console.log(`   ${status}: ${candidates.length} candidates`);
+      console.log(`   ${status} (${CANDIDATE_STATUS_LABELS[status]}): ${candidates.length} candidates`);
       if (candidates.length > 0) {
-        candidates.forEach(c => console.log(`     - ${c.first_name} ${c.last_name} (ID: ${c.id})`));
+        candidates.forEach(c => console.log(`     - ${c.first_name} ${c.last_name} (ID: ${c.id}, detailed_status: "${c.detailed_status}")`));
       }
     });
     
