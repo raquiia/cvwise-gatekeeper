@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check, ChevronDown, Loader2 } from 'lucide-react';
@@ -14,6 +15,7 @@ import { toast } from '@/hooks/use-toast';
 const STATUS_COLORS: Record<string, string> = {
   'initial': 'bg-gray-500 hover:bg-gray-600',
   'contact': 'bg-blue-500 hover:bg-blue-600',
+  'qualification': 'bg-cyan-500 hover:bg-cyan-600', // AJOUT: couleur pour qualification
   'prequalification': 'bg-cyan-500 hover:bg-cyan-600',
   'ec1': 'bg-violet-500 hover:bg-violet-600',
   'ec2': 'bg-indigo-500 hover:bg-indigo-600',
@@ -27,7 +29,7 @@ interface StatusSelectorProps {
   candidateId: string;
   currentStatus?: string;
   onStatusChange?: (newStatus: string) => void;
-  onDataRefresh?: () => void; // NEW: Add callback to refresh parent data
+  onDataRefresh?: () => void;
 }
 
 const StatusSelector: React.FC<StatusSelectorProps> = ({ 
@@ -47,8 +49,8 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         setIsLoadingStatus(true);
         try {
           const status = await getCandidateStatus(candidateId);
-          if (status && CANDIDATE_STATUSES.includes(status)) {
-            console.log('Loaded current status:', status);
+          if (status) {
+            console.log('Loaded current status from DB:', status);
             setCurrentStatus(status);
           }
         } catch (error) {
@@ -64,12 +66,13 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   
   // Utiliser le statut passé en prop si disponible
   useEffect(() => {
-    if (propCurrentStatus && CANDIDATE_STATUSES.includes(propCurrentStatus)) {
+    if (propCurrentStatus) {
+      console.log('Using prop status:', propCurrentStatus);
       setCurrentStatus(propCurrentStatus);
     }
   }, [propCurrentStatus]);
   
-  // Change status - now optimized to avoid trigger conflicts
+  // Change status
   const handleStatusChange = async (status: string) => {
     if (status === currentStatus || isUpdating) return;
     
@@ -85,7 +88,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         
         toast({
           title: "Statut mis à jour",
-          description: `Le statut a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
+          description: `Le statut a été modifié en "${CANDIDATE_STATUS_LABELS[status] || status}"`,
         });
         
         // Notifier le parent
@@ -93,7 +96,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
           onStatusChange(status);
         }
         
-        // NEW: Trigger data refresh in parent components
+        // Trigger data refresh in parent components
         if (onDataRefresh) {
           onDataRefresh();
         }
@@ -120,6 +123,9 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   // Determine button color based on current status
   const buttonColorClass = STATUS_COLORS[currentStatus] || 'bg-gray-500 hover:bg-gray-600';
   
+  // Get display label for current status
+  const currentStatusLabel = CANDIDATE_STATUS_LABELS[currentStatus] || currentStatus;
+  
   if (isLoadingStatus) {
     return (
       <Button className="bg-gray-400 hover:bg-gray-400 text-white" disabled>
@@ -143,7 +149,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
             </>
           ) : (
             <>
-              {CANDIDATE_STATUS_LABELS[currentStatus] || 'Inconnu'}
+              {currentStatusLabel}
               <ChevronDown className="ml-2 h-4 w-4" />
             </>
           )}

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export const CANDIDATE_STATUS_LABELS: Record<string, string> = {
   initial: 'Initial',
   contact: 'Contact',
+  qualification: 'Qualification', // AJOUT: statut manquant
   prequalification: 'Préqualification',
   ec1: 'Entretien client 1',
   ec2: 'Entretien client 2',

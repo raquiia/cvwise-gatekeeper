@@ -120,26 +120,26 @@ const CandidatesContent = () => {
           new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
         );
         
-        // S'assurer que chaque candidat a un statut valide
-        const candidatesWithValidStatus = sortedCandidates.map(candidate => {
-          let status = candidate.detailed_status;
+        // CORRECTION: Ne pas forcer le statut à "initial", utiliser le statut réel de la DB
+        const candidatesWithCorrectStatus = sortedCandidates.map(candidate => {
+          // Préserver le statut exact tel qu'il est stocké dans la base de données
+          const status = candidate.detailed_status || 'initial';
           
-          // Vérifier si le statut est valide, sinon utiliser 'initial'
-          if (!status || !CANDIDATE_STATUSES.includes(status)) {
-            console.log(`Invalid status "${status}" for candidate ${candidate.id}, using "initial"`);
-            status = 'initial';
+          console.log(`Candidate ${candidate.id} (${candidate.first_name} ${candidate.last_name}) has DB status: "${status}"`);
+          
+          // Si le statut n'est pas dans notre liste, on le garde quand même mais on log un warning
+          if (!CANDIDATE_STATUSES.includes(status) && status !== 'initial') {
+            console.warn(`Unknown status "${status}" for candidate ${candidate.id}, keeping as-is`);
           }
-          
-          console.log(`Candidate ${candidate.id} (${candidate.first_name} ${candidate.last_name}) status: ${status}`);
           
           return {
             ...candidate,
-            detailed_status: status
+            detailed_status: status // Garder le statut exact de la DB
           };
         });
         
-        setCandidates(candidatesWithValidStatus);
-        setFilteredCandidates(candidatesWithValidStatus);
+        setCandidates(candidatesWithCorrectStatus);
+        setFilteredCandidates(candidatesWithCorrectStatus);
       } else {
         console.error("Candidates data is not an array:", data);
         setCandidates([]);
