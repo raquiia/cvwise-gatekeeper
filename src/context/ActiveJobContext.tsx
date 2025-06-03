@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
 import { candidateMatchingService } from '@/services/data/candidate-matching/candidateMatchingService';
@@ -58,6 +57,21 @@ export const ActiveJobProvider: React.FC<ActiveJobProviderProps> = ({ children }
           jobTitle: jobTitle || null,
           timestamp: Date.now()
         }));
+        
+        // Trigger pre-calculation of job scores in background
+        // This is non-blocking and will improve user experience
+        if (typeof window !== 'undefined') {
+          setTimeout(async () => {
+            try {
+              console.log('Starting background score calculation for job:', jobOfferId);
+              const { persistentScoringService } = await import('@/services/scoring/persistentScoringService');
+              await persistentScoringService.calculateAllCandidatesJobScores(jobOfferId);
+              console.log('Background score calculation completed');
+            } catch (error) {
+              console.error('Error in background score calculation:', error);
+            }
+          }, 1000); // Start after 1 second to not block UI
+        }
       } else {
         localStorage.removeItem(STORAGE_KEY);
       }

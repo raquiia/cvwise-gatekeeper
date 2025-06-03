@@ -66,6 +66,60 @@ export type Database = {
           },
         ]
       }
+      candidate_job_scores: {
+        Row: {
+          calculated_at: string | null
+          candidate_id: string
+          education_score: number
+          experience_score: number
+          id: string
+          job_offer_id: string
+          match_score: number
+          profile_completeness_score: number
+          skills_score: number
+          updated_at: string | null
+        }
+        Insert: {
+          calculated_at?: string | null
+          candidate_id: string
+          education_score?: number
+          experience_score?: number
+          id?: string
+          job_offer_id: string
+          match_score?: number
+          profile_completeness_score?: number
+          skills_score?: number
+          updated_at?: string | null
+        }
+        Update: {
+          calculated_at?: string | null
+          candidate_id?: string
+          education_score?: number
+          experience_score?: number
+          id?: string
+          job_offer_id?: string
+          match_score?: number
+          profile_completeness_score?: number
+          skills_score?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_job_scores_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_job_scores_job_offer_id_fkey"
+            columns: ["job_offer_id"]
+            isOneToOne: false
+            referencedRelation: "job_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_notes: {
         Row: {
           candidate_id: string
@@ -447,6 +501,14 @@ export type Database = {
       calculate_all_candidates_job_matches: {
         Args: { p_job_offer_id: string }
         Returns: string[]
+      }
+      calculate_and_store_candidate_score: {
+        Args: { p_candidate_id: string }
+        Returns: number
+      }
+      calculate_and_store_job_score: {
+        Args: { p_candidate_id: string; p_job_offer_id: string }
+        Returns: number
       }
       calculate_candidate_job_match: {
         Args: { p_candidate_id: string; p_job_offer_id: string }

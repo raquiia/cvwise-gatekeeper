@@ -48,7 +48,8 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   
   const { 
     isJobSpecific,
-    invalidateScores 
+    invalidateScores,
+    preCalculateJobScores
   } = useOptimizedScoring();
   
   // Fetch job offers on component mount
@@ -75,8 +76,13 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
         
         toast({
           title: "Offre d'emploi activée",
-          description: `Les scores sont maintenant relatifs à "${selectedOffer?.title || 'cette offre'}"`,
+          description: `Les scores sont maintenant relatifs à "${selectedOffer?.title || 'cette offre'}". Calcul en cours...`,
         });
+        
+        // Pre-calculate scores for better performance
+        setTimeout(() => {
+          preCalculateJobScores();
+        }, 500);
       } else {
         await setActiveJobOffer(null);
         
@@ -151,10 +157,23 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
             size="sm"
             onClick={invalidateScores}
             className="h-8 w-8 p-0"
-            title="Recalculer tous les scores"
+            title="Actualiser les scores"
           >
             <RefreshCw size={14} />
           </Button>
+          
+          {/* Pre-calculate button for job scores */}
+          {isJobSpecific && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={preCalculateJobScores}
+              className="h-8 px-2 text-xs"
+              title="Recalculer tous les scores pour cette offre"
+            >
+              Recalculer
+            </Button>
+          )}
         </div>
         
         <DropdownMenu>
