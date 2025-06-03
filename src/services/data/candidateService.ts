@@ -98,7 +98,7 @@ const VALID_DETAILED_STATUSES = [
   'presentation_client', 'en_mission', 'refus', 'ancien_employe'
 ];
 
-// COMPLETELY NEW APPROACH: Direct value extraction without complex logic
+// COMPLETELY REWRITTEN: More robust value extraction
 const simpleExtractValue = (field: any): string | undefined => {
   console.log('🔍 Simple extracting field:', field, 'Type:', typeof field);
   
@@ -124,13 +124,25 @@ const simpleExtractValue = (field: any): string | undefined => {
     return String(field);
   }
   
-  // If it's an object, try to extract value
+  // CRITICAL FIX: Better handling of object structures
   if (typeof field === 'object' && !Array.isArray(field)) {
-    console.log('🔄 Field is object, checking for value property');
+    console.log('🔄 Field is object, checking structure:', field);
     
     // Check for the problematic _type: undefined structure
     if (field.hasOwnProperty('_type') && field._type === 'undefined') {
-      console.log('⚠️ Found _type: undefined structure, ignoring');
+      console.log('⚠️ Found _type: undefined structure');
+      
+      // But check if the value property actually contains real data
+      if (field.hasOwnProperty('value') && 
+          field.value !== 'undefined' && 
+          field.value !== null && 
+          field.value !== '' && 
+          field.value !== undefined) {
+        console.log('✅ Found real data in _type:undefined object.value:', field.value);
+        return String(field.value);
+      }
+      
+      console.log('⚪ _type:undefined object has no real value');
       return undefined;
     }
     
@@ -184,7 +196,15 @@ const formatCandidateData = (candidate: any): CandidateData => {
   // Convert JSON fields to arrays if they're strings or ensure they're arrays
   const ensureArray = (field: Json | null): any[] => {
     if (!field) return [];
-    if (typeof field === 'object' && !Array.isArray(field) && field._type === 'undefined') return [];
+    
+    // Handle the _type: undefined structure for arrays
+    if (typeof field === 'object' && !Array.isArray(field) && field._type === 'undefined') {
+      if (field.hasOwnProperty('value') && Array.isArray(field.value)) {
+        return field.value;
+      }
+      return [];
+    }
+    
     if (typeof field === 'string') {
       try {
         return JSON.parse(field);
@@ -242,6 +262,8 @@ const formatCandidateData = (candidate: any): CandidateData => {
   console.log('🏢 Company value specifically:', formatted.company);
   console.log('🏠 Remote preference value specifically:', formatted.remote_preference);
   console.log('🚗 Mobility value specifically:', formatted.mobility);
+  console.log('💰 Salary expectations value specifically:', formatted.salary_expectations);
+  console.log('📝 Contract type value specifically:', formatted.contract_type);
   console.log('📞 Phone value specifically:', formatted.phone);
   console.log('📧 Email value specifically:', formatted.email);
 
