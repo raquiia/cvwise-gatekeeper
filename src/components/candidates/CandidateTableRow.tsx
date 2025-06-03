@@ -2,11 +2,16 @@
 import React from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, TrendingUp } from 'lucide-react';
+import { MapPin, Calendar, TrendingUp, Edit, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
 import { calculateCandidateScore, getScoreEvaluation } from '@/services/scoring/candidateScoring';
+import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
+import { Button } from '@/components/ui/button';
+import { candidateService } from '@/services/data/candidateService';
+import { useToast } from '@/hooks/use-toast';
+import { formatDate } from '@/utils/dateFormatter';
 
 interface CandidateTableRowProps {
   candidate: CandidateData;
@@ -28,30 +33,88 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   statusFirst = false
 }) => {
   const skills = ensureStringArray(candidate.skills);
+  const { toast } = useToast();
   
   // Calcul du score intelligent
   const scoreBreakdown = calculateCandidateScore(candidate);
   const evaluation = getScoreEvaluation(scoreBreakdown.overall);
 
   const getStatusBadge = (status: string) => {
+    const statusLabel = CANDIDATE_STATUS_LABELS[status] || status;
+    
     switch (status) {
-      case 'active':
-        return <Badge variant="default" className="bg-emerald-100 text-emerald-800">Actif</Badge>;
-      case 'inactive':
-        return <Badge variant="destructive">Inactif</Badge>;
-      case 'qualification':
-        return <Badge variant="secondary">En qualification</Badge>;
-      case 'interview':
-        return <Badge variant="outline" className="border-blue-200 text-blue-800">Entretien</Badge>;
-      case 'hired':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Embauché</Badge>;
+      case 'initial':
+        return <Badge variant="secondary" className="bg-gray-100 text-gray-800">
+          {statusLabel}
+        </Badge>;
+      case 'contact':
+        return <Badge variant="outline" className="border-blue-200 text-blue-800 bg-blue-50">
+          {statusLabel}
+        </Badge>;
+      case 'prequalification':
+        return <Badge variant="outline" className="border-purple-200 text-purple-800 bg-purple-50">
+          {statusLabel}
+        </Badge>;
+      case 'ec1':
+        return <Badge variant="outline" className="border-orange-200 text-orange-800 bg-orange-50">
+          {statusLabel}
+        </Badge>;
+      case 'ec2':
+        return <Badge variant="outline" className="border-amber-200 text-amber-800 bg-amber-50">
+          {statusLabel}
+        </Badge>;
+      case 'presentation_client':
+        return <Badge variant="outline" className="border-indigo-200 text-indigo-800 bg-indigo-50">
+          {statusLabel}
+        </Badge>;
+      case 'en_mission':
+        return <Badge variant="default" className="bg-green-100 text-green-800">
+          {statusLabel}
+        </Badge>;
+      case 'refus':
+        return <Badge variant="destructive">
+          {statusLabel}
+        </Badge>;
+      case 'ancien_employe':
+        return <Badge variant="outline" className="border-emerald-200 text-emerald-800 bg-emerald-50">
+          {statusLabel}
+        </Badge>;
       default:
-        return <Badge variant="secondary">En attente</Badge>;
+        return <Badge variant="secondary">
+          {statusLabel}
+        </Badge>;
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!candidate.id) return;
+    
+    try {
+      await candidateService.deleteCandidate(candidate.id, true);
+      toast({
+        title: "Candidat supprimé",
+        description: "Le candidat a été supprimé avec succès",
+      });
+      if (onCandidateDeleted) {
+        onCandidateDeleted();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de supprimer le candidat",
+        variant: "destructive",
+      });
     }
   };
 
   return (
-    <TableRow className="hover:bg-muted/50 cursor-pointer">
+    <TableRow className="hover:bg-muted/50">
+      {/* Status Column - First */}
+      <TableCell className="hidden md:table-cell">
+        {getStatusBadge(candidate.detailed_status || 'initial')}
+      </TableCell>
+      
+      {/* Name Column */}
       <TableCell className="font-medium">
         <Link 
           to={`/candidates/${candidate.id}`}
@@ -73,72 +136,81 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
         </Link>
       </TableCell>
       
+      {/* Position Column */}
       <TableCell>
         <div className="space-y-1">
           <div className="font-medium">
             {candidate.position || 'Poste non spécifié'}
           </div>
-          {candidate.company && (
-            <div className="text-sm text-muted-foreground">
-              {candidate.company}
-            </div>
-          )}
         </div>
       </TableCell>
       
+      {/* Company Column */}
       <TableCell>
-        <div className="space-y-2">
-          {candidate.location && (
-            <div className="flex items-center text-sm">
-              <MapPin size={14} className="mr-1 text-muted-foreground" />
-              {candidate.location}
-            </div>
-          )}
-          {candidate.years_experience && (
-            <div className="flex items-center text-sm">
-              <Calendar size={14} className="mr-1 text-muted-foreground" />
-              {candidate.years_experience} ans
-            </div>
-          )}
+        <div className="font-medium">
+          {candidate.company || 'Non spécifiée'}
         </div>
       </TableCell>
       
+      {/* Location Column */}
+      <TableCell className="hidden lg:table-cell">
+        <div className="flex items-center text-sm">
+          <MapPin size={14} className="mr-1 text-muted-foreground" />
+          {candidate.location || 'Non spécifiée'}
+        </div>
+      </TableCell>
+      
+      {/* Experience Column */}
+      <TableCell className="hidden lg:table-cell">
+        <div className="flex items-center text-sm">
+          <Calendar size={14} className="mr-1 text-muted-foreground" />
+          {candidate.years_experience ? `${candidate.years_experience} ans` : 'Non spécifiée'}
+        </div>
+      </TableCell>
+      
+      {/* Skills Column */}
       <TableCell>
         <div className="flex flex-wrap gap-1">
-          {skills.slice(0, 3).map((skill, idx) => (
+          {skills.slice(0, 2).map((skill, idx) => (
             <Badge key={idx} variant="outline" className="text-xs">
               {skill}
             </Badge>
           ))}
-          {skills.length > 3 && (
+          {skills.length > 2 && (
             <Badge variant="secondary" className="text-xs">
-              +{skills.length - 3}
+              +{skills.length - 2}
             </Badge>
           )}
         </div>
       </TableCell>
       
-      {!hideScore && (
-        <TableCell>
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1">
-              <TrendingUp size={14} className="text-muted-foreground" />
-              <span className="font-semibold text-lg">
-                {scoreBreakdown.overall}
-              </span>
-            </div>
-            <div className={`px-2 py-1 rounded-full text-xs font-medium ${evaluation.bgColor} ${evaluation.color}`}>
-              {scoreBreakdown.overall >= 85 ? 'Excellent' : 
-               scoreBreakdown.overall >= 70 ? 'Très bon' :
-               scoreBreakdown.overall >= 55 ? 'Bon' :
-               scoreBreakdown.overall >= 40 ? 'Potentiel' : 'À développer'}
-            </div>
-          </div>
-        </TableCell>
-      )}
+      {/* Updated Date Column */}
+      <TableCell className="hidden md:table-cell">
+        <div className="text-sm text-muted-foreground">
+          {formatDate(candidate.updated_at || candidate.created_at || '')}
+        </div>
+      </TableCell>
       
-      <TableCell>
-        {getStatusBadge(candidate.status || 'pending')}
+      {/* Actions Column */}
+      <TableCell className="text-center">
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onViewCandidate && onViewCandidate(candidate.id!)}
+            className="h-8 w-8 p-0"
+          >
+            <Edit size={14} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDelete}
+            className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+          >
+            <Trash2 size={14} />
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
   );
