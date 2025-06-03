@@ -16,33 +16,35 @@ export const CANDIDATE_STATUS_LABELS: Record<string, string> = {
 export const CANDIDATE_STATUSES = Object.keys(CANDIDATE_STATUS_LABELS);
 
 /**
- * Met à jour le statut d'un candidat en utilisant la fonction RPC sécurisée
+ * Met à jour le statut d'un candidat en utilisant une Edge Function sécurisée
  */
 export const updateCandidateStatus = async (candidateId: string, status: string): Promise<boolean> => {
   try {
-    console.log('Updating candidate status via RPC:', candidateId, 'to:', status);
+    console.log('Updating candidate status via Edge Function:', candidateId, 'to:', status);
     
     // Valider le statut avant la mise à jour
     if (!CANDIDATE_STATUSES.includes(status)) {
       throw new Error(`Statut invalide: ${status}`);
     }
     
-    // Utiliser la fonction RPC sécurisée pour mettre à jour le statut
-    const { data, error } = await supabase.rpc('update_candidate_status_secure', {
-      p_candidate_id: candidateId,
-      p_detailed_status: status
+    // Utiliser l'Edge Function pour mettre à jour le statut
+    const { data, error } = await supabase.functions.invoke('update-candidate-status-secure', {
+      body: {
+        candidate_id: candidateId,
+        detailed_status: status
+      }
     });
     
     if (error) {
-      console.error('RPC Error updating candidate status:', error);
+      console.error('Edge Function Error updating candidate status:', error);
       throw new Error(`Erreur lors de la mise à jour du statut: ${error.message}`);
     }
     
-    if (data !== true) {
+    if (!data?.success) {
       throw new Error('Échec de la mise à jour du statut');
     }
     
-    console.log('Candidate status updated successfully via RPC');
+    console.log('Candidate status updated successfully via Edge Function');
     return true;
     
   } catch (error: any) {
@@ -52,26 +54,28 @@ export const updateCandidateStatus = async (candidateId: string, status: string)
 };
 
 /**
- * Récupère le statut actuel d'un candidat en utilisant la fonction RPC sécurisée
+ * Récupère le statut actuel d'un candidat en utilisant une Edge Function sécurisée
  */
 export const getCandidateStatus = async (candidateId: string): Promise<string | null> => {
   try {
-    console.log('Getting candidate status via RPC for:', candidateId);
+    console.log('Getting candidate status via Edge Function for:', candidateId);
     
-    const { data, error } = await supabase.rpc('get_candidate_status_secure', {
-      p_candidate_id: candidateId
+    const { data, error } = await supabase.functions.invoke('get-candidate-status-secure', {
+      body: {
+        candidate_id: candidateId
+      }
     });
       
     if (error) {
-      console.error('RPC Error fetching candidate status:', error);
+      console.error('Edge Function Error fetching candidate status:', error);
       return null;
     }
     
-    const status = data || 'initial';
-    console.log('Retrieved candidate status via RPC:', status);
+    const status = data?.status || 'initial';
+    console.log('Retrieved candidate status via Edge Function:', status);
     return status;
   } catch (error) {
-    console.error('Error in getCandidateStatus RPC:', error);
+    console.error('Error in getCandidateStatus Edge Function:', error);
     return null;
   }
 };
