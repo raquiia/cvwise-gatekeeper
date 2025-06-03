@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check, ChevronDown, Loader2 } from 'lucide-react';
@@ -11,12 +10,11 @@ import {
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, updateCandidateStatus, getCandidateStatus } from '@/services/data/candidateStatusService';
 import { toast } from '@/hooks/use-toast';
 
-// Define colors by status
+// Define colors by status (SANS "initial")
 const STATUS_COLORS: Record<string, string> = {
-  'initial': 'bg-gray-500 hover:bg-gray-600',
   'contact': 'bg-blue-500 hover:bg-blue-600',
-  'qualification': 'bg-cyan-500 hover:bg-cyan-600', // AJOUT: couleur pour qualification
-  'prequalification': 'bg-cyan-500 hover:bg-cyan-600',
+  'qualification': 'bg-cyan-500 hover:bg-cyan-600',
+  'prequalification': 'bg-purple-500 hover:bg-purple-600',
   'ec1': 'bg-violet-500 hover:bg-violet-600',
   'ec2': 'bg-indigo-500 hover:bg-indigo-600',
   'presentation_client': 'bg-amber-500 hover:bg-amber-600',
@@ -38,7 +36,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   onStatusChange,
   onDataRefresh 
 }) => {
-  const [currentStatus, setCurrentStatus] = useState<string>(propCurrentStatus || 'initial');
+  const [currentStatus, setCurrentStatus] = useState<string>(propCurrentStatus || 'contact'); // CHANGEMENT: défaut = 'contact'
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState<boolean>(false);
   
@@ -121,7 +119,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   };
   
   // Determine button color based on current status
-  const buttonColorClass = STATUS_COLORS[currentStatus] || 'bg-gray-500 hover:bg-gray-600';
+  const buttonColorClass = STATUS_COLORS[currentStatus] || 'bg-blue-500 hover:bg-blue-600'; // CHANGEMENT: défaut bleu au lieu de gris
   
   // Get display label for current status
   const currentStatusLabel = CANDIDATE_STATUS_LABELS[currentStatus] || currentStatus;

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 import { extractFieldValue, extractNumberValue, extractArrayValue } from '@/components/candidates/edit/dataExtractionUtils';
@@ -96,7 +95,7 @@ export interface UpdateCandidateOptions extends Partial<Omit<CandidateData, 'id'
 
 // Valid status values for detailed_status field
 const VALID_DETAILED_STATUSES = [
-  'initial', 'contact', 'prequalification', 'ec1', 'ec2', 
+  'contact', 'qualification', 'prequalification', 'ec1', 'ec2', 
   'presentation_client', 'en_mission', 'refus', 'ancien_employe'
 ];
 
@@ -203,7 +202,7 @@ export const formatCandidateData = (candidate: any): CandidateData => {
   
   // CORRECTION CRITIQUE: Ne pas utiliser extractFieldValue sur detailed_status car c'est déjà une chaîne simple
   const rawDetailedStatus = candidate.detailed_status;
-  let detailedStatus = 'initial'; // valeur par défaut
+  let detailedStatus = 'contact'; // CHANGEMENT: valeur par défaut est maintenant 'contact'
   
   if (rawDetailedStatus && typeof rawDetailedStatus === 'string' && rawDetailedStatus.trim() !== '') {
     detailedStatus = rawDetailedStatus.trim();
@@ -340,10 +339,10 @@ export const candidateService = {
       // Don't modify it if it's not provided in the update
       if (updateData.hasOwnProperty('detailed_status') && updateData.detailed_status !== undefined) {
         if (!updateData.detailed_status || updateData.detailed_status === '') {
-          updateData.detailed_status = 'initial';
+          updateData.detailed_status = 'contact'; // CHANGEMENT: utiliser 'contact' au lieu de 'initial'
         } else if (!VALID_DETAILED_STATUSES.includes(updateData.detailed_status)) {
-          console.warn(`Invalid detailed_status "${updateData.detailed_status}", setting to initial`);
-          updateData.detailed_status = 'initial';
+          console.warn(`Invalid detailed_status "${updateData.detailed_status}", setting to contact`);
+          updateData.detailed_status = 'contact'; // CHANGEMENT: utiliser 'contact' au lieu de 'initial'
         }
       }
       

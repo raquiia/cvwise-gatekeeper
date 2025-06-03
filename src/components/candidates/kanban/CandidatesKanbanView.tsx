@@ -20,18 +20,18 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
   const { toast } = useToast();
   const [draggedCandidate, setDraggedCandidate] = useState<string | null>(null);
 
-  // Group candidates by status - SIMPLIFIED: Now that extraction is fixed
+  // Group candidates by status - CORRECTED: No more "initial" status
   const candidatesByStatus = useMemo(() => {
     const groups: Record<string, CandidateData[]> = {};
     
-    // Initialize all status groups
+    // Initialize all status groups (sans "initial")
     Object.keys(CANDIDATE_STATUS_LABELS).forEach(status => {
       groups[status] = [];
     });
     
-    // Group candidates by their detailed_status (should now be correctly extracted)
+    // Group candidates by their detailed_status
     candidates.forEach(candidate => {
-      const status = candidate.detailed_status || 'initial';
+      const status = candidate.detailed_status || 'contact'; // CHANGEMENT: défaut = 'contact'
       
       console.log(`🎯 Kanban grouping: ${candidate.first_name} ${candidate.last_name} -> detailed_status: "${candidate.detailed_status}" -> using: "${status}"`);
       
@@ -39,8 +39,8 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
       if (Object.keys(CANDIDATE_STATUS_LABELS).includes(status)) {
         groups[status].push(candidate);
       } else {
-        console.warn(`⚠️  Status "${status}" not found in CANDIDATE_STATUS_LABELS, using initial for candidate ${candidate.first_name} ${candidate.last_name}`);
-        groups['initial'].push(candidate);
+        console.warn(`⚠️  Status "${status}" not found in CANDIDATE_STATUS_LABELS, using contact for candidate ${candidate.first_name} ${candidate.last_name}`);
+        groups['contact'].push(candidate); // CHANGEMENT: utiliser 'contact' au lieu de 'initial'
       }
     });
     
@@ -90,9 +90,8 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
     }
   };
 
-  // Define the order of statuses for display
+  // Define the order of statuses for display (SANS "initial")
   const statusOrder = [
-    'initial',
     'contact', 
     'qualification',
     'prequalification',
