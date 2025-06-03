@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { CandidateData } from '@/services/data/candidateService';
 import { CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
@@ -21,7 +20,7 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
   const { toast } = useToast();
   const [draggedCandidate, setDraggedCandidate] = useState<string | null>(null);
 
-  // Group candidates by status
+  // Group candidates by status - FIX: Properly extract the detailed_status
   const candidatesByStatus = useMemo(() => {
     const groups: Record<string, CandidateData[]> = {};
     
@@ -30,16 +29,47 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
       groups[status] = [];
     });
     
-    // Group candidates by their status
+    // Group candidates by their actual detailed_status
     candidates.forEach(candidate => {
-      const status = candidate.detailed_status || 'initial';
-      console.log(`Kanban: Candidate ${candidate.first_name} ${candidate.last_name} has status: ${status}`);
+      // CORRECTION: Extraire correctement le statut détaillé
+      let status = 'initial'; // Valeur par défaut
+      
+      // Vérifier et extraire le statut détaillé
+      if (candidate.detailed_status) {
+        if (typeof candidate.detailed_status === 'string') {
+          status = candidate.detailed_status.trim();
+        } else if (typeof candidate.detailed_status === 'object' && candidate.detailed_status !== null) {
+          // Si c'est un objet, essayer d'extraire la valeur
+          const statusObj = candidate.detailed_status as any;
+          if (statusObj.value) {
+            status = String(statusObj.value).trim();
+          } else if (statusObj.status) {
+            status = String(statusObj.status).trim();
+          }
+        }
+      }
+      
+      // Vérifier que le statut existe dans nos labels
+      if (!Object.keys(CANDIDATE_STATUS_LABELS).includes(status)) {
+        console.warn(`Status "${status}" not found in CANDIDATE_STATUS_LABELS, using initial for candidate ${candidate.first_name} ${candidate.last_name}`);
+        status = 'initial';
+      }
+      
+      console.log(`Kanban grouping: ${candidate.first_name} ${candidate.last_name} -> status: "${status}"`);
+      
       if (groups[status]) {
         groups[status].push(candidate);
       } else {
-        // Fallback for unknown statuses
-        console.warn(`Unknown status ${status}, placing in initial`);
+        console.warn(`Group for status "${status}" not found, adding to initial`);
         groups['initial'].push(candidate);
+      }
+    });
+    
+    // Debug: Afficher la répartition
+    Object.entries(groups).forEach(([status, candidates]) => {
+      if (candidates.length > 0) {
+        console.log(`Kanban group "${status}": ${candidates.length} candidates`);
+        candidates.forEach(c => console.log(`  - ${c.first_name} ${c.last_name}`));
       }
     });
     
@@ -85,6 +115,7 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
   const statusOrder = [
     'initial',
     'contact', 
+    'qualification',
     'prequalification',
     'ec1',
     'ec2',
