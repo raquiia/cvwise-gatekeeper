@@ -124,7 +124,7 @@ const CandidateEditForm: React.FC<CandidateEditFormProps> = ({
         professional_values: values.professional_values || '',
         work_authorization: values.work_authorization || '',
         interests: values.interests || '',
-        years_experience: values.years_experience,
+        years_experience: typeof values.years_experience === 'number' ? values.years_experience : undefined,
         // Préserver les champs système
         user_id: originalCandidate.user_id,
         resume_id: originalCandidate.resume_id,
