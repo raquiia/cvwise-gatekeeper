@@ -1,21 +1,20 @@
-
 import { CandidateData } from '@/services/data/candidateService';
 
 /**
  * Fonction ultra-robuste pour extraire les valeurs de champs qui peuvent être dans différents formats
  */
-export const extractFieldValue = (field: any): string => {
+export const extractFieldValue = (field: any): string | undefined => {
   console.log('🔍 EXTRACTING FIELD:', JSON.stringify(field, null, 2));
   
-  // Si null ou undefined
+  // Si null ou undefined - CORRECTION: retourner undefined au lieu de chaîne vide
   if (field === null || field === undefined) {
-    return '';
+    return undefined;
   }
   
   // Si c'est déjà une chaîne valide
   if (typeof field === 'string') {
     if (field === 'undefined' || field === 'null' || field === '') {
-      return '';
+      return undefined;
     }
     return field;
   }
@@ -55,7 +54,7 @@ export const extractFieldValue = (field: any): string => {
     }
   }
   
-  return '';
+  return undefined;
 };
 
 /**

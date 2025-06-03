@@ -201,6 +201,17 @@ export const formatCandidateData = (candidate: any): CandidateData => {
   
   console.log('🚀 RAW CANDIDATE DATA FROM DATABASE:', JSON.stringify(candidate, null, 2));
   
+  // CORRECTION CRITIQUE: Ne pas utiliser extractFieldValue sur detailed_status car c'est déjà une chaîne simple
+  const rawDetailedStatus = candidate.detailed_status;
+  let detailedStatus = 'initial'; // valeur par défaut
+  
+  if (rawDetailedStatus && typeof rawDetailedStatus === 'string' && rawDetailedStatus.trim() !== '') {
+    detailedStatus = rawDetailedStatus.trim();
+    console.log('📍 Using direct detailed_status from DB:', detailedStatus);
+  } else {
+    console.log('📍 No valid detailed_status, using default:', detailedStatus);
+  }
+  
   const formatted = {
     id: candidate.id,
     user_id: candidate.user_id,
@@ -215,7 +226,7 @@ export const formatCandidateData = (candidate: any): CandidateData => {
     skills: extractArrayValue(candidate.skills),
     score: extractNumberValue(candidate.score),
     status: extractFieldValue(candidate.status) || 'pending',
-    detailed_status: extractFieldValue(candidate.detailed_status),
+    detailed_status: detailedStatus, // CORRECTION: utiliser la valeur directe
     company: extractFieldValue(candidate.company),
     created_at: candidate.created_at,
     updated_at: candidate.updated_at,
@@ -245,11 +256,8 @@ export const formatCandidateData = (candidate: any): CandidateData => {
   };
 
   console.log('🎯 FORMATTED CANDIDATE DATA:', JSON.stringify(formatted, null, 2));
+  console.log('🏷️  Detailed status specifically:', formatted.detailed_status);
   console.log('🏢 Company value specifically:', formatted.company);
-  console.log('🏠 Remote preference value specifically:', formatted.remote_preference);
-  console.log('🚗 Mobility value specifically:', formatted.mobility);
-  console.log('💰 Salary expectations value specifically:', formatted.salary_expectations);
-  console.log('📝 Contract type value specifically:', formatted.contract_type);
 
   return formatted;
 };
