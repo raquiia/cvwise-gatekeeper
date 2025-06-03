@@ -27,7 +27,7 @@ export const updateCandidateStatus = async (candidateId: string, status: string)
       throw new Error(`Statut invalide: ${status}`);
     }
     
-    // Utiliser la nouvelle fonction PostgreSQL sécurisée
+    // Utiliser la fonction PostgreSQL sécurisée qui évite la récursion
     console.log('Using secure PostgreSQL function update_candidate_status_direct...');
     const { data: rpcData, error: rpcError } = await supabase.rpc('update_candidate_status_direct', {
       p_candidate_id: candidateId,
@@ -59,7 +59,7 @@ export const getCandidateStatus = async (candidateId: string): Promise<string | 
   try {
     console.log('Getting candidate status for:', candidateId);
     
-    // Utiliser la nouvelle fonction PostgreSQL sécurisée
+    // Utiliser la fonction PostgreSQL sécurisée
     console.log('Using secure PostgreSQL function get_candidate_status_direct...');
     const { data: rpcData, error: rpcError } = await supabase.rpc('get_candidate_status_direct', {
       p_candidate_id: candidateId

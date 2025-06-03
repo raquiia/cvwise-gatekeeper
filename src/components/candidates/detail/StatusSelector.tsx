@@ -68,7 +68,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
     }
   }, [propCurrentStatus]);
   
-  // Change status
+  // Change status - now optimized to avoid trigger conflicts
   const handleStatusChange = async (status: string) => {
     if (status === currentStatus || isUpdating) return;
     
