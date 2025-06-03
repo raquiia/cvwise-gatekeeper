@@ -30,7 +30,7 @@ const CandidateDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
-  const [retryCount, setRetryCount] = useState(0); // Add retry counter
+  const [retryCount, setRetryCount] = useState(0);
 
   const fetchCandidateData = async () => {
     if (!candidateId) {
@@ -124,16 +124,8 @@ const CandidateDetail = () => {
     fetchCandidateData();
   }, [candidateId]);
 
-  const handleEditCandidate = () => {
-    // Rediriger vers la page d'édition au lieu d'afficher un toast
-    if (candidateId) {
-      navigate(`/candidates/${candidateId}/edit`);
-    }
-  };
-
   const handleStatusChange = (newStatus: string) => {
     if (candidate) {
-      // Utilisation de la fonction de mise à jour qui accepte un état précédent
       setCandidate(prevCandidate => ({
         ...prevCandidate!,
         detailed_status: newStatus
@@ -196,15 +188,6 @@ const CandidateDetail = () => {
               >
                 <Briefcase size={16} className="mr-2 group-hover:scale-110 transition-transform duration-300" />
                 <span>Match d'emploi</span>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                onClick={handleEditCandidate}
-                className="bg-white/80 border-navy/20 hover:border-navy/30 hover:bg-white/90 text-navy transition-all duration-300 group"
-              >
-                <Edit size={16} className="mr-2 group-hover:scale-110 transition-transform duration-300" />
-                <span>Éditer</span>
               </Button>
               
               <ExportProfileButton candidate={candidate} />
@@ -289,7 +272,7 @@ const CandidateDetail = () => {
                 className="animate-fade-in rounded-xl relative overflow-hidden bg-white/70 backdrop-blur-sm border border-navy/10 shadow-md"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
-                <NotesTab candidate={candidate} />
+                <NotesTab candidate={candidate} onDataUpdate={fetchCandidateData} />
               </TabsContent>
               
               <TabsContent 
