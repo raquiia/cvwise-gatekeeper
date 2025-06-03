@@ -70,3 +70,9 @@ export const getCandidateStatus = async (candidateId: string): Promise<string | 
     return null;
   }
 };
+
+// Export the service object for backward compatibility
+export const candidateStatusService = {
+  updateCandidateStatus,
+  getCandidateStatus
+};

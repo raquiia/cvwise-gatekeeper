@@ -128,13 +128,14 @@ function calculateEducationScore(education: any[], certifications: any[]): {
   for (const edu of educationArray) {
     if (!edu || typeof edu !== 'object') continue;
 
-    const degree = (edu.degree || edu.diploma || edu.level || '').toLowerCase();
+    const educationItem = edu as { degree?: string; diploma?: string; level?: string; [key: string]: any };
+    const degree = (educationItem.degree || educationItem.diploma || educationItem.level || '').toLowerCase();
     
     for (const [level, score] of Object.entries(educationLevels)) {
       if (degree.includes(level)) {
         if (score > highestScore) {
           highestScore = score;
-          highestLevel = edu.degree || edu.diploma || edu.level || level;
+          highestLevel = educationItem.degree || educationItem.diploma || educationItem.level || level;
         }
       }
     }
@@ -144,7 +145,8 @@ function calculateEducationScore(education: any[], certifications: any[]): {
   const certificationNames = certificationsArray
     .map(cert => {
       if (typeof cert === 'string') return cert;
-      return cert?.name || cert?.title || '';
+      const certItem = cert as { name?: string; title?: string; [key: string]: any };
+      return certItem?.name || certItem?.title || '';
     })
     .filter(Boolean);
 

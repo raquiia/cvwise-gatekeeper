@@ -33,7 +33,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   candidateId,
   onStatusChange 
 }) => {
-  const [currentStatus, setCurrentStatus] = useState<string>(CANDIDATE_STATUSES.INITIAL);
+  const [currentStatus, setCurrentStatus] = useState<string>('initial');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   
@@ -56,11 +56,11 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
           setCurrentStatus(status);
         } else {
           console.log("No status found, using initial");
-          setCurrentStatus(CANDIDATE_STATUSES.INITIAL);
+          setCurrentStatus('initial');
         }
       } catch (error) {
         console.error("Error loading status:", error);
-        setCurrentStatus(CANDIDATE_STATUSES.INITIAL);
+        setCurrentStatus('initial');
       } finally {
         setIsLoading(false);
       }
