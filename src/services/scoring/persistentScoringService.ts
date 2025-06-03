@@ -45,7 +45,7 @@ const getEducationLevel = (education: any[]): string => {
 
 export const persistentScoringService = {
   /**
-   * Get stored general score for a candidate - FIXED VERSION
+   * Get stored general score for a candidate - IMPROVED WITH BETTER ERROR HANDLING
    */
   async getCandidateGeneralScore(candidateId: string): Promise<ScoreDetails | null> {
     try {
@@ -70,7 +70,7 @@ export const persistentScoringService = {
       const skillsArray = ensureArray(candidate.skills);
       const educationArray = ensureArray(candidate.education);
       
-      // FIXED: Only return null if score is truly missing/invalid (< 1 instead of === 0)
+      // Only return null if score is truly missing/invalid
       if (candidate.score === null || candidate.score === undefined || candidate.score < 1) {
         console.log(`Candidate ${candidateId} has no valid score (${candidate.score}), will trigger recalculation`);
         return null;
@@ -84,7 +84,7 @@ export const persistentScoringService = {
         experience: candidate.years_experience ? Math.min(candidate.years_experience * 10, 100) : 0,
         education: educationArray.length > 0 ? 75 : 50,
         profileCompleteness: candidate.profile_completeness || 0,
-        overall: candidate.score, // Use the actual database score
+        overall: candidate.score,
         details: {
           skillsCount: skillsArray.length,
           experienceYears: candidate.years_experience || 0,
@@ -99,7 +99,7 @@ export const persistentScoringService = {
   },
 
   /**
-   * Get stored job-specific score for a candidate - SIMPLIFIED
+   * Get stored job-specific score for a candidate - IMPROVED WITH BETTER ERROR HANDLING
    */
   async getCandidateJobScore(candidateId: string, jobOfferId: string): Promise<ScoreDetails | null> {
     try {
@@ -138,7 +138,7 @@ export const persistentScoringService = {
         experience: jobScore.experience_score,
         education: jobScore.education_score,
         profileCompleteness: jobScore.profile_completeness_score,
-        overall: jobScore.match_score, // Use the actual job match score
+        overall: jobScore.match_score,
         details: {
           skillsCount: skillsArray.length,
           experienceYears: candidate?.years_experience || 0,
@@ -153,7 +153,7 @@ export const persistentScoringService = {
   },
 
   /**
-   * Calculate and store job-specific score using the database function
+   * Calculate and store job-specific score using the database function - IMPROVED ERROR HANDLING
    */
   async calculateAndStoreJobScore(candidateId: string, jobOfferId: string): Promise<ScoreDetails | null> {
     try {
@@ -166,7 +166,7 @@ export const persistentScoringService = {
 
       if (error) {
         console.error('Error calculating job score:', error);
-        return null;
+        throw error;
       }
 
       console.log(`Job score calculated: ${data}`);
@@ -175,12 +175,12 @@ export const persistentScoringService = {
       return await this.getCandidateJobScore(candidateId, jobOfferId);
     } catch (error) {
       console.error('Error in calculateAndStoreJobScore:', error);
-      return null;
+      throw error;
     }
   },
 
   /**
-   * Recalculate general score using the database function - IMPROVED
+   * Recalculate general score using the database function - IMPROVED ERROR HANDLING
    */
   async recalculateGeneralScore(candidateId: string): Promise<number | null> {
     try {
@@ -192,14 +192,14 @@ export const persistentScoringService = {
 
       if (error) {
         console.error('Error recalculating general score:', error);
-        return null;
+        throw error;
       }
 
       console.log(`General score calculated: ${data}`);
       return data;
     } catch (error) {
       console.error('Error in recalculateGeneralScore:', error);
-      return null;
+      throw error;
     }
   },
 
