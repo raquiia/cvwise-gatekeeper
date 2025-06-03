@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -237,7 +236,6 @@ const CandidateCard: React.FC<CandidateCardProps> = ({
           {/* Avatar avec gradient */}
           <div className="relative">
             <Avatar className="w-16 h-16 ring-2 ring-white/50 shadow-lg">
-              <AvatarImage src={candidate.photo_url} alt={`${candidate.first_name} ${candidate.last_name}`} />
               <AvatarFallback className={cn(
                 getAvatarColor(candidate.first_name || '', candidate.last_name || ''),
                 "text-white text-lg font-bold shadow-inner"
