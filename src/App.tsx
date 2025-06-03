@@ -86,11 +86,6 @@ const App = () => (
           <CandidateDetail />
         </ProtectedRoute>
       } />
-      <Route path="/candidates/:candidateId/edit" element={
-        <ProtectedRoute>
-          <CandidateEdit />
-        </ProtectedRoute>
-      } />
       <Route path="/candidates/:candidateId/job-match" element={
         <ProtectedRoute>
           <CandidateDetail />

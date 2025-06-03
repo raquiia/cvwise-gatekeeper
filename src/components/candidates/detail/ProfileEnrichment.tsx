@@ -8,7 +8,7 @@ import { Sparkles, Check, X, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { candidateNotesService } from '@/services/data/candidateNotesService';
-import { candidateService } from '@/services/data/candidateService';
+import { candidateService, UpdateCandidateOptions } from '@/services/data/candidateService';
 
 interface ProfileEnrichmentProps {
   candidateId: string;
@@ -114,12 +114,14 @@ const ProfileEnrichment: React.FC<ProfileEnrichmentProps> = ({
       setIsApplying(true);
       console.log('💾 Applying selected changes...');
 
-      // Construire l'objet de mise à jour avec seulement les champs sélectionnés
-      const updateData: Record<string, any> = { id: candidateId };
+      // Construire l'objet de mise à jour avec l'ID et seulement les champs sélectionnés
+      const updateData: UpdateCandidateOptions = { 
+        id: candidateId 
+      };
       
       extractedFields.forEach(field => {
         if (selectedFields.has(field.field)) {
-          updateData[field.field] = field.value;
+          (updateData as any)[field.field] = field.value;
         }
       });
 
