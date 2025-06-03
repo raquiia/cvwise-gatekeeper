@@ -1,7 +1,8 @@
 
 import { useState, useEffect } from 'react';
-import { persistentScoringService } from '@/services/scoring/persistentScoringService';
 import { useActiveJob } from '@/context/ActiveJobContext';
+import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
+import { calculateGeneralCandidateScore, calculateJobMatchScore } from '@/services/scoring/improvedScoringService';
 import type { CandidateData } from '@/services/data/candidateService';
 
 export interface SimpleScore {
@@ -12,26 +13,29 @@ export interface SimpleScore {
 
 export const useSimpleCandidateScore = (candidate: CandidateData): SimpleScore => {
   const [score, setScore] = useState<SimpleScore>({
-    value: candidate.score || 0,
+    value: 0,
     isJobSpecific: false,
-    isLoading: false
+    isLoading: true
   });
   
   const { activeJobOfferId } = useActiveJob();
 
   useEffect(() => {
-    if (!candidate.id) return;
+    if (!candidate) return;
 
-    const loadScore = async () => {
+    const calculateScore = async () => {
       setScore(prev => ({ ...prev, isLoading: true }));
       
       try {
         if (activeJobOfferId) {
-          // Récupérer le score job-spécifique
-          const jobScore = await persistentScoringService.getCandidateJobScore(candidate.id, activeJobOfferId);
-          if (jobScore) {
+          // Récupérer l'offre d'emploi pour le matching
+          const jobOffers = await jobOfferService.getUserJobOffers();
+          const activeJobOffer = jobOffers.find(offer => offer.id === activeJobOfferId);
+          
+          if (activeJobOffer) {
+            const matchResult = calculateJobMatchScore(candidate, activeJobOffer);
             setScore({
-              value: jobScore.overall,
+              value: matchResult.overall,
               isJobSpecific: true,
               isLoading: false
             });
@@ -39,26 +43,28 @@ export const useSimpleCandidateScore = (candidate: CandidateData): SimpleScore =
           }
         }
         
-        // Utiliser le score général de la base de données directement
+        // Score général
+        const generalResult = calculateGeneralCandidateScore(candidate);
         setScore({
-          value: candidate.score || 0,
+          value: generalResult.overall,
           isJobSpecific: false,
           isLoading: false
         });
         
       } catch (error) {
-        console.error(`Error loading score for candidate ${candidate.id}:`, error);
-        // En cas d'erreur, utiliser le score de la base
+        console.error(`Error calculating score for candidate ${candidate.id}:`, error);
+        // Fallback vers le score général
+        const generalResult = calculateGeneralCandidateScore(candidate);
         setScore({
-          value: candidate.score || 0,
-          isJobSpecific: !!activeJobOfferId,
+          value: generalResult.overall,
+          isJobSpecific: false,
           isLoading: false
         });
       }
     };
 
-    loadScore();
-  }, [candidate.id, candidate.score, activeJobOfferId]);
+    calculateScore();
+  }, [candidate, activeJobOfferId]);
 
   return score;
 };

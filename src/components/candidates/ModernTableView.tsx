@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +18,7 @@ import {
 } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
-import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
+import { CANDIDATE_STATUS_LABELS, updateCandidateStatus } from '@/services/data/candidateStatusService';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { useSimpleCandidateScore } from '@/hooks/use-simple-candidate-score';
@@ -106,6 +105,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
 }) => {
   const { toast } = useToast();
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<Set<string>>(new Set());
 
   // Fonction pour générer une couleur basée sur les initiales
   const getAvatarColor = useCallback((firstName: string, lastName: string) => {
@@ -174,8 +174,9 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
     return location;
   }, []);
 
-  const getStatusBadge = useCallback((status: string) => {
+  const getStatusBadge = useCallback((status: string, candidateId: string) => {
     const statusLabel = CANDIDATE_STATUS_LABELS[status] || status;
+    const isUpdating = updatingStatus.has(candidateId);
     
     const statusConfig = {
       initial: { 
@@ -233,14 +234,16 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
         variant="outline" 
         className={cn(
           config.color,
-          'border text-xs font-medium flex items-center gap-1.5 px-2 py-1'
+          'border text-xs font-medium flex items-center gap-1.5 px-2 py-1',
+          isUpdating && 'opacity-50 animate-pulse'
         )}
       >
         <Icon size={10} />
         {statusLabel}
+        {isUpdating && <Clock size={10} className="animate-spin" />}
       </Badge>
     );
-  }, []);
+  }, [updatingStatus]);
 
   const handleDelete = useCallback(async (e: React.MouseEvent, candidateId: string) => {
     e.preventDefault();
@@ -260,6 +263,37 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
         title: "Erreur",
         description: error.message || "Impossible de supprimer le candidat",
         variant: "destructive",
+      });
+    }
+  }, [onCandidateDeleted, toast]);
+
+  const handleStatusChange = useCallback(async (candidateId: string, newStatus: string) => {
+    setUpdatingStatus(prev => new Set(prev).add(candidateId));
+    
+    try {
+      await updateCandidateStatus(candidateId, newStatus);
+      
+      toast({
+        title: "Statut mis à jour",
+        description: `Le statut du candidat a été mis à jour vers "${CANDIDATE_STATUS_LABELS[newStatus]}"`,
+      });
+      
+      // Rafraîchir la liste des candidats
+      if (onCandidateDeleted) {
+        onCandidateDeleted();
+      }
+    } catch (error: any) {
+      console.error('Error updating candidate status:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de mettre à jour le statut du candidat",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingStatus(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(candidateId);
+        return newSet;
       });
     }
   }, [onCandidateDeleted, toast]);
@@ -401,7 +435,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
 
                 {/* Statut */}
                 <TableCell className="py-3">
-                  {getStatusBadge(candidate.detailed_status || 'initial')}
+                  {getStatusBadge(candidate.detailed_status || 'initial', candidate.id!)}
                 </TableCell>
 
                 {/* Entreprise actuelle */}
