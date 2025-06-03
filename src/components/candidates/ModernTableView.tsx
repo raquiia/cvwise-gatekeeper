@@ -52,37 +52,44 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
     isJobSpecific 
   } = useOptimizedScoring();
 
-  // Calculate scores progressively (lazy loading)
+  // Calculate scores progressively with better error handling
   useEffect(() => {
+    if (!candidates.length) return;
+    
     const calculateScoresProgressively = async () => {
-      // Calculate scores for visible candidates first (assuming first 10 are visible)
-      const visibleCandidates = candidates.slice(0, 10);
-      const remainingCandidates = candidates.slice(10);
+      // Calculate scores for visible candidates first (first 5)
+      const visibleCandidates = candidates.slice(0, 5);
       
-      // Calculate visible candidates first
-      for (const candidate of visibleCandidates) {
+      for (let i = 0; i < visibleCandidates.length; i++) {
+        const candidate = visibleCandidates[i];
         if (candidate.id && !getCachedScore(candidate.id) && !isScoreLoading(candidate.id)) {
-          // Add small delay to prevent overwhelming the system
-          setTimeout(() => {
-            calculateContextualScore(candidate).catch(console.error);
-          }, 100);
+          try {
+            // Add delay between calculations to prevent overwhelming the system
+            await new Promise(resolve => setTimeout(resolve, i * 300));
+            await calculateContextualScore(candidate);
+          } catch (error) {
+            console.error(`Error calculating score for candidate ${candidate.id}:`, error);
+          }
         }
       }
       
       // Calculate remaining candidates with longer delays
+      const remainingCandidates = candidates.slice(5);
       remainingCandidates.forEach((candidate, index) => {
         if (candidate.id && !getCachedScore(candidate.id) && !isScoreLoading(candidate.id)) {
-          setTimeout(() => {
-            calculateContextualScore(candidate).catch(console.error);
-          }, 1000 + (index * 200)); // Staggered calculation
+          setTimeout(async () => {
+            try {
+              await calculateContextualScore(candidate);
+            } catch (error) {
+              console.error(`Error calculating score for candidate ${candidate.id}:`, error);
+            }
+          }, 2000 + (index * 500)); // Longer staggered calculation
         }
       });
     };
 
-    if (candidates.length > 0) {
-      calculateScoresProgressively();
-    }
-  }, [candidates, calculateContextualScore, getCachedScore, isScoreLoading]);
+    calculateScoresProgressively();
+  }, [candidates.length]); // Only depend on length to avoid infinite loops
 
   // Fonction pour générer une couleur basée sur les initiales
   const getAvatarColor = (firstName: string, lastName: string) => {
@@ -368,7 +375,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {candidates.map((candidate, index) => {
+          {candidates.map((candidate) => {
             const skills = ensureStringArray(candidate.skills);
             const isHovered = hoveredRow === candidate.id;
             const isSelected = selectedCandidates.has(candidate.id!);
@@ -409,7 +416,6 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                         </AvatarFallback>
                       </Avatar>
                       
-                      {/* Badge "nouveau" si récent */}
                       {new Date(candidate.created_at || '').getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000 && (
                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                       )}
@@ -420,7 +426,6 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                         {candidate.first_name} {candidate.last_name}
                       </div>
                       
-                      {/* Email */}
                       {candidate.email && (
                         <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
                           <Mail size={11} />
@@ -428,7 +433,6 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                         </div>
                       )}
                       
-                      {/* Phone */}
                       {candidate.phone && (
                         <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
                           <Phone size={11} />
