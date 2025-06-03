@@ -10,9 +10,23 @@ import { calculateCandidateScore, getScoreEvaluation } from '@/services/scoring/
 
 interface CandidateTableRowProps {
   candidate: CandidateData;
+  onViewCandidate?: (candidateId: string) => void;
+  onCandidateDeleted?: () => void;
+  hideScore?: boolean;
+  scoreIsMatchScore?: boolean;
+  matchDetails?: any;
+  statusFirst?: boolean;
 }
 
-const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ candidate }) => {
+const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ 
+  candidate,
+  onViewCandidate,
+  onCandidateDeleted,
+  hideScore = false,
+  scoreIsMatchScore = false,
+  matchDetails,
+  statusFirst = false
+}) => {
   const skills = ensureStringArray(candidate.skills);
   
   // Calcul du score intelligent
@@ -104,22 +118,24 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ candidate }) => {
         </div>
       </TableCell>
       
-      <TableCell>
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-1">
-            <TrendingUp size={14} className="text-muted-foreground" />
-            <span className="font-semibold text-lg">
-              {scoreBreakdown.overall}
-            </span>
+      {!hideScore && (
+        <TableCell>
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1">
+              <TrendingUp size={14} className="text-muted-foreground" />
+              <span className="font-semibold text-lg">
+                {scoreBreakdown.overall}
+              </span>
+            </div>
+            <div className={`px-2 py-1 rounded-full text-xs font-medium ${evaluation.bgColor} ${evaluation.color}`}>
+              {scoreBreakdown.overall >= 85 ? 'Excellent' : 
+               scoreBreakdown.overall >= 70 ? 'Très bon' :
+               scoreBreakdown.overall >= 55 ? 'Bon' :
+               scoreBreakdown.overall >= 40 ? 'Potentiel' : 'À développer'}
+            </div>
           </div>
-          <div className={`px-2 py-1 rounded-full text-xs font-medium ${evaluation.bgColor} ${evaluation.color}`}>
-            {scoreBreakdown.overall >= 85 ? 'Excellent' : 
-             scoreBreakdown.overall >= 70 ? 'Très bon' :
-             scoreBreakdown.overall >= 55 ? 'Bon' :
-             scoreBreakdown.overall >= 40 ? 'Potentiel' : 'À développer'}
-          </div>
-        </div>
-      </TableCell>
+        </TableCell>
+      )}
       
       <TableCell>
         {getStatusBadge(candidate.status || 'pending')}

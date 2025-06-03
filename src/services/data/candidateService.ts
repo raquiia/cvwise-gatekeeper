@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 import { extractFieldValue, extractNumberValue, extractArrayValue } from '@/components/candidates/edit/dataExtractionUtils';
@@ -195,7 +196,7 @@ const extractLocalNumberValue = (field: any): number | undefined => {
 };
 
 // ENTIÈREMENT RÉÉCRITE: fonction formatCandidateData avec extraction robuste
-const formatCandidateData = (candidate: any): CandidateData => {
+export const formatCandidateData = (candidate: any): CandidateData => {
   if (!candidate) return null as unknown as CandidateData;
   
   console.log('🚀 RAW CANDIDATE DATA FROM DATABASE:', JSON.stringify(candidate, null, 2));

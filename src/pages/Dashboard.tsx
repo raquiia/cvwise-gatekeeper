@@ -11,6 +11,7 @@ import UserStats from '@/components/admin/UserStats';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { formatDate } from '@/utils/dateFormatter';
 import { calculateCandidateScore } from '@/services/scoring/candidateScoring';
+import { formatCandidateData } from '@/services/data/candidateService';
 
 // Import our new components
 import StatCards from '@/components/dashboard/StatCards';
@@ -49,20 +50,23 @@ const Dashboard = () => {
           throw candidatesError;
         }
         
-        setCandidatesData(candidatesData || []);
-        setCandidatesCount(candidatesData?.length || 0);
+        // Format candidates data to match CandidateData interface
+        const formattedCandidates = (candidatesData || []).map(formatCandidateData);
         
-        setEducationData(aggregateEducationData(candidatesData || []));
-        setSectorData(aggregateSectorData(candidatesData || []));
+        setCandidatesData(formattedCandidates);
+        setCandidatesCount(formattedCandidates?.length || 0);
+        
+        setEducationData(aggregateEducationData(formattedCandidates || []));
+        setSectorData(aggregateSectorData(formattedCandidates || []));
         
         // Calculer les candidats excellents avec le nouveau système de scoring
-        const excellentCandidates = (candidatesData || []).filter(candidateData => {
+        const excellentCandidates = formattedCandidates.filter(candidateData => {
           const score = calculateCandidateScore(candidateData);
           return score.overall >= 85;
         });
         setTopCandidatesCount(excellentCandidates.length);
         
-        const recentCandidatesList = (candidatesData || [])
+        const recentCandidatesList = formattedCandidates
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .slice(0, 5)
           .map(candidate => {
