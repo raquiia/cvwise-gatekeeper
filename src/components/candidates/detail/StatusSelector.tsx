@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
+import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, updateCandidateStatus } from '@/services/data/candidateStatusService';
 import { toast } from '@/hooks/use-toast';
 
 // Define colors by status
@@ -53,7 +53,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
     setIsUpdating(true);
     
     try {
-      const success = await candidateStatusService.updateCandidateStatus(candidateId, status);
+      const success = await updateCandidateStatus(candidateId, status);
       
       if (success) {
         console.log("Status updated successfully to:", status);

@@ -64,6 +64,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   };
 
   const candidateScore = candidate.score || 0;
+  // S'assurer que nous avons un statut valide
   const candidateStatus = candidate.detailed_status || 'initial';
 
   return (
