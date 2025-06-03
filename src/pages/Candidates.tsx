@@ -8,6 +8,8 @@ import CandidateStats from '@/components/candidates/CandidateStats';
 import ViewSelector from '@/components/candidates/ViewSelector';
 import CandidatesCardView from '@/components/candidates/CandidatesCardView';
 import EnhancedSearch from '@/components/candidates/EnhancedSearch';
+import CandidatesKanbanView from '@/components/candidates/kanban/CandidatesKanbanView';
+import CandidatesAnalyticsView from '@/components/candidates/analytics/CandidatesAnalyticsView';
 import { candidateService } from '@/services/data/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
@@ -406,28 +408,40 @@ const Candidates = () => {
             </div>
           </div>
 
-          {/* Statistics Cards */}
-          <CandidateStats 
-            totalCandidates={totalCandidates}
-            newThisWeek={newThisWeek}
-            inProgress={inProgress}
-            topCandidates={topCandidates}
-          />
+          {/* Statistics Cards - Only show for non-analytics views */}
+          {currentView !== 'analytics' && (
+            <CandidateStats 
+              totalCandidates={totalCandidates}
+              newThisWeek={newThisWeek}
+              inProgress={inProgress}
+              topCandidates={topCandidates}
+            />
+          )}
 
-          {/* View Selector and Filters */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
-            <ViewSelector currentView={currentView} onViewChange={setCurrentView} />
-            
-            {showFilters && (
-              <div className="lg:ml-auto">
-                <span className="text-sm text-muted-foreground">
-                  {filteredCandidates.length} candidat{filteredCandidates.length > 1 ? 's' : ''} affiché{filteredCandidates.length > 1 ? 's' : ''}
-                </span>
-              </div>
-            )}
-          </div>
+          {/* View Selector and Filters - Only show for non-analytics views */}
+          {currentView !== 'analytics' && (
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+              <ViewSelector currentView={currentView} onViewChange={setCurrentView} />
+              
+              {showFilters && (
+                <div className="lg:ml-auto">
+                  <span className="text-sm text-muted-foreground">
+                    {filteredCandidates.length} candidat{filteredCandidates.length > 1 ? 's' : ''} affiché{filteredCandidates.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* View Selector for Analytics */}
+          {currentView === 'analytics' && (
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+              <ViewSelector currentView={currentView} onViewChange={setCurrentView} />
+            </div>
+          )}
           
-          {showFilters && (
+          {/* Filters - Only show for non-analytics views */}
+          {showFilters && currentView !== 'analytics' && (
             <div className="mb-6 animate-in fade-in duration-300">
               <CandidatesFilters 
                 showFilters={true}
@@ -476,15 +490,16 @@ const Candidates = () => {
                 onCandidateDeleted={fetchCandidates}
               />
             ) : currentView === 'kanban' ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <p className="text-lg font-medium mb-2">Vue Kanban</p>
-                <p>Cette vue sera bientôt disponible</p>
-              </div>
+              <CandidatesKanbanView 
+                candidates={filteredCandidates}
+                onViewCandidate={handleViewCandidate}
+                onCandidateDeleted={fetchCandidates}
+                onCandidateUpdated={fetchCandidates}
+              />
             ) : currentView === 'analytics' ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <p className="text-lg font-medium mb-2">Vue Analytics</p>
-                <p>Cette vue sera bientôt disponible</p>
-              </div>
+              <CandidatesAnalyticsView 
+                candidates={candidates}
+              />
             ) : (
               <CandidatesTable 
                 candidates={filteredCandidates}
