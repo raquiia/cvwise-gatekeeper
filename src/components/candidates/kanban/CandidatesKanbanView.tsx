@@ -20,35 +20,43 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
   const { toast } = useToast();
   const [draggedCandidate, setDraggedCandidate] = useState<string | null>(null);
 
-  // Group candidates by status - CORRECTED: No more "initial" status
+  // Group candidates by status with enhanced debugging
   const candidatesByStatus = useMemo(() => {
+    console.log('🔄 Kanban: Processing candidates for grouping...');
+    console.log('🔄 Total candidates received:', candidates.length);
+    
     const groups: Record<string, CandidateData[]> = {};
     
-    // Initialize all status groups (sans "initial")
+    // Initialize all status groups
     Object.keys(CANDIDATE_STATUS_LABELS).forEach(status => {
       groups[status] = [];
     });
     
     // Group candidates by their detailed_status
-    candidates.forEach(candidate => {
-      const status = candidate.detailed_status || 'contact'; // CHANGEMENT: défaut = 'contact'
+    candidates.forEach((candidate, index) => {
+      const rawStatus = candidate.detailed_status;
+      const status = rawStatus || 'contact';
       
-      console.log(`🎯 Kanban grouping: ${candidate.first_name} ${candidate.last_name} -> detailed_status: "${candidate.detailed_status}" -> using: "${status}"`);
+      console.log(`🎯 Kanban grouping candidate ${index + 1}: ${candidate.first_name} ${candidate.last_name}`);
+      console.log(`   📊 Raw detailed_status: "${rawStatus}"`);
+      console.log(`   📊 Final status used: "${status}"`);
       
       // Vérifier que le statut existe dans nos labels
       if (Object.keys(CANDIDATE_STATUS_LABELS).includes(status)) {
         groups[status].push(candidate);
+        console.log(`   ✅ Added to group "${status}"`);
       } else {
-        console.warn(`⚠️  Status "${status}" not found in CANDIDATE_STATUS_LABELS, using contact for candidate ${candidate.first_name} ${candidate.last_name}`);
-        groups['contact'].push(candidate); // CHANGEMENT: utiliser 'contact' au lieu de 'initial'
+        console.warn(`   ⚠️  Status "${status}" not found in CANDIDATE_STATUS_LABELS, using contact`);
+        groups['contact'].push(candidate);
       }
     });
     
     // Debug: Afficher la répartition finale
+    console.log('📊 Final Kanban distribution:');
     Object.entries(groups).forEach(([status, candidates]) => {
+      console.log(`   ${status}: ${candidates.length} candidates`);
       if (candidates.length > 0) {
-        console.log(`📊 Kanban group "${status}": ${candidates.length} candidates`);
-        candidates.forEach(c => console.log(`  ✓ ${c.first_name} ${c.last_name} (${c.detailed_status})`));
+        candidates.forEach(c => console.log(`     - ${c.first_name} ${c.last_name} (ID: ${c.id})`));
       }
     });
     
@@ -90,7 +98,7 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
     }
   };
 
-  // Define the order of statuses for display (SANS "initial")
+  // Define the order of statuses for display
   const statusOrder = [
     'contact', 
     'qualification',

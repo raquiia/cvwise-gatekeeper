@@ -200,17 +200,17 @@ export const formatCandidateData = (candidate: any): CandidateData => {
   
   console.log('🚀 RAW CANDIDATE DATA FROM DATABASE:', JSON.stringify(candidate, null, 2));
   
-  // CORRECTION CRITIQUE: Préserver le vrai statut de la base de données
+  // CORRECTION CRITIQUE: Préserver le vrai statut de la base de données SANS LE CHANGER
   const rawDetailedStatus = candidate.detailed_status;
   let detailedStatus: string;
   
-  if (rawDetailedStatus && typeof rawDetailedStatus === 'string' && rawDetailedStatus.trim() !== '') {
+  if (rawDetailedStatus && typeof rawDetailedStatus === 'string' && rawDetailedStatus.trim() !== '' && rawDetailedStatus !== 'initial') {
     detailedStatus = rawDetailedStatus.trim();
     console.log('📍 Using actual detailed_status from DB:', detailedStatus);
   } else {
-    // Seulement utiliser 'contact' comme défaut si vraiment aucun statut n'existe
+    // Seulement utiliser 'contact' si le statut est 'initial' ou vide
     detailedStatus = 'contact';
-    console.log('📍 No detailed_status found, using default contact');
+    console.log('📍 Converting initial/empty status to contact for candidate:', candidate.first_name, candidate.last_name);
   }
   
   const formatted = {
@@ -227,7 +227,7 @@ export const formatCandidateData = (candidate: any): CandidateData => {
     skills: extractArrayValue(candidate.skills),
     score: extractNumberValue(candidate.score),
     status: extractFieldValue(candidate.status) || 'pending',
-    detailed_status: detailedStatus, // CORRECTION: utiliser le vrai statut préservé
+    detailed_status: detailedStatus,
     company: extractFieldValue(candidate.company),
     created_at: candidate.created_at,
     updated_at: candidate.updated_at,
@@ -269,8 +269,12 @@ export const candidateService = {
     try {
       console.log('🔍 Fetching user candidates...');
       
+      const currentUser = await supabase.auth.getUser();
+      const userId = currentUser.data.user?.id;
+      console.log('👤 Current user ID:', userId);
+      
       const { data, error } = await supabase.rpc('get_user_candidates', {
-        user_id_param: (await supabase.auth.getUser()).data.user?.id
+        user_id_param: userId
       });
       
       if (error) {
@@ -279,23 +283,36 @@ export const candidateService = {
       }
       
       console.log('📥 RAW RPC RESPONSE getUserCandidates:', JSON.stringify(data, null, 2));
+      console.log('📊 Total candidates retrieved:', data?.length || 0);
       
       if (!data || data.length === 0) {
-        console.log('📭 No candidates found');
+        console.log('📭 No candidates found for user:', userId);
         return [];
       }
       
-      // Diagnostic: vérifier chaque candidat individuellement avec accès sécurisé
+      // Diagnostic détaillé: vérifier chaque candidat individuellement
       data.forEach((candidate: any, index: number) => {
-        console.log(`📋 Candidate ${index + 1}:`, {
-          id: candidate.id,
+        console.log(`📋 Candidate ${index + 1} (${candidate.id}):`, {
           name: `${candidate.first_name} ${candidate.last_name}`,
-          detailed_status: candidate.detailed_status || 'NOT_FOUND',
-          status: candidate.status || 'NOT_FOUND'
+          detailed_status: candidate.detailed_status || 'NOT_SET',
+          status: candidate.status || 'NOT_SET',
+          user_id: candidate.user_id,
+          created_at: candidate.created_at
         });
       });
       
-      return data.map(formatCandidateData);
+      const formattedCandidates = data.map(formatCandidateData);
+      
+      // Diagnostic final: vérifier la répartition des statuts après formatage
+      const statusDistribution: Record<string, number> = {};
+      formattedCandidates.forEach(candidate => {
+        const status = candidate.detailed_status || 'undefined';
+        statusDistribution[status] = (statusDistribution[status] || 0) + 1;
+      });
+      
+      console.log('📈 Status distribution after formatting:', statusDistribution);
+      
+      return formattedCandidates;
     } catch (error: any) {
       console.error('Error in getUserCandidates:', error);
       throw new Error(`Failed to get candidates: ${error.message}`);
