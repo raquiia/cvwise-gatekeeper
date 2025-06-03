@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
+import { extractFieldValue, extractNumberValue, extractArrayValue } from '@/components/candidates/edit/dataExtractionUtils';
 
 // Defining the complete CandidateData interface with all properties
 export interface CandidateData {
@@ -193,66 +194,51 @@ const extractNumberValue = (field: any): number | undefined => {
   return undefined;
 };
 
-// SIMPLIFIED: Completely rewrite the formatCandidateData function
+// SIMPLIFIED: Completely rewrite the formatCandidateData function using our new extraction utilities
 const formatCandidateData = (candidate: any): CandidateData => {
   if (!candidate) return null as unknown as CandidateData;
   
   console.log('🚀 RAW CANDIDATE DATA FROM DATABASE:', JSON.stringify(candidate, null, 2));
   
-  // Convert JSON fields to arrays if they're strings or ensure they're arrays
-  const ensureArray = (field: Json | null): any[] => {
-    if (!field) return [];
-    if (Array.isArray(field)) return field;
-    if (typeof field === 'string') {
-      try {
-        const parsed = JSON.parse(field);
-        return Array.isArray(parsed) ? parsed : [field];
-      } catch (e) {
-        return [field];
-      }
-    }
-    return [field];
-  };
-
   const formatted = {
     id: candidate.id,
     user_id: candidate.user_id,
     resume_id: candidate.resume_id,
     first_name: candidate.first_name,
     last_name: candidate.last_name,
-    email: extractStringValue(candidate.email),
-    phone: extractStringValue(candidate.phone),
-    position: extractStringValue(candidate.position),
+    email: extractFieldValue(candidate.email),
+    phone: extractFieldValue(candidate.phone),
+    position: extractFieldValue(candidate.position),
     years_experience: extractNumberValue(candidate.years_experience),
-    location: extractStringValue(candidate.location),
-    skills: ensureArray(candidate.skills),
+    location: extractFieldValue(candidate.location),
+    skills: extractArrayValue(candidate.skills),
     score: extractNumberValue(candidate.score),
-    status: extractStringValue(candidate.status) || 'pending',
-    detailed_status: extractStringValue(candidate.detailed_status),
-    company: extractStringValue(candidate.company),
+    status: extractFieldValue(candidate.status) || 'pending',
+    detailed_status: extractFieldValue(candidate.detailed_status),
+    company: extractFieldValue(candidate.company),
     created_at: candidate.created_at,
     updated_at: candidate.updated_at,
-    experiences: ensureArray(candidate.experiences),
-    education: ensureArray(candidate.education),
-    certifications: ensureArray(candidate.certifications),
-    languages: ensureArray(candidate.languages),
-    publications: ensureArray(candidate.publications),
-    interests: extractStringValue(candidate.interests),
-    professional_references: ensureArray(candidate.professional_references),
-    availability: extractStringValue(candidate.availability),
-    salary_expectations: extractStringValue(candidate.salary_expectations),
-    mobility: extractStringValue(candidate.mobility),
-    contract_type: extractStringValue(candidate.contract_type),
-    remote_preference: extractStringValue(candidate.remote_preference),
-    travel_willingness: extractStringValue(candidate.travel_willingness),
-    professional_networks: ensureArray(candidate.professional_networks),
-    continuous_training: ensureArray(candidate.continuous_training),
-    career_objectives: extractStringValue(candidate.career_objectives),
-    professional_values: extractStringValue(candidate.professional_values),
-    work_authorization: extractStringValue(candidate.work_authorization),
-    special_permits: ensureArray(candidate.special_permits),
-    industries: ensureArray(candidate.industries),
-    projects: ensureArray(candidate.projects),
+    experiences: extractArrayValue(candidate.experiences),
+    education: extractArrayValue(candidate.education),
+    certifications: extractArrayValue(candidate.certifications),
+    languages: extractArrayValue(candidate.languages),
+    publications: extractArrayValue(candidate.publications),
+    interests: extractFieldValue(candidate.interests),
+    professional_references: extractArrayValue(candidate.professional_references),
+    availability: extractFieldValue(candidate.availability),
+    salary_expectations: extractFieldValue(candidate.salary_expectations),
+    mobility: extractFieldValue(candidate.mobility),
+    contract_type: extractFieldValue(candidate.contract_type),
+    remote_preference: extractFieldValue(candidate.remote_preference),
+    travel_willingness: extractFieldValue(candidate.travel_willingness),
+    professional_networks: extractArrayValue(candidate.professional_networks),
+    continuous_training: extractArrayValue(candidate.continuous_training),
+    career_objectives: extractFieldValue(candidate.career_objectives),
+    professional_values: extractFieldValue(candidate.professional_values),
+    work_authorization: extractFieldValue(candidate.work_authorization),
+    special_permits: extractArrayValue(candidate.special_permits),
+    industries: extractArrayValue(candidate.industries),
+    projects: extractArrayValue(candidate.projects),
     profile_completeness: extractNumberValue(candidate.profile_completeness),
     last_updated_at: candidate.last_updated_at
   };
