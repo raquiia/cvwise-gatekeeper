@@ -64,11 +64,9 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
           description: `Le statut a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
         });
         
-        // Notifier le parent avec un délai pour permettre à la base de données de se synchroniser
+        // Notifier le parent
         if (onStatusChange) {
-          setTimeout(() => {
-            onStatusChange(status);
-          }, 500);
+          onStatusChange(status);
         }
       } else {
         console.error("Failed to update status");
