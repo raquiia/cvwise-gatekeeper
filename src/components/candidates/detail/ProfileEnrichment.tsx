@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Check, X, Loader2, AlertCircle } from 'lucide-react';
+import { Sparkles, Check, X, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { candidateNotesService } from '@/services/data/candidateNotesService';
@@ -195,14 +195,6 @@ const ProfileEnrichment: React.FC<ProfileEnrichmentProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-amber-800">
-              <p className="font-medium mb-1">Configuration requise</p>
-              <p>Cette fonctionnalité nécessite une clé API OpenAI configurée dans les secrets Supabase.</p>
-            </div>
-          </div>
-          
           <p className="text-sm text-gray-600">
             Utilisez l'IA pour extraire automatiquement les informations du profil à partir des notes d'entretien.
           </p>
