@@ -211,7 +211,9 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
               </div>
             )}
             {isJobSpecific && (
-              <TrendingUp size={12} className="ml-1 text-purple-600" title="Score de correspondance" />
+              <div title="Score de correspondance">
+                <TrendingUp size={12} className="ml-1 text-purple-600" />
+              </div>
             )}
           </div>
         </TableCell>

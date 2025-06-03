@@ -1,12 +1,11 @@
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { MapPin, Phone, Mail, Calendar, FileText } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureArray, ensureStringArray, safeString, isUndefinedObject } from '@/utils/candidateUtils';
-import { calculateCandidateScore, calculateJobMatchScore } from '@/services/scoring/candidateScoring';
-import { candidateMatchingService } from '@/services/data/candidateMatchingService';
+import { useCandidateScore } from '@/hooks/use-candidate-score';
 import ScoreDisplay from './ScoreDisplay';
 
 interface ProfileTabProps {
@@ -35,19 +34,8 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
   const hasValidTravelWillingness = travelWillingness.trim().length > 0;
   const hasValidSalaryExpectations = salaryExpectations.trim().length > 0;
 
-  // Calcul du score intelligent
-  const scoreBreakdown = useMemo(() => {
-    // Vérifier s'il y a une offre d'emploi active pour le scoring contextuel
-    const activeJobOfferId = candidateMatchingService.getActiveJobOfferId();
-    
-    if (activeJobOfferId) {
-      // TODO: Récupérer les détails de l'offre d'emploi active
-      // Pour l'instant, utiliser le score de base
-      return calculateCandidateScore(candidate);
-    }
-    
-    return calculateCandidateScore(candidate);
-  }, [candidate]);
+  // Use unified scoring system
+  const { score: scoreBreakdown, isLoading: scoreLoading } = useCandidateScore(candidate);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -181,7 +169,13 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
       <div className="space-y-6">
         <div>
           <h3 className="text-lg font-semibold mb-4">Évaluation intelligente</h3>
-          <ScoreDisplay scoreBreakdown={scoreBreakdown} />
+          {scoreBreakdown ? (
+            <ScoreDisplay scoreBreakdown={scoreBreakdown} isLoading={scoreLoading} />
+          ) : (
+            <div className="text-center p-4 text-muted-foreground">
+              Calcul du score en cours...
+            </div>
+          )}
         </div>
         
         {(hasValidRemotePreference || hasValidMobility || hasValidTravelWillingness || hasValidSalaryExpectations) && (
