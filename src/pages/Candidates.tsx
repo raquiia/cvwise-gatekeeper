@@ -4,6 +4,10 @@ import Layout from '@/components/Layout';
 import CandidatesHeader from '@/components/candidates/CandidatesHeader';
 import CandidatesTable from '@/components/candidates/CandidatesTable';
 import CandidatesFilters from '@/components/candidates/CandidatesFilters';
+import CandidateStats from '@/components/candidates/CandidateStats';
+import ViewSelector from '@/components/candidates/ViewSelector';
+import CandidatesCardView from '@/components/candidates/CandidatesCardView';
+import EnhancedSearch from '@/components/candidates/EnhancedSearch';
 import { candidateService } from '@/services/data/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +15,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { semanticMatchingService } from '@/services/semantic/semanticMatchingService';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
+import { Button } from '@/components/ui/button';
+import { Filter, Upload, FileText, UserPlus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 // Helper function to extract status from candidate - Enhanced version
 const extractCandidateStatus = async (candidate: CandidateData): Promise<string> => {
@@ -76,6 +83,7 @@ const Candidates = () => {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [currentView, setCurrentView] = useState<'table' | 'cards' | 'kanban' | 'analytics'>('table');
   
   const [location, setLocation] = useState('');
   const [company, setCompany] = useState('');
@@ -169,6 +177,24 @@ const Candidates = () => {
     
     setFilteredCandidates(result);
   }, [selectedStatus, candidates]);
+
+  // Calculate stats
+  const totalCandidates = candidates.length;
+  const newThisWeek = candidates.filter(c => {
+    const createdDate = new Date(c.created_at || '');
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return createdDate > weekAgo;
+  }).length;
+  
+  const inProgress = candidates.filter(c => 
+    ['contact', 'prequalification', 'ec1', 'ec2', 'presentation_client'].includes(c.detailed_status || '')
+  ).length;
+  
+  const topCandidates = candidates.filter(c => {
+    // This would normally use the scoring system
+    return (c.score || 0) >= 85;
+  }).length;
 
   const handleStatusChange = (status: string | null) => {
     setSelectedStatus(status);
@@ -328,12 +354,78 @@ const Candidates = () => {
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-200/20 dark:bg-blue-900/10 rounded-full filter blur-3xl opacity-70 transform -translate-x-1/3 translate-y-1/3 pointer-events-none"></div>
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-          <CandidatesHeader 
-            searchQuery={searchQuery}
-            onSearchChange={handleSearchChange}
-            onToggleFilters={handleToggleFilters}
-            showFilters={showFilters}
+          {/* Enhanced Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+            <div className="mb-4 md:mb-0">
+              <h1 className="text-3xl font-bold text-navy-dark dark:text-sand mb-2 bg-gradient-to-r from-purple-700 to-indigo-600 dark:from-purple-400 dark:to-indigo-300 bg-clip-text text-transparent">
+                Candidats
+              </h1>
+              <p className="text-muted-foreground text-lg">
+                Gérez efficacement vos profils de candidats
+              </p>
+            </div>
+            
+            <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+              <div className="w-full md:w-96">
+                <EnhancedSearch
+                  searchQuery={searchQuery}
+                  onSearchChange={handleSearchChange}
+                  recentSearches={['React Developer', 'Paris', 'Senior']}
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant={showFilters ? "default" : "outline"} 
+                  className={`gap-2 ${showFilters ? 'bg-purple-600 hover:bg-purple-700' : 'border-purple-200/50 hover:bg-purple-50'}`}
+                  onClick={handleToggleFilters}
+                >
+                  <Filter size={16} />
+                  <span className="hidden sm:inline">Filtres</span>
+                </Button>
+                
+                <Link to="/resumes/upload">
+                  <Button variant="outline" className="gap-2 border-purple-200/50 hover:bg-purple-50">
+                    <Upload size={16} />
+                    <span className="hidden sm:inline">Importer</span>
+                  </Button>
+                </Link>
+                
+                <Link to="/resumes">
+                  <Button variant="outline" className="gap-2 border-purple-200/50 hover:bg-purple-50">
+                    <FileText size={16} />
+                    <span className="hidden sm:inline">CV</span>
+                  </Button>
+                </Link>
+                
+                <Button className="gap-2 bg-purple-600 hover:bg-purple-700">
+                  <UserPlus size={16} />
+                  <span className="hidden sm:inline">Ajouter</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Statistics Cards */}
+          <CandidateStats 
+            totalCandidates={totalCandidates}
+            newThisWeek={newThisWeek}
+            inProgress={inProgress}
+            topCandidates={topCandidates}
           />
+
+          {/* View Selector and Filters */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+            <ViewSelector currentView={currentView} onViewChange={setCurrentView} />
+            
+            {showFilters && (
+              <div className="lg:ml-auto">
+                <span className="text-sm text-muted-foreground">
+                  {filteredCandidates.length} candidat{filteredCandidates.length > 1 ? 's' : ''} affiché{filteredCandidates.length > 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
+          </div>
           
           {showFilters && (
             <div className="mb-6 animate-in fade-in duration-300">
@@ -366,7 +458,8 @@ const Candidates = () => {
             </div>
           )}
           
-          <div className="transition-all duration-300 mx-auto">
+          {/* Main Content */}
+          <div className="transition-all duration-300">
             {loading ? (
               <div className="flex justify-center items-center py-12">
                 <div className="w-12 h-12 rounded-full border-4 border-t-purple-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
@@ -375,6 +468,22 @@ const Candidates = () => {
             ) : error ? (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-lg p-4 text-red-700 dark:text-red-300">
                 {error}
+              </div>
+            ) : currentView === 'cards' ? (
+              <CandidatesCardView 
+                candidates={filteredCandidates}
+                onViewCandidate={handleViewCandidate}
+                onCandidateDeleted={fetchCandidates}
+              />
+            ) : currentView === 'kanban' ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p className="text-lg font-medium mb-2">Vue Kanban</p>
+                <p>Cette vue sera bientôt disponible</p>
+              </div>
+            ) : currentView === 'analytics' ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p className="text-lg font-medium mb-2">Vue Analytics</p>
+                <p>Cette vue sera bientôt disponible</p>
               </div>
             ) : (
               <CandidatesTable 
