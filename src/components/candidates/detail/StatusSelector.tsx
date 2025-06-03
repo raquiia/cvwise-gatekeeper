@@ -40,14 +40,14 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   
   // Utiliser le statut passé en prop si disponible
   useEffect(() => {
-    if (propCurrentStatus) {
+    if (propCurrentStatus && CANDIDATE_STATUSES.includes(propCurrentStatus)) {
       setCurrentStatus(propCurrentStatus);
     }
   }, [propCurrentStatus]);
   
   // Change status
   const handleStatusChange = async (status: string) => {
-    if (status === currentStatus) return;
+    if (status === currentStatus || isUpdating) return;
     
     console.log("Changing status from", currentStatus, "to:", status);
     setIsUpdating(true);
@@ -64,8 +64,11 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
           description: `Le statut a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
         });
         
+        // Notifier le parent avec un délai pour permettre à la base de données de se synchroniser
         if (onStatusChange) {
-          onStatusChange(status);
+          setTimeout(() => {
+            onStatusChange(status);
+          }, 500);
         }
       } else {
         console.error("Failed to update status");
@@ -95,6 +98,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
       <DropdownMenuTrigger asChild disabled={isUpdating}>
         <Button 
           className={`w-full md:w-auto ${buttonColorClass} text-white`}
+          disabled={isUpdating}
         >
           {isUpdating ? (
             <>
@@ -103,7 +107,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
             </>
           ) : (
             <>
-              Statut: {CANDIDATE_STATUS_LABELS[currentStatus] || 'Inconnu'}
+              {CANDIDATE_STATUS_LABELS[currentStatus] || 'Inconnu'}
               <ChevronDown className="ml-2 h-4 w-4" />
             </>
           )}
