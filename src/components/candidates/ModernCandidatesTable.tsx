@@ -22,6 +22,7 @@ interface ModernCandidatesTableProps {
   onStatusChange: (status: string | null) => void;
   onViewCandidate: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
+  refreshKey?: number; // NEW: Add refreshKey prop
 }
 
 type ViewMode = 'grid' | 'list';

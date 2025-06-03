@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ interface ModernTableViewProps {
   onSelectAll: () => void;
   onViewCandidate: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
+  refreshKey?: number; // NEW: Add refreshKey prop
 }
 
 const ModernTableView: React.FC<ModernTableViewProps> = ({
