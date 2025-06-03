@@ -1,7 +1,9 @@
+
 import React, { useEffect, useState } from 'react';
 import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle, AlertTriangle, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -14,6 +16,7 @@ import ModernTableView from './ModernTableView';
 import { useToast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
 import { candidateMatchingService } from '@/services/data/candidateMatchingService';
+import { useContextualScoring } from '@/hooks/use-contextual-scoring';
 import { CANDIDATE_STATUS_LABELS, CANDIDATE_STATUSES } from '@/services/data/candidateStatusService';
 
 interface CandidatesTableProps {
@@ -33,11 +36,17 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
 }) => {
   const { toast } = useToast();
   const [jobOffers, setJobOffers] = useState<any[]>([]);
-  const [activeJobOfferId, setActiveJobOfferId] = useState<string | null>(null);
   const [candidatesWithScores, setCandidatesWithScores] = useState<CandidateData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
+  
+  const { 
+    activeJobOfferId, 
+    activeJobOfferTitle, 
+    updateActiveJobOffer, 
+    isJobSpecific 
+  } = useContextualScoring();
   
   // Fetch job offers on component mount
   useEffect(() => {
@@ -49,7 +58,8 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
         // Check if there's an active job offer
         const currentActiveId = candidateMatchingService.getActiveJobOfferId();
         if (currentActiveId) {
-          setActiveJobOfferId(currentActiveId);
+          const activeOffer = offers.find(offer => offer.id === currentActiveId);
+          updateActiveJobOffer(currentActiveId, activeOffer?.title);
         }
       } catch (error) {
         console.error("Error fetching job offers:", error);
@@ -57,7 +67,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     };
     
     fetchJobOffers();
-  }, []);
+  }, [updateActiveJobOffer]);
   
   // Update candidate list when candidates change
   useEffect(() => {
@@ -88,22 +98,23 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
         const success = await candidateMatchingService.setActiveJobOffer(jobOfferId);
         
         if (success) {
-          setActiveJobOfferId(jobOfferId);
+          const selectedOffer = jobOffers.find(offer => offer.id === jobOfferId);
+          updateActiveJobOffer(jobOfferId, selectedOffer?.title);
           
           toast({
             title: "Offre d'emploi activée",
-            description: "Les scores des candidats sont maintenant relatifs à cette offre d'emploi",
+            description: `Les scores sont maintenant relatifs à "${selectedOffer?.title || 'cette offre'}"`,
           });
         } else {
           throw new Error("Failed to activate job offer");
         }
       } else {
         await candidateMatchingService.setActiveJobOffer(null);
-        setActiveJobOfferId(null);
+        updateActiveJobOffer(null);
         
         toast({
           title: "Mode de scoring standard",
-          description: "Les scores des candidats sont maintenant basés sur leur qualité générale",
+          description: "Les scores affichent maintenant la complétude des profils",
         });
       }
     } catch (error) {
@@ -154,16 +165,24 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     }
   };
   
-  const getActiveJobOfferName = () => {
-    if (!activeJobOfferId || !jobOffers || jobOffers.length === 0) return null;
-    const activeOffer = jobOffers.find(offer => offer.id === activeJobOfferId);
-    return activeOffer ? activeOffer.title : null;
-  };
-  
   return (
     <div className="space-y-6">
       {/* Job Offer Selection */}
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center">
+        {/* Context indicator */}
+        <div className="flex items-center gap-2">
+          {isJobSpecific ? (
+            <Badge variant="default" className="bg-purple-100 text-purple-800">
+              <Briefcase size={12} className="mr-1" />
+              Scores contextuels activés
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="bg-gray-100 text-gray-700">
+              Scores généraux
+            </Badge>
+          )}
+        </div>
+        
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button 
@@ -173,13 +192,13 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
               disabled={isLoading}
             >
               <Briefcase size={14} className="mr-1 text-purple-600 dark:text-purple-400" />
-              {activeJobOfferId ? getActiveJobOfferName() || "Offre active" : "Activer une offre d'emploi"}
+              {activeJobOfferId ? (activeJobOfferTitle || "Offre active") : "Sélectionner une offre d'emploi"}
               <ChevronDown size={14} />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-white/95 backdrop-blur-md border-purple-100/50 shadow-lg dark:bg-navy-dark/95 dark:border-purple-800/30">
             <DropdownMenuItem onClick={() => handleJobOfferChange(null)}>
-              Liste standard (sans contexte)
+              Score général (sans contexte)
             </DropdownMenuItem>
             
             <Separator className="my-1" />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,10 +19,10 @@ import {
 import { Link } from 'react-router-dom';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
-import { calculateCandidateScore, getScoreEvaluation } from '@/services/scoring/candidateScoring';
 import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
+import { useContextualScoring } from '@/hooks/use-contextual-scoring';
 import { cn } from '@/lib/utils';
 
 interface ModernTableViewProps {
@@ -44,6 +44,49 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
 }) => {
   const { toast } = useToast();
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [candidateScores, setCandidateScores] = useState<Map<string, any>>(new Map());
+  const [loadingScores, setLoadingScores] = useState<Set<string>>(new Set());
+  
+  const { calculateContextualScore, isJobSpecific } = useContextualScoring();
+
+  // Calculate scores for all candidates when component mounts or when job context changes
+  useEffect(() => {
+    const calculateAllScores = async () => {
+      const newScores = new Map();
+      const loadingSet = new Set(candidates.map(c => c.id!));
+      setLoadingScores(loadingSet);
+
+      for (const candidate of candidates) {
+        if (candidate.id) {
+          try {
+            const score = await calculateContextualScore(candidate);
+            newScores.set(candidate.id, score);
+          } catch (error) {
+            console.error(`Error calculating score for candidate ${candidate.id}:`, error);
+            // Set a default score
+            newScores.set(candidate.id, {
+              overall: 0,
+              isJobSpecific: false,
+              matchContext: 'Erreur de calcul'
+            });
+          }
+          
+          // Remove from loading set
+          setLoadingScores(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(candidate.id!);
+            return newSet;
+          });
+        }
+      }
+      
+      setCandidateScores(newScores);
+    };
+
+    if (candidates.length > 0) {
+      calculateAllScores();
+    }
+  }, [candidates, calculateContextualScore, isJobSpecific]);
 
   // Fonction pour générer une couleur basée sur les initiales
   const getAvatarColor = (firstName: string, lastName: string) => {
@@ -184,22 +227,59 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
     );
   };
 
-  const getScoreBadge = (score: number) => {
+  const getScoreBadge = (candidateId: string) => {
+    const isLoading = loadingScores.has(candidateId);
+    const scoreData = candidateScores.get(candidateId);
+    
+    if (isLoading) {
+      return (
+        <Badge variant="outline" className="border text-xs px-2 py-1 animate-pulse">
+          Calcul...
+        </Badge>
+      );
+    }
+    
+    if (!scoreData) {
+      return (
+        <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200 text-xs px-2 py-1">
+          N/A
+        </Badge>
+      );
+    }
+
+    const score = scoreData.overall;
+    const isJobSpecificScore = scoreData.isJobSpecific;
+    
     let bgColor = 'bg-red-100 text-red-700 border-red-200';
     
-    if (score >= 80) {
-      bgColor = 'bg-green-100 text-green-700 border-green-200';
-    } else if (score >= 60) {
-      bgColor = 'bg-yellow-100 text-yellow-700 border-yellow-200';
+    if (isJobSpecificScore) {
+      // Job-specific scoring (0-100 match percentage)
+      if (score >= 70) {
+        bgColor = 'bg-green-100 text-green-700 border-green-200';
+      } else if (score >= 50) {
+        bgColor = 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      }
+    } else {
+      // General profile completeness scoring
+      if (score >= 80) {
+        bgColor = 'bg-green-100 text-green-700 border-green-200';
+      } else if (score >= 60) {
+        bgColor = 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      }
     }
 
     return (
-      <Badge 
-        variant="outline" 
-        className={cn(bgColor, 'border text-xs font-semibold px-2 py-1')}
-      >
-        {score}/100
-      </Badge>
+      <div className="flex flex-col items-center gap-1">
+        <Badge 
+          variant="outline" 
+          className={cn(bgColor, 'border text-xs font-semibold px-2 py-1')}
+        >
+          {score}%
+        </Badge>
+        {isJobSpecificScore && (
+          <Briefcase size={10} className="text-purple-600" title="Score contextuel" />
+        )}
+      </div>
     );
   };
 
@@ -267,6 +347,9 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
               </Badge>
             )}
           </div>
+          <div className="text-xs text-gray-500">
+            {isJobSpecific ? 'Scores contextuels' : 'Scores généraux'}
+          </div>
         </div>
       </div>
 
@@ -276,7 +359,9 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
           <TableRow className="border-b border-purple-200/30 bg-gradient-to-r from-purple-50/50 to-transparent dark:from-purple-950/20 hover:bg-purple-50/50 dark:hover:bg-purple-950/20">
             <TableHead className="w-12"></TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-64">Candidat</TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand w-24">Score</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand w-24">
+              {isJobSpecific ? 'Match' : 'Score'}
+            </TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-32">Statut</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-48">Entreprise actuelle</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-32">Localisation</TableHead>
@@ -289,7 +374,6 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         <TableBody>
           {candidates.map((candidate, index) => {
             const skills = ensureStringArray(candidate.skills);
-            const scoreBreakdown = calculateCandidateScore(candidate);
             const isHovered = hoveredRow === candidate.id;
             const isSelected = selectedCandidates.has(candidate.id!);
 
@@ -361,7 +445,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
 
                 {/* Score */}
                 <TableCell className="py-3">
-                  {getScoreBadge(scoreBreakdown.overall)}
+                  {getScoreBadge(candidate.id!)}
                 </TableCell>
 
                 {/* Statut */}
