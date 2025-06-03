@@ -45,7 +45,7 @@ const getEducationLevel = (education: any[]): string => {
 
 export const persistentScoringService = {
   /**
-   * Get stored general score for a candidate - SIMPLIFIED
+   * Get stored general score for a candidate - FIXED VERSION
    */
   async getCandidateGeneralScore(candidateId: string): Promise<ScoreDetails | null> {
     try {
@@ -70,8 +70,8 @@ export const persistentScoringService = {
       const skillsArray = ensureArray(candidate.skills);
       const educationArray = ensureArray(candidate.education);
       
-      // FIXED: Check if score exists and is valid (not 0 or null)
-      if (candidate.score === null || candidate.score === undefined || candidate.score === 0) {
+      // FIXED: Only return null if score is truly missing/invalid (< 1 instead of === 0)
+      if (candidate.score === null || candidate.score === undefined || candidate.score < 1) {
         console.log(`Candidate ${candidateId} has no valid score (${candidate.score}), will trigger recalculation`);
         return null;
       }
@@ -180,7 +180,7 @@ export const persistentScoringService = {
   },
 
   /**
-   * Recalculate general score using the database function
+   * Recalculate general score using the database function - IMPROVED
    */
   async recalculateGeneralScore(candidateId: string): Promise<number | null> {
     try {
@@ -204,7 +204,7 @@ export const persistentScoringService = {
   },
 
   /**
-   * Mass recalculate all general scores - NEW FUNCTION
+   * Mass recalculate all general scores - IMPROVED WITH BETTER FEEDBACK
    */
   async massRecalculateAllGeneralScores(): Promise<{ success: number; failed: number }> {
     try {
@@ -224,8 +224,8 @@ export const persistentScoringService = {
       let success = 0;
       let failed = 0;
 
-      // Recalculate in batches of 5
-      const batchSize = 5;
+      // Recalculate in smaller batches for better performance
+      const batchSize = 3;
       for (let i = 0; i < candidates.length; i += batchSize) {
         const batch = candidates.slice(i, i + batchSize);
         
@@ -233,17 +233,19 @@ export const persistentScoringService = {
           batch.map(candidate => this.recalculateGeneralScore(candidate.id))
         );
         
-        results.forEach(result => {
+        results.forEach((result, index) => {
           if (result.status === 'fulfilled' && result.value !== null) {
             success++;
+            console.log(`✅ Recalculated score for candidate ${batch[index].id}: ${result.value}`);
           } else {
             failed++;
+            console.error(`❌ Failed to recalculate score for candidate ${batch[index].id}`);
           }
         });
         
         // Small delay between batches
         if (i + batchSize < candidates.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 150));
         }
       }
       

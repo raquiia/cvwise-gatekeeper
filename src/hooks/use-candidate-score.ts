@@ -20,7 +20,7 @@ export interface ContextualScore {
   matchContext?: string;
 }
 
-export const useCandidateScore = (candidate: CandidateData) => {
+export const useCandidateScore = (candidate: CandidateData, refreshKey?: number) => {
   const [score, setScore] = useState<ContextualScore | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { activeJobOfferId, activeJobOfferTitle } = useActiveJob();
@@ -58,7 +58,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
             }
           }
         } else {
-          // Get general score
+          // Get general score - SIMPLIFIED LOGIC
           scoreDetails = await persistentScoringService.getCandidateGeneralScore(candidate.id);
           
           if (scoreDetails) {
@@ -68,50 +68,52 @@ export const useCandidateScore = (candidate: CandidateData) => {
               matchContext: 'Score général de profil'
             });
           } else {
-            // Recalculate general score if missing
-            await persistentScoringService.recalculateGeneralScore(candidate.id);
-            scoreDetails = await persistentScoringService.getCandidateGeneralScore(candidate.id);
-            
-            if (scoreDetails) {
+            // Use the database score directly if available, minimal fallback
+            const dbScore = candidate.score || 0;
+            if (dbScore > 0) {
+              const skillsArray = Array.isArray(candidate.skills) ? candidate.skills : [];
               setScore({
-                ...scoreDetails,
+                skills: Math.min(Math.round((skillsArray.length / 10) * 100), 100),
+                experience: candidate.years_experience ? Math.min(candidate.years_experience * 10, 100) : 0,
+                education: 50,
+                profileCompleteness: candidate.profile_completeness || 0,
+                overall: dbScore, // Use database score directly
+                details: {
+                  skillsCount: skillsArray.length,
+                  experienceYears: candidate.years_experience || 0,
+                  educationLevel: 'Non spécifié',
+                  completenessPercentage: candidate.profile_completeness || 0
+                },
                 isJobSpecific: false,
                 matchContext: 'Score général de profil'
               });
+            } else {
+              // Last resort fallback - trigger recalculation
+              await persistentScoringService.recalculateGeneralScore(candidate.id);
+              scoreDetails = await persistentScoringService.getCandidateGeneralScore(candidate.id);
+              
+              if (scoreDetails) {
+                setScore({
+                  ...scoreDetails,
+                  isJobSpecific: false,
+                  matchContext: 'Score général de profil'
+                });
+              }
             }
           }
-        }
-        
-        // Simple fallback if no score available
-        if (!scoreDetails) {
-          const skillsArray = Array.isArray(candidate.skills) ? candidate.skills : [];
-          setScore({
-            skills: Math.min(Math.round((skillsArray.length / 10) * 100), 100),
-            experience: candidate.years_experience ? Math.min(candidate.years_experience * 10, 100) : 0,
-            education: 50,
-            profileCompleteness: candidate.profile_completeness || 0,
-            overall: candidate.score || 50,
-            details: {
-              skillsCount: skillsArray.length,
-              experienceYears: candidate.years_experience || 0,
-              educationLevel: 'Non spécifié',
-              completenessPercentage: candidate.profile_completeness || 0
-            },
-            isJobSpecific: !!activeJobOfferId,
-            matchContext: !!activeJobOfferId ? 'Score contextuel' : 'Score général'
-          });
         }
       } catch (error) {
         console.error(`Error loading score for candidate ${candidate.id}:`, error);
         
-        // Error fallback
+        // Minimal error fallback - use database score if available
+        const dbScore = candidate.score || 0;
         const skillsArray = Array.isArray(candidate.skills) ? candidate.skills : [];
         setScore({
           skills: Math.min(Math.round((skillsArray.length / 10) * 100), 100),
           experience: candidate.years_experience ? Math.min(candidate.years_experience * 10, 100) : 0,
           education: 50,
           profileCompleteness: candidate.profile_completeness || 0,
-          overall: candidate.score || 50,
+          overall: dbScore > 0 ? dbScore : 50,
           details: {
             skillsCount: skillsArray.length,
             experienceYears: candidate.years_experience || 0,
@@ -127,7 +129,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
     };
 
     loadScore();
-  }, [candidate.id, activeJobOfferId, activeJobOfferTitle]);
+  }, [candidate.id, activeJobOfferId, activeJobOfferTitle, refreshKey]); // Added refreshKey dependency
 
   return {
     score,

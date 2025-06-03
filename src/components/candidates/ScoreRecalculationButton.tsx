@@ -9,12 +9,14 @@ interface ScoreRecalculationButtonProps {
   variant?: 'default' | 'ghost';
   size?: 'sm' | 'default';
   className?: string;
+  onRecalculationComplete?: () => void; // NEW: callback for refresh
 }
 
 export const ScoreRecalculationButton: React.FC<ScoreRecalculationButtonProps> = ({
   variant = 'ghost',
   size = 'sm',
-  className = ''
+  className = '',
+  onRecalculationComplete
 }) => {
   const [isRecalculating, setIsRecalculating] = useState(false);
   const { toast } = useToast();
@@ -37,8 +39,13 @@ export const ScoreRecalculationButton: React.FC<ScoreRecalculationButtonProps> =
         description: `${result.success} scores recalculés avec succès, ${result.failed} échecs`,
       });
       
-      // Refresh the page to show updated scores
-      window.location.reload();
+      // NEW: Call the callback instead of forcing a page reload
+      if (onRecalculationComplete) {
+        onRecalculationComplete();
+      } else {
+        // Fallback to page reload if no callback provided
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Error during mass recalculation:', error);
       toast({

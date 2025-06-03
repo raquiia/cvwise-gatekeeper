@@ -37,6 +37,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   const [jobOffers, setJobOffers] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
+  const [refreshKey, setRefreshKey] = useState(0); // NEW: refresh trigger
   
   const { 
     activeJobOfferId, 
@@ -101,6 +102,14 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     }
   };
 
+  // NEW: Handle recalculation completion
+  const handleRecalculationComplete = () => {
+    setRefreshKey(prev => prev + 1); // Trigger refresh of candidate scores
+    if (onCandidateDeleted) { // Reuse this to refresh the candidates list
+      onCandidateDeleted();
+    }
+  };
+
   const handleSelectCandidate = (candidateId: string, selected: boolean) => {
     const newSelected = new Set(selectedCandidates);
     if (selected) {
@@ -136,8 +145,8 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
             </Badge>
           )}
           
-          {/* Mass recalculation button */}
-          <ScoreRecalculationButton />
+          {/* Mass recalculation button with callback */}
+          <ScoreRecalculationButton onRecalculationComplete={handleRecalculationComplete} />
         </div>
         
         <DropdownMenu>
@@ -200,6 +209,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
           onSelectAll={handleSelectAll}
           onViewCandidate={onViewCandidate}
           onCandidateDeleted={handleCandidateDeleted}
+          refreshKey={refreshKey} // NEW: pass refresh key
         />
       ) : (
         <ModernCandidatesTable
@@ -208,6 +218,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
           onStatusChange={onStatusChange}
           onViewCandidate={onViewCandidate}
           onCandidateDeleted={handleCandidateDeleted}
+          refreshKey={refreshKey} // NEW: pass refresh key
         />
       )}
     </div>
