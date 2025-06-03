@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Check, X, Loader2 } from 'lucide-react';
+import { Sparkles, Check, X, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { candidateNotesService } from '@/services/data/candidateNotesService';
@@ -71,12 +71,19 @@ const ProfileEnrichment: React.FC<ProfileEnrichmentProps> = ({
         body: { candidateId, notes }
       });
 
+      console.log('📡 Function response:', { data, error });
+
       if (error) {
-        throw error;
+        console.error('❌ Function error:', error);
+        throw new Error(error.message || 'Erreur lors de l\'appel à la fonction d\'extraction');
+      }
+
+      if (!data) {
+        throw new Error('Aucune réponse reçue de la fonction d\'extraction');
       }
 
       if (!data.success || !data.extractedInfo) {
-        throw new Error('Aucune information exploitable trouvée dans les notes');
+        throw new Error(data.error || 'Aucune information exploitable trouvée dans les notes');
       }
 
       console.log('✨ Extracted info:', data.extractedInfo);
@@ -87,6 +94,14 @@ const ProfileEnrichment: React.FC<ProfileEnrichmentProps> = ({
         value: String(value),
         label: fieldLabels[field] || field
       }));
+
+      if (fields.length === 0) {
+        toast({
+          title: "Aucune information extraite",
+          description: "L'IA n'a pas pu extraire d'informations exploitables des notes d'entretien",
+        });
+        return;
+      }
 
       setExtractedFields(fields);
       setSelectedFields(new Set(fields.map(f => f.field)));
@@ -99,9 +114,19 @@ const ProfileEnrichment: React.FC<ProfileEnrichmentProps> = ({
 
     } catch (error: any) {
       console.error('❌ Error during extraction:', error);
+      
+      let errorMessage = error.message || "Impossible d'extraire les informations";
+      
+      // Messages d'erreur plus spécifiques
+      if (errorMessage.includes('Configuration manquante')) {
+        errorMessage = "Configuration manquante: la clé API OpenAI n'est pas configurée";
+      } else if (errorMessage.includes('OpenAI API error')) {
+        errorMessage = "Erreur de l'API OpenAI. Vérifiez votre configuration";
+      }
+      
       toast({
         title: "Erreur d'extraction",
-        description: error.message || "Impossible d'extraire les informations",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -169,10 +194,19 @@ const ProfileEnrichment: React.FC<ProfileEnrichmentProps> = ({
             Enrichissement automatique du profil
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-600 mb-4">
+        <CardContent className="space-y-4">
+          <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-amber-800">
+              <p className="font-medium mb-1">Configuration requise</p>
+              <p>Cette fonctionnalité nécessite une clé API OpenAI configurée dans les secrets Supabase.</p>
+            </div>
+          </div>
+          
+          <p className="text-sm text-gray-600">
             Utilisez l'IA pour extraire automatiquement les informations du profil à partir des notes d'entretien.
           </p>
+          
           <Button 
             onClick={handleExtractInfo}
             disabled={isExtracting}

@@ -1,7 +1,6 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,7 +15,18 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🚀 Starting extract-candidate-info function');
+
+    if (!openAIApiKey) {
+      console.error('❌ OPENAI_API_KEY not found in environment variables');
+      return new Response(
+        JSON.stringify({ error: 'Configuration manquante: clé API OpenAI non trouvée' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { candidateId, notes } = await req.json();
+    console.log('📝 Received request for candidate:', candidateId, 'with', notes?.length, 'notes');
 
     if (!notes || notes.length === 0) {
       return new Response(
@@ -31,7 +41,7 @@ serve(async (req) => {
       return `--- ${note.note_type || 'Note'} ---\n${content}`;
     }).join('\n\n');
 
-    console.log('Extracting candidate info from notes:', notesText.substring(0, 200) + '...');
+    console.log('📄 Notes text prepared:', notesText.substring(0, 200) + '...');
 
     const systemPrompt = `Tu es un assistant IA spécialisé dans l'extraction d'informations de candidats à partir de notes d'entretien.
 
@@ -65,6 +75,8 @@ Exemple de réponse :
   "remote_preference": "Hybride 2-3 jours par semaine"
 }`;
 
+    console.log('🤖 Calling OpenAI API...');
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -83,25 +95,29 @@ Exemple de réponse :
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('❌ OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     const extractedContent = data.choices[0].message.content;
 
-    console.log('OpenAI response:', extractedContent);
+    console.log('✅ OpenAI response received:', extractedContent);
 
     // Parser la réponse JSON
     let extractedInfo;
     try {
       extractedInfo = JSON.parse(extractedContent);
     } catch (parseError) {
-      console.error('Failed to parse OpenAI response as JSON:', extractedContent);
+      console.error('❌ Failed to parse OpenAI response as JSON:', extractedContent);
       return new Response(
         JSON.stringify({ error: 'Erreur lors du parsing de la réponse IA' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('🎯 Successfully extracted info:', extractedInfo);
 
     return new Response(
       JSON.stringify({ 
@@ -116,9 +132,9 @@ Exemple de réponse :
     );
 
   } catch (error) {
-    console.error('Error in extract-candidate-info function:', error);
+    console.error('❌ Error in extract-candidate-info function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || 'Erreur interne du serveur' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
