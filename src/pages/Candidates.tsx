@@ -120,21 +120,16 @@ const CandidatesContent = () => {
           new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
         );
         
-        // Fetch and update the correct status for each candidate
-        const candidatesWithCorrectStatus = await Promise.all(
-          sortedCandidates.map(async (candidate) => {
-            const correctStatus = await extractCandidateStatus(candidate);
-            console.log(`Candidate ${candidate.id} (${candidate.first_name} ${candidate.last_name}) status:`, {
-              originalStatus: candidate.detailed_status,
-              correctedStatus: correctStatus
-            });
-            
-            return {
-              ...candidate,
-              detailed_status: correctStatus
-            };
-          })
-        );
+        // Ensure we correctly extract the status - use the database value directly
+        const candidatesWithCorrectStatus = sortedCandidates.map(candidate => {
+          const status = candidate.detailed_status || 'initial';
+          console.log(`Candidate ${candidate.id} (${candidate.first_name} ${candidate.last_name}) status: ${status}`);
+          
+          return {
+            ...candidate,
+            detailed_status: status
+          };
+        });
         
         setCandidates(candidatesWithCorrectStatus);
         setFilteredCandidates(candidatesWithCorrectStatus);

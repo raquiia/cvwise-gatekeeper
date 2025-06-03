@@ -16,30 +16,29 @@ export const CANDIDATE_STATUS_LABELS: Record<string, string> = {
 export const CANDIDATE_STATUSES = Object.keys(CANDIDATE_STATUS_LABELS);
 
 /**
- * Met à jour le statut d'un candidat en utilisant l'edge function
+ * Met à jour le statut d'un candidat en utilisant la fonction RPC
  */
 export const updateCandidateStatus = async (candidateId: string, status: string): Promise<boolean> => {
   try {
-    console.log('Updating candidate status via edge function:', candidateId, status);
+    console.log('Updating candidate status via RPC function:', candidateId, status);
     
-    const { data, error } = await supabase.functions.invoke('update-candidate-status', {
-      body: {
-        candidateId,
-        status
-      }
+    // Utiliser directement la fonction RPC au lieu de l'edge function
+    const { data, error } = await supabase.rpc('update_candidate_status', {
+      p_candidate_id: candidateId,
+      p_detailed_status: status
     });
     
     if (error) {
-      console.error('Error calling update-candidate-status function:', error);
+      console.error('Error calling update_candidate_status RPC:', error);
       throw new Error(`Erreur lors de la mise à jour du statut: ${error.message}`);
     }
     
-    if (!data || !data.success) {
-      console.error('Update candidate status failed:', data?.error || 'Raison inconnue');
-      throw new Error(data?.error || 'Mise à jour du statut échouée');
+    if (data !== true) {
+      console.error('Update candidate status failed via RPC');
+      throw new Error('Mise à jour du statut échouée - candidat non trouvé ou accès refusé');
     }
     
-    console.log('Candidate status updated successfully:', data.candidate);
+    console.log('Candidate status updated successfully via RPC');
     return true;
     
   } catch (error: any) {
@@ -53,18 +52,17 @@ export const updateCandidateStatus = async (candidateId: string, status: string)
  */
 export const getCandidateStatus = async (candidateId: string): Promise<string | null> => {
   try {
-    const { data, error } = await supabase
-      .from('candidates')
-      .select('detailed_status')
-      .eq('id', candidateId)
-      .single();
+    // Utiliser la fonction RPC pour récupérer le statut
+    const { data, error } = await supabase.rpc('get_candidate_status', {
+      p_candidate_id: candidateId
+    });
       
     if (error) {
-      console.error('Error fetching candidate status:', error);
+      console.error('Error fetching candidate status via RPC:', error);
       return null;
     }
     
-    return data.detailed_status || 'initial';
+    return data || 'initial';
   } catch (error) {
     console.error('Error in getCandidateStatus:', error);
     return null;

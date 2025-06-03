@@ -26,23 +26,29 @@ const STATUS_COLORS: Record<string, string> = {
 
 interface StatusSelectorProps {
   candidateId: string;
+  currentStatus?: string;
   onStatusChange?: (newStatus: string) => void;
 }
 
 const StatusSelector: React.FC<StatusSelectorProps> = ({ 
   candidateId,
+  currentStatus: propCurrentStatus,
   onStatusChange 
 }) => {
-  const [currentStatus, setCurrentStatus] = useState<string>('initial');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [currentStatus, setCurrentStatus] = useState<string>(propCurrentStatus || 'initial');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   
-  // Load current status
+  // Load current status only if not provided as prop
   useEffect(() => {
+    if (propCurrentStatus) {
+      setCurrentStatus(propCurrentStatus);
+      return;
+    }
+    
     const loadCurrentStatus = async () => {
       if (!candidateId) {
         console.error("No candidate ID provided");
-        setIsLoading(false);
         return;
       }
       
@@ -61,19 +67,24 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
       } catch (error) {
         console.error("Error loading status:", error);
         setCurrentStatus('initial');
+        toast({
+          title: "Erreur de chargement",
+          description: "Impossible de charger le statut actuel",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
     };
     
     loadCurrentStatus();
-  }, [candidateId]);
+  }, [candidateId, propCurrentStatus]);
   
   // Change status
   const handleStatusChange = async (status: string) => {
     if (status === currentStatus) return; // Do nothing if status is already selected
     
-    console.log("Changing status to:", status);
+    console.log("Changing status from", currentStatus, "to:", status);
     setIsUpdating(true);
     
     try {
@@ -82,6 +93,12 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
       if (success) {
         console.log("Status updated successfully to:", status);
         setCurrentStatus(status);
+        
+        toast({
+          title: "Statut mis à jour",
+          description: `Le statut a été modifié en "${CANDIDATE_STATUS_LABELS[status]}"`,
+        });
+        
         if (onStatusChange) {
           onStatusChange(status);
         }
@@ -108,7 +125,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   // Determine button color based on current status
   const buttonColorClass = STATUS_COLORS[currentStatus] || 'bg-gray-500 hover:bg-gray-600';
   
-  if (isLoading) {
+  if (isLoading && !propCurrentStatus) {
     return (
       <Button disabled className="w-full md:w-auto">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
