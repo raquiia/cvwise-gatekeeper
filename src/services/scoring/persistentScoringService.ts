@@ -50,26 +50,41 @@ export const persistentScoringService = {
    */
   async getCandidateGeneralScore(candidateId: string): Promise<ScoreDetails | null> {
     try {
+      console.log(`Fetching general score for candidate ${candidateId}`);
+      
       const { data: candidate, error } = await supabase
         .from('candidates')
         .select('score, profile_completeness, skills, years_experience, education')
         .eq('id', candidateId)
         .single();
 
-      if (error || !candidate) {
+      if (error) {
         console.error('Error fetching candidate score:', error);
+        return null;
+      }
+
+      if (!candidate) {
+        console.warn(`No candidate found with ID ${candidateId}`);
         return null;
       }
 
       const skillsArray = ensureArray(candidate.skills);
       const educationArray = ensureArray(candidate.education);
       
+      // If score is null or 0, return null to trigger recalculation
+      if (!candidate.score) {
+        console.log(`Candidate ${candidateId} has no score, will trigger recalculation`);
+        return null;
+      }
+      
+      console.log(`Found general score for candidate ${candidateId}: ${candidate.score}`);
+      
       return {
-        skills: Math.round((skillsArray.length / 10) * 100), // Approximate based on skills count
+        skills: Math.min(Math.round((skillsArray.length / 10) * 100), 100),
         experience: candidate.years_experience ? Math.min(candidate.years_experience * 10, 100) : 0,
-        education: educationArray.length > 0 ? 75 : 50, // Simplified
+        education: educationArray.length > 0 ? 75 : 50,
         profileCompleteness: candidate.profile_completeness || 0,
-        overall: candidate.score || 0,
+        overall: candidate.score,
         details: {
           skillsCount: skillsArray.length,
           experienceYears: candidate.years_experience || 0,
@@ -88,6 +103,8 @@ export const persistentScoringService = {
    */
   async getCandidateJobScore(candidateId: string, jobOfferId: string): Promise<ScoreDetails | null> {
     try {
+      console.log(`Fetching job score for candidate ${candidateId} and job ${jobOfferId}`);
+      
       const { data: jobScore, error } = await supabase
         .from('candidate_job_scores')
         .select('*')
@@ -97,8 +114,8 @@ export const persistentScoringService = {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // No score found, we need to calculate it
-          return await this.calculateAndStoreJobScore(candidateId, jobOfferId);
+          console.log(`No job score found for candidate ${candidateId} and job ${jobOfferId}`);
+          return null;
         }
         console.error('Error fetching job score:', error);
         return null;
@@ -113,6 +130,8 @@ export const persistentScoringService = {
 
       const skillsArray = ensureArray(candidate?.skills);
       const educationArray = ensureArray(candidate?.education);
+
+      console.log(`Found job score for candidate ${candidateId}: ${jobScore.match_score}`);
 
       return {
         skills: jobScore.skills_score,

@@ -1,19 +1,29 @@
 
 import { useState, useEffect } from 'react';
-import { useOptimizedScoring } from './use-optimized-scoring';
+import { persistentScoringService } from '@/services/scoring/persistentScoringService';
+import { useActiveJob } from '@/context/ActiveJobContext';
 import type { CandidateData } from '@/services/data/candidateService';
-import type { ContextualScore } from './use-optimized-scoring';
+
+export interface ContextualScore {
+  skills: number;
+  experience: number;
+  education: number;
+  profileCompleteness: number;
+  overall: number;
+  details: {
+    skillsCount: number;
+    experienceYears: number;
+    educationLevel: string;
+    completenessPercentage: number;
+  };
+  isJobSpecific: boolean;
+  matchContext?: string;
+}
 
 export const useCandidateScore = (candidate: CandidateData) => {
   const [score, setScore] = useState<ContextualScore | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  const { 
-    calculateContextualScore, 
-    getCachedScore, 
-    isScoreLoading,
-    isJobSpecific 
-  } = useOptimizedScoring();
+  const { activeJobOfferId, activeJobOfferTitle } = useActiveJob();
 
   useEffect(() => {
     if (!candidate.id) return;
@@ -21,35 +31,97 @@ export const useCandidateScore = (candidate: CandidateData) => {
     const loadScore = async () => {
       setIsLoading(true);
       
-      // Check cache first
-      const cachedScore = getCachedScore(candidate.id!);
-      if (cachedScore) {
-        setScore(cachedScore);
-        setIsLoading(false);
-        return;
-      }
-
-      // Calculate new score
       try {
-        const calculatedScore = await calculateContextualScore(candidate);
-        setScore(calculatedScore);
+        let scoreDetails = null;
+        
+        if (activeJobOfferId) {
+          // Get job-specific score
+          console.log(`Loading job score for candidate ${candidate.id} and job ${activeJobOfferId}`);
+          scoreDetails = await persistentScoringService.getCandidateJobScore(candidate.id, activeJobOfferId);
+          
+          if (scoreDetails) {
+            setScore({
+              ...scoreDetails,
+              isJobSpecific: true,
+              matchContext: activeJobOfferTitle ? `Score pour "${activeJobOfferTitle}"` : 'Score pour l\'offre sélectionnée'
+            });
+          } else {
+            // Calculate and store job score if it doesn't exist
+            console.log(`No job score found, calculating for candidate ${candidate.id}`);
+            await persistentScoringService.calculateAndStoreJobScore(candidate.id, activeJobOfferId);
+            scoreDetails = await persistentScoringService.getCandidateJobScore(candidate.id, activeJobOfferId);
+            
+            if (scoreDetails) {
+              setScore({
+                ...scoreDetails,
+                isJobSpecific: true,
+                matchContext: activeJobOfferTitle ? `Score pour "${activeJobOfferTitle}"` : 'Score pour l\'offre sélectionnée'
+              });
+            }
+          }
+        } else {
+          // Get general score from database first
+          console.log(`Loading general score for candidate ${candidate.id}`);
+          scoreDetails = await persistentScoringService.getCandidateGeneralScore(candidate.id);
+          
+          if (scoreDetails) {
+            setScore({
+              ...scoreDetails,
+              isJobSpecific: false,
+              matchContext: 'Score général de profil'
+            });
+          } else {
+            // Recalculate general score if it doesn't exist
+            console.log(`No general score found, recalculating for candidate ${candidate.id}`);
+            await persistentScoringService.recalculateGeneralScore(candidate.id);
+            scoreDetails = await persistentScoringService.getCandidateGeneralScore(candidate.id);
+            
+            if (scoreDetails) {
+              setScore({
+                ...scoreDetails,
+                isJobSpecific: false,
+                matchContext: 'Score général de profil'
+              });
+            }
+          }
+        }
+        
+        // Fallback if no score could be retrieved
+        if (!scoreDetails) {
+          console.warn(`Could not load score for candidate ${candidate.id}, using fallback`);
+          setScore({
+            skills: 0,
+            experience: 0,
+            education: 0,
+            profileCompleteness: 0,
+            overall: 0,
+            details: {
+              skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
+              experienceYears: candidate.years_experience || 0,
+              educationLevel: 'Non spécifié',
+              completenessPercentage: 0
+            },
+            isJobSpecific: !!activeJobOfferId,
+            matchContext: 'Score indisponible'
+          });
+        }
       } catch (error) {
-        console.error('Error calculating score:', error);
-        // Fallback score
+        console.error(`Error loading score for candidate ${candidate.id}:`, error);
+        // Fallback score in case of error
         setScore({
-          skills: 50,
-          experience: 50,
-          education: 50,
-          profileCompleteness: 50,
-          overall: 50,
+          skills: 0,
+          experience: 0,
+          education: 0,
+          profileCompleteness: 0,
+          overall: 0,
           details: {
             skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
             experienceYears: candidate.years_experience || 0,
             educationLevel: 'Non spécifié',
-            completenessPercentage: 50
+            completenessPercentage: 0
           },
-          isJobSpecific,
-          matchContext: 'Score de secours'
+          isJobSpecific: !!activeJobOfferId,
+          matchContext: 'Erreur de chargement'
         });
       } finally {
         setIsLoading(false);
@@ -57,11 +129,11 @@ export const useCandidateScore = (candidate: CandidateData) => {
     };
 
     loadScore();
-  }, [candidate, calculateContextualScore, getCachedScore, isJobSpecific]);
+  }, [candidate.id, activeJobOfferId, activeJobOfferTitle]);
 
   return {
     score,
-    isLoading: isLoading || isScoreLoading(candidate.id || ''),
-    isJobSpecific
+    isLoading,
+    isJobSpecific: !!activeJobOfferId
   };
 };
