@@ -31,7 +31,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     }
 
     try {
-      await candidateService.deleteCandidateById(candidate.id);
+      await candidateService.deleteCandidate(candidate.id);
       toast({
         title: "Candidat supprimé",
         description: "Le candidat a été supprimé avec succès.",
