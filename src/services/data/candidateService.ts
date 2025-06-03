@@ -98,9 +98,9 @@ const VALID_DETAILED_STATUSES = [
   'presentation_client', 'en_mission', 'refus', 'ancien_employe'
 ];
 
-// COMPLETELY REWRITTEN: More robust value extraction
-const simpleExtractValue = (field: any): string | undefined => {
-  console.log('🔍 Simple extracting field:', field, 'Type:', typeof field);
+// ULTRA-SIMPLE: New extraction function that handles all cases correctly
+const extractStringValue = (field: any): string | undefined => {
+  console.log('🔍 Ultra-simple extracting field:', field, 'Type:', typeof field);
   
   // If null or undefined, return undefined
   if (field === null || field === undefined) {
@@ -108,10 +108,11 @@ const simpleExtractValue = (field: any): string | undefined => {
     return undefined;
   }
   
-  // If it's already a string and not empty/undefined
+  // If it's a simple string and has content, return it
   if (typeof field === 'string') {
+    // If it's empty, "undefined", or "null" string, return undefined
     if (field === '' || field === 'undefined' || field === 'null') {
-      console.log('⚪ Field is empty string or "undefined"');
+      console.log('⚪ Field is empty string or string "undefined"');
       return undefined;
     }
     console.log('✅ Field is valid string:', field);
@@ -124,70 +125,27 @@ const simpleExtractValue = (field: any): string | undefined => {
     return String(field);
   }
   
-  // CRITICAL FIX: Better handling of object structures
-  if (typeof field === 'object' && !Array.isArray(field)) {
-    console.log('🔄 Field is object, checking structure:', field);
-    
-    // Check for the problematic _type: undefined structure
-    if (field.hasOwnProperty('_type') && field._type === 'undefined') {
-      console.log('⚠️ Found _type: undefined structure');
-      
-      // But check if the value property actually contains real data
-      if (field.hasOwnProperty('value') && 
-          field.value !== 'undefined' && 
-          field.value !== null && 
-          field.value !== '' && 
-          field.value !== undefined) {
-        console.log('✅ Found real data in _type:undefined object.value:', field.value);
-        return String(field.value);
-      }
-      
-      console.log('⚪ _type:undefined object has no real value');
-      return undefined;
-    }
-    
-    // Check for simple value property
-    if (field.hasOwnProperty('value')) {
-      const value = field.value;
-      if (value === null || value === undefined || value === 'undefined' || value === '') {
-        console.log('⚪ Object.value is empty');
-        return undefined;
-      }
-      console.log('✅ Found object.value:', value);
-      return String(value);
-    }
-    
-    console.log('⚠️ Object has no recognizable value structure');
-    return undefined;
-  }
-  
-  console.log('⚠️ Unknown field type, converting to string');
-  return String(field);
+  console.log('⚠️ Field has unexpected type, returning undefined');
+  return undefined;
 };
 
 // Helper function to safely extract number values
 const extractNumberValue = (field: any): number | undefined => {
   console.log('🔢 Extracting number from:', field);
   
-  if (!field || field === null || field === undefined) return undefined;
+  if (field === null || field === undefined) return undefined;
   if (typeof field === 'number') return field;
   
-  // Handle object structures
-  if (typeof field === 'object' && !Array.isArray(field)) {
-    if (field._type === 'undefined') return undefined;
-    if (field.hasOwnProperty('value')) {
-      const val = field.value;
-      if (val === null || val === undefined || val === 'undefined' || val === '') return undefined;
-      const parsed = parseInt(String(val), 10);
-      return isNaN(parsed) ? undefined : parsed;
-    }
+  if (typeof field === 'string') {
+    if (field === '' || field === 'undefined' || field === 'null') return undefined;
+    const parsed = parseInt(field, 10);
+    return isNaN(parsed) ? undefined : parsed;
   }
   
-  const parsed = parseInt(String(field), 10);
-  return isNaN(parsed) ? undefined : parsed;
+  return undefined;
 };
 
-// CRITICAL FIX: Completely rewrite the formatCandidateData function
+// SIMPLIFIED: Completely rewrite the formatCandidateData function
 const formatCandidateData = (candidate: any): CandidateData => {
   if (!candidate) return null as unknown as CandidateData;
   
@@ -196,23 +154,16 @@ const formatCandidateData = (candidate: any): CandidateData => {
   // Convert JSON fields to arrays if they're strings or ensure they're arrays
   const ensureArray = (field: Json | null): any[] => {
     if (!field) return [];
-    
-    // Handle the _type: undefined structure for arrays
-    if (typeof field === 'object' && !Array.isArray(field) && field._type === 'undefined') {
-      if (field.hasOwnProperty('value') && Array.isArray(field.value)) {
-        return field.value;
-      }
-      return [];
-    }
-    
+    if (Array.isArray(field)) return field;
     if (typeof field === 'string') {
       try {
-        return JSON.parse(field);
+        const parsed = JSON.parse(field);
+        return Array.isArray(parsed) ? parsed : [field];
       } catch (e) {
         return [field];
       }
     }
-    return Array.isArray(field) ? field : [field];
+    return [field];
   };
 
   const formatted = {
@@ -221,16 +172,16 @@ const formatCandidateData = (candidate: any): CandidateData => {
     resume_id: candidate.resume_id,
     first_name: candidate.first_name,
     last_name: candidate.last_name,
-    email: simpleExtractValue(candidate.email),
-    phone: simpleExtractValue(candidate.phone),
-    position: simpleExtractValue(candidate.position),
+    email: extractStringValue(candidate.email),
+    phone: extractStringValue(candidate.phone),
+    position: extractStringValue(candidate.position),
     years_experience: extractNumberValue(candidate.years_experience),
-    location: simpleExtractValue(candidate.location),
+    location: extractStringValue(candidate.location),
     skills: ensureArray(candidate.skills),
     score: extractNumberValue(candidate.score),
-    status: simpleExtractValue(candidate.status) || 'pending',
-    detailed_status: simpleExtractValue(candidate.detailed_status),
-    company: simpleExtractValue(candidate.company),
+    status: extractStringValue(candidate.status) || 'pending',
+    detailed_status: extractStringValue(candidate.detailed_status),
+    company: extractStringValue(candidate.company),
     created_at: candidate.created_at,
     updated_at: candidate.updated_at,
     experiences: ensureArray(candidate.experiences),
@@ -238,19 +189,19 @@ const formatCandidateData = (candidate: any): CandidateData => {
     certifications: ensureArray(candidate.certifications),
     languages: ensureArray(candidate.languages),
     publications: ensureArray(candidate.publications),
-    interests: simpleExtractValue(candidate.interests),
+    interests: extractStringValue(candidate.interests),
     professional_references: ensureArray(candidate.professional_references),
-    availability: simpleExtractValue(candidate.availability),
-    salary_expectations: simpleExtractValue(candidate.salary_expectations),
-    mobility: simpleExtractValue(candidate.mobility),
-    contract_type: simpleExtractValue(candidate.contract_type),
-    remote_preference: simpleExtractValue(candidate.remote_preference),
-    travel_willingness: simpleExtractValue(candidate.travel_willingness),
+    availability: extractStringValue(candidate.availability),
+    salary_expectations: extractStringValue(candidate.salary_expectations),
+    mobility: extractStringValue(candidate.mobility),
+    contract_type: extractStringValue(candidate.contract_type),
+    remote_preference: extractStringValue(candidate.remote_preference),
+    travel_willingness: extractStringValue(candidate.travel_willingness),
     professional_networks: ensureArray(candidate.professional_networks),
     continuous_training: ensureArray(candidate.continuous_training),
-    career_objectives: simpleExtractValue(candidate.career_objectives),
-    professional_values: simpleExtractValue(candidate.professional_values),
-    work_authorization: simpleExtractValue(candidate.work_authorization),
+    career_objectives: extractStringValue(candidate.career_objectives),
+    professional_values: extractStringValue(candidate.professional_values),
+    work_authorization: extractStringValue(candidate.work_authorization),
     special_permits: ensureArray(candidate.special_permits),
     industries: ensureArray(candidate.industries),
     projects: ensureArray(candidate.projects),
@@ -264,8 +215,6 @@ const formatCandidateData = (candidate: any): CandidateData => {
   console.log('🚗 Mobility value specifically:', formatted.mobility);
   console.log('💰 Salary expectations value specifically:', formatted.salary_expectations);
   console.log('📝 Contract type value specifically:', formatted.contract_type);
-  console.log('📞 Phone value specifically:', formatted.phone);
-  console.log('📧 Email value specifically:', formatted.email);
 
   return formatted;
 };
@@ -383,6 +332,7 @@ export const candidateService = {
     }
   },
   
+  // ... keep existing code (deleteCandidate, updateCandidateStatus functions)
   deleteCandidate: async (candidateId: string, deleteResume: boolean = false): Promise<boolean> => {
     try {
       let resumeId: string | null = null;
