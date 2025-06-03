@@ -16,7 +16,7 @@ export const CANDIDATE_STATUS_LABELS: Record<string, string> = {
 export const CANDIDATE_STATUSES = Object.keys(CANDIDATE_STATUS_LABELS);
 
 /**
- * Met à jour le statut d'un candidat avec fallback robuste
+ * Met à jour le statut d'un candidat en utilisant la fonction PostgreSQL sécurisée
  */
 export const updateCandidateStatus = async (candidateId: string, status: string): Promise<boolean> => {
   try {
@@ -27,60 +27,24 @@ export const updateCandidateStatus = async (candidateId: string, status: string)
       throw new Error(`Statut invalide: ${status}`);
     }
     
-    // Essayer d'abord l'Edge Function
-    try {
-      console.log('Trying Edge Function approach...');
-      const { data, error } = await supabase.functions.invoke('update-candidate-status-secure', {
-        body: {
-          candidate_id: candidateId,
-          detailed_status: status
-        }
-      });
-      
-      if (error) {
-        console.warn('Edge Function failed, trying RPC fallback:', error);
-        throw new Error('Edge Function failed');
-      }
-      
-      if (data?.success) {
-        console.log('Edge Function update successful');
-        return true;
-      }
-    } catch (edgeFunctionError) {
-      console.warn('Edge Function error, using RPC fallback:', edgeFunctionError);
-    }
-    
-    // Fallback vers la fonction RPC PostgreSQL
-    console.log('Using RPC fallback...');
-    const { data: rpcData, error: rpcError } = await supabase.rpc('update_candidate_status_secure', {
+    // Utiliser la nouvelle fonction PostgreSQL sécurisée
+    console.log('Using secure PostgreSQL function update_candidate_status_direct...');
+    const { data: rpcData, error: rpcError } = await supabase.rpc('update_candidate_status_direct', {
       p_candidate_id: candidateId,
       p_detailed_status: status
     });
     
     if (rpcError) {
-      console.error('RPC Error updating candidate status:', rpcError);
-      throw new Error(`Erreur RPC lors de la mise à jour du statut: ${rpcError.message}`);
+      console.error('PostgreSQL function error:', rpcError);
+      throw new Error(`Erreur lors de la mise à jour du statut: ${rpcError.message}`);
     }
     
-    if (rpcData) {
-      console.log('RPC status update successful');
+    if (rpcData === true) {
+      console.log('Status update successful via PostgreSQL function');
       return true;
     }
     
-    // Si tout échoue, essayer une mise à jour directe
-    console.log('Trying direct update as last resort...');
-    const { error: directError } = await supabase
-      .from('candidates')
-      .update({ detailed_status: status, updated_at: new Date().toISOString() })
-      .eq('id', candidateId);
-    
-    if (directError) {
-      console.error('Direct update error:', directError);
-      throw new Error(`Erreur lors de la mise à jour directe: ${directError.message}`);
-    }
-    
-    console.log('Direct update successful');
-    return true;
+    throw new Error('La mise à jour du statut a échoué');
     
   } catch (error: any) {
     console.error('Candidate status update error:', error);
@@ -89,55 +53,28 @@ export const updateCandidateStatus = async (candidateId: string, status: string)
 };
 
 /**
- * Récupère le statut actuel d'un candidat avec fallback robuste
+ * Récupère le statut actuel d'un candidat en utilisant la fonction PostgreSQL sécurisée
  */
 export const getCandidateStatus = async (candidateId: string): Promise<string | null> => {
   try {
     console.log('Getting candidate status for:', candidateId);
     
-    // Essayer d'abord l'Edge Function
-    try {
-      console.log('Trying Edge Function for status retrieval...');
-      const { data, error } = await supabase.functions.invoke('get-candidate-status-secure', {
-        body: {
-          candidate_id: candidateId
-        }
-      });
-        
-      if (!error && data?.status) {
-        console.log('Edge Function status retrieval successful:', data.status);
-        return data.status;
-      }
-    } catch (edgeFunctionError) {
-      console.warn('Edge Function error, using RPC fallback:', edgeFunctionError);
-    }
-    
-    // Fallback vers la fonction RPC PostgreSQL
-    console.log('Using RPC fallback for status retrieval...');
-    const { data: rpcData, error: rpcError } = await supabase.rpc('get_candidate_status_secure', {
+    // Utiliser la nouvelle fonction PostgreSQL sécurisée
+    console.log('Using secure PostgreSQL function get_candidate_status_direct...');
+    const { data: rpcData, error: rpcError } = await supabase.rpc('get_candidate_status_direct', {
       p_candidate_id: candidateId
     });
     
     if (!rpcError && rpcData) {
-      console.log('RPC status retrieval successful:', rpcData);
+      console.log('Status retrieval successful:', rpcData);
       return rpcData;
     }
     
-    // Si tout échoue, récupération directe
-    console.log('Trying direct status retrieval...');
-    const { data: directData, error: directError } = await supabase
-      .from('candidates')
-      .select('detailed_status')
-      .eq('id', candidateId)
-      .single();
-    
-    if (!directError && directData) {
-      const status = directData.detailed_status || 'initial';
-      console.log('Direct status retrieval successful:', status);
-      return status;
+    if (rpcError) {
+      console.error('PostgreSQL function error:', rpcError);
     }
     
-    console.warn('All status retrieval methods failed, returning initial');
+    console.warn('Status retrieval failed, returning initial');
     return 'initial';
     
   } catch (error) {

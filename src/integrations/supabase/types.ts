@@ -610,7 +610,7 @@ export type Database = {
         Args: { p_candidate_id: string }
         Returns: string
       }
-      get_candidate_status_secure: {
+      get_candidate_status_direct: {
         Args: { p_candidate_id: string }
         Returns: string
       }
@@ -816,7 +816,7 @@ export type Database = {
         Args: { p_candidate_id: string; p_detailed_status: string }
         Returns: boolean
       }
-      update_candidate_status_secure: {
+      update_candidate_status_direct: {
         Args: { p_candidate_id: string; p_detailed_status: string }
         Returns: boolean
       }
