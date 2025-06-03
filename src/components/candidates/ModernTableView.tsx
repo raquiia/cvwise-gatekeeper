@@ -4,7 +4,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Progress } from '@/components/ui/progress';
 import { 
   MapPin, 
   Calendar, 
@@ -19,7 +18,8 @@ import {
   Mail,
   Phone,
   ChevronRight,
-  MoreHorizontal
+  MoreHorizontal,
+  Building
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CandidateData } from '@/services/data/candidateService';
@@ -78,47 +78,47 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
     
     const statusConfig = {
       initial: { 
-        color: 'bg-gray-100 text-gray-800 border-gray-200', 
+        color: 'bg-gray-100 text-gray-700 border-gray-200', 
         icon: Clock, 
         pulse: false 
       },
       contact: { 
-        color: 'bg-blue-100 text-blue-800 border-blue-200', 
+        color: 'bg-blue-100 text-blue-700 border-blue-200', 
         icon: Phone, 
-        pulse: true 
+        pulse: false 
       },
       prequalification: { 
-        color: 'bg-purple-100 text-purple-800 border-purple-200', 
+        color: 'bg-purple-100 text-purple-700 border-purple-200', 
         icon: Award, 
-        pulse: true 
+        pulse: false 
       },
       ec1: { 
-        color: 'bg-orange-100 text-orange-800 border-orange-200', 
+        color: 'bg-orange-100 text-orange-700 border-orange-200', 
         icon: Star, 
-        pulse: true 
+        pulse: false 
       },
       ec2: { 
-        color: 'bg-amber-100 text-amber-800 border-amber-200', 
+        color: 'bg-amber-100 text-amber-700 border-amber-200', 
         icon: Star, 
-        pulse: true 
+        pulse: false 
       },
       presentation_client: { 
-        color: 'bg-indigo-100 text-indigo-800 border-indigo-200', 
+        color: 'bg-indigo-100 text-indigo-700 border-indigo-200', 
         icon: Briefcase, 
-        pulse: true 
+        pulse: false 
       },
       en_mission: { 
-        color: 'bg-green-100 text-green-800 border-green-200', 
+        color: 'bg-green-100 text-green-700 border-green-200', 
         icon: TrendingUp, 
         pulse: false 
       },
       refus: { 
-        color: 'bg-red-100 text-red-800 border-red-200', 
+        color: 'bg-red-100 text-red-700 border-red-200', 
         icon: Clock, 
         pulse: false 
       },
       ancien_employe: { 
-        color: 'bg-emerald-100 text-emerald-800 border-emerald-200', 
+        color: 'bg-emerald-100 text-emerald-700 border-emerald-200', 
         icon: Award, 
         pulse: false 
       },
@@ -132,8 +132,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         variant="outline" 
         className={cn(
           config.color,
-          'border text-xs font-medium flex items-center gap-1 transition-all duration-300',
-          config.pulse && 'animate-pulse'
+          'border text-xs font-medium flex items-center gap-1.5 px-2 py-1'
         )}
       >
         <Icon size={10} />
@@ -142,16 +141,26 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
     );
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+  const getScoreBadge = (score: number) => {
+    let bgColor = 'bg-red-100 text-red-700 border-red-200';
+    let label = 'Faible';
+    
+    if (score >= 80) {
+      bgColor = 'bg-green-100 text-green-700 border-green-200';
+      label = 'Excellent';
+    } else if (score >= 60) {
+      bgColor = 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      label = 'Bon';
+    }
 
-  const getScoreGradient = (score: number) => {
-    if (score >= 80) return 'from-green-500 to-emerald-500';
-    if (score >= 60) return 'from-yellow-500 to-orange-500';
-    return 'from-red-500 to-pink-500';
+    return (
+      <Badge 
+        variant="outline" 
+        className={cn(bgColor, 'border text-xs font-semibold px-2 py-1')}
+      >
+        {score}/100
+      </Badge>
+    );
   };
 
   const handleDelete = async (candidateId: string) => {
@@ -210,15 +219,14 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         <TableHeader>
           <TableRow className="border-b border-purple-200/30 bg-gradient-to-r from-purple-50/50 to-transparent dark:from-purple-950/20 hover:bg-purple-50/50 dark:hover:bg-purple-950/20">
             <TableHead className="w-12"></TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand">Candidat</TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand">Score</TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand">Statut</TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand">Poste</TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand hidden lg:table-cell">Localisation</TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand hidden xl:table-cell">Expérience</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand w-80">Candidat</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand w-24">Score</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand w-32">Statut</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand w-40">Poste recherché</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand hidden xl:table-cell w-24">Expérience</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand">Compétences</TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand hidden md:table-cell">Dernière MAJ</TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand text-center">Actions</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand hidden md:table-cell w-32">Dernière MAJ</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand text-center w-28">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -232,18 +240,16 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
               <TableRow
                 key={candidate.id || `temp-${Math.random()}`}
                 className={cn(
-                  "group transition-all duration-300 border-b border-purple-100/30 dark:border-purple-800/20",
-                  "hover:bg-gradient-to-r hover:from-purple-50/50 hover:to-transparent dark:hover:from-purple-950/20 dark:hover:to-transparent",
-                  "hover:shadow-lg hover:shadow-purple-500/10",
-                  isSelected && "bg-purple-50/70 dark:bg-purple-950/30 shadow-md shadow-purple-500/20",
-                  isHovered && "scale-[1.01] transform-gpu"
+                  "group transition-all duration-200 border-b border-purple-100/30 dark:border-purple-800/20",
+                  "hover:bg-gradient-to-r hover:from-purple-50/30 hover:to-transparent dark:hover:from-purple-950/15 dark:hover:to-transparent",
+                  isSelected && "bg-purple-50/50 dark:bg-purple-950/20",
+                  "cursor-pointer"
                 )}
                 onMouseEnter={() => setHoveredRow(candidate.id!)}
                 onMouseLeave={() => setHoveredRow(null)}
-                style={{ animationDelay: `${index * 50}ms` }}
               >
                 {/* Checkbox */}
-                <TableCell>
+                <TableCell className="py-3">
                   <input
                     type="checkbox"
                     checked={isSelected}
@@ -253,13 +259,13 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                 </TableCell>
 
                 {/* Candidat */}
-                <TableCell>
+                <TableCell className="py-3">
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <Avatar className="w-12 h-12 ring-2 ring-white/50 shadow-lg transition-transform duration-200 group-hover:scale-110">
+                      <Avatar className="w-10 h-10 ring-2 ring-white/50 shadow-sm">
                         <AvatarFallback className={cn(
                           getAvatarColor(candidate.first_name || '', candidate.last_name || ''),
-                          "text-white text-sm font-bold shadow-inner"
+                          "text-white text-sm font-semibold"
                         )}>
                           {candidate.first_name?.[0]}{candidate.last_name?.[0]}
                         </AvatarFallback>
@@ -267,123 +273,116 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                       
                       {/* Badge "nouveau" si récent */}
                       {new Date(candidate.created_at || '').getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000 && (
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                       )}
                     </div>
                     
                     <div className="min-w-0 flex-1">
                       <Link 
                         to={`/candidates/${candidate.id}`}
-                        className="font-semibold text-navy-dark dark:text-sand hover:text-purple-700 dark:hover:text-purple-300 transition-colors duration-200 block truncate"
+                        className="font-semibold text-navy-dark dark:text-sand hover:text-purple-700 dark:hover:text-purple-300 transition-colors duration-200 block"
                       >
                         {candidate.first_name} {candidate.last_name}
                       </Link>
+                      
+                      {/* Email */}
                       {candidate.email && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Mail size={12} />
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
+                          <Mail size={11} />
                           <span className="truncate">{candidate.email}</span>
                         </div>
                       )}
+                      
+                      {/* Entreprise et localisation sur la même ligne */}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                        {candidate.company && (
+                          <div className="flex items-center gap-1">
+                            <Building size={11} />
+                            <span className="font-medium">{candidate.company}</span>
+                          </div>
+                        )}
+                        {candidate.company && candidate.location && (
+                          <span>•</span>
+                        )}
+                        {candidate.location && (
+                          <div className="flex items-center gap-1">
+                            <MapPin size={11} />
+                            <span>{candidate.location}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </TableCell>
 
-                {/* Score avec cercle de progression */}
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="relative w-12 h-12">
-                      <Progress 
-                        value={scoreBreakdown.overall} 
-                        className="h-2 w-full rotate-90 origin-center scale-150"
-                      />
-                      <div className={cn(
-                        "absolute inset-0 flex items-center justify-center text-sm font-bold",
-                        getScoreColor(scoreBreakdown.overall)
-                      )}>
-                        {scoreBreakdown.overall}
-                      </div>
-                    </div>
-                  </div>
+                {/* Score simplifié */}
+                <TableCell className="py-3">
+                  {getScoreBadge(scoreBreakdown.overall)}
                 </TableCell>
 
                 {/* Statut */}
-                <TableCell>
+                <TableCell className="py-3">
                   {getStatusBadge(candidate.detailed_status || 'initial')}
                 </TableCell>
 
-                {/* Poste */}
-                <TableCell>
-                  <div className="space-y-1">
-                    <div className="font-medium text-sm">
-                      {candidate.position || 'Poste non spécifié'}
-                    </div>
-                    {candidate.company && (
-                      <div className="text-xs text-muted-foreground">
-                        {candidate.company}
-                      </div>
-                    )}
-                  </div>
-                </TableCell>
-
-                {/* Localisation */}
-                <TableCell className="hidden lg:table-cell">
-                  <div className="flex items-center gap-1 text-sm">
-                    <MapPin size={12} className="text-muted-foreground flex-shrink-0" />
-                    <span className="truncate">{candidate.location || 'Non spécifiée'}</span>
+                {/* Poste recherché */}
+                <TableCell className="py-3">
+                  <div className="text-sm font-medium text-navy-dark dark:text-sand">
+                    {candidate.position || 'Poste non spécifié'}
                   </div>
                 </TableCell>
 
                 {/* Expérience */}
-                <TableCell className="hidden xl:table-cell">
-                  <div className="flex items-center gap-1 text-sm">
-                    <Calendar size={12} className="text-muted-foreground" />
+                <TableCell className="hidden xl:table-cell py-3">
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Calendar size={12} />
                     <span>{candidate.years_experience ? `${candidate.years_experience} ans` : 'N/A'}</span>
                   </div>
                 </TableCell>
 
                 {/* Compétences */}
-                <TableCell>
+                <TableCell className="py-3">
                   <div className="flex flex-wrap gap-1 max-w-xs">
-                    {skills.slice(0, 3).map((skill, idx) => (
+                    {skills.slice(0, 2).map((skill, idx) => (
                       <Badge 
                         key={idx} 
                         variant="outline" 
-                        className="text-xs bg-white/50 dark:bg-navy-dark/50 border-purple-200/50 hover:bg-purple-50"
+                        className="text-xs bg-white/60 dark:bg-navy-dark/60 border-purple-200/40 text-muted-foreground px-1.5 py-0.5"
                       >
                         {skill}
                       </Badge>
                     ))}
-                    {skills.length > 3 && (
+                    {skills.length > 2 && (
                       <Badge 
                         variant="secondary" 
-                        className="text-xs bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300"
+                        className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-1.5 py-0.5"
                       >
-                        +{skills.length - 3}
+                        +{skills.length - 2}
                       </Badge>
                     )}
                   </div>
                 </TableCell>
 
                 {/* Dernière MAJ */}
-                <TableCell className="hidden md:table-cell">
-                  <div className="text-sm text-muted-foreground">
+                <TableCell className="hidden md:table-cell py-3">
+                  <div className="text-xs text-muted-foreground">
                     {formatDate(candidate.updated_at || candidate.created_at || '')}
                   </div>
                 </TableCell>
 
                 {/* Actions */}
-                <TableCell>
+                <TableCell className="py-3">
                   <div className={cn(
-                    "flex items-center justify-center gap-1 transition-all duration-300",
-                    isHovered ? "opacity-100 translate-x-0" : "opacity-60 translate-x-1"
+                    "flex items-center justify-center gap-1 transition-all duration-200",
+                    isHovered ? "opacity-100" : "opacity-60"
                   )}>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => onViewCandidate(candidate.id!)}
-                      className="h-8 w-8 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                      className="h-7 w-7 p-0 hover:bg-blue-100 dark:hover:bg-blue-900/30"
                     >
-                      <Eye size={14} />
+                      <Eye size={13} />
                     </Button>
                     
                     <DropdownMenu>
@@ -391,9 +390,9 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 hover:bg-purple-100 dark:hover:bg-purple-900/30"
+                          className="h-7 w-7 p-0 hover:bg-purple-100 dark:hover:bg-purple-900/30"
                         >
-                          <MoreHorizontal size={14} />
+                          <MoreHorizontal size={13} />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-md border-purple-100/50 shadow-lg">
