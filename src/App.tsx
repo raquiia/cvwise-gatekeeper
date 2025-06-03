@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
+import { ActiveJobProvider } from "./context/ActiveJobContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -64,83 +65,85 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => (
   <TooltipProvider>
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/registration-pending" element={<RegistrationPending />} />
-      
-      {/* Protected routes */}
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      } />
-      <Route path="/candidates" element={
-        <ProtectedRoute>
-          <Candidates />
-        </ProtectedRoute>
-      } />
-      <Route path="/candidates/:candidateId" element={
-        <ProtectedRoute>
-          <CandidateDetail />
-        </ProtectedRoute>
-      } />
-      <Route path="/candidates/:candidateId/job-match" element={
-        <ProtectedRoute>
-          <CandidateDetail />
-        </ProtectedRoute>
-      } />
-      <Route path="/resumes" element={
-        <ProtectedRoute>
-          <Resumes />
-        </ProtectedRoute>
-      } />
-      <Route path="/resumes/upload" element={
-        <ProtectedRoute>
-          <ResumeUpload />
-        </ProtectedRoute>
-      } />
-      
-      {/* Job offer routes */}
-      <Route path="/job-offers" element={
-        <ProtectedRoute>
-          <JobOffers />
-        </ProtectedRoute>
-      } />
-      <Route path="/job-offers/create" element={
-        <ProtectedRoute>
-          <JobOfferCreate />
-        </ProtectedRoute>
-      } />
-      <Route path="/job-offers/:jobOfferId" element={
-        <ProtectedRoute>
-          <JobOfferDetail />
-        </ProtectedRoute>
-      } />
-      <Route path="/job-offers/:jobOfferId/edit" element={
-        <ProtectedRoute>
-          <JobOfferEdit />
-        </ProtectedRoute>
-      } />
-      
-      {/* Admin routes - always accessible for authenticated users */}
-      <Route path="/admin" element={
-        <AdminRoute>
-          <Admin />
-        </AdminRoute>
-      } />
-      <Route path="/admin/users" element={
-        <AdminRoute>
-          <AllUsers />
-        </AdminRoute>
-      } />
+    <ActiveJobProvider>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/registration-pending" element={<RegistrationPending />} />
+        
+        {/* Protected routes */}
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/candidates" element={
+          <ProtectedRoute>
+            <Candidates />
+          </ProtectedRoute>
+        } />
+        <Route path="/candidates/:candidateId" element={
+          <ProtectedRoute>
+            <CandidateDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/candidates/:candidateId/job-match" element={
+          <ProtectedRoute>
+            <CandidateDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/resumes" element={
+          <ProtectedRoute>
+            <Resumes />
+          </ProtectedRoute>
+        } />
+        <Route path="/resumes/upload" element={
+          <ProtectedRoute>
+            <ResumeUpload />
+          </ProtectedRoute>
+        } />
+        
+        {/* Job offer routes */}
+        <Route path="/job-offers" element={
+          <ProtectedRoute>
+            <JobOffers />
+          </ProtectedRoute>
+        } />
+        <Route path="/job-offers/create" element={
+          <ProtectedRoute>
+            <JobOfferCreate />
+          </ProtectedRoute>
+        } />
+        <Route path="/job-offers/:jobOfferId" element={
+          <ProtectedRoute>
+            <JobOfferDetail />
+          </ProtectedRoute>
+        } />
+        <Route path="/job-offers/:jobOfferId/edit" element={
+          <ProtectedRoute>
+            <JobOfferEdit />
+          </ProtectedRoute>
+        } />
+        
+        {/* Admin routes - always accessible for authenticated users */}
+        <Route path="/admin" element={
+          <AdminRoute>
+            <Admin />
+          </AdminRoute>
+        } />
+        <Route path="/admin/users" element={
+          <AdminRoute>
+            <AllUsers />
+          </AdminRoute>
+        } />
 
-      {/* Public routes */}
-      <Route path="/usecases" element={<UseCases />} />
-      
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        {/* Public routes */}
+        <Route path="/usecases" element={<UseCases />} />
+        
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </ActiveJobProvider>
     <Toaster />
     <Sonner />
   </TooltipProvider>
