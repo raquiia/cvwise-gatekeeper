@@ -61,6 +61,61 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
     return colors[nameHash % colors.length];
   };
 
+  // Function to format company name with line breaks for long names
+  const formatCompanyName = (companyName: string) => {
+    if (!companyName) return null;
+    
+    // If company name is longer than 20 characters, try to break it at logical points
+    if (companyName.length > 20) {
+      // Look for common break points like spaces, hyphens, or uppercase letters
+      const words = companyName.split(/(\s+|-|(?=[A-Z]))/);
+      if (words.length > 1) {
+        // Split into two lines if possible
+        const midPoint = Math.ceil(words.length / 2);
+        const firstLine = words.slice(0, midPoint).join('');
+        const secondLine = words.slice(midPoint).join('');
+        
+        return (
+          <div className="text-sm font-medium text-navy-dark dark:text-sand">
+            <div className="truncate">{firstLine}</div>
+            <div className="truncate text-xs text-muted-foreground">{secondLine}</div>
+          </div>
+        );
+      }
+    }
+    
+    return (
+      <div className="text-sm font-medium text-navy-dark dark:text-sand truncate">
+        {companyName}
+      </div>
+    );
+  };
+
+  // Function to extract city and country from location
+  const formatLocation = (location: string) => {
+    if (!location) return null;
+    
+    // Try to extract city and country from common location formats
+    // Examples: "Paris, France", "New York, NY, USA", "London, UK"
+    const parts = location.split(',').map(part => part.trim());
+    
+    if (parts.length >= 2) {
+      // Take the first part as city and last part as country
+      const city = parts[0];
+      const country = parts[parts.length - 1];
+      
+      // If there are 3 parts and the middle one looks like a state code (2 letters), use the last one
+      if (parts.length === 3 && parts[1].length === 2) {
+        return `${city}, ${country}`;
+      }
+      
+      return `${city}, ${country}`;
+    }
+    
+    // If only one part, return as is (might be just a city or country)
+    return location;
+  };
+
   const getStatusBadge = (status: string) => {
     const statusLabel = CANDIDATE_STATUS_LABELS[status] || status;
     
@@ -207,10 +262,11 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         <TableHeader>
           <TableRow className="border-b border-purple-200/30 bg-gradient-to-r from-purple-50/50 to-transparent dark:from-purple-950/20 hover:bg-purple-50/50 dark:hover:bg-purple-950/20">
             <TableHead className="w-12"></TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand w-80">Candidat</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand w-64">Candidat</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-24">Score</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-32">Statut</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-48">Entreprise actuelle</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand w-32">Localisation</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-40">Poste recherché</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand hidden xl:table-cell w-24">Expérience</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand">Compétences</TableHead>
@@ -281,14 +337,6 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                           <span className="truncate">{candidate.email}</span>
                         </div>
                       )}
-                      
-                      {/* Localisation */}
-                      {candidate.location && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                          <MapPin size={11} />
-                          <span>{candidate.location}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </TableCell>
@@ -306,10 +354,22 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                 {/* Entreprise actuelle */}
                 <TableCell className="py-3">
                   {candidate.company ? (
+                    <div className="flex items-start gap-2">
+                      <Building size={14} className="text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+                      {formatCompanyName(candidate.company)}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground italic">Non renseignée</span>
+                  )}
+                </TableCell>
+
+                {/* Localisation */}
+                <TableCell className="py-3">
+                  {candidate.location ? (
                     <div className="flex items-center gap-2">
-                      <Building size={14} className="text-purple-600 dark:text-purple-400 flex-shrink-0" />
-                      <span className="text-sm font-medium text-navy-dark dark:text-sand truncate">
-                        {candidate.company}
+                      <MapPin size={12} className="text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                      <span className="text-sm text-navy-dark dark:text-sand">
+                        {formatLocation(candidate.location)}
                       </span>
                     </div>
                   ) : (
