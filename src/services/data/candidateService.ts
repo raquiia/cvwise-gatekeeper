@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 import { extractFieldValue, extractNumberValue, extractArrayValue } from '@/components/candidates/edit/dataExtractionUtils';
@@ -200,15 +201,17 @@ export const formatCandidateData = (candidate: any): CandidateData => {
   
   console.log('🚀 RAW CANDIDATE DATA FROM DATABASE:', JSON.stringify(candidate, null, 2));
   
-  // CORRECTION CRITIQUE: Ne pas utiliser extractFieldValue sur detailed_status car c'est déjà une chaîne simple
+  // CORRECTION CRITIQUE: Préserver le vrai statut de la base de données
   const rawDetailedStatus = candidate.detailed_status;
-  let detailedStatus = 'contact'; // CHANGEMENT: valeur par défaut est maintenant 'contact'
+  let detailedStatus: string;
   
   if (rawDetailedStatus && typeof rawDetailedStatus === 'string' && rawDetailedStatus.trim() !== '') {
     detailedStatus = rawDetailedStatus.trim();
-    console.log('📍 Using direct detailed_status from DB:', detailedStatus);
+    console.log('📍 Using actual detailed_status from DB:', detailedStatus);
   } else {
-    console.log('📍 No valid detailed_status, using default:', detailedStatus);
+    // Seulement utiliser 'contact' comme défaut si vraiment aucun statut n'existe
+    detailedStatus = 'contact';
+    console.log('📍 No detailed_status found, using default contact');
   }
   
   const formatted = {
@@ -225,7 +228,7 @@ export const formatCandidateData = (candidate: any): CandidateData => {
     skills: extractArrayValue(candidate.skills),
     score: extractNumberValue(candidate.score),
     status: extractFieldValue(candidate.status) || 'pending',
-    detailed_status: detailedStatus, // CORRECTION: utiliser la valeur directe
+    detailed_status: detailedStatus, // CORRECTION: utiliser le vrai statut préservé
     company: extractFieldValue(candidate.company),
     created_at: candidate.created_at,
     updated_at: candidate.updated_at,

@@ -120,26 +120,15 @@ const CandidatesContent = () => {
           new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
         );
         
-        // CORRECTION: Ne pas forcer le statut à "initial", utiliser le statut réel de la DB
-        const candidatesWithCorrectStatus = sortedCandidates.map(candidate => {
-          // Préserver le statut exact tel qu'il est stocké dans la base de données
-          const status = candidate.detailed_status || 'initial';
-          
-          console.log(`Candidate ${candidate.id} (${candidate.first_name} ${candidate.last_name}) has DB status: "${status}"`);
-          
-          // Si le statut n'est pas dans notre liste, on le garde quand même mais on log un warning
-          if (!CANDIDATE_STATUSES.includes(status) && status !== 'initial') {
-            console.warn(`Unknown status "${status}" for candidate ${candidate.id}, keeping as-is`);
-          }
-          
-          return {
-            ...candidate,
-            detailed_status: status // Garder le statut exact de la DB
-          };
+        // CORRECTION: Ne pas modifier les statuts, utiliser les vraies données de la DB
+        console.log('📊 Candidates with their real statuses:');
+        sortedCandidates.forEach(candidate => {
+          const status = candidate.detailed_status || 'contact';
+          console.log(`  ${candidate.first_name} ${candidate.last_name}: "${status}"`);
         });
         
-        setCandidates(candidatesWithCorrectStatus);
-        setFilteredCandidates(candidatesWithCorrectStatus);
+        setCandidates(sortedCandidates);
+        setFilteredCandidates(sortedCandidates);
       } else {
         console.error("Candidates data is not an array:", data);
         setCandidates([]);
