@@ -1,8 +1,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { persistentScoringService, type ScoreDetails } from '@/services/scoring/persistentScoringService';
+import { scoreRecalculationService } from '@/services/scoring/scoreRecalculationService';
 import type { CandidateData } from '@/services/data/candidateService';
 import { useActiveJob } from '@/context/ActiveJobContext';
+import { useToast } from '@/hooks/use-toast';
 
 export interface ContextualScore extends ScoreDetails {
   isJobSpecific: boolean;
@@ -21,6 +23,8 @@ export const useOptimizedScoring = () => {
   const { activeJobOfferId, activeJobOfferTitle } = useActiveJob();
   const [scoreCache, setScoreCache] = useState<ScoreCache>({});
   const [loadingScores, setLoadingScores] = useState<Set<string>>(new Set());
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const { toast } = useToast();
   
   const calculatingRef = useRef<Set<string>>(new Set());
   
@@ -90,21 +94,27 @@ export const useOptimizedScoring = () => {
             matchContext: 'Score général de profil'
           };
         } else {
-          // Fallback if no score in database
+          // Recalculate if no score exists
+          console.log(`No general score found for candidate ${candidateId}, recalculating...`);
+          await persistentScoringService.recalculateGeneralScore(candidateId);
+          scoreDetails = await persistentScoringService.getCandidateGeneralScore(candidateId);
+          
           contextualScore = {
-            skills: 50,
-            experience: 50,
-            education: 50,
-            profileCompleteness: 50,
-            overall: 50,
-            details: {
-              skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
-              experienceYears: candidate.years_experience || 0,
-              educationLevel: 'Non spécifié',
-              completenessPercentage: 50
-            },
+            ...(scoreDetails || {
+              skills: 50,
+              experience: 50,
+              education: 50,
+              profileCompleteness: 50,
+              overall: 50,
+              details: {
+                skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
+                experienceYears: candidate.years_experience || 0,
+                educationLevel: 'Non spécifié',
+                completenessPercentage: 50
+              }
+            }),
             isJobSpecific: false,
-            matchContext: 'Score général (calculé)'
+            matchContext: 'Score général de profil'
           };
         }
       } else {
@@ -119,24 +129,28 @@ export const useOptimizedScoring = () => {
             matchContext: activeJobOfferTitle ? `Score pour "${activeJobOfferTitle}"` : 'Score pour l\'offre sélectionnée'
           };
         } else {
-          // Fallback if job score calculation failed
-          const generalScore = await persistentScoringService.getCandidateGeneralScore(candidateId);
+          // Calculate job score if it doesn't exist
+          console.log(`No job score found for candidate ${candidateId} and job ${activeJobOfferId}, calculating...`);
+          await persistentScoringService.calculateAndStoreJobScore(candidateId, activeJobOfferId);
+          scoreDetails = await persistentScoringService.getCandidateJobScore(candidateId, activeJobOfferId);
+          
           contextualScore = {
-            ...(generalScore || {
+            ...(scoreDetails || {
               skills: 50,
               experience: 50,
               education: 50,
               profileCompleteness: 50,
               overall: 50,
               details: {
-                skillsCount: 0,
-                experienceYears: 0,
+                skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
+                experienceYears: candidate.years_experience || 0,
                 educationLevel: 'Non spécifié',
                 completenessPercentage: 50
               }
             }),
-            isJobSpecific: false,
-            matchContext: 'Score général (erreur de calcul contexte)'
+            isJobSpecific: true,
+            jobOfferTitle: activeJobOfferTitle,
+            matchContext: activeJobOfferTitle ? `Score pour "${activeJobOfferTitle}"` : 'Score pour l\'offre sélectionnée'
           };
         }
       }
@@ -213,6 +227,54 @@ export const useOptimizedScoring = () => {
     invalidateScores();
   }, [activeJobOfferId, invalidateScores]);
 
+  const recalculateAllScores = useCallback(async () => {
+    if (isRecalculating) return;
+    
+    setIsRecalculating(true);
+    
+    try {
+      if (activeJobOfferId) {
+        // Recalculate job-specific scores
+        toast({
+          title: "Recalcul en cours",
+          description: "Recalcul des scores pour cette offre d'emploi...",
+        });
+        
+        const result = await scoreRecalculationService.recalculateJobScores(activeJobOfferId);
+        
+        toast({
+          title: "Recalcul terminé",
+          description: `${result.success} scores recalculés, ${result.failed} échecs`,
+        });
+      } else {
+        // Recalculate general scores
+        toast({
+          title: "Recalcul en cours",
+          description: "Recalcul des scores généraux de tous les candidats...",
+        });
+        
+        const result = await scoreRecalculationService.recalculateAllGeneralScores();
+        
+        toast({
+          title: "Recalcul terminé",
+          description: `${result.success} scores recalculés, ${result.failed} échecs`,
+        });
+      }
+      
+      // Invalidate cache to show new scores
+      invalidateScores();
+    } catch (error) {
+      console.error('Error recalculating scores:', error);
+      toast({
+        title: "Erreur de recalcul",
+        description: "Une erreur est survenue lors du recalcul des scores",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRecalculating(false);
+    }
+  }, [activeJobOfferId, invalidateScores, toast, isRecalculating]);
+
   return {
     activeJobOfferId,
     activeJobOfferTitle,
@@ -221,6 +283,8 @@ export const useOptimizedScoring = () => {
     isScoreLoading,
     invalidateScores,
     preCalculateJobScores,
+    recalculateAllScores,
+    isRecalculating,
     isJobSpecific: !!activeJobOfferId
   };
 };

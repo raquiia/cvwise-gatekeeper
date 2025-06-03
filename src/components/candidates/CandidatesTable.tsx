@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle, AlertTriangle, Briefcase, RefreshCw } from 'lucide-react';
+import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle, AlertTriangle, Briefcase, RefreshCw, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -49,7 +49,9 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   const { 
     isJobSpecific,
     invalidateScores,
-    preCalculateJobScores
+    preCalculateJobScores,
+    recalculateAllScores,
+    isRecalculating
   } = useOptimizedScoring();
   
   // Fetch job offers on component mount
@@ -157,9 +159,26 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
             size="sm"
             onClick={invalidateScores}
             className="h-8 w-8 p-0"
-            title="Actualiser les scores"
+            title="Actualiser les scores (cache)"
           >
             <RefreshCw size={14} />
+          </Button>
+          
+          {/* Recalculate button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={recalculateAllScores}
+            disabled={isRecalculating}
+            className="h-8 px-2 text-xs"
+            title={isJobSpecific ? "Recalculer tous les scores pour cette offre" : "Recalculer tous les scores généraux"}
+          >
+            {isRecalculating ? (
+              <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mr-1" />
+            ) : (
+              <Calculator size={14} className="mr-1" />
+            )}
+            Recalculer
           </Button>
           
           {/* Pre-calculate button for job scores */}
@@ -169,9 +188,9 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
               size="sm"
               onClick={preCalculateJobScores}
               className="h-8 px-2 text-xs"
-              title="Recalculer tous les scores pour cette offre"
+              title="Pré-calculer les scores en arrière-plan"
             >
-              Recalculer
+              Pré-calculer
             </Button>
           )}
         </div>

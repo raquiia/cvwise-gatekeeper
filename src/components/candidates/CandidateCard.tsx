@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,12 +21,12 @@ import {
 import { Link } from 'react-router-dom';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
-import { calculateCandidateScore, getScoreEvaluation } from '@/services/scoring/candidateScoring';
 import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/utils/dateFormatter';
 import { cn } from '@/lib/utils';
+import { useCandidateScore } from '@/hooks/use-candidate-score';
 
 interface CandidateCardProps {
   candidate: CandidateData;
@@ -34,8 +35,6 @@ interface CandidateCardProps {
   isSelected?: boolean;
   onSelect?: (candidateId: string, selected: boolean) => void;
   hideScore?: boolean;
-  scoreIsMatchScore?: boolean;
-  matchDetails?: any;
   index?: number;
 }
 
@@ -46,8 +45,6 @@ const CandidateCard: React.FC<CandidateCardProps> = ({
   isSelected = false,
   onSelect,
   hideScore = false,
-  scoreIsMatchScore = false,
-  matchDetails,
   index = 0
 }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -55,9 +52,8 @@ const CandidateCard: React.FC<CandidateCardProps> = ({
   const skills = ensureStringArray(candidate.skills);
   const { toast } = useToast();
   
-  // Calcul du score intelligent
-  const scoreBreakdown = calculateCandidateScore(candidate);
-  const evaluation = getScoreEvaluation(scoreBreakdown.overall);
+  // Use unified scoring system
+  const { score: scoreBreakdown, isLoading: scoreLoading, isJobSpecific } = useCandidateScore(candidate);
 
   // Fonction pour générer une couleur basée sur les initiales
   const getAvatarColor = (firstName: string, lastName: string) => {
@@ -144,12 +140,6 @@ const CandidateCard: React.FC<CandidateCardProps> = ({
     );
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
   const getScoreGradient = (score: number) => {
     if (score >= 80) return 'from-green-500 to-emerald-500';
     if (score >= 60) return 'from-yellow-500 to-orange-500';
@@ -188,6 +178,9 @@ const CandidateCard: React.FC<CandidateCardProps> = ({
 
   // Animation delay basée sur l'index
   const animationDelay = `${index * 50}ms`;
+  
+  // Get overall score for display
+  const displayScore = scoreBreakdown?.overall || 0;
 
   return (
     <Card 
@@ -231,6 +224,16 @@ const CandidateCard: React.FC<CandidateCardProps> = ({
         {getStatusBadge(candidate.detailed_status || 'initial')}
       </div>
 
+      {/* Job context indicator */}
+      {isJobSpecific && (
+        <div className="absolute top-12 right-4 z-10">
+          <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300">
+            <Briefcase size={10} className="mr-1" />
+            Match
+          </Badge>
+        </div>
+      )}
+
       <CardContent className="p-6 relative z-10">
         <div className="flex items-start gap-4">
           {/* Avatar avec gradient */}
@@ -249,9 +252,9 @@ const CandidateCard: React.FC<CandidateCardProps> = ({
               <div className={cn(
                 "absolute -bottom-2 -right-2 w-8 h-8 rounded-full text-xs font-bold",
                 "flex items-center justify-center text-white shadow-lg",
-                "bg-gradient-to-r", getScoreGradient(scoreBreakdown.overall)
+                scoreLoading ? "bg-gray-400 animate-pulse" : cn("bg-gradient-to-r", getScoreGradient(displayScore))
               )}>
-                {scoreBreakdown.overall}
+                {scoreLoading ? "..." : displayScore}
               </div>
             )}
           </div>

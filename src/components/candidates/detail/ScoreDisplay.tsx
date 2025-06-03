@@ -4,20 +4,18 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, Award, BookOpen, User, Target, Briefcase } from 'lucide-react';
-import type { ScoreBreakdown } from '@/services/scoring/candidateScoring';
+import { TrendingUp, Award, BookOpen, User, Target, Briefcase, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { ContextualScore } from '@/hooks/use-optimized-scoring';
 import { getScoreEvaluation } from '@/services/scoring/candidateScoring';
 
 interface ScoreDisplayProps {
-  scoreBreakdown: ScoreBreakdown & { 
-    matchContext?: string;
-    isJobSpecific?: boolean;
-    jobOfferTitle?: string;
-  };
+  scoreBreakdown: ContextualScore;
   isLoading?: boolean;
+  onRefresh?: () => void;
 }
 
-const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ scoreBreakdown, isLoading }) => {
+const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ scoreBreakdown, isLoading, onRefresh }) => {
   if (isLoading) {
     return (
       <Card>
@@ -71,8 +69,8 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ scoreBreakdown, isLoading }
   return (
     <Card>
       <CardContent className="p-6">
-        {/* Header with context indicator */}
-        <div className="flex items-center justify-center mb-4">
+        {/* Header with context indicator and refresh button */}
+        <div className="flex items-center justify-between mb-4">
           <Badge 
             variant={isJobSpecific ? "default" : "secondary"} 
             className={`text-xs ${isJobSpecific ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-700'}`}
@@ -80,6 +78,18 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ scoreBreakdown, isLoading }
             {isJobSpecific ? <Briefcase size={12} className="mr-1" /> : <User size={12} className="mr-1" />}
             {scoreBreakdown.matchContext || (isJobSpecific ? 'Score contextuel' : 'Score général')}
           </Badge>
+          
+          {onRefresh && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onRefresh}
+              className="h-6 w-6 p-0"
+              title="Actualiser le score"
+            >
+              <RefreshCw size={12} />
+            </Button>
+          )}
         </div>
 
         <div className="flex flex-col items-center mb-6">
@@ -91,7 +101,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ scoreBreakdown, isLoading }
               scoreBreakdown.overall >= 40 ? 'bg-orange-500 border-orange-300' :
               'bg-red-500 border-red-300'
             }`}>
-              {isJobSpecific ? scoreBreakdown.overall : scoreBreakdown.details.completenessPercentage}
+              {scoreBreakdown.overall}
               <span className="text-sm ml-1">%</span>
             </div>
             <div className="absolute -bottom-1 -right-1">

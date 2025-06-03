@@ -2,42 +2,36 @@
 import React from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, TrendingUp, Edit, Trash2 } from 'lucide-react';
+import { MapPin, Calendar, TrendingUp, Edit, Trash2, Briefcase } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
-import { calculateCandidateScore, getScoreEvaluation } from '@/services/scoring/candidateScoring';
 import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 import { Button } from '@/components/ui/button';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/utils/dateFormatter';
+import { useCandidateScore } from '@/hooks/use-candidate-score';
+import { cn } from '@/lib/utils';
 
 interface CandidateTableRowProps {
   candidate: CandidateData;
   onViewCandidate?: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
   hideScore?: boolean;
-  scoreIsMatchScore?: boolean;
-  matchDetails?: any;
-  statusFirst?: boolean;
 }
 
 const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ 
   candidate,
   onViewCandidate,
   onCandidateDeleted,
-  hideScore = false,
-  scoreIsMatchScore = false,
-  matchDetails,
-  statusFirst = false
+  hideScore = false
 }) => {
   const skills = ensureStringArray(candidate.skills);
   const { toast } = useToast();
   
-  // Calcul du score intelligent
-  const scoreBreakdown = calculateCandidateScore(candidate);
-  const evaluation = getScoreEvaluation(scoreBreakdown.overall);
+  // Use unified scoring system
+  const { score: scoreBreakdown, isLoading: scoreLoading, isJobSpecific } = useCandidateScore(candidate);
 
   const getStatusBadge = (status: string) => {
     const statusLabel = CANDIDATE_STATUS_LABELS[status] || status;
@@ -107,11 +101,27 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     }
   };
 
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-green-600 bg-green-50';
+    if (score >= 60) return 'text-yellow-600 bg-yellow-50';
+    return 'text-red-600 bg-red-50';
+  };
+
+  const displayScore = scoreBreakdown?.overall || 0;
+
   return (
     <TableRow className="hover:bg-muted/50">
       {/* Status Column - First */}
       <TableCell className="hidden md:table-cell">
-        {getStatusBadge(candidate.detailed_status || 'initial')}
+        <div className="flex items-center gap-2">
+          {getStatusBadge(candidate.detailed_status || 'initial')}
+          {isJobSpecific && (
+            <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300">
+              <Briefcase size={10} className="mr-1" />
+              Match
+            </Badge>
+          )}
+        </div>
       </TableCell>
       
       {/* Name Column */}
@@ -183,6 +193,29 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
           )}
         </div>
       </TableCell>
+      
+      {/* Score Column */}
+      {!hideScore && (
+        <TableCell className="hidden xl:table-cell">
+          <div className="flex items-center">
+            {scoreLoading ? (
+              <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse flex items-center justify-center">
+                <span className="text-xs">...</span>
+              </div>
+            ) : (
+              <div className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
+                getScoreColor(displayScore)
+              )}>
+                {displayScore}
+              </div>
+            )}
+            {isJobSpecific && (
+              <TrendingUp size={12} className="ml-1 text-purple-600" title="Score de correspondance" />
+            )}
+          </div>
+        </TableCell>
+      )}
       
       {/* Updated Date Column */}
       <TableCell className="hidden md:table-cell">
