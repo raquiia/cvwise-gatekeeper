@@ -56,8 +56,9 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
           description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[newStatus]}"`,
         });
         
-        // Trigger refresh of parent data
+        // Trigger immediate refresh of parent data
         if (onCandidateUpdated) {
+          console.log('Triggering data refresh after status update');
           onCandidateUpdated();
         }
       }
@@ -72,11 +73,11 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
     setDraggedCandidate(null);
   };
 
-  // Handle status change from within cards
-  const handleStatusChange = () => {
-    console.log('Status changed in Kanban, triggering refresh');
+  // Handle status change from within cards - ensure immediate refresh
+  const handleStatusChange = async () => {
+    console.log('Status changed in Kanban, triggering immediate refresh');
     if (onCandidateUpdated) {
-      onCandidateUpdated();
+      await onCandidateUpdated();
     }
   };
 

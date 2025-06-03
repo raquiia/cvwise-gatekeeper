@@ -51,11 +51,11 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
     }
   };
 
-  const handleStatusChange = (newStatus: string) => {
+  const handleStatusChange = async (newStatus: string) => {
     console.log(`Status changed for candidate ${candidate.id}: ${newStatus}`);
-    // Trigger refresh of kanban data
+    // Trigger immediate refresh of kanban data
     if (onCandidateUpdated) {
-      onCandidateUpdated();
+      await onCandidateUpdated();
     }
   };
 
@@ -93,7 +93,7 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
           </div>
         </div>
 
-        {/* Status Selector - NEW: Add status selector to kanban cards */}
+        {/* Status Selector with immediate refresh */}
         <div className="mb-3">
           <StatusSelector 
             candidateId={candidate.id!}

@@ -160,9 +160,10 @@ const CandidatesContent = () => {
     }
   };
 
-  // New function to handle candidate updates specifically
+  // Enhanced function to handle candidate updates with forced refresh
   const handleCandidateUpdated = async () => {
-    console.log('Candidate updated, refreshing data...');
+    console.log('Candidate updated, forcing data refresh...');
+    // Force a complete data refresh to get the latest status updates
     await fetchCandidates();
   };
 
@@ -493,13 +494,13 @@ const CandidatesContent = () => {
             <CandidatesCardView 
               candidates={filteredCandidates}
               onViewCandidate={handleViewCandidate}
-              onCandidateDeleted={fetchCandidates}
+              onCandidateDeleted={handleCandidateUpdated}
             />
           ) : currentView === 'kanban' ? (
             <CandidatesKanbanView 
               candidates={filteredCandidates}
               onViewCandidate={handleViewCandidate}
-              onCandidateDeleted={fetchCandidates}
+              onCandidateDeleted={handleCandidateUpdated}
               onCandidateUpdated={handleCandidateUpdated}
             />
           ) : currentView === 'analytics' ? (
@@ -512,7 +513,7 @@ const CandidatesContent = () => {
               selectedStatus={selectedStatus}
               onStatusChange={handleStatusChange}
               onViewCandidate={handleViewCandidate}
-              onCandidateDeleted={fetchCandidates}
+              onCandidateDeleted={handleCandidateUpdated}
             />
           )}
         </div>
