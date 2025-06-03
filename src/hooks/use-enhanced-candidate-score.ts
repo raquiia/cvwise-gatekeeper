@@ -36,7 +36,20 @@ export const useEnhancedCandidateScore = (candidate: CandidateData): EnhancedSco
           const jobSpecificScore: ImprovedScoreBreakdown = {
             ...jobScoreDetails,
             isJobSpecific: true,
-            matchContext: activeJobOfferTitle ? `Score pour "${activeJobOfferTitle}"` : 'Score pour l\'offre sélectionnée'
+            matchContext: activeJobOfferTitle ? `Score pour "${activeJobOfferTitle}"` : 'Score pour l\'offre sélectionnée',
+            details: {
+              ...jobScoreDetails.details,
+              skillsMatched: [],
+              skillsMissing: [],
+              experienceBreakdown: { 
+                total: jobScoreDetails.details.experienceYears, 
+                professional: jobScoreDetails.details.experienceYears, 
+                internships: 0, 
+                alternance: 0 
+              },
+              educationScore: jobScoreDetails.education,
+              certifications: []
+            }
           };
           setScoreBreakdown(jobSpecificScore);
           setScoreSource('job-specific');
@@ -88,7 +101,20 @@ export const useEnhancedCandidateScore = (candidate: CandidateData): EnhancedSco
         const generalScore: ImprovedScoreBreakdown = {
           ...generalScoreDetails,
           isJobSpecific: false,
-          matchContext: 'Score général de profil'
+          matchContext: 'Score général de profil',
+          details: {
+            ...generalScoreDetails.details,
+            skillsMatched: [],
+            skillsMissing: [],
+            experienceBreakdown: { 
+              total: generalScoreDetails.details.experienceYears, 
+              professional: generalScoreDetails.details.experienceYears, 
+              internships: 0, 
+              alternance: 0 
+            },
+            educationScore: generalScoreDetails.education,
+            certifications: []
+          }
         };
         setScoreBreakdown(generalScore);
         setScoreSource('general');
