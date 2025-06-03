@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -277,7 +278,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
           {score}%
         </Badge>
         {isJobSpecificScore && (
-          <Briefcase size={10} className="text-purple-600" title="Score contextuel" />
+          <Briefcase size={10} className="text-purple-600" />
         )}
       </div>
     );
