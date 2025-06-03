@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Search, X, Clock, Hash, MapPin, Briefcase } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { LucideIcon } from 'lucide-react';
 
 interface SearchSuggestion {
   type: 'skill' | 'location' | 'company' | 'recent';
   value: string;
   label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
 }
 
 interface EnhancedSearchProps {
