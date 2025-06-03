@@ -267,7 +267,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-32">Statut</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-48">Entreprise actuelle</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-32">Localisation</TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand w-40">Poste recherché</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand w-40">Poste actuel</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand hidden xl:table-cell w-24">Expérience</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand">Compétences</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand text-center w-16">Action</TableHead>
@@ -377,7 +377,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                   )}
                 </TableCell>
 
-                {/* Poste recherché */}
+                {/* Poste actuel */}
                 <TableCell className="py-3">
                   <div className="text-sm font-medium text-navy-dark dark:text-sand">
                     {candidate.position || 'Poste non spécifié'}
