@@ -178,7 +178,9 @@ const CandidateDetail = () => {
             <div className="flex gap-2 mt-4 md:mt-0">
               <StatusSelector 
                 candidateId={candidate.id || ''} 
+                currentStatus={candidate.detailed_status}
                 onStatusChange={handleStatusChange} 
+                onDataRefresh={fetchCandidateData}
               />
               
               <Button 
