@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { CandidateData } from '@/services/data/candidateService';
 import { ensureArray } from '@/utils/candidateUtils';
@@ -46,7 +45,7 @@ const getEducationLevel = (education: any[]): string => {
 
 export const persistentScoringService = {
   /**
-   * Get stored general score for a candidate
+   * Get stored general score for a candidate - SIMPLIFIED
    */
   async getCandidateGeneralScore(candidateId: string): Promise<ScoreDetails | null> {
     try {
@@ -71,20 +70,21 @@ export const persistentScoringService = {
       const skillsArray = ensureArray(candidate.skills);
       const educationArray = ensureArray(candidate.education);
       
-      // If score is null or 0, return null to trigger recalculation
-      if (!candidate.score) {
-        console.log(`Candidate ${candidateId} has no score, will trigger recalculation`);
+      // FIXED: Check if score exists and is valid (not 0 or null)
+      if (candidate.score === null || candidate.score === undefined || candidate.score === 0) {
+        console.log(`Candidate ${candidateId} has no valid score (${candidate.score}), will trigger recalculation`);
         return null;
       }
       
       console.log(`Found general score for candidate ${candidateId}: ${candidate.score}`);
       
+      // Return simplified score breakdown based on database score
       return {
         skills: Math.min(Math.round((skillsArray.length / 10) * 100), 100),
         experience: candidate.years_experience ? Math.min(candidate.years_experience * 10, 100) : 0,
         education: educationArray.length > 0 ? 75 : 50,
         profileCompleteness: candidate.profile_completeness || 0,
-        overall: candidate.score,
+        overall: candidate.score, // Use the actual database score
         details: {
           skillsCount: skillsArray.length,
           experienceYears: candidate.years_experience || 0,
@@ -99,7 +99,7 @@ export const persistentScoringService = {
   },
 
   /**
-   * Get stored job-specific score for a candidate
+   * Get stored job-specific score for a candidate - SIMPLIFIED
    */
   async getCandidateJobScore(candidateId: string, jobOfferId: string): Promise<ScoreDetails | null> {
     try {
@@ -138,7 +138,7 @@ export const persistentScoringService = {
         experience: jobScore.experience_score,
         education: jobScore.education_score,
         profileCompleteness: jobScore.profile_completeness_score,
-        overall: jobScore.match_score,
+        overall: jobScore.match_score, // Use the actual job match score
         details: {
           skillsCount: skillsArray.length,
           experienceYears: candidate?.years_experience || 0,
@@ -200,6 +200,58 @@ export const persistentScoringService = {
     } catch (error) {
       console.error('Error in recalculateGeneralScore:', error);
       return null;
+    }
+  },
+
+  /**
+   * Mass recalculate all general scores - NEW FUNCTION
+   */
+  async massRecalculateAllGeneralScores(): Promise<{ success: number; failed: number }> {
+    try {
+      console.log('Starting mass recalculation of all general scores');
+      
+      // Get all candidates for the current user
+      const { data: candidates, error } = await supabase
+        .from('candidates')
+        .select('id')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+
+      if (error || !candidates) {
+        console.error('Error fetching candidates:', error);
+        return { success: 0, failed: 0 };
+      }
+
+      let success = 0;
+      let failed = 0;
+
+      // Recalculate in batches of 5
+      const batchSize = 5;
+      for (let i = 0; i < candidates.length; i += batchSize) {
+        const batch = candidates.slice(i, i + batchSize);
+        
+        const results = await Promise.allSettled(
+          batch.map(candidate => this.recalculateGeneralScore(candidate.id))
+        );
+        
+        results.forEach(result => {
+          if (result.status === 'fulfilled' && result.value !== null) {
+            success++;
+          } else {
+            failed++;
+          }
+        });
+        
+        // Small delay between batches
+        if (i + batchSize < candidates.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      console.log(`Mass recalculation completed: ${success} success, ${failed} failed`);
+      return { success, failed };
+    } catch (error) {
+      console.error('Error in massRecalculateAllGeneralScores:', error);
+      return { success: 0, failed: 0 };
     }
   },
 

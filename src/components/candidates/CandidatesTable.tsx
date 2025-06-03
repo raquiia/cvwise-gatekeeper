@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle, AlertTriangle, Briefcase, RefreshCw, Calculator } from 'lucide-react';
+import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle, AlertTriangle, Briefcase, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -15,9 +15,8 @@ import ModernCandidatesTable from './ModernCandidatesTable';
 import ModernTableView from './ModernTableView';
 import { useToast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
-import { useOptimizedScoring } from '@/hooks/use-optimized-scoring';
 import { useActiveJob } from '@/context/ActiveJobContext';
-import { CANDIDATE_STATUS_LABELS, CANDIDATE_STATUSES } from '@/services/data/candidateStatusService';
+import { ScoreRecalculationButton } from './ScoreRecalculationButton';
 
 interface CandidatesTableProps {
   candidates: CandidateData[];
@@ -46,14 +45,6 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     isLoading: jobLoading 
   } = useActiveJob();
   
-  const { 
-    isJobSpecific,
-    invalidateScores,
-    preCalculateJobScores,
-    recalculateAllScores,
-    isRecalculating
-  } = useOptimizedScoring();
-  
   // Fetch job offers on component mount
   useEffect(() => {
     const fetchJobOffers = async () => {
@@ -78,13 +69,8 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
         
         toast({
           title: "Offre d'emploi activée",
-          description: `Les scores sont maintenant relatifs à "${selectedOffer?.title || 'cette offre'}". Calcul en cours...`,
+          description: `Les scores sont maintenant relatifs à "${selectedOffer?.title || 'cette offre'}".`,
         });
-        
-        // Pre-calculate scores for better performance
-        setTimeout(() => {
-          preCalculateJobScores();
-        }, 500);
       } else {
         await setActiveJobOffer(null);
         
@@ -93,9 +79,6 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
           description: "Les scores affichent maintenant la complétude des profils",
         });
       }
-      
-      // Force refresh of all scores
-      invalidateScores();
     } catch (error) {
       console.error("Error activating job offer:", error);
       toast({
@@ -142,7 +125,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
       <div className="flex justify-between items-center">
         {/* Context indicator */}
         <div className="flex items-center gap-3">
-          {isJobSpecific ? (
+          {activeJobOfferId ? (
             <Badge variant="default" className="bg-purple-100 text-purple-800 border-purple-200">
               <Briefcase size={12} className="mr-1" />
               Scores contextuels : {activeJobOfferTitle}
@@ -153,46 +136,8 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
             </Badge>
           )}
           
-          {/* Refresh button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={invalidateScores}
-            className="h-8 w-8 p-0"
-            title="Actualiser les scores (cache)"
-          >
-            <RefreshCw size={14} />
-          </Button>
-          
-          {/* Recalculate button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={recalculateAllScores}
-            disabled={isRecalculating}
-            className="h-8 px-2 text-xs"
-            title={isJobSpecific ? "Recalculer tous les scores pour cette offre" : "Recalculer tous les scores généraux"}
-          >
-            {isRecalculating ? (
-              <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mr-1" />
-            ) : (
-              <Calculator size={14} className="mr-1" />
-            )}
-            Recalculer
-          </Button>
-          
-          {/* Pre-calculate button for job scores */}
-          {isJobSpecific && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={preCalculateJobScores}
-              className="h-8 px-2 text-xs"
-              title="Pré-calculer les scores en arrière-plan"
-            >
-              Pré-calculer
-            </Button>
-          )}
+          {/* Mass recalculation button */}
+          <ScoreRecalculationButton />
         </div>
         
         <DropdownMenu>

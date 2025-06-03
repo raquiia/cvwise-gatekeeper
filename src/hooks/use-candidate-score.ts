@@ -36,7 +36,6 @@ export const useCandidateScore = (candidate: CandidateData) => {
         
         if (activeJobOfferId) {
           // Get job-specific score
-          console.log(`Loading job score for candidate ${candidate.id} and job ${activeJobOfferId}`);
           scoreDetails = await persistentScoringService.getCandidateJobScore(candidate.id, activeJobOfferId);
           
           if (scoreDetails) {
@@ -46,8 +45,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
               matchContext: activeJobOfferTitle ? `Score pour "${activeJobOfferTitle}"` : 'Score pour l\'offre sélectionnée'
             });
           } else {
-            // Calculate and store job score if it doesn't exist
-            console.log(`No job score found, calculating for candidate ${candidate.id}`);
+            // Calculate job score if missing
             await persistentScoringService.calculateAndStoreJobScore(candidate.id, activeJobOfferId);
             scoreDetails = await persistentScoringService.getCandidateJobScore(candidate.id, activeJobOfferId);
             
@@ -60,8 +58,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
             }
           }
         } else {
-          // Get general score from database first
-          console.log(`Loading general score for candidate ${candidate.id}`);
+          // Get general score
           scoreDetails = await persistentScoringService.getCandidateGeneralScore(candidate.id);
           
           if (scoreDetails) {
@@ -71,8 +68,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
               matchContext: 'Score général de profil'
             });
           } else {
-            // Recalculate general score if it doesn't exist
-            console.log(`No general score found, recalculating for candidate ${candidate.id}`);
+            // Recalculate general score if missing
             await persistentScoringService.recalculateGeneralScore(candidate.id);
             scoreDetails = await persistentScoringService.getCandidateGeneralScore(candidate.id);
             
@@ -86,39 +82,41 @@ export const useCandidateScore = (candidate: CandidateData) => {
           }
         }
         
-        // Fallback if no score could be retrieved
+        // Simple fallback if no score available
         if (!scoreDetails) {
-          console.warn(`Could not load score for candidate ${candidate.id}, using fallback`);
+          const skillsArray = Array.isArray(candidate.skills) ? candidate.skills : [];
           setScore({
-            skills: 0,
-            experience: 0,
-            education: 0,
-            profileCompleteness: 0,
-            overall: 0,
+            skills: Math.min(Math.round((skillsArray.length / 10) * 100), 100),
+            experience: candidate.years_experience ? Math.min(candidate.years_experience * 10, 100) : 0,
+            education: 50,
+            profileCompleteness: candidate.profile_completeness || 0,
+            overall: candidate.score || 50,
             details: {
-              skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
+              skillsCount: skillsArray.length,
               experienceYears: candidate.years_experience || 0,
               educationLevel: 'Non spécifié',
-              completenessPercentage: 0
+              completenessPercentage: candidate.profile_completeness || 0
             },
             isJobSpecific: !!activeJobOfferId,
-            matchContext: 'Score indisponible'
+            matchContext: !!activeJobOfferId ? 'Score contextuel' : 'Score général'
           });
         }
       } catch (error) {
         console.error(`Error loading score for candidate ${candidate.id}:`, error);
-        // Fallback score in case of error
+        
+        // Error fallback
+        const skillsArray = Array.isArray(candidate.skills) ? candidate.skills : [];
         setScore({
-          skills: 0,
-          experience: 0,
-          education: 0,
-          profileCompleteness: 0,
-          overall: 0,
+          skills: Math.min(Math.round((skillsArray.length / 10) * 100), 100),
+          experience: candidate.years_experience ? Math.min(candidate.years_experience * 10, 100) : 0,
+          education: 50,
+          profileCompleteness: candidate.profile_completeness || 0,
+          overall: candidate.score || 50,
           details: {
-            skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
+            skillsCount: skillsArray.length,
             experienceYears: candidate.years_experience || 0,
             educationLevel: 'Non spécifié',
-            completenessPercentage: 0
+            completenessPercentage: candidate.profile_completeness || 0
           },
           isJobSpecific: !!activeJobOfferId,
           matchContext: 'Erreur de chargement'
