@@ -285,13 +285,13 @@ export const candidateService = {
         return [];
       }
       
-      // Diagnostic: vérifier chaque candidat individuellement
-      data.forEach((candidate, index) => {
+      // Diagnostic: vérifier chaque candidat individuellement avec accès sécurisé
+      data.forEach((candidate: any, index: number) => {
         console.log(`📋 Candidate ${index + 1}:`, {
           id: candidate.id,
           name: `${candidate.first_name} ${candidate.last_name}`,
-          detailed_status: candidate.detailed_status,
-          status: candidate.status
+          detailed_status: candidate.detailed_status || 'NOT_FOUND',
+          status: candidate.status || 'NOT_FOUND'
         });
       });
       
