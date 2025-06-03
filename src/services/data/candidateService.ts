@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
-import { extractFieldValue, extractNumberValue as utilsExtractNumberValue, extractArrayValue } from '@/components/candidates/edit/dataExtractionUtils';
+import { extractFieldValue, extractNumberValue, extractArrayValue } from '@/components/candidates/edit/dataExtractionUtils';
 
 // Defining the complete CandidateData interface with all properties
 export interface CandidateData {
@@ -209,10 +209,10 @@ const formatCandidateData = (candidate: any): CandidateData => {
     email: extractFieldValue(candidate.email),
     phone: extractFieldValue(candidate.phone),
     position: extractFieldValue(candidate.position),
-    years_experience: utilsExtractNumberValue(candidate.years_experience),
+    years_experience: extractNumberValue(candidate.years_experience),
     location: extractFieldValue(candidate.location),
     skills: extractArrayValue(candidate.skills),
-    score: utilsExtractNumberValue(candidate.score),
+    score: extractNumberValue(candidate.score),
     status: extractFieldValue(candidate.status) || 'pending',
     detailed_status: extractFieldValue(candidate.detailed_status),
     company: extractFieldValue(candidate.company),
@@ -239,7 +239,7 @@ const formatCandidateData = (candidate: any): CandidateData => {
     special_permits: extractArrayValue(candidate.special_permits),
     industries: extractArrayValue(candidate.industries),
     projects: extractArrayValue(candidate.projects),
-    profile_completeness: utilsExtractNumberValue(candidate.profile_completeness),
+    profile_completeness: extractNumberValue(candidate.profile_completeness),
     last_updated_at: candidate.last_updated_at
   };
 

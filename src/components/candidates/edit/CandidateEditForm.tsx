@@ -68,13 +68,17 @@ const CandidateEditForm: React.FC<CandidateEditFormProps> = ({
         const formData = extractCandidateFormData(data);
         console.log('🎯 Form data extracted:', JSON.stringify(formData, null, 2));
         
-        // Réinitialiser le formulaire avec les données extraites
-        form.reset(formData);
+        // CORRECTION CRITIQUE: Réinitialiser le formulaire de manière plus robuste
+        Object.keys(formData).forEach(key => {
+          const value = formData[key as keyof FormValues];
+          console.log(`Setting form field ${key} to:`, value);
+          form.setValue(key as keyof FormValues, value);
+        });
         
-        // Force une mise à jour des valeurs après un court délai
-        setTimeout(() => {
-          console.log('✅ Form reset complete. Current form values:', form.getValues());
-        }, 100);
+        // Force trigger de la validation et du rendu
+        await form.trigger();
+        
+        console.log('✅ Form reset complete. Final form values:', form.getValues());
         
       } catch (err: any) {
         console.error("❌ Error loading candidate:", err);
