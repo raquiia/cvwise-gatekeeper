@@ -347,6 +347,14 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                           <span className="truncate">{candidate.email}</span>
                         </div>
                       )}
+                      
+                      {/* Phone */}
+                      {candidate.phone && (
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
+                          <Phone size={11} />
+                          <span className="truncate">{candidate.phone}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </TableCell>
