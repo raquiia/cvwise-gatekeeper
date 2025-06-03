@@ -1,10 +1,7 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { FileText, Users, Award, ChevronRight } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FileText, Users, TrendingUp, UserCheck } from 'lucide-react';
 
 interface StatCardsProps {
   loading: boolean;
@@ -21,105 +18,85 @@ const StatCards: React.FC<StatCardsProps> = ({
   topCandidatesCount,
   usersCount
 }) => {
+  const stats = [
+    {
+      title: "CVs analysés",
+      value: resumesCount,
+      icon: FileText,
+      description: "Documents traités",
+      color: "text-blue-600",
+      bgColor: "bg-blue-50",
+    },
+    {
+      title: "Candidats",
+      value: candidatesCount,
+      icon: Users,
+      description: "Profils dans la base",
+      color: "text-green-600",
+      bgColor: "bg-green-50",
+    },
+    {
+      title: "Candidats excellents",
+      value: topCandidatesCount,
+      icon: TrendingUp,
+      description: "Score ≥ 85%",
+      color: "text-purple-600",
+      bgColor: "bg-purple-50",
+    },
+    {
+      title: "Utilisateurs actifs",
+      value: usersCount,
+      icon: UserCheck,
+      description: "Comptes créés",
+      color: "text-orange-600",
+      bgColor: "bg-orange-50",
+    }
+  ];
+
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {Array(4).fill(0).map((_, index) => (
-          <div key={index} className="glass rounded-xl p-5 backdrop-blur-sm">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <Skeleton className="h-4 w-24 mb-2" />
-                <Skeleton className="h-8 w-16" />
-              </div>
-              <Skeleton className="h-10 w-10 rounded-lg" />
-            </div>
-            <Skeleton className="h-4 w-32" />
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div className="h-4 bg-gray-200 rounded w-24"></div>
+              <div className="h-4 w-4 bg-gray-200 rounded"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-8 bg-gray-200 rounded w-16 mb-1"></div>
+              <div className="h-3 bg-gray-200 rounded w-20"></div>
+            </CardContent>
+          </Card>
         ))}
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-        <CardContent className="p-5">
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <p className="text-muted-foreground text-sm font-medium">CV analysés</p>
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-500 bg-clip-text text-transparent">{resumesCount}</h3>
-            </div>
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-lg text-white">
-              <FileText size={20} />
-            </div>
-          </div>
-          <div className="flex items-center">
-            <Link to="/resumes" className="text-xs font-medium text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 flex items-center group">
-              Voir tous les CV
-              <ChevronRight size={14} className="ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-        <CardContent className="p-5">
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <p className="text-muted-foreground text-sm font-medium">Candidats</p>
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-cyan-400 bg-clip-text text-transparent">{candidatesCount}</h3>
-            </div>
-            <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-2 rounded-lg text-white">
-              <Users size={20} />
-            </div>
-          </div>
-          <div className="flex items-center">
-            <Link to="/candidates" className="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center group">
-              Voir tous les candidats
-              <ChevronRight size={14} className="ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-        <CardContent className="p-5">
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <p className="text-muted-foreground text-sm font-medium">Top Candidats</p>
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-emerald-500 to-green-400 bg-clip-text text-transparent">{topCandidatesCount}</h3>
-            </div>
-            <div className="bg-gradient-to-br from-emerald-500 to-green-400 p-2 rounded-lg text-white">
-              <Award size={20} />
-            </div>
-          </div>
-          <div className="flex items-center">
-            <span className="text-xs text-muted-foreground">
-              Score 85% ou plus
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-        <CardContent className="p-5">
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <p className="text-muted-foreground text-sm font-medium">Utilisateurs</p>
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">{usersCount}</h3>
-            </div>
-            <div className="bg-gradient-to-br from-purple-600 to-pink-500 p-2 rounded-lg text-white">
-              <Users size={20} />
-            </div>
-          </div>
-          <div className="flex items-center">
-            <Link to="/admin" className="text-xs font-medium text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 flex items-center group">
-              Panneau d'administration
-              <ChevronRight size={14} className="ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {stats.map((stat) => {
+        const Icon = stat.icon;
+        return (
+          <Card key={stat.title} className="border-purple-200/30 dark:border-purple-800/20 overflow-hidden shadow-xl bg-white/50 dark:bg-navy-dark/30 backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-navy-dark dark:text-sand">
+                {stat.title}
+              </CardTitle>
+              <div className={`${stat.bgColor} p-2 rounded-lg`}>
+                <Icon className={`h-4 w-4 ${stat.color}`} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-navy-dark dark:text-sand">
+                {stat.value}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {stat.description}
+              </p>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 };

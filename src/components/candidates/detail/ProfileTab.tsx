@@ -1,10 +1,13 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { MapPin, Phone, Mail, Calendar, FileText } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureArray, ensureStringArray, safeString, isUndefinedObject } from '@/utils/candidateUtils';
+import { calculateCandidateScore, calculateJobMatchScore } from '@/services/scoring/candidateScoring';
+import { candidateMatchingService } from '@/services/data/candidateMatchingService';
+import ScoreDisplay from './ScoreDisplay';
 
 interface ProfileTabProps {
   candidate: CandidateData;
@@ -31,6 +34,20 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
   const hasValidMobility = mobility.trim().length > 0;
   const hasValidTravelWillingness = travelWillingness.trim().length > 0;
   const hasValidSalaryExpectations = salaryExpectations.trim().length > 0;
+
+  // Calcul du score intelligent
+  const scoreBreakdown = useMemo(() => {
+    // Vérifier s'il y a une offre d'emploi active pour le scoring contextuel
+    const activeJobOfferId = candidateMatchingService.getActiveJobOfferId();
+    
+    if (activeJobOfferId) {
+      // TODO: Récupérer les détails de l'offre d'emploi active
+      // Pour l'instant, utiliser le score de base
+      return calculateCandidateScore(candidate);
+    }
+    
+    return calculateCandidateScore(candidate);
+  }, [candidate]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -161,82 +178,60 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
         </Card>
       </div>
       
-      <div>
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold mb-4">Évaluation intelligente</h3>
+          <ScoreDisplay scoreBreakdown={scoreBreakdown} />
+        </div>
+        
+        {(hasValidRemotePreference || hasValidMobility || hasValidTravelWillingness || hasValidSalaryExpectations) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Préférences</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {hasValidRemotePreference && (
+                  <div className="p-2 bg-navy/5 rounded-md">
+                    <span className="text-sm">Télétravail: {remotePreference}</span>
+                  </div>
+                )}
+                {hasValidMobility && (
+                  <div className="p-2 bg-navy/5 rounded-md">
+                    <span className="text-sm">Mobilité: {mobility}</span>
+                  </div>
+                )}
+                {hasValidTravelWillingness && (
+                  <div className="p-2 bg-navy/5 rounded-md">
+                    <span className="text-sm">Déplacements: {travelWillingness}</span>
+                  </div>
+                )}
+                {hasValidSalaryExpectations && (
+                  <div className="p-2 bg-navy/5 rounded-md">
+                    <span className="text-sm font-medium">Rémunération: {salaryExpectations}</span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         <Card>
           <CardHeader>
-            <CardTitle>Évaluation</CardTitle>
+            <CardTitle className="text-base">Statut</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center">
-              <div className={`w-32 h-32 rounded-full flex items-center justify-center text-white text-2xl font-bold border-4 ${
-                candidate.score && candidate.score > 85 ? 'bg-emerald-500 border-emerald-300' : 
-                candidate.score && candidate.score > 65 ? 'bg-amber-500 border-amber-300' : 
-                'bg-red-500 border-red-300'
-              }`}>
-                {candidate.score || 0}%
-              </div>
-              
-              <p className="mt-4 text-center font-medium">
-                {candidate.score && candidate.score > 85 ? 'Excellent candidat' : 
-                 candidate.score && candidate.score > 65 ? 'Bon candidat' : 
-                 'Candidat à potentiel'}
-              </p>
-              
-              <Separator className="my-6" />
-              
-              <div className="w-full">
-                <h4 className="text-sm font-medium mb-2">Statut actuel</h4>
-                <div className={`p-2 rounded-md text-center ${
-                  candidate.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
-                  candidate.status === 'inactive' ? 'bg-red-100 text-red-800' :
-                  'bg-amber-100 text-amber-800'
-                }`}>
-                  {candidate.status === 'active' ? 'Actif' :
-                   candidate.status === 'inactive' ? 'Inactif' :
-                   candidate.status === 'qualification' ? 'En qualification' :
-                   candidate.status === 'interview' ? 'En entretien' :
-                   candidate.status === 'hired' ? 'Embauché' :
-                   'Statut inconnu'}
-                </div>
-              </div>
-              
-              {(hasValidRemotePreference || hasValidMobility || hasValidTravelWillingness) && (
-                <>
-                  <Separator className="my-6" />
-                  <div className="w-full">
-                    <h4 className="text-sm font-medium mb-2">Mobilité</h4>
-                    <div className="space-y-2">
-                      {hasValidRemotePreference && (
-                        <div className="p-2 bg-navy/5 rounded-md">
-                          <span className="text-sm">Télétravail: {remotePreference}</span>
-                        </div>
-                      )}
-                      {hasValidMobility && (
-                        <div className="p-2 bg-navy/5 rounded-md">
-                          <span className="text-sm">Mobilité: {mobility}</span>
-                        </div>
-                      )}
-                      {hasValidTravelWillingness && (
-                        <div className="p-2 bg-navy/5 rounded-md">
-                          <span className="text-sm">Déplacements: {travelWillingness}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-              
-              {hasValidSalaryExpectations && (
-                <>
-                  <Separator className="my-6" />
-                  <div className="w-full">
-                    <h4 className="text-sm font-medium mb-2">Rémunération souhaitée</h4>
-                    <div className="p-2 bg-navy/5 rounded-md text-center">
-                      <span className="text-sm font-medium">{salaryExpectations}</span>
-                    </div>
-                  </div>
-                </>
-              )}
+            <div className={`p-3 rounded-md text-center ${
+              candidate.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
+              candidate.status === 'inactive' ? 'bg-red-100 text-red-800' :
+              'bg-amber-100 text-amber-800'
+            }`}>
+              {candidate.status === 'active' ? 'Actif' :
+               candidate.status === 'inactive' ? 'Inactif' :
+               candidate.status === 'qualification' ? 'En qualification' :
+               candidate.status === 'interview' ? 'En entretien' :
+               candidate.status === 'hired' ? 'Embauché' :
+               'Statut inconnu'}
             </div>
           </CardContent>
         </Card>

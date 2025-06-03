@@ -10,6 +10,7 @@ import { useUserData } from '@/hooks/useUserData';
 import UserStats from '@/components/admin/UserStats';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { formatDate } from '@/utils/dateFormatter';
+import { calculateCandidateScore } from '@/services/scoring/candidateScoring';
 
 // Import our new components
 import StatCards from '@/components/dashboard/StatCards';
@@ -54,22 +55,27 @@ const Dashboard = () => {
         setEducationData(aggregateEducationData(candidatesData || []));
         setSectorData(aggregateSectorData(candidatesData || []));
         
-        const highScoredCandidates = (candidatesData || []).filter(
-          candidate => candidate.score >= 85
-        );
-        setTopCandidatesCount(highScoredCandidates.length);
+        // Calculer les candidats excellents avec le nouveau système de scoring
+        const excellentCandidates = (candidatesData || []).filter(candidateData => {
+          const score = calculateCandidateScore(candidateData);
+          return score.overall >= 85;
+        });
+        setTopCandidatesCount(excellentCandidates.length);
         
         const recentCandidatesList = (candidatesData || [])
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .slice(0, 5)
-          .map(candidate => ({
-            id: candidate.id,
-            name: `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim(),
-            position: candidate.position || 'Not specified',
-            score: candidate.score || 0,
-            date: formatDate(candidate.created_at),
-            status: candidate.score >= 85 ? 'high' : (candidate.score >= 65 ? 'medium' : 'low')
-          }));
+          .map(candidate => {
+            const score = calculateCandidateScore(candidate);
+            return {
+              id: candidate.id,
+              name: `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim(),
+              position: candidate.position || 'Not specified',
+              score: score.overall,
+              date: formatDate(candidate.created_at),
+              status: score.overall >= 85 ? 'high' : (score.overall >= 70 ? 'medium' : 'low')
+            };
+          });
         
         setRecentCandidates(recentCandidatesList);
         
