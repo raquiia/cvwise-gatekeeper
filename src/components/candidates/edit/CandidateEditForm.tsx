@@ -64,13 +64,14 @@ const CandidateEditForm: React.FC<CandidateEditFormProps> = ({
         
         setOriginalCandidate(data);
         
-        // Extraire les données avec notre nouvelle fonction
+        // Extraire les données avec notre fonction d'extraction
         const formData = extractCandidateFormData(data);
+        console.log('🎯 Form data extracted:', JSON.stringify(formData, null, 2));
         
         // Réinitialiser le formulaire avec les données extraites
         form.reset(formData);
         
-        // Force une mise à jour des valeurs
+        // Force une mise à jour des valeurs après un court délai
         setTimeout(() => {
           console.log('✅ Form reset complete. Current form values:', form.getValues());
         }, 100);
@@ -102,8 +103,10 @@ const CandidateEditForm: React.FC<CandidateEditFormProps> = ({
 
     try {
       console.log('💾 Submitting form with values:', JSON.stringify(values, null, 2));
+      console.log('📋 Original candidate status:', originalCandidate.detailed_status);
       
-      // Préparer les données de mise à jour en s'assurant que tout est en format string/number simple
+      // CORRECTION CRITIQUE: Ne pas envoyer detailed_status dans les données de mise à jour
+      // pour éviter d'écraser le statut existant
       const updateData = {
         id: candidateId,
         first_name: values.first_name,
@@ -125,11 +128,11 @@ const CandidateEditForm: React.FC<CandidateEditFormProps> = ({
         work_authorization: values.work_authorization || '',
         interests: values.interests || '',
         years_experience: typeof values.years_experience === 'number' ? values.years_experience : undefined,
-        // Préserver les champs système
+        // Préserver TOUS les champs système et ne PAS inclure detailed_status
         user_id: originalCandidate.user_id,
         resume_id: originalCandidate.resume_id,
         status: originalCandidate.status,
-        detailed_status: originalCandidate.detailed_status,
+        // IMPORTANT: On ne touche PAS au detailed_status
         score: originalCandidate.score,
         experiences: originalCandidate.experiences,
         education: originalCandidate.education,
@@ -145,7 +148,7 @@ const CandidateEditForm: React.FC<CandidateEditFormProps> = ({
         profile_completeness: originalCandidate.profile_completeness
       };
 
-      console.log('🚀 Final update data being sent:', JSON.stringify(updateData, null, 2));
+      console.log('🚀 Final update data being sent (without detailed_status):', JSON.stringify(updateData, null, 2));
 
       const updatedCandidate = await candidateService.updateCandidate(updateData);
       console.log('✅ Update successful, result:', JSON.stringify(updatedCandidate, null, 2));

@@ -99,19 +99,19 @@ const VALID_DETAILED_STATUSES = [
   'presentation_client', 'en_mission', 'refus', 'ancien_employe'
 ];
 
-// ULTRA-SIMPLE: Enhanced extraction function that handles all data formats correctly including complex objects
+// ULTRA-ROBUSTE: Fonction d'extraction améliorée pour tous les formats de données
 const extractStringValue = (field: any): string | undefined => {
   console.log('🔍 Enhanced extracting field:', field, 'Type:', typeof field);
   
-  // If null or undefined, return undefined
+  // Si null ou undefined, return undefined
   if (field === null || field === undefined) {
     console.log('⚪ Field is null/undefined');
     return undefined;
   }
   
-  // If it's a simple string and has content, return it
+  // Si c'est déjà une chaîne valide
   if (typeof field === 'string') {
-    // If it's empty, "undefined", or "null" string, return undefined
+    // Si c'est vide, "undefined", ou "null" string, return undefined
     if (field === '' || field === 'undefined' || field === 'null') {
       console.log('⚪ Field is empty string or string "undefined"');
       return undefined;
@@ -120,15 +120,15 @@ const extractStringValue = (field: any): string | undefined => {
     return field;
   }
   
-  // CRITICAL FIX: Handle complex objects with _type and value properties
+  // CORRECTION CRITIQUE: Gérer les objets complexes avec _type et value
   if (typeof field === 'object' && field !== null) {
     console.log('🔧 Field is object, checking for _type/value structure:', field);
     
-    // Check if it's the problematic format: {_type: "undefined", value: "actual_data"}
+    // Format problématique: {_type: "undefined", value: "actual_data"}
     if (field.hasOwnProperty('_type') && field.hasOwnProperty('value')) {
       console.log('🎯 Found _type/value structure - value:', field.value);
       
-      // If the value property contains real data (not "undefined"), return it
+      // Si le value contient des vraies données (pas "undefined"), on le retourne
       if (field.value && field.value !== 'undefined' && field.value !== 'null' && field.value !== '') {
         console.log('✅ Extracted real value from object:', field.value);
         return String(field.value);
@@ -138,7 +138,7 @@ const extractStringValue = (field: any): string | undefined => {
       }
     }
     
-    // Check if it's a direct value object like {value: "some_data"}
+    // Format direct: {value: "some_data"}
     if (field.hasOwnProperty('value') && !field.hasOwnProperty('_type')) {
       console.log('🎯 Found simple value structure:', field.value);
       if (field.value && field.value !== 'undefined' && field.value !== 'null' && field.value !== '') {
@@ -151,7 +151,7 @@ const extractStringValue = (field: any): string | undefined => {
     return undefined;
   }
   
-  // If it's a number, convert to string
+  // Si c'est un nombre, convertir en string
   if (typeof field === 'number') {
     console.log('✅ Field is number, converting:', field);
     return String(field);
@@ -161,14 +161,14 @@ const extractStringValue = (field: any): string | undefined => {
   return undefined;
 };
 
-// Helper function to safely extract number values
-const extractNumberValue = (field: any): number | undefined => {
+// Fonction d'extraction des nombres sécurisée
+const extractLocalNumberValue = (field: any): number | undefined => {
   console.log('🔢 Enhanced extracting number from:', field);
   
   if (field === null || field === undefined) return undefined;
   if (typeof field === 'number') return field;
   
-  // Handle complex objects
+  // Gérer les objets complexes
   if (typeof field === 'object' && field !== null) {
     if (field.hasOwnProperty('_type') && field.hasOwnProperty('value')) {
       if (field.value && field.value !== 'undefined' && field.value !== 'null') {
@@ -194,7 +194,7 @@ const extractNumberValue = (field: any): number | undefined => {
   return undefined;
 };
 
-// SIMPLIFIED: Completely rewrite the formatCandidateData function using our new extraction utilities
+// ENTIÈREMENT RÉÉCRITE: fonction formatCandidateData avec extraction robuste
 const formatCandidateData = (candidate: any): CandidateData => {
   if (!candidate) return null as unknown as CandidateData;
   
