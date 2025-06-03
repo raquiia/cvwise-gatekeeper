@@ -120,9 +120,16 @@ const CandidatesContent = () => {
           new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
         );
         
-        // Ensure we correctly extract the status - use the database value directly
-        const candidatesWithCorrectStatus = sortedCandidates.map(candidate => {
-          const status = candidate.detailed_status || 'initial';
+        // S'assurer que chaque candidat a un statut valide
+        const candidatesWithValidStatus = sortedCandidates.map(candidate => {
+          let status = candidate.detailed_status;
+          
+          // Vérifier si le statut est valide, sinon utiliser 'initial'
+          if (!status || !CANDIDATE_STATUSES.includes(status)) {
+            console.log(`Invalid status "${status}" for candidate ${candidate.id}, using "initial"`);
+            status = 'initial';
+          }
+          
           console.log(`Candidate ${candidate.id} (${candidate.first_name} ${candidate.last_name}) status: ${status}`);
           
           return {
@@ -131,8 +138,8 @@ const CandidatesContent = () => {
           };
         });
         
-        setCandidates(candidatesWithCorrectStatus);
-        setFilteredCandidates(candidatesWithCorrectStatus);
+        setCandidates(candidatesWithValidStatus);
+        setFilteredCandidates(candidatesWithValidStatus);
       } else {
         console.error("Candidates data is not an array:", data);
         setCandidates([]);

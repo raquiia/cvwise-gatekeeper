@@ -36,53 +36,18 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   onStatusChange 
 }) => {
   const [currentStatus, setCurrentStatus] = useState<string>(propCurrentStatus || 'initial');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   
-  // Load current status only if not provided as prop
+  // Utiliser le statut passé en prop si disponible
   useEffect(() => {
     if (propCurrentStatus) {
       setCurrentStatus(propCurrentStatus);
-      return;
     }
-    
-    const loadCurrentStatus = async () => {
-      if (!candidateId) {
-        console.error("No candidate ID provided");
-        return;
-      }
-      
-      setIsLoading(true);
-      try {
-        console.log("Loading status for candidate:", candidateId);
-        const status = await candidateStatusService.getCandidateStatus(candidateId);
-        console.log("Loaded status:", status);
-        
-        if (status) {
-          setCurrentStatus(status);
-        } else {
-          console.log("No status found, using initial");
-          setCurrentStatus('initial');
-        }
-      } catch (error) {
-        console.error("Error loading status:", error);
-        setCurrentStatus('initial');
-        toast({
-          title: "Erreur de chargement",
-          description: "Impossible de charger le statut actuel",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    loadCurrentStatus();
-  }, [candidateId, propCurrentStatus]);
+  }, [propCurrentStatus]);
   
   // Change status
   const handleStatusChange = async (status: string) => {
-    if (status === currentStatus) return; // Do nothing if status is already selected
+    if (status === currentStatus) return;
     
     console.log("Changing status from", currentStatus, "to:", status);
     setIsUpdating(true);
@@ -124,15 +89,6 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   
   // Determine button color based on current status
   const buttonColorClass = STATUS_COLORS[currentStatus] || 'bg-gray-500 hover:bg-gray-600';
-  
-  if (isLoading && !propCurrentStatus) {
-    return (
-      <Button disabled className="w-full md:w-auto">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        Chargement...
-      </Button>
-    );
-  }
   
   return (
     <DropdownMenu>

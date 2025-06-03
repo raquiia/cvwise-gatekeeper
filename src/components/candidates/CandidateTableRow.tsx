@@ -51,9 +51,8 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
 
   const handleStatusChange = (newStatus: string) => {
     console.log(`Status changed for candidate ${candidate.id}: ${newStatus}`);
-    // The status will be updated via the StatusSelector component
+    // Forcer un refresh de la liste des candidats
     if (onCandidateDeleted) {
-      // Trigger a refresh of the candidates list
       onCandidateDeleted();
     }
   };
