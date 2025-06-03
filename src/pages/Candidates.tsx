@@ -19,14 +19,21 @@ const extractCandidateStatus = (candidate: CandidateData): string => {
   let statusValue = 'initial';
   
   try {
-    // If detailed_status is undefined or null, return default
-    if (candidate.detailed_status === undefined || candidate.detailed_status === null) {
+    // If detailed_status is undefined, null, or empty string, return default
+    if (candidate.detailed_status === undefined || 
+        candidate.detailed_status === null || 
+        candidate.detailed_status === '') {
       return statusValue;
     }
     
-    // If it's directly a string
+    // If it's directly a string and not empty
     if (typeof candidate.detailed_status === 'string') {
-      return candidate.detailed_status;
+      // Additional check for string content that should be treated as empty
+      const trimmedStatus = candidate.detailed_status.trim();
+      if (trimmedStatus === '' || trimmedStatus === 'undefined' || trimmedStatus === 'null') {
+        return statusValue;
+      }
+      return trimmedStatus;
     }
     
     // If it's an object
@@ -38,15 +45,27 @@ const extractCandidateStatus = (candidate: CandidateData): string => {
       
       // Try to extract from different possible structures
       if ('value' in statusObj && statusObj.value !== undefined) {
-        return String(statusObj.value);
+        const extractedValue = String(statusObj.value).trim();
+        if (extractedValue === '' || extractedValue === 'undefined' || extractedValue === 'null') {
+          return statusValue;
+        }
+        return extractedValue;
       }
       
       if ('status' in statusObj && statusObj.status !== undefined) {
-        return String(statusObj.status);
+        const extractedValue = String(statusObj.status).trim();
+        if (extractedValue === '' || extractedValue === 'undefined' || extractedValue === 'null') {
+          return statusValue;
+        }
+        return extractedValue;
       }
       
       if ('name' in statusObj && statusObj.name !== undefined) {
-        return String(statusObj.name);
+        const extractedValue = String(statusObj.name).trim();
+        if (extractedValue === '' || extractedValue === 'undefined' || extractedValue === 'null') {
+          return statusValue;
+        }
+        return extractedValue;
       }
       
       // If we have _type field, it might be a Supabase special format
