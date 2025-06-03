@@ -52,20 +52,22 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
     isJobSpecific 
   } = useOptimizedScoring();
 
-  // Calculate scores progressively with better error handling
+  // Calculate scores progressively when candidates or job context changes
   useEffect(() => {
     if (!candidates.length) return;
     
     const calculateScoresProgressively = async () => {
-      // Calculate scores for visible candidates first (first 5)
-      const visibleCandidates = candidates.slice(0, 5);
+      console.log(`Calculating scores for ${candidates.length} candidates, job specific: ${isJobSpecific}`);
+      
+      // Calculate scores for visible candidates first (first 10)
+      const visibleCandidates = candidates.slice(0, 10);
       
       for (let i = 0; i < visibleCandidates.length; i++) {
         const candidate = visibleCandidates[i];
         if (candidate.id && !getCachedScore(candidate.id) && !isScoreLoading(candidate.id)) {
           try {
-            // Add delay between calculations to prevent overwhelming the system
-            await new Promise(resolve => setTimeout(resolve, i * 300));
+            // Add small delay between calculations to prevent overwhelming
+            await new Promise(resolve => setTimeout(resolve, i * 200));
             await calculateContextualScore(candidate);
           } catch (error) {
             console.error(`Error calculating score for candidate ${candidate.id}:`, error);
@@ -74,7 +76,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
       }
       
       // Calculate remaining candidates with longer delays
-      const remainingCandidates = candidates.slice(5);
+      const remainingCandidates = candidates.slice(10);
       remainingCandidates.forEach((candidate, index) => {
         if (candidate.id && !getCachedScore(candidate.id) && !isScoreLoading(candidate.id)) {
           setTimeout(async () => {
@@ -83,13 +85,13 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
             } catch (error) {
               console.error(`Error calculating score for candidate ${candidate.id}:`, error);
             }
-          }, 2000 + (index * 500)); // Longer staggered calculation
+          }, 2000 + (index * 300));
         }
       });
     };
 
     calculateScoresProgressively();
-  }, [candidates.length]); // Only depend on length to avoid infinite loops
+  }, [candidates.length, isJobSpecific]); // Re-run when job context changes
 
   // Fonction pour générer une couleur basée sur les initiales
   const getAvatarColor = (firstName: string, lastName: string) => {
@@ -236,8 +238,11 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
     
     if (isLoading) {
       return (
-        <Badge variant="outline" className="border text-xs px-2 py-1 animate-pulse">
-          Calcul...
+        <Badge variant="outline" className="border text-xs px-2 py-1 animate-pulse bg-blue-50 border-blue-200">
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+            Calcul...
+          </div>
         </Badge>
       );
     }
@@ -280,7 +285,10 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
           {score}%
         </Badge>
         {isJobSpecificScore && (
-          <Briefcase size={10} className="text-purple-600" />
+          <div className="flex items-center gap-1">
+            <Briefcase size={10} className="text-purple-600" />
+            <span className="text-xs text-purple-600 font-medium">Match</span>
+          </div>
         )}
       </div>
     );
@@ -351,7 +359,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
             )}
           </div>
           <div className="text-xs text-gray-500">
-            {isJobSpecific ? 'Scores contextuels' : 'Scores généraux'}
+            {isJobSpecific ? 'Scores de correspondance activés' : 'Scores généraux de profil'}
           </div>
         </div>
       </div>

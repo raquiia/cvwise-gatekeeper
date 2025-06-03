@@ -4,6 +4,7 @@ import { candidateMatchingService } from '@/services/data/candidate-matching/can
 import { calculateCandidateScore } from '@/services/scoring/candidateScoring';
 import type { CandidateData } from '@/services/data/candidateService';
 import type { ScoreBreakdown } from '@/services/scoring/candidateScoring';
+import { useActiveJob } from '@/context/ActiveJobContext';
 
 export interface ContextualScore extends ScoreBreakdown {
   isJobSpecific: boolean;
@@ -12,41 +13,46 @@ export interface ContextualScore extends ScoreBreakdown {
 }
 
 interface ScoreCache {
-  [candidateId: string]: {
+  [key: string]: {
     score: ContextualScore;
     timestamp: number;
-    jobOfferId?: string;
+    version: number;
   };
 }
 
 export const useOptimizedScoring = () => {
-  const [activeJobOfferId, setActiveJobOfferId] = useState<string | null>(null);
-  const [activeJobOfferTitle, setActiveJobOfferTitle] = useState<string | null>(null);
+  const { activeJobOfferId, activeJobOfferTitle } = useActiveJob();
   const [scoreCache, setScoreCache] = useState<ScoreCache>({});
   const [loadingScores, setLoadingScores] = useState<Set<string>>(new Set());
+  const [cacheVersion, setCacheVersion] = useState(0);
   
   const calculatingRef = useRef<Set<string>>(new Set());
   
   // Cache timeout: 5 minutes
   const CACHE_TIMEOUT = 5 * 60 * 1000;
   
+  // Clear cache when active job changes
   useEffect(() => {
-    // Get the current active job offer only once
-    const currentJobOfferId = candidateMatchingService.getActiveJobOfferId();
-    if (currentJobOfferId !== activeJobOfferId) {
-      setActiveJobOfferId(currentJobOfferId);
-      setScoreCache({}); // Clear cache when job offer changes
-    }
-  }, []); // Empty dependency array to run only once
+    console.log('Active job changed:', activeJobOfferId, 'clearing cache');
+    setScoreCache({});
+    setCacheVersion(prev => prev + 1);
+    setLoadingScores(new Set());
+    calculatingRef.current.clear();
+  }, [activeJobOfferId]);
+
+  const getCacheKey = useCallback((candidateId: string): string => {
+    return `${candidateId}_${activeJobOfferId || 'general'}_v${cacheVersion}`;
+  }, [activeJobOfferId, cacheVersion]);
 
   const calculateContextualScore = useCallback(async (candidate: CandidateData): Promise<ContextualScore> => {
     const candidateId = candidate.id!;
+    const cacheKey = getCacheKey(candidateId);
     
     // Prevent duplicate calculations
     if (calculatingRef.current.has(candidateId)) {
       // Return cached score if available, otherwise return a default
-      const cached = scoreCache[candidateId];
-      if (cached) return cached.score;
+      const cached = scoreCache[cacheKey];
+      if (cached && cached.version === cacheVersion) return cached.score;
       
       // Return a default score while calculation is in progress
       const defaultScore = calculateCandidateScore(candidate);
@@ -58,10 +64,10 @@ export const useOptimizedScoring = () => {
     }
     
     // Check cache first
-    const cached = scoreCache[candidateId];
+    const cached = scoreCache[cacheKey];
     if (cached && 
-        (Date.now() - cached.timestamp < CACHE_TIMEOUT) &&
-        cached.jobOfferId === activeJobOfferId) {
+        cached.version === cacheVersion &&
+        (Date.now() - cached.timestamp < CACHE_TIMEOUT)) {
       return cached.score;
     }
 
@@ -84,7 +90,7 @@ export const useOptimizedScoring = () => {
         try {
           // Calculate job-specific score with timeout
           const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('Timeout')), 5000);
+            setTimeout(() => reject(new Error('Timeout')), 8000);
           });
 
           const scorePromise = candidateMatchingService.calculateCandidateActiveJobScore(candidate);
@@ -118,13 +124,13 @@ export const useOptimizedScoring = () => {
         }
       }
       
-      // Cache the result
+      // Cache the result with version
       setScoreCache(prev => ({
         ...prev,
-        [candidateId]: {
+        [cacheKey]: {
           score: contextualScore,
           timestamp: Date.now(),
-          jobOfferId: activeJobOfferId
+          version: cacheVersion
         }
       }));
       
@@ -149,35 +155,38 @@ export const useOptimizedScoring = () => {
         return newSet;
       });
     }
-  }, [activeJobOfferId, activeJobOfferTitle, scoreCache]);
-
-  const updateActiveJobOffer = useCallback((jobOfferId: string | null, jobTitle?: string) => {
-    setActiveJobOfferId(jobOfferId);
-    setActiveJobOfferTitle(jobTitle || null);
-    setScoreCache({}); // Clear cache when job offer changes
-  }, []);
+  }, [activeJobOfferId, activeJobOfferTitle, scoreCache, cacheVersion, getCacheKey]);
 
   const getCachedScore = useCallback((candidateId: string): ContextualScore | null => {
-    const cached = scoreCache[candidateId];
+    const cacheKey = getCacheKey(candidateId);
+    const cached = scoreCache[cacheKey];
     if (cached && 
-        (Date.now() - cached.timestamp < CACHE_TIMEOUT) &&
-        cached.jobOfferId === activeJobOfferId) {
+        cached.version === cacheVersion &&
+        (Date.now() - cached.timestamp < CACHE_TIMEOUT)) {
       return cached.score;
     }
     return null;
-  }, [scoreCache, activeJobOfferId]);
+  }, [scoreCache, cacheVersion, getCacheKey]);
 
   const isScoreLoading = useCallback((candidateId: string): boolean => {
     return loadingScores.has(candidateId);
   }, [loadingScores]);
 
+  const invalidateScores = useCallback(() => {
+    console.log('Invalidating all scores');
+    setScoreCache({});
+    setCacheVersion(prev => prev + 1);
+    setLoadingScores(new Set());
+    calculatingRef.current.clear();
+  }, []);
+
   return {
     activeJobOfferId,
     activeJobOfferTitle,
     calculateContextualScore,
-    updateActiveJobOffer,
     getCachedScore,
     isScoreLoading,
+    invalidateScores,
     isJobSpecific: !!activeJobOfferId
   };
 };

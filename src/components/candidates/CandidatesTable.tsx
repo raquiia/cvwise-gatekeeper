@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle, AlertTriangle, Briefcase } from 'lucide-react';
+import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle, AlertTriangle, Briefcase, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -15,8 +15,8 @@ import ModernCandidatesTable from './ModernCandidatesTable';
 import ModernTableView from './ModernTableView';
 import { useToast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
-import { candidateMatchingService } from '@/services/data/candidateMatchingService';
 import { useOptimizedScoring } from '@/hooks/use-optimized-scoring';
+import { useActiveJob } from '@/context/ActiveJobContext';
 import { CANDIDATE_STATUS_LABELS, CANDIDATE_STATUSES } from '@/services/data/candidateStatusService';
 
 interface CandidatesTableProps {
@@ -36,15 +36,19 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
 }) => {
   const { toast } = useToast();
   const [jobOffers, setJobOffers] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
   
   const { 
     activeJobOfferId, 
     activeJobOfferTitle, 
-    updateActiveJobOffer, 
-    isJobSpecific 
+    setActiveJobOffer,
+    isLoading: jobLoading 
+  } = useActiveJob();
+  
+  const { 
+    isJobSpecific,
+    invalidateScores 
   } = useOptimizedScoring();
   
   // Fetch job offers on component mount
@@ -53,49 +57,37 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
       try {
         const offers = await jobOfferService.getUserJobOffers();
         setJobOffers(offers);
-        
-        // Check if there's an active job offer
-        const currentActiveId = candidateMatchingService.getActiveJobOfferId();
-        if (currentActiveId) {
-          const activeOffer = offers.find(offer => offer.id === currentActiveId);
-          updateActiveJobOffer(currentActiveId, activeOffer?.title);
-        }
       } catch (error) {
         console.error("Error fetching job offers:", error);
       }
     };
     
     fetchJobOffers();
-  }, [updateActiveJobOffer]);
+  }, []);
   
   // Handle changing the active job offer
   const handleJobOfferChange = async (jobOfferId: string | null) => {
-    setIsLoading(true);
     try {
       if (jobOfferId) {
         console.log("Activating job offer:", jobOfferId);
-        const success = await candidateMatchingService.setActiveJobOffer(jobOfferId);
+        const selectedOffer = jobOffers.find(offer => offer.id === jobOfferId);
+        await setActiveJobOffer(jobOfferId, selectedOffer?.title);
         
-        if (success) {
-          const selectedOffer = jobOffers.find(offer => offer.id === jobOfferId);
-          updateActiveJobOffer(jobOfferId, selectedOffer?.title);
-          
-          toast({
-            title: "Offre d'emploi activée",
-            description: `Les scores sont maintenant relatifs à "${selectedOffer?.title || 'cette offre'}"`,
-          });
-        } else {
-          throw new Error("Failed to activate job offer");
-        }
+        toast({
+          title: "Offre d'emploi activée",
+          description: `Les scores sont maintenant relatifs à "${selectedOffer?.title || 'cette offre'}"`,
+        });
       } else {
-        await candidateMatchingService.setActiveJobOffer(null);
-        updateActiveJobOffer(null);
+        await setActiveJobOffer(null);
         
         toast({
           title: "Mode de scoring standard",
           description: "Les scores affichent maintenant la complétude des profils",
         });
       }
+      
+      // Force refresh of all scores
+      invalidateScores();
     } catch (error) {
       console.error("Error activating job offer:", error);
       toast({
@@ -103,8 +95,6 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
         description: "Impossible d'activer cette offre d'emploi",
         variant: "destructive"
       });
-    } finally {
-      setIsLoading(false);
     }
   };
   
@@ -140,20 +130,31 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   
   return (
     <div className="space-y-6">
-      {/* Job Offer Selection */}
+      {/* Enhanced Job Offer Selection */}
       <div className="flex justify-between items-center">
         {/* Context indicator */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {isJobSpecific ? (
-            <Badge variant="default" className="bg-purple-100 text-purple-800">
+            <Badge variant="default" className="bg-purple-100 text-purple-800 border-purple-200">
               <Briefcase size={12} className="mr-1" />
-              Scores contextuels activés
+              Scores contextuels : {activeJobOfferTitle}
             </Badge>
           ) : (
             <Badge variant="secondary" className="bg-gray-100 text-gray-700">
-              Scores généraux
+              Scores généraux de profil
             </Badge>
           )}
+          
+          {/* Refresh button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={invalidateScores}
+            className="h-8 w-8 p-0"
+            title="Recalculer tous les scores"
+          >
+            <RefreshCw size={14} />
+          </Button>
         </div>
         
         <DropdownMenu>
@@ -162,16 +163,22 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
               variant="outline" 
               size="sm" 
               className="gap-1 border-purple-200/50 dark:border-purple-800/30 hover:bg-purple-50 dark:hover:bg-purple-900/20"
-              disabled={isLoading}
+              disabled={jobLoading}
             >
               <Briefcase size={14} className="mr-1 text-purple-600 dark:text-purple-400" />
               {activeJobOfferId ? (activeJobOfferTitle || "Offre active") : "Sélectionner une offre d'emploi"}
               <ChevronDown size={14} />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white/95 backdrop-blur-md border-purple-100/50 shadow-lg dark:bg-navy-dark/95 dark:border-purple-800/30">
-            <DropdownMenuItem onClick={() => handleJobOfferChange(null)}>
-              Score général (sans contexte)
+          <DropdownMenuContent className="bg-white/95 backdrop-blur-md border-purple-100/50 shadow-lg dark:bg-navy-dark/95 dark:border-purple-800/30 min-w-[300px]">
+            <DropdownMenuItem 
+              onClick={() => handleJobOfferChange(null)}
+              className={!activeJobOfferId ? "bg-purple-50 dark:bg-purple-900/20" : ""}
+            >
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${!activeJobOfferId ? 'bg-purple-600' : 'bg-transparent border border-gray-300'}`} />
+                Score général (sans contexte)
+              </div>
             </DropdownMenuItem>
             
             <Separator className="my-1" />
@@ -187,7 +194,13 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                   onClick={() => handleJobOfferChange(offer.id)}
                   className={activeJobOfferId === offer.id ? "bg-purple-50 dark:bg-purple-900/20" : ""}
                 >
-                  {offer.title}
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${activeJobOfferId === offer.id ? 'bg-purple-600' : 'bg-transparent border border-gray-300'}`} />
+                    <div className="flex-1">
+                      <div className="font-medium">{offer.title}</div>
+                      <div className="text-xs text-muted-foreground">{offer.company}</div>
+                    </div>
+                  </div>
                 </DropdownMenuItem>
               ))
             )}
