@@ -98,9 +98,9 @@ const VALID_DETAILED_STATUSES = [
   'presentation_client', 'en_mission', 'refus', 'ancien_employe'
 ];
 
-// ULTRA-SIMPLE: New extraction function that handles all cases correctly
+// ULTRA-SIMPLE: Enhanced extraction function that handles all data formats correctly including complex objects
 const extractStringValue = (field: any): string | undefined => {
-  console.log('🔍 Ultra-simple extracting field:', field, 'Type:', typeof field);
+  console.log('🔍 Enhanced extracting field:', field, 'Type:', typeof field);
   
   // If null or undefined, return undefined
   if (field === null || field === undefined) {
@@ -119,6 +119,37 @@ const extractStringValue = (field: any): string | undefined => {
     return field;
   }
   
+  // CRITICAL FIX: Handle complex objects with _type and value properties
+  if (typeof field === 'object' && field !== null) {
+    console.log('🔧 Field is object, checking for _type/value structure:', field);
+    
+    // Check if it's the problematic format: {_type: "undefined", value: "actual_data"}
+    if (field.hasOwnProperty('_type') && field.hasOwnProperty('value')) {
+      console.log('🎯 Found _type/value structure - value:', field.value);
+      
+      // If the value property contains real data (not "undefined"), return it
+      if (field.value && field.value !== 'undefined' && field.value !== 'null' && field.value !== '') {
+        console.log('✅ Extracted real value from object:', field.value);
+        return String(field.value);
+      } else {
+        console.log('⚪ Object value is empty or undefined');
+        return undefined;
+      }
+    }
+    
+    // Check if it's a direct value object like {value: "some_data"}
+    if (field.hasOwnProperty('value') && !field.hasOwnProperty('_type')) {
+      console.log('🎯 Found simple value structure:', field.value);
+      if (field.value && field.value !== 'undefined' && field.value !== 'null' && field.value !== '') {
+        console.log('✅ Extracted value from simple object:', field.value);
+        return String(field.value);
+      }
+    }
+    
+    console.log('⚠️ Object format not recognized, returning undefined');
+    return undefined;
+  }
+  
   // If it's a number, convert to string
   if (typeof field === 'number') {
     console.log('✅ Field is number, converting:', field);
@@ -131,10 +162,27 @@ const extractStringValue = (field: any): string | undefined => {
 
 // Helper function to safely extract number values
 const extractNumberValue = (field: any): number | undefined => {
-  console.log('🔢 Extracting number from:', field);
+  console.log('🔢 Enhanced extracting number from:', field);
   
   if (field === null || field === undefined) return undefined;
   if (typeof field === 'number') return field;
+  
+  // Handle complex objects
+  if (typeof field === 'object' && field !== null) {
+    if (field.hasOwnProperty('_type') && field.hasOwnProperty('value')) {
+      if (field.value && field.value !== 'undefined' && field.value !== 'null') {
+        const parsed = parseInt(String(field.value), 10);
+        return isNaN(parsed) ? undefined : parsed;
+      }
+    }
+    if (field.hasOwnProperty('value') && !field.hasOwnProperty('_type')) {
+      if (field.value && field.value !== 'undefined' && field.value !== 'null') {
+        const parsed = parseInt(String(field.value), 10);
+        return isNaN(parsed) ? undefined : parsed;
+      }
+    }
+    return undefined;
+  }
   
   if (typeof field === 'string') {
     if (field === '' || field === 'undefined' || field === 'null') return undefined;
