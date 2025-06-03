@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check, ChevronDown, Loader2 } from 'lucide-react';
@@ -28,12 +27,14 @@ interface StatusSelectorProps {
   candidateId: string;
   currentStatus?: string;
   onStatusChange?: (newStatus: string) => void;
+  onDataRefresh?: () => void; // NEW: Add callback to refresh parent data
 }
 
 const StatusSelector: React.FC<StatusSelectorProps> = ({ 
   candidateId,
   currentStatus: propCurrentStatus,
-  onStatusChange 
+  onStatusChange,
+  onDataRefresh 
 }) => {
   const [currentStatus, setCurrentStatus] = useState<string>(propCurrentStatus || 'initial');
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
@@ -90,6 +91,11 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         // Notifier le parent
         if (onStatusChange) {
           onStatusChange(status);
+        }
+        
+        // NEW: Trigger data refresh in parent components
+        if (onDataRefresh) {
+          onDataRefresh();
         }
       } else {
         console.error("Failed to update status");

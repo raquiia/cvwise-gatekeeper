@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -51,7 +50,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
 
   const handleStatusChange = (newStatus: string) => {
     console.log(`Status changed for candidate ${candidate.id}: ${newStatus}`);
-    // Forcer un refresh de la liste des candidats
+    // Force refresh of the candidates list to reflect the new status
     if (onCandidateDeleted) {
       onCandidateDeleted();
     }
@@ -86,6 +85,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
           candidateId={candidate.id!}
           currentStatus={candidateStatus}
           onStatusChange={handleStatusChange}
+          onDataRefresh={onCandidateDeleted}
         />
       </TableCell>
       <TableCell>

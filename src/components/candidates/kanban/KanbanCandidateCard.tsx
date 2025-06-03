@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,11 +8,13 @@ import { ensureStringArray } from '@/utils/candidateUtils';
 import { calculateCandidateScore } from '@/services/scoring/candidateScoring';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
+import StatusSelector from '../detail/StatusSelector';
 
 interface KanbanCandidateCardProps {
   candidate: CandidateData;
   onViewCandidate: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
+  onCandidateUpdated?: () => void; // NEW: Add callback for updates
   isDragging?: boolean;
 }
 
@@ -21,6 +22,7 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
   candidate,
   onViewCandidate,
   onCandidateDeleted,
+  onCandidateUpdated,
   isDragging = false
 }) => {
   const { toast } = useToast();
@@ -46,6 +48,14 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
         description: error.message || "Impossible de supprimer le candidat",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    console.log(`Status changed for candidate ${candidate.id}: ${newStatus}`);
+    // Trigger refresh of kanban data
+    if (onCandidateUpdated) {
+      onCandidateUpdated();
     }
   };
 
@@ -81,6 +91,16 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
           <div className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(scoreBreakdown.overall)}`}>
             {scoreBreakdown.overall}%
           </div>
+        </div>
+
+        {/* Status Selector - NEW: Add status selector to kanban cards */}
+        <div className="mb-3">
+          <StatusSelector 
+            candidateId={candidate.id!}
+            currentStatus={candidate.detailed_status}
+            onStatusChange={handleStatusChange}
+            onDataRefresh={onCandidateUpdated}
+          />
         </div>
 
         {/* Company and Location */}
