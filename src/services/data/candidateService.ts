@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 import { extractFieldValue, extractNumberValue, extractArrayValue } from '@/components/candidates/edit/dataExtractionUtils';
@@ -268,15 +267,33 @@ export const formatCandidateData = (candidate: any): CandidateData => {
 export const candidateService = {
   getUserCandidates: async (): Promise<CandidateData[]> => {
     try {
+      console.log('🔍 Fetching user candidates...');
+      
       const { data, error } = await supabase.rpc('get_user_candidates', {
         user_id_param: (await supabase.auth.getUser()).data.user?.id
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ RPC Error in getUserCandidates:', error);
+        throw error;
+      }
+      
+      console.log('📥 RAW RPC RESPONSE getUserCandidates:', JSON.stringify(data, null, 2));
       
       if (!data || data.length === 0) {
+        console.log('📭 No candidates found');
         return [];
       }
+      
+      // Diagnostic: vérifier chaque candidat individuellement
+      data.forEach((candidate, index) => {
+        console.log(`📋 Candidate ${index + 1}:`, {
+          id: candidate.id,
+          name: `${candidate.first_name} ${candidate.last_name}`,
+          detailed_status: candidate.detailed_status,
+          status: candidate.status
+        });
+      });
       
       return data.map(formatCandidateData);
     } catch (error: any) {
