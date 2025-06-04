@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Tooltip, Legend } from 'recharts';
@@ -18,7 +17,7 @@ const RealDataMetrics: React.FC<RealDataMetricsProps> = ({ candidatesData }) => 
     
     const activityByWeek = candidatesData.reduce((acc, candidate) => {
       const date = new Date(candidate.created_at);
-      if (date >= last30Days) {
+      if (date.getTime() >= last30Days.getTime()) {
         const weekStart = new Date(date);
         weekStart.setDate(date.getDate() - date.getDay());
         const weekKey = weekStart.toISOString().split('T')[0];
@@ -146,8 +145,8 @@ const RealDataMetrics: React.FC<RealDataMetricsProps> = ({ candidatesData }) => 
     const last7Days = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
     const last30Days = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    const recent7 = candidatesData.filter(c => new Date(c.created_at) >= last7Days).length;
-    const recent30 = candidatesData.filter(c => new Date(c.created_at) >= last30Days).length;
+    const recent7 = candidatesData.filter(c => new Date(c.created_at).getTime() >= last7Days.getTime()).length;
+    const recent30 = candidatesData.filter(c => new Date(c.created_at).getTime() >= last30Days.getTime()).length;
 
     return { recent7, recent30 };
   };
