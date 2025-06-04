@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { aiScoringService, AIScoringResult } from '@/services/scoring/aiScoringService';
 import { useActiveJob } from '@/context/ActiveJobContext';
@@ -53,7 +52,7 @@ export const useAIScoring = () => {
     }));
     
     try {
-      console.log('Calculating AI score with optimized caching for candidate:', candidateId, 'job:', activeJobOfferId);
+      console.log(`Calculating AI score ${forceRecalculate ? 'with force recalculate' : 'with optimized caching'} for candidate:`, candidateId, 'job:', activeJobOfferId);
       
       let result;
       
@@ -94,10 +93,18 @@ export const useAIScoring = () => {
         'Nouveau score calculé avec l\'IA' : 
         'Score récupéré depuis le cache';
       
-      toast({
-        title: "Score calculé",
-        description: `${result.score}% - ${sourceMessage}`,
-      });
+      // Ne pas afficher de toast pour le forceRecalculate car c'est explicitement demandé par l'utilisateur
+      if (!forceRecalculate) {
+        toast({
+          title: "Score calculé",
+          description: `${result.score}% - ${sourceMessage}`,
+        });
+      } else {
+        toast({
+          title: "Score recalculé",
+          description: `${result.score}% - Nouvelle analyse IA terminée`,
+        });
+      }
       
       return newState;
       
