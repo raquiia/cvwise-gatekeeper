@@ -1,16 +1,15 @@
-import React from 'react';
+
+import React, { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { MapPin, Calendar, TrendingUp, Edit, Trash2, Mail, Phone, Building, Star } from 'lucide-react';
+import { MapPin, Calendar, TrendingUp, Edit, Trash2, Mail, Phone, Brain } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
-import { calculateCandidateScore, getScoreEvaluation } from '@/services/scoring/candidateScoring';
-import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/utils/dateFormatter';
+import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { cn } from '@/lib/utils';
 
 interface CandidatesCardViewProps {
@@ -25,93 +24,18 @@ const CandidatesCardView: React.FC<CandidatesCardViewProps> = ({
   onCandidateDeleted
 }) => {
   const { toast } = useToast();
+  const { getAIScore, preloadScoresFromDatabase, isJobSpecific } = useAIScoring();
 
-  // Fonction pour générer une couleur basée sur les initiales
-  const getAvatarColor = (firstName: string, lastName: string) => {
-    const colors = [
-      'bg-gradient-to-br from-purple-500 to-pink-500',
-      'bg-gradient-to-br from-blue-500 to-cyan-500',
-      'bg-gradient-to-br from-green-500 to-teal-500',
-      'bg-gradient-to-br from-orange-500 to-red-500',
-      'bg-gradient-to-br from-indigo-500 to-purple-500',
-      'bg-gradient-to-br from-pink-500 to-rose-500',
-      'bg-gradient-to-br from-cyan-500 to-blue-500',
-      'bg-gradient-to-br from-teal-500 to-green-500',
-    ];
-    const nameHash = (firstName + lastName).split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    return colors[nameHash % colors.length];
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusLabel = CANDIDATE_STATUS_LABELS[status] || status;
-    
-    const statusConfig = {
-      initial: { 
-        color: 'bg-gray-100 text-gray-800 border-gray-200', 
-        gradient: 'from-gray-50 to-gray-100',
-        pulse: false 
-      },
-      contact: { 
-        color: 'bg-blue-100 text-blue-800 border-blue-200', 
-        gradient: 'from-blue-50 to-blue-100',
-        pulse: true 
-      },
-      prequalification: { 
-        color: 'bg-purple-100 text-purple-800 border-purple-200', 
-        gradient: 'from-purple-50 to-purple-100',
-        pulse: true 
-      },
-      ec1: { 
-        color: 'bg-orange-100 text-orange-800 border-orange-200', 
-        gradient: 'from-orange-50 to-orange-100',
-        pulse: true 
-      },
-      ec2: { 
-        color: 'bg-amber-100 text-amber-800 border-amber-200', 
-        gradient: 'from-amber-50 to-amber-100',
-        pulse: true 
-      },
-      presentation_client: { 
-        color: 'bg-indigo-100 text-indigo-800 border-indigo-200', 
-        gradient: 'from-indigo-50 to-indigo-100',
-        pulse: true 
-      },
-      en_mission: { 
-        color: 'bg-green-100 text-green-800 border-green-200', 
-        gradient: 'from-green-50 to-green-100',
-        pulse: false 
-      },
-      refus: { 
-        color: 'bg-red-100 text-red-800 border-red-200', 
-        gradient: 'from-red-50 to-red-100',
-        pulse: false 
-      },
-      ancien_employe: { 
-        color: 'bg-emerald-100 text-emerald-800 border-emerald-200', 
-        gradient: 'from-emerald-50 to-emerald-100',
-        pulse: false 
-      },
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.initial;
-
-    return (
-      <Badge 
-        variant="outline" 
-        className={cn(
-          config.color,
-          'border text-xs font-medium px-3 py-1 shadow-sm',
-          config.pulse && 'animate-pulse'
-        )}
-      >
-        {statusLabel}
-      </Badge>
-    );
-  };
+  // Précharger les scores AI pour tous les candidats visibles
+  useEffect(() => {
+    const candidateIds = candidates.map(c => c.id!).filter(Boolean);
+    if (candidateIds.length > 0) {
+      console.log('Preloading AI scores for card view candidates:', candidateIds.length);
+      preloadScoresFromDatabase(candidateIds);
+    }
+  }, [candidates, preloadScoresFromDatabase]);
 
   const handleDelete = async (candidateId: string) => {
-    if (!candidateId) return;
-    
     try {
       await candidateService.deleteCandidate(candidateId);
       toast({
@@ -131,192 +55,188 @@ const CandidatesCardView: React.FC<CandidatesCardViewProps> = ({
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600 bg-gradient-to-r from-green-50 to-emerald-50 border-green-200';
-    if (score >= 60) return 'text-amber-600 bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200';
-    return 'text-red-600 bg-gradient-to-r from-red-50 to-rose-50 border-red-200';
+    if (score >= 80) return 'text-green-600 bg-green-50 border-green-200';
+    if (score >= 60) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+    return 'text-red-600 bg-red-50 border-red-200';
   };
 
-  const getScoreIcon = (score: number) => {
-    if (score >= 80) return <Star className="w-3 h-3 fill-current" />;
-    if (score >= 60) return <Star className="w-3 h-3" />;
-    return null;
+  const getScoreSource = (source?: string) => {
+    switch (source) {
+      case 'database': return 'BDD';
+      case 'fresh_calculation': return 'Nouveau';
+      case 'cache': return 'Cache';
+      default: return 'Ancien';
+    }
   };
+
+  if (candidates.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">Aucun candidat trouvé</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-      {candidates.map((candidate, index) => {
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {candidates.map((candidate) => {
         const skills = ensureStringArray(candidate.skills);
-        const scoreBreakdown = calculateCandidateScore(candidate);
-        const animationDelay = `${index * 100}ms`;
-        
+        const aiScore = getAIScore(candidate.id!);
+        const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
+        const isAIScore = aiScore.score !== null;
+
         return (
-          <Card 
-            key={candidate.id} 
-            className={cn(
-              "group relative overflow-hidden transition-all duration-500 ease-out",
-              "hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-2",
-              "border border-purple-100/50 dark:border-purple-800/30",
-              "bg-gradient-to-br from-white/90 via-white/80 to-purple-50/30",
-              "dark:from-navy-dark/90 dark:via-navy-dark/80 dark:to-purple-950/30",
-              "backdrop-blur-sm cursor-pointer transform-gpu",
-              "animate-in fade-in-0 slide-in-from-bottom-4"
-            )}
-            style={{ animationDelay }}
+          <Card
+            key={candidate.id}
+            className="group cursor-pointer hover:shadow-lg transition-all duration-200 border-l-4 border-l-purple-500"
             onClick={() => onViewCandidate(candidate.id!)}
           >
-            {/* Background pattern */}
-            <div className="absolute inset-0 opacity-5 group-hover:opacity-10 transition-opacity duration-500">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full blur-3xl transform translate-x-16 -translate-y-16" />
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-blue-500 to-cyan-500 rounded-full blur-2xl transform -translate-x-12 translate-y-12" />
-            </div>
-
-            {/* Shine effect */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
-            </div>
-
-            <CardContent className="p-6 relative z-10">
+            <CardContent className="p-6">
               {/* Header avec avatar et score */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <Avatar className="w-14 h-14 ring-2 ring-white/60 shadow-lg group-hover:ring-purple-300/50 transition-all duration-300">
-                      <AvatarFallback className={cn(
-                        getAvatarColor(candidate.first_name || '', candidate.last_name || ''),
-                        "text-white text-lg font-bold shadow-inner"
-                      )}>
-                        {candidate.first_name?.[0]}{candidate.last_name?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    {/* Badge "nouveau" si récent */}
-                    {new Date(candidate.created_at || '').getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000 && (
-                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full border-2 border-white shadow-sm animate-pulse" />
-                    )}
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-lg font-semibold">
+                    {candidate.first_name?.[0]}{candidate.last_name?.[0]}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-lg text-navy-dark dark:text-sand group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors duration-300 truncate">
+                  <div>
+                    <h3 className="font-semibold text-lg text-navy-dark">
                       {candidate.first_name} {candidate.last_name}
                     </h3>
-                    <p className="text-sm text-muted-foreground font-medium truncate">
+                    <p className="text-sm text-gray-600">
                       {candidate.position || 'Poste non spécifié'}
                     </p>
                   </div>
                 </div>
                 
-                {/* Score badge moderne */}
-                <div className={cn(
-                  "px-3 py-1.5 rounded-full text-sm font-bold border shadow-sm flex items-center gap-1.5",
-                  "transition-all duration-300 group-hover:scale-105",
-                  getScoreColor(scoreBreakdown.overall)
-                )}>
-                  {getScoreIcon(scoreBreakdown.overall)}
-                  {scoreBreakdown.overall}%
+                {/* Score avec indicateur AI */}
+                <div className="flex flex-col items-end gap-1">
+                  {aiScore.isLoading ? (
+                    <div className="flex items-center gap-1">
+                      <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-xs text-gray-500">...</span>
+                    </div>
+                  ) : aiScore.error ? (
+                    <div className="flex flex-col items-end gap-1" title={aiScore.error}>
+                      <div className={cn(
+                        "px-3 py-1 rounded-full text-sm font-bold border",
+                        getScoreColor(candidate.score || 0)
+                      )}>
+                        {candidate.score || 0}%
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        Ancien
+                      </Badge>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-end gap-1">
+                      <div className={cn(
+                        "px-3 py-1 rounded-full text-sm font-bold border",
+                        getScoreColor(displayScore)
+                      )}>
+                        {displayScore}%
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Badge 
+                          variant={isAIScore ? "default" : "secondary"} 
+                          className={cn(
+                            "text-xs",
+                            isAIScore ? "bg-purple-100 text-purple-800 border-purple-300" : ""
+                          )}
+                          title={isAIScore ? aiScore.explanation : "Score calculé avec l'ancien système"}
+                        >
+                          {isAIScore && <Brain size={10} className="mr-1" />}
+                          {isAIScore ? getScoreSource(aiScore.source) : 'Ancien'}
+                        </Badge>
+                        {isJobSpecific && (
+                          <div title="Score de correspondance">
+                            <TrendingUp size={12} className="text-purple-600" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Status badge */}
-              <div className="mb-4">
-                {getStatusBadge(candidate.detailed_status || 'initial')}
+              {/* Company et localisation */}
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center text-sm text-gray-600">
+                  <span className="font-medium">{candidate.company || 'Entreprise non spécifiée'}</span>
+                </div>
+                <div className="flex items-center text-sm text-gray-600">
+                  <MapPin size={14} className="mr-2 text-gray-400" />
+                  {candidate.location || 'Localisation non spécifiée'}
+                </div>
+                <div className="flex items-center text-sm text-gray-600">
+                  <Calendar size={14} className="mr-2 text-gray-400" />
+                  {candidate.years_experience ? `${candidate.years_experience} ans d'expérience` : 'Expérience non spécifiée'}
+                </div>
               </div>
 
-              {/* Informations principales */}
-              <div className="space-y-3 mb-4">
-                {candidate.company && (
-                  <div className="flex items-center text-sm text-muted-foreground bg-white/40 dark:bg-navy-dark/40 rounded-lg px-3 py-2 backdrop-blur-sm">
-                    <Building size={14} className="mr-2 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-                    <span className="truncate font-medium">{candidate.company}</span>
-                  </div>
-                )}
-                
-                {candidate.location && (
-                  <div className="flex items-center text-sm text-muted-foreground bg-white/40 dark:bg-navy-dark/40 rounded-lg px-3 py-2 backdrop-blur-sm">
-                    <MapPin size={14} className="mr-2 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-                    <span className="truncate">{candidate.location}</span>
-                  </div>
-                )}
-                
-                {candidate.years_experience && (
-                  <div className="flex items-center text-sm text-muted-foreground bg-white/40 dark:bg-navy-dark/40 rounded-lg px-3 py-2 backdrop-blur-sm">
-                    <Calendar size={14} className="mr-2 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-                    <span>{candidate.years_experience} ans d'expérience</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Compétences avec design moderne */}
+              {/* Compétences */}
               <div className="mb-4">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Compétences</h4>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1">
                   {skills.slice(0, 3).map((skill, idx) => (
-                    <Badge 
-                      key={idx} 
-                      variant="outline" 
-                      className="text-xs bg-gradient-to-r from-white/60 to-purple-50/60 dark:from-navy-dark/60 dark:to-purple-950/60 border-purple-200/50 hover:border-purple-300/70 transition-all duration-200 font-medium"
-                    >
+                    <Badge key={idx} variant="outline" className="text-xs">
                       {skill}
                     </Badge>
                   ))}
                   {skills.length > 3 && (
-                    <Badge 
-                      variant="secondary" 
-                      className="text-xs bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-800 dark:from-purple-900/50 dark:to-indigo-900/50 dark:text-purple-300 font-medium"
-                    >
+                    <Badge variant="secondary" className="text-xs">
                       +{skills.length - 3}
                     </Badge>
                   )}
                 </div>
               </div>
 
-              {/* Contact moderne */}
+              {/* Contact */}
               {(candidate.email || candidate.phone) && (
-                <div className="space-y-2 mb-4">
+                <div className="space-y-1 mb-4 text-xs text-gray-600">
                   {candidate.email && (
-                    <div className="flex items-center text-xs text-muted-foreground bg-blue-50/50 dark:bg-blue-950/20 rounded-md px-2 py-1.5">
-                      <Mail size={11} className="mr-1.5 text-blue-600 dark:text-blue-400" />
+                    <div className="flex items-center truncate">
+                      <Mail size={12} className="mr-2 text-gray-400" />
                       <span className="truncate">{candidate.email}</span>
                     </div>
                   )}
                   {candidate.phone && (
-                    <div className="flex items-center text-xs text-muted-foreground bg-green-50/50 dark:bg-green-950/20 rounded-md px-2 py-1.5">
-                      <Phone size={11} className="mr-1.5 text-green-600 dark:text-green-400" />
-                      <span>{candidate.phone}</span>
+                    <div className="flex items-center">
+                      <Phone size={12} className="mr-2 text-gray-400" />
+                      {candidate.phone}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Footer avec date et actions */}
-              <div className="flex items-center justify-between pt-3 border-t border-purple-100/30 dark:border-purple-800/20">
-                <div className="text-xs text-muted-foreground">
-                  {formatDate(candidate.updated_at || candidate.created_at || '')}
-                </div>
+              {/* Date de mise à jour */}
+              <div className="text-xs text-gray-500 mb-4">
+                Mis à jour le {formatDate(candidate.updated_at || candidate.created_at || '')}
+              </div>
 
-                {/* Actions avec effet hover moderne */}
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onViewCandidate(candidate.id!);
-                    }}
-                    className="h-8 w-8 p-0 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-full transition-all duration-200"
-                  >
-                    <Edit size={14} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(candidate.id!);
-                    }}
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-all duration-200"
-                  >
-                    <Trash2 size={14} />
-                  </Button>
-                </div>
+              {/* Actions */}
+              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewCandidate(candidate.id!);
+                  }}
+                  className="flex-1"
+                >
+                  <Edit size={14} className="mr-2" />
+                  Voir
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(candidate.id!);
+                  }}
+                  className="text-red-600 hover:text-red-800 hover:border-red-300"
+                >
+                  <Trash2 size={14} />
+                </Button>
               </div>
             </CardContent>
           </Card>

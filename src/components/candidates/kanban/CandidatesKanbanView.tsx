@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CandidateData } from '@/services/data/candidateService';
 import KanbanColumn from './KanbanColumn';
 import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
+import { useAIScoring } from '@/hooks/use-ai-scoring';
 
 interface CandidatesKanbanViewProps {
   candidates: CandidateData[];
@@ -16,6 +17,17 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
   onViewCandidate,
   onCandidateDeleted
 }) => {
+  const { preloadScoresFromDatabase } = useAIScoring();
+
+  // Précharger les scores AI pour tous les candidats du kanban
+  useEffect(() => {
+    const candidateIds = candidates.map(c => c.id!).filter(Boolean);
+    if (candidateIds.length > 0) {
+      console.log('Preloading AI scores for kanban candidates:', candidateIds.length);
+      preloadScoresFromDatabase(candidateIds);
+    }
+  }, [candidates, preloadScoresFromDatabase]);
+
   const statuses = [
     'initial',
     'contact',

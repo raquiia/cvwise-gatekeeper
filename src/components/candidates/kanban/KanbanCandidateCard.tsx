@@ -1,13 +1,15 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Calendar, Edit, Trash2, Mail, Phone } from 'lucide-react';
+import { MapPin, Calendar, Edit, Trash2, Mail, Phone, Brain, TrendingUp } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
-import { calculateCandidateScore } from '@/services/scoring/candidateScoring';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
+import { useAIScoring } from '@/hooks/use-ai-scoring';
+import { cn } from '@/lib/utils';
 
 interface KanbanCandidateCardProps {
   candidate: CandidateData;
@@ -23,8 +25,13 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
   isDragging = false
 }) => {
   const { toast } = useToast();
+  const { getAIScore, isJobSpecific } = useAIScoring();
   const skills = ensureStringArray(candidate.skills);
-  const scoreBreakdown = calculateCandidateScore(candidate);
+  
+  // Utiliser le système AI scoring unifié
+  const aiScore = getAIScore(candidate.id!);
+  const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
+  const isAIScore = aiScore.score !== null;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -54,6 +61,15 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
     return 'text-red-600 bg-red-50';
   };
 
+  const getScoreSource = (source?: string) => {
+    switch (source) {
+      case 'database': return 'BDD';
+      case 'fresh_calculation': return 'Nouveau';
+      case 'cache': return 'Cache';
+      default: return 'Ancien';
+    }
+  };
+
   return (
     <Card 
       className={`group cursor-pointer border-purple-200/30 dark:border-purple-800/20 bg-white/90 dark:bg-navy-dark/90 backdrop-blur-sm hover:shadow-md transition-all duration-200 ${
@@ -77,8 +93,47 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
               </p>
             </div>
           </div>
-          <div className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(scoreBreakdown.overall)}`}>
-            {scoreBreakdown.overall}%
+          
+          {/* Score avec système AI unifié */}
+          <div className="flex flex-col items-end gap-1">
+            {aiScore.isLoading ? (
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : aiScore.error ? (
+              <div className="flex flex-col items-end gap-1" title={aiScore.error}>
+                <div className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(candidate.score || 0)}`}>
+                  {candidate.score || 0}%
+                </div>
+                <Badge variant="secondary" className="text-xs">
+                  Ancien
+                </Badge>
+              </div>
+            ) : (
+              <div className="flex flex-col items-end gap-1">
+                <div className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(displayScore)}`}>
+                  {displayScore}%
+                </div>
+                <div className="flex items-center gap-1">
+                  <Badge 
+                    variant={isAIScore ? "default" : "secondary"} 
+                    className={cn(
+                      "text-xs",
+                      isAIScore ? "bg-purple-100 text-purple-800 border-purple-300" : ""
+                    )}
+                    title={isAIScore ? aiScore.explanation : "Score calculé avec l'ancien système"}
+                  >
+                    {isAIScore && <Brain size={8} className="mr-1" />}
+                    {isAIScore ? getScoreSource(aiScore.source) : 'Ancien'}
+                  </Badge>
+                  {isJobSpecific && (
+                    <div title="Score de correspondance">
+                      <TrendingUp size={10} className="text-purple-600" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
