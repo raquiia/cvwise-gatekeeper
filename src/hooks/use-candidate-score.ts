@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { optimizedScoringService } from '@/services/scoring/optimizedScoringService';
 import { useOptimizedScoring, ContextualScore } from './use-optimized-scoring';
+import { useAIScoring } from './use-ai-scoring';
 import { CandidateData } from '@/services/data/candidateService';
 
 export const useCandidateScore = (candidate: CandidateData) => {
@@ -10,16 +11,42 @@ export const useCandidateScore = (candidate: CandidateData) => {
   const [error, setError] = useState<string | null>(null);
   
   const { calculateContextualScore, getCachedScore, isScoreLoading, isJobSpecific } = useOptimizedScoring();
+  const { calculateAIScore, getAIScore } = useAIScoring();
   
   useEffect(() => {
     if (!candidate.id) return;
     
     const candidateId = candidate.id;
     
-    // Vérifier si un score est déjà en cache
+    // Priorité : utiliser le score IA si disponible
+    const aiScore = getAIScore(candidateId);
+    if (aiScore.score !== null && !aiScore.isLoading && !aiScore.error) {
+      const contextualScore: ContextualScore = {
+        overall: aiScore.score,
+        skills: aiScore.breakdown.skills || 0,
+        experience: aiScore.breakdown.experience || 0,
+        education: aiScore.breakdown.education || 0,
+        profileCompleteness: aiScore.breakdown.cvStructure || aiScore.breakdown.profileSummary || 50,
+        isJobSpecific: aiScore.isJobSpecific,
+        matchContext: aiScore.isJobSpecific ? 'Score IA de correspondance' : 'Score IA de complétude',
+        details: {
+          skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
+          experienceYears: candidate.years_experience || 0,
+          educationLevel: Array.isArray(candidate.education) && candidate.education.length > 0 ? 
+            'Renseigné' : 'Non renseigné',
+          completenessPercentage: aiScore.score
+        }
+      };
+      
+      setScore(contextualScore);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+    
+    // Fallback : utiliser le système de scoring classique
     const cachedScore = getCachedScore(candidateId);
     if (cachedScore) {
-      // Convertir le score en cache en ContextualScore
       const contextualScore: ContextualScore = {
         overall: cachedScore.is_job_specific ? 
           cachedScore.total_matching_score! : 
@@ -36,7 +63,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
         profileCompleteness: cachedScore.is_job_specific ? 
           50 : cachedScore.cv_structure_score,
         isJobSpecific: cachedScore.is_job_specific,
-        matchContext: cachedScore.job_offer_id ? 'Offre active' : undefined,
+        matchContext: cachedScore.job_offer_id ? 'Score de correspondance' : 'Score de complétude',
         details: {
           skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
           experienceYears: candidate.years_experience || 0,
@@ -53,14 +80,22 @@ export const useCandidateScore = (candidate: CandidateData) => {
       return;
     }
     
-    // Si pas de cache, calculer le score
+    // Si aucun score n'est disponible, calculer avec l'IA en priorité
     const loadScore = async () => {
       try {
         setIsLoading(true);
         setError(null);
         
-        const contextualScore = await calculateContextualScore(candidate);
-        setScore(contextualScore);
+        // Essayer d'abord avec l'IA
+        await calculateAIScore(candidateId);
+        
+        // Si l'IA échoue, fallback sur le système classique
+        const aiScoreAfter = getAIScore(candidateId);
+        if (aiScoreAfter.error) {
+          console.warn('IA scoring failed, falling back to classic scoring');
+          const contextualScore = await calculateContextualScore(candidate);
+          setScore(contextualScore);
+        }
         
       } catch (err: any) {
         console.error('Error loading candidate score:', err);
@@ -71,18 +106,18 @@ export const useCandidateScore = (candidate: CandidateData) => {
     };
     
     // Vérifier si le score est déjà en cours de calcul
-    if (!isScoreLoading(candidateId)) {
+    if (!isScoreLoading(candidateId) && !aiScore.isLoading) {
       loadScore();
     } else {
       setIsLoading(true);
     }
   }, [candidate.id, candidate.skills, candidate.years_experience, candidate.education, 
-      calculateContextualScore, getCachedScore, isScoreLoading]);
+      calculateContextualScore, getCachedScore, isScoreLoading, calculateAIScore, getAIScore]);
   
   return {
     score,
-    isLoading,
-    error,
+    isLoading: isLoading || getAIScore(candidate.id!).isLoading,
+    error: error || getAIScore(candidate.id!).error,
     isJobSpecific
   };
 };
