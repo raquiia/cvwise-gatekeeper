@@ -24,19 +24,16 @@ export const useAIScoring = () => {
   const { activeJobOfferId } = useActiveJob();
   
   /**
-   * Calculer le score avec l'IA pour un candidat (avec vérification cache optimisée)
+   * Calculer le score avec l'IA pour un candidat (cache permanent basé sur hash)
    */
   const calculateAIScore = useCallback(async (candidateId: string, forceRecalculate = false) => {
     const currentKey = `${candidateId}_${activeJobOfferId || 'general'}`;
     
-    // Vérifier si on a déjà un score récent en mémoire (sauf si forceRecalculate)
+    // Si on ne force pas le recalcul, vérifier si on a déjà un score en mémoire
     const existing = scoringState[currentKey];
     if (!forceRecalculate && existing && !existing.isLoading && existing.score !== null) {
-      const age = Date.now() - existing.lastUpdated;
-      if (age < 5 * 60 * 1000) { // 5 minutes en mémoire
-        console.log('Using recent in-memory AI score for candidate:', candidateId);
-        return existing;
-      }
+      console.log('Using existing in-memory AI score for candidate:', candidateId);
+      return existing;
     }
     
     // Marquer comme en cours de calcul
@@ -54,15 +51,15 @@ export const useAIScoring = () => {
     }));
     
     try {
-      console.log('Calculating AI score with optimized caching for candidate:', candidateId, 'job:', activeJobOfferId);
+      console.log('Calculating AI score with permanent cache for candidate:', candidateId, 'job:', activeJobOfferId);
       
       let result;
       
       if (forceRecalculate) {
-        // Forcer le recalcul (ignorer complètement le cache)
+        // Forcer le recalcul (ignorer complètement le cache permanent)
         result = await aiScoringService.forceRecalculate(candidateId, activeJobOfferId);
       } else {
-        // Utiliser le système de cache optimisé
+        // Utiliser le système de cache permanent basé sur hash
         result = await aiScoringService.getScoreWithExplanation(candidateId, activeJobOfferId);
       }
       
@@ -88,11 +85,11 @@ export const useAIScoring = () => {
       
       console.log('AI score calculated successfully:', result.score, 'Source:', result.source);
       
-      // Toast informatif uniquement pour les nouveaux calculs
-      if (result.source === 'fresh_calculation' || forceRecalculate) {
+      // Toast informatif uniquement pour les nouveaux calculs ou recalculs forcés
+      if (result.source === 'fresh_calculation' || result.source === 'forced_recalculation') {
         toast({
           title: "Score calculé",
-          description: `${result.score}% - Nouveau score calculé avec l'IA`,
+          description: `${result.score}% - ${result.source === 'forced_recalculation' ? 'Score recalculé' : 'Nouveau score calculé'} avec l'IA`,
         });
       }
       
@@ -168,7 +165,7 @@ export const useAIScoring = () => {
       return;
     }
     
-    console.log('Preloading AI scores from database for', newCandidateIds.length, 'new candidates');
+    console.log('Preloading AI scores from permanent database cache for', newCandidateIds.length, 'new candidates');
     
     // Marquer comme préchargés
     setPreloadedCandidates(prev => {
@@ -207,6 +204,14 @@ export const useAIScoring = () => {
     console.log('Preloading completed for', newCandidateIds.length, 'candidates');
   }, [activeJobOfferId, preloadedCandidates, scoringState]);
   
+  /**
+   * Forcer la réanalyse d'un candidat (ignorer le cache permanent)
+   */
+  const forceReanalyzeCandidate = useCallback(async (candidateId: string) => {
+    console.log('Force reanalyzing candidate:', candidateId);
+    return await calculateAIScore(candidateId, true);
+  }, [calculateAIScore]);
+  
   // Invalider les scores quand l'offre active change
   useEffect(() => {
     invalidateScores();
@@ -217,6 +222,7 @@ export const useAIScoring = () => {
     getAIScore,
     invalidateScores,
     preloadScoresFromDatabase,
+    forceReanalyzeCandidate,
     isCalculating,
     isJobSpecific: Boolean(activeJobOfferId)
   };
