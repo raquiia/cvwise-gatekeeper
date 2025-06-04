@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +14,7 @@ import { aggregateEducationData, aggregateSectorData } from '@/utils/dashboardUt
 import DashboardHeader from '@/components/dashboard/modern/DashboardHeader';
 import ModernKPICards from '@/components/dashboard/modern/ModernKPICards';
 import AdvancedAnalytics from '@/components/dashboard/modern/AdvancedAnalytics';
+import RealDataMetrics from '@/components/dashboard/modern/RealDataMetrics';
 import RecentCandidatesTable from '@/components/dashboard/RecentCandidatesTable';
 
 const Dashboard = () => {
@@ -133,6 +133,9 @@ const Dashboard = () => {
           educationData={educationData}
           sectorData={sectorData}
         />
+        
+        {/* New Real Data Metrics */}
+        <RealDataMetrics candidatesData={candidatesData} />
         
         {/* Bottom Grid - Recent Data & User Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
