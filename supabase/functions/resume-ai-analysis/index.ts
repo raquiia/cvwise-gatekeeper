@@ -372,8 +372,8 @@ serve(async (req) => {
 
 1. Informations personnelles:
    - Prénom et nom
-   - Email et téléphone
-   - Adresse/localisation complète
+   - Email et téléphone (TRÈS IMPORTANT - cherche tous les formats possibles : +33, 0X XX XX XX XX, etc.)
+   - Adresse/localisation complète STRUCTURÉE (adresse exacte, code postal, ville, pays si disponible)
    - LinkedIn ou autres profils professionnels
 
 2. Profil professionnel:
@@ -446,6 +446,8 @@ IMPORTANT:
 - Pour les expériences professionnelles et formations, assure-toi de capturer TOUS les détails fournis dans le texte original.
 - Les expériences et éducation doivent TOUJOURS être des tableaux d'objets, même s'il n'y a qu'un seul élément.
 - Ne laisse pas de champs vides - si l'information n'est pas disponible, tu peux utiliser null pour les valeurs numériques ou des chaînes vides pour le texte.
+- TÉLÉPHONE : Cherche absolument TOUS les formats de numéros de téléphone possibles dans le texte.
+- LOCALISATION : Structure l'adresse de manière détaillée avec tous les éléments disponibles.
 
 Retourne ces informations sous forme d'un objet JSON structuré:
 
@@ -541,7 +543,7 @@ Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne
             },
             {
               role: "user",
-              content: `Voici le texte extrait d'un CV. Analyse-le et extrait toutes les informations structurées demandées, en étant aussi exhaustif que possible:\n\n${truncatedText}`
+              content: `Voici le texte extrait d'un CV. Analyse-le et extrait toutes les informations structurées demandées, en étant aussi exhaustif que possible. ATTENTION PARTICULIÈRE : cherche absolument le numéro de téléphone sous tous les formats possibles et structure bien l'adresse complète:\n\n${truncatedText}`
             }
           ],
           temperature: 0.2,
@@ -576,6 +578,8 @@ Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne
         console.log("Langues:", Array.isArray(parsedData.languages) ? parsedData.languages.length + " trouvées" : "Format invalide");
         console.log("Certifications:", Array.isArray(parsedData.certifications) ? parsedData.certifications.length + " trouvées" : "Format invalide");
         console.log("Projets:", Array.isArray(parsedData.projects) ? parsedData.projects.length + " trouvés" : "Format invalide");
+        console.log("Téléphone extrait:", parsedData.phone || "Non trouvé");
+        console.log("Localisation extraite:", parsedData.location || "Non trouvée");
       } catch (error) {
         console.error("Erreur lors du parsing de la réponse OpenAI:", error);
         throw new Error("Impossible de traiter la réponse de l'IA");
@@ -605,6 +609,15 @@ Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne
         
         if (!parsedData.projects || parsedData.projects.length === 0) {
           parsedData.projects = existingCandidate.projects || [];
+        }
+        
+        // Préserver le téléphone et la localisation si pas trouvés dans la nouvelle analyse
+        if (!parsedData.phone && existingCandidate.phone) {
+          parsedData.phone = existingCandidate.phone;
+        }
+        
+        if (!parsedData.location && existingCandidate.location) {
+          parsedData.location = existingCandidate.location;
         }
       }
       
@@ -663,6 +676,8 @@ Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne
       console.log("Nombre de formations:", Array.isArray(formattedCandidateData.education) ? formattedCandidateData.education.length : 0);
       console.log("Nombre de langues:", Array.isArray(formattedCandidateData.languages) ? formattedCandidateData.languages.length : 0);
       console.log("Nombre de certifications:", Array.isArray(formattedCandidateData.certifications) ? formattedCandidateData.certifications.length : 0);
+      console.log("Téléphone final:", formattedCandidateData.phone || "Non disponible");
+      console.log("Localisation finale:", formattedCandidateData.location || "Non disponible");
       
       // Upsert du candidat dans la base de données
       console.log("Enregistrement du candidat dans la base de données");

@@ -10,7 +10,7 @@ import { candidateService } from '@/services/data/candidateService';
 import type { CandidateData } from '@/services/data/candidateService';
 import { useAuth } from '@/context/AuthContext';
 import ScoreDisplay from './ScoreDisplay';
-import { User, Briefcase, MapPin, Calendar, DollarSign, Clock, FileText, Save, RotateCcw } from 'lucide-react';
+import { User, Briefcase, MapPin, Calendar, DollarSign, Clock, FileText, Save, RotateCcw, Phone } from 'lucide-react';
 
 interface ProfileTabProps {
   candidate: CandidateData;
@@ -22,6 +22,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   const [firstName, setFirstName] = useState(candidate.first_name || '');
   const [lastName, setLastName] = useState(candidate.last_name || '');
   const [email, setEmail] = useState(candidate.email || '');
+  const [phone, setPhone] = useState(candidate.phone || '');
   const [position, setPosition] = useState(candidate.position || '');
   const [location, setLocation] = useState(candidate.location || '');
   const [yearsExperience, setYearsExperience] = useState(candidate.years_experience || 0);
@@ -42,6 +43,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     setFirstName(candidate.first_name || '');
     setLastName(candidate.last_name || '');
     setEmail(candidate.email || '');
+    setPhone(candidate.phone || '');
     setPosition(candidate.position || '');
     setLocation(candidate.location || '');
     setYearsExperience(candidate.years_experience || 0);
@@ -62,6 +64,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
         first_name: firstName,
         last_name: lastName,
         email: email,
+        phone: phone,
         position: position,
         location: location,
         years_experience: yearsExperience,
@@ -149,6 +152,21 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                   className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
+              {phone && (
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Téléphone
+                  </Label>
+                  <Input
+                    type="tel"
+                    id="phone"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
 
