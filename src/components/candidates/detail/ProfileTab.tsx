@@ -34,6 +34,11 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   
   // Update local state when candidate prop changes
   useEffect(() => {
+    console.log('ProfileTab: Updating state from candidate prop', {
+      candidateNotes: candidate.notes,
+      currentNotesState: notes
+    });
+    
     setFirstName(candidate.first_name || '');
     setLastName(candidate.last_name || '');
     setEmail(candidate.email || '');
@@ -50,7 +55,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     
     try {
       setIsSaving(true);
-      await candidateService.updateCandidate({
+      console.log('ProfileTab: Saving candidate with notes:', notes);
+      
+      const updateData = {
         id: candidate.id,
         first_name: firstName,
         last_name: lastName,
@@ -61,14 +68,20 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
         salary_expectations: salaryExpectation,
         availability: availability,
         notes: notes
-      });
+      };
+      
+      console.log('ProfileTab: Update data being sent:', updateData);
+      
+      await candidateService.updateCandidate(updateData);
       
       toast({
         title: "Profil mis à jour",
         description: "Les informations du candidat ont été mises à jour avec succès.",
       });
       
+      // Refresh the data to ensure consistency
       if (onRefresh) {
+        console.log('ProfileTab: Calling onRefresh to reload data');
         onRefresh();
       }
     } catch (error: any) {
@@ -229,7 +242,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                 <div className="p-2 bg-purple-100 rounded-lg">
                   <FileText className="h-5 w-5 text-purple-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">Notes</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Notes personnelles</h3>
               </div>
             </CardHeader>
             <CardContent className="p-6">
@@ -238,10 +251,13 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                 <Textarea
                   id="notes"
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={(e) => {
+                    console.log('ProfileTab: Notes field changed to:', e.target.value);
+                    setNotes(e.target.value);
+                  }}
                   className="border-gray-300 focus:border-purple-500 focus:ring-purple-500 resize-none"
                   rows={5}
-                  placeholder="Ajoutez vos notes sur ce candidat..."
+                  placeholder="Ajoutez vos notes personnelles sur ce candidat..."
                 />
               </div>
             </CardContent>
