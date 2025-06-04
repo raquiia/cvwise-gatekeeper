@@ -17,7 +17,10 @@ import type {
 export const candidateDataService = {
   // Re-export candidate services
   getUserCandidates: candidateService.getUserCandidates,
+  getAllCandidates: candidateService.getAllCandidates,
   getCandidateById: candidateService.getCandidateById,
+  createCandidate: candidateService.createCandidate,
+  updateCandidate: candidateService.updateCandidate,
   deleteCandidate: candidateService.deleteCandidate,
   
   // Re-export job offer services

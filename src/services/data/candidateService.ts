@@ -1,9 +1,13 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 
 export interface CandidateData {
   id?: string;
+  user_id?: string;
+  resume_id?: string;
   created_at?: string;
+  updated_at?: string;
   first_name?: string;
   last_name?: string;
   email?: string;
@@ -12,30 +16,38 @@ export interface CandidateData {
   location?: string;
   years_experience?: number;
   company?: string;
-  skills?: string[];
+  skills?: Json;
   availability?: string;
   salary_expectations?: string;
-  salary_expectation?: string; // Deprecated, to be removed
-  mobility?: boolean;
+  mobility?: string;
   contract_type?: string;
   remote_preference?: string;
-  travel_willingness?: boolean;
+  travel_willingness?: string;
   career_objectives?: string;
   professional_values?: string;
   work_authorization?: string;
   interests?: string;
-  resume_id?: string;
-  resume_url?: string;
-  linkedin_url?: string;
-  github_url?: string;
-  portfolio_url?: string;
-  languages?: string[];
-  education?: any[];
-  experiences?: any[];
+  education?: Json;
+  experiences?: Json;
+  certifications?: Json;
+  languages?: Json;
+  professional_references?: Json;
+  professional_networks?: Json;
+  continuous_training?: Json;
+  special_permits?: Json;
+  industries?: Json;
+  projects?: Json;
+  publications?: Json;
   detailed_status?: string;
-  ai_score?: number;
+  status?: string;
+  score?: number;
+  profile_completeness?: number;
   notes?: string;
-  updated_at?: string;
+  last_updated_at?: string;
+}
+
+export interface UpdateCandidateOptions {
+  skipValidation?: boolean;
 }
 
 export const candidateService = {
@@ -55,6 +67,26 @@ export const candidateService = {
       return candidates || [];
     } catch (error: any) {
       console.error('Error fetching candidates:', error);
+      throw error;
+    }
+  },
+
+  // Get user candidates
+  getUserCandidates: async (): Promise<CandidateData[]> => {
+    try {
+      const { data: candidates, error } = await supabase
+        .from('candidates')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw new Error(`Erreur lors de la récupération des candidats: ${error.message}`);
+      }
+
+      return candidates || [];
+    } catch (error: any) {
+      console.error('Error fetching user candidates:', error);
       throw error;
     }
   },
@@ -128,6 +160,17 @@ export const candidateService = {
           professional_values: candidateData.professional_values,
           work_authorization: candidateData.work_authorization,
           interests: candidateData.interests,
+          education: candidateData.education,
+          experiences: candidateData.experiences,
+          certifications: candidateData.certifications,
+          languages: candidateData.languages,
+          professional_references: candidateData.professional_references,
+          professional_networks: candidateData.professional_networks,
+          continuous_training: candidateData.continuous_training,
+          special_permits: candidateData.special_permits,
+          industries: candidateData.industries,
+          projects: candidateData.projects,
+          publications: candidateData.publications,
           notes: candidateData.notes,
           updated_at: new Date().toISOString()
         })
@@ -149,7 +192,7 @@ export const candidateService = {
   },
 
   // Delete a candidate
-  deleteCandidate: async (id: string): Promise<boolean> => {
+  deleteCandidate: async (id: string, force?: boolean): Promise<boolean> => {
     try {
       const { error } = await supabase
         .from('candidates')
@@ -167,4 +210,23 @@ export const candidateService = {
       throw error;
     }
   },
+};
+
+// Format candidate data for display
+export const formatCandidateData = (candidate: any): CandidateData => {
+  return {
+    ...candidate,
+    skills: candidate.skills || [],
+    education: candidate.education || [],
+    experiences: candidate.experiences || [],
+    certifications: candidate.certifications || [],
+    languages: candidate.languages || [],
+    professional_references: candidate.professional_references || [],
+    professional_networks: candidate.professional_networks || [],
+    continuous_training: candidate.continuous_training || [],
+    special_permits: candidate.special_permits || [],
+    industries: candidate.industries || [],
+    projects: candidate.projects || [],
+    publications: candidate.publications || [],
+  };
 };
