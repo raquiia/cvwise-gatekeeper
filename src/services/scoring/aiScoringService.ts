@@ -43,11 +43,14 @@ class AIScoringService {
       // Vérifier dans la base de données en utilisant la fonction edge
       console.log('Checking for cached AI score in database...', { candidateId, jobOfferId });
       
+      // S'assurer que jobOfferId est null et non "null" string
+      const normalizedJobOfferId = jobOfferId === "null" || jobOfferId === "" ? null : jobOfferId;
+      
       const { data: cachedScore, error: cacheError } = await supabase.functions.invoke('ai-score-helpers', {
         body: {
           action: 'get',
           candidateId,
-          jobOfferId: jobOfferId || null
+          jobOfferId: normalizedJobOfferId
         }
       });
       
@@ -87,12 +90,15 @@ class AIScoringService {
     this.scoreCache.delete(cacheKey);
     
     try {
+      // S'assurer que jobOfferId est null et non "null" string
+      const normalizedJobOfferId = jobOfferId === "null" || jobOfferId === "" ? null : jobOfferId;
+      
       // Supprimer l'ancien score de la base de données
       await supabase.functions.invoke('ai-score-helpers', {
         body: {
           action: 'delete',
           candidateId,
-          jobOfferId: jobOfferId || null
+          jobOfferId: normalizedJobOfferId
         }
       });
       
@@ -118,10 +124,13 @@ class AIScoringService {
     try {
       console.log('Calling ai-scoring edge function for candidate:', candidateId);
       
+      // S'assurer que jobOfferId est null et non "null" string
+      const normalizedJobOfferId = jobOfferId === "null" || jobOfferId === "" ? null : jobOfferId;
+      
       const { data, error } = await supabase.functions.invoke('ai-scoring', {
         body: { 
           candidateId,
-          jobOfferId: jobOfferId || null,
+          jobOfferId: normalizedJobOfferId,
           forceRecalculate: true // Toujours forcer le recalcul quand on appelle cette méthode
         }
       });
