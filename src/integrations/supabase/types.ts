@@ -66,6 +66,75 @@ export type Database = {
           },
         ]
       }
+      candidate_job_matching_scores: {
+        Row: {
+          availability_mobility_score: number
+          calculated_at: string
+          candidate_id: string
+          created_at: string
+          cultural_fit_score: number
+          data_hash: string
+          education_match_score: number
+          id: string
+          interview_notes_bonus: number
+          job_offer_id: string
+          languages_match_score: number
+          last_candidate_update: string | null
+          last_job_update: string | null
+          last_notes_update: string | null
+          location_score: number
+          relevant_experience_score: number
+          skills_tools_score: number
+          total_matching_score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          availability_mobility_score?: number
+          calculated_at?: string
+          candidate_id: string
+          created_at?: string
+          cultural_fit_score?: number
+          data_hash: string
+          education_match_score?: number
+          id?: string
+          interview_notes_bonus?: number
+          job_offer_id: string
+          languages_match_score?: number
+          last_candidate_update?: string | null
+          last_job_update?: string | null
+          last_notes_update?: string | null
+          location_score?: number
+          relevant_experience_score?: number
+          skills_tools_score?: number
+          total_matching_score?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          availability_mobility_score?: number
+          calculated_at?: string
+          candidate_id?: string
+          created_at?: string
+          cultural_fit_score?: number
+          data_hash?: string
+          education_match_score?: number
+          id?: string
+          interview_notes_bonus?: number
+          job_offer_id?: string
+          languages_match_score?: number
+          last_candidate_update?: string | null
+          last_job_update?: string | null
+          last_notes_update?: string | null
+          location_score?: number
+          relevant_experience_score?: number
+          skills_tools_score?: number
+          total_matching_score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       candidate_job_scores: {
         Row: {
           calculated_at: string | null
@@ -160,6 +229,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      candidate_scores: {
+        Row: {
+          calculated_at: string
+          candidate_id: string
+          created_at: string
+          cv_structure_score: number
+          data_hash: string
+          education_score: number
+          experience_score: number
+          general_score: number
+          id: string
+          languages_score: number
+          last_candidate_update: string | null
+          last_notes_update: string | null
+          location_mobility_score: number
+          profile_summary_score: number
+          skills_score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calculated_at?: string
+          candidate_id: string
+          created_at?: string
+          cv_structure_score?: number
+          data_hash: string
+          education_score?: number
+          experience_score?: number
+          general_score?: number
+          id?: string
+          languages_score?: number
+          last_candidate_update?: string | null
+          last_notes_update?: string | null
+          location_mobility_score?: number
+          profile_summary_score?: number
+          skills_score?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calculated_at?: string
+          candidate_id?: string
+          created_at?: string
+          cv_structure_score?: number
+          data_hash?: string
+          education_score?: number
+          experience_score?: number
+          general_score?: number
+          id?: string
+          languages_score?: number
+          last_candidate_update?: string | null
+          last_notes_update?: string | null
+          location_mobility_score?: number
+          profile_summary_score?: number
+          skills_score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       candidates: {
         Row: {
@@ -506,9 +635,30 @@ export type Database = {
         Args: { p_candidate_id: string }
         Returns: number
       }
+      calculate_and_store_completeness_score: {
+        Args: { p_candidate_id: string }
+        Returns: number
+      }
       calculate_and_store_job_score: {
         Args: { p_candidate_id: string; p_job_offer_id: string }
         Returns: number
+      }
+      calculate_candidate_completeness_score: {
+        Args: { p_candidate_id: string }
+        Returns: {
+          education_score: number
+          experience_score: number
+          skills_score: number
+          languages_score: number
+          location_mobility_score: number
+          profile_summary_score: number
+          cv_structure_score: number
+          total_score: number
+        }[]
+      }
+      calculate_candidate_data_hash: {
+        Args: { p_candidate_id: string }
+        Returns: string
       }
       calculate_candidate_job_match: {
         Args: { p_candidate_id: string; p_job_offer_id: string }

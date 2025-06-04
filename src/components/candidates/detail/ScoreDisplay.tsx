@@ -4,7 +4,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, Award, BookOpen, User, Target, Briefcase, RefreshCw } from 'lucide-react';
+import { TrendingUp, Award, BookOpen, User, Target, Briefcase, RefreshCw, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ContextualScore } from '@/hooks/use-optimized-scoring';
 import { getScoreEvaluation } from '@/services/scoring/candidateScoring';
@@ -33,36 +33,71 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ scoreBreakdown, isLoading, 
   const evaluation = getScoreEvaluation(scoreBreakdown.overall);
   const isJobSpecific = scoreBreakdown.isJobSpecific || false;
 
-  const scoreComponents = [
+  const scoreComponents = isJobSpecific ? [
     {
       icon: TrendingUp,
-      label: isJobSpecific ? 'Compétences matchées' : 'Compétences',
+      label: 'Compétences requises',
       score: scoreBreakdown.skills,
-      detail: isJobSpecific 
-        ? `${scoreBreakdown.details.skillsCount} compétences matchées`
-        : `${scoreBreakdown.details.skillsCount} compétences`,
-      color: 'text-blue-600'
+      detail: `${scoreBreakdown.details.skillsCount} compétences évaluées`,
+      color: 'text-blue-600',
+      maxPoints: '25 pts'
+    },
+    {
+      icon: Award,
+      label: 'Expérience pertinente', 
+      score: Math.round((scoreBreakdown.experience / 20) * 100), // Convert to percentage
+      detail: `${scoreBreakdown.details.experienceYears} ans d'expérience`,
+      color: 'text-green-600',
+      maxPoints: '20 pts'
+    },
+    {
+      icon: BookOpen,
+      label: 'Niveau d\'études',
+      score: Math.round((scoreBreakdown.education / 20) * 100), // Convert to percentage
+      detail: scoreBreakdown.details.educationLevel,
+      color: 'text-purple-600',
+      maxPoints: '20 pts'
+    },
+    {
+      icon: MessageSquare,
+      label: 'Notes d\'entretien',
+      score: 50, // Placeholder - will be calculated from interview notes
+      detail: 'Évaluation qualitative',
+      color: 'text-orange-600',
+      maxPoints: '15 pts'
+    }
+  ] : [
+    {
+      icon: TrendingUp,
+      label: 'Compétences',
+      score: Math.round((scoreBreakdown.skills / 20) * 100), // Convert to percentage
+      detail: `${scoreBreakdown.details.skillsCount} compétences`,
+      color: 'text-blue-600',
+      maxPoints: '20 pts'
     },
     {
       icon: Award,
       label: 'Expérience',
-      score: scoreBreakdown.experience,
+      score: Math.round((scoreBreakdown.experience / 20) * 100), // Convert to percentage
       detail: `${scoreBreakdown.details.experienceYears} ans`,
-      color: 'text-green-600'
+      color: 'text-green-600',
+      maxPoints: '20 pts'
     },
     {
       icon: BookOpen,
       label: 'Formation',
-      score: scoreBreakdown.education,
+      score: Math.round((scoreBreakdown.education / 20) * 100), // Convert to percentage
       detail: scoreBreakdown.details.educationLevel,
-      color: 'text-purple-600'
+      color: 'text-purple-600',
+      maxPoints: '20 pts'
     },
     {
       icon: User,
       label: 'Profil',
-      score: scoreBreakdown.profileCompleteness,
+      score: Math.round((scoreBreakdown.profileCompleteness / 10) * 100), // Convert to percentage
       detail: `${scoreBreakdown.details.completenessPercentage}% complet`,
-      color: 'text-orange-600'
+      color: 'text-orange-600',
+      maxPoints: '40 pts'
     }
   ];
 
@@ -117,8 +152,9 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ scoreBreakdown, isLoading, 
             isJobSpecific ? 'bg-purple-100 text-purple-800' : `${evaluation.bgColor} ${evaluation.color}`
           }`}>
             {isJobSpecific ? 
-              (scoreBreakdown.overall >= 70 ? 'Bon match' : 
-               scoreBreakdown.overall >= 50 ? 'Match partiel' : 'Faible match') 
+              (scoreBreakdown.overall >= 70 ? 'Excellent match' : 
+               scoreBreakdown.overall >= 50 ? 'Bon match' : 
+               scoreBreakdown.overall >= 30 ? 'Match partiel' : 'Match faible') 
               : evaluation.label}
           </div>
 
@@ -146,6 +182,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ scoreBreakdown, isLoading, 
                     <span className="text-sm font-medium">{component.label}</span>
                   </div>
                   <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">{component.maxPoints}</span>
                     <span className="text-sm font-bold">{component.score}%</span>
                   </div>
                 </div>
@@ -169,8 +206,11 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ scoreBreakdown, isLoading, 
           </div>
           <div className="text-xs text-gray-400 mt-1">
             {isJobSpecific 
-              ? 'Compétences 50% • Expérience 25% • Formation 15% • Profil 10%'
-              : 'Compétences 40% • Expérience 30% • Formation 20% • Profil 10%'}
+              ? 'Compétences 25% • Expérience 20% • Formation 20% • Localisation 10% • Autres 25%'
+              : 'Compétences 20% • Expérience 20% • Formation 20% • Profil 40%'}
+          </div>
+          <div className="text-xs text-purple-600 mt-1 font-medium">
+            ✨ Nouveau système de scoring optimisé
           </div>
         </div>
       </CardContent>
