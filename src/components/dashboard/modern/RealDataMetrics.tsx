@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Tooltip, Legend } from 'recharts';
@@ -73,7 +74,7 @@ const RealDataMetrics: React.FC<RealDataMetricsProps> = ({ candidatesData }) => 
 
     return Object.entries(statusMap)
       .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
+      .sort((a, b) => (b.value as number) - (a.value as number));
   };
 
   // Répartition par années d'expérience
@@ -125,7 +126,7 @@ const RealDataMetrics: React.FC<RealDataMetricsProps> = ({ candidatesData }) => 
 
     return Object.entries(skillsMap)
       .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
+      .sort((a, b) => (b.value as number) - (a.value as number))
       .slice(0, 10);
   };
 
