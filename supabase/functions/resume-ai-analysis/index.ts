@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
@@ -225,27 +226,78 @@ serve(async (req) => {
   }
 
   try {
-    const { resumeId, text } = await req.json();
+    console.log('🚀 Starting resume-ai-analysis function');
+    console.log('📥 Request method:', req.method);
+    console.log('📥 Request headers:', Object.fromEntries(req.headers.entries()));
     
-    if (!resumeId || !text) {
+    const requestData = await req.json();
+    console.log('📦 Raw request data:', JSON.stringify(requestData, null, 2));
+    
+    // Support both 'text' and 'resumeText' for backward compatibility
+    const { resumeId, text, resumeText, overwriteExisting, fullAnalysis } = requestData;
+    const finalText = text || resumeText;
+    
+    console.log('🔍 Extracted parameters:');
+    console.log('  - resumeId:', resumeId);
+    console.log('  - text length:', finalText?.length || 0);
+    console.log('  - overwriteExisting:', overwriteExisting);
+    console.log('  - fullAnalysis:', fullAnalysis);
+    
+    if (!resumeId || !finalText) {
+      console.error('❌ Missing required parameters');
+      console.error('  - resumeId present:', !!resumeId);
+      console.error('  - text present:', !!finalText);
       return new Response(
-        JSON.stringify({ error: 'Missing resumeId or text' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'Missing resumeId or resume text',
+          details: {
+            resumeId: !!resumeId,
+            text: !!finalText,
+            textLength: finalText?.length || 0
+          }
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Analyzing resume:', resumeId);
+    console.log('🔑 Checking environment variables...');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!;
+    console.log('  - SUPABASE_URL present:', !!supabaseUrl);
+    console.log('  - SUPABASE_SERVICE_ROLE_KEY present:', !!supabaseServiceKey);
+    console.log('  - OPENAI_API_KEY present:', !!openaiApiKey);
 
     if (!openaiApiKey) {
-      throw new Error('OpenAI API key not found');
+      console.error('❌ OpenAI API key not found in environment');
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'OpenAI API key not configured',
+          details: 'The OPENAI_API_KEY environment variable is missing'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('❌ Supabase configuration missing');
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Supabase configuration missing',
+          details: 'SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not found'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('🔗 Creating Supabase client...');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    console.log('📄 Fetching resume data for ID:', resumeId);
     const resumeDataResult = await supabase
       .from('resumes')
       .select('user_id')
@@ -253,27 +305,29 @@ serve(async (req) => {
       .single();
 
     if (resumeDataResult.error) {
-      console.error('Error fetching resume data:', resumeDataResult.error);
+      console.error('❌ Error fetching resume data:', resumeDataResult.error);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch resume data' }),
+        JSON.stringify({ 
+          success: false,
+          error: 'Failed to fetch resume data',
+          details: resumeDataResult.error.message
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const resumeData = resumeDataResult.data;
+    console.log('✅ Resume data fetched successfully for user:', resumeData.user_id);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `Tu es un expert en analyse de CV. Analyse le CV fourni et extrais UNIQUEMENT les informations présentes dans le document.
+    console.log('🤖 Preparing OpenAI request...');
+    console.log('📝 Text sample (first 200 chars):', finalText.substring(0, 200) + '...');
+    
+    const openAIPayload = {
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `Tu es un expert en analyse de CV. Analyse le CV fourni et extrais UNIQUEMENT les informations présentes dans le document.
 
 RÈGLES STRICTES:
 1. Ne jamais inventer ou déduire d'informations non présentes
@@ -332,73 +386,157 @@ Retourne un JSON avec EXACTEMENT cette structure:
   "work_authorization": "",
   "interests": ""
 }`
-          },
-          {
-            role: 'user',
-            content: `Analyse ce CV et extrais les informations:\n\n${text}`
-          }
-        ],
-        temperature: 0.1,
-        max_tokens: 4000,
-      }),
+        },
+        {
+          role: 'user',
+          content: `Analyse ce CV et extrais les informations:\n\n${finalText}`
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 4000,
+    };
+
+    console.log('🚀 Calling OpenAI API...');
+    console.log('📊 Payload size:', JSON.stringify(openAIPayload).length, 'bytes');
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(openAIPayload),
     });
+
+    console.log('📡 OpenAI response status:', response.status);
+    console.log('📡 OpenAI response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
+      console.error('❌ OpenAI API error:', errorData);
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: `OpenAI API error: ${errorData.error?.message || 'Unknown error'}`,
+          details: {
+            status: response.status,
+            statusText: response.statusText,
+            errorData: errorData
+          }
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const aiResponse = await response.json();
+    console.log('✅ OpenAI response received');
+    console.log('📊 Response structure:', {
+      choices: aiResponse.choices?.length || 0,
+      usage: aiResponse.usage || 'No usage data'
+    });
+    
     const content = aiResponse.choices[0]?.message?.content;
     
     if (!content) {
-      throw new Error('No content received from OpenAI');
+      console.error('❌ No content received from OpenAI');
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'No content received from AI',
+          details: 'OpenAI response did not contain any content'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log('Raw AI response:', content);
+    console.log('📝 Raw AI response content (first 500 chars):', content.substring(0, 500) + '...');
 
     let extractedData;
     try {
       extractedData = JSON.parse(content);
+      console.log('✅ AI response parsed successfully');
     } catch (parseError) {
-      console.error('Failed to parse AI response:', parseError);
-      throw new Error('Invalid JSON response from AI');
+      console.error('❌ Failed to parse AI response:', parseError);
+      console.error('Raw content:', content);
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Invalid JSON response from AI',
+          details: {
+            parseError: parseError.message,
+            rawContent: content.substring(0, 1000)
+          }
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Traiter et nettoyer les données extraites
+    console.log('🔧 Processing extracted data...');
     const processedData = processAIExtractedData(extractedData);
+
+    console.log('💾 Inserting candidate into database...');
+    const candidateInsertData = {
+      resume_id: resumeId,
+      user_id: resumeData.user_id,
+      ...processedData
+    };
+    
+    console.log('📋 Candidate data to insert:', JSON.stringify(candidateInsertData, null, 2));
 
     const { data: candidate, error: insertError } = await supabase
       .from('candidates')
-      .insert({
-        resume_id: resumeId,
-        user_id: resumeData.user_id,
-        ...processedData
-      })
+      .insert(candidateInsertData)
       .select()
       .single();
 
     if (insertError) {
-      console.error('Error inserting candidate:', insertError);
-      throw insertError;
+      console.error('❌ Error inserting candidate:', insertError);
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Failed to create candidate',
+          details: {
+            dbError: insertError.message,
+            code: insertError.code,
+            hint: insertError.hint
+          }
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    console.log('Candidate created successfully:', candidate.id);
+    console.log('✅ Candidate created successfully with ID:', candidate.id);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
+        candidate: candidate,
         candidateId: candidate.id,
-        extractedData: processedData
+        extractedData: processedData,
+        message: 'CV analyzed and candidate created successfully'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error in resume analysis:', error);
+    console.error('💥 Unexpected error in resume analysis:', error);
+    console.error('📊 Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack?.substring(0, 1000)
+    });
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false,
+        error: 'Unexpected error during resume analysis',
+        details: {
+          errorName: error.name,
+          errorMessage: error.message,
+          errorType: typeof error
+        }
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
