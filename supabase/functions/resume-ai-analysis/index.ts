@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 /**
- * Fonction pour nettoyer et décoder les textes avec caractères spéciaux (améliorée)
+ * Fonction pour nettoyer et décoder les textes avec caractères spéciaux
  */
 const cleanAndDecodeText = (text: string): string => {
   if (!text) return '';
@@ -73,156 +73,7 @@ const translateCountryToFrench = (country: string): string => {
 };
 
 /**
- * Fonction améliorée pour décomposer une adresse complète en champs structurés
- */
-const parseLocationToStructuredAddress = (location: string): {
-  address: string;
-  postal_code: string;
-  city: string;
-  country: string;
-} => {
-  if (!location) return { address: '', postal_code: '', city: '', country: '' };
-  
-  console.log('🏠 Parsing location:', location);
-  const cleanLocation = cleanAndDecodeText(location);
-  
-  // Patterns améliorés
-  const postalCodePattern = /\b\d{4,5}\b/;
-  const countryPattern = /\b(France|FRANCE|Allemagne|ALLEMAGNE|Belgique|BELGIQUE|Suisse|SUISSE|Espagne|ESPAGNE|Italie|ITALIE|Luxembourg|LUXEMBOURG|Royaume-Uni|ROYAUME-UNI|UK|Switzerland|Germany|Belgium|Spain|Italy|Netherlands|Austria|Portugal)\b/i;
-  
-  let address = '';
-  let postal_code = '';
-  let city = '';
-  let country = '';
-  
-  // Extraire le pays
-  const countryMatch = cleanLocation.match(countryPattern);
-  if (countryMatch) {
-    country = translateCountryToFrench(countryMatch[0]);
-    console.log('🌍 Country found:', country);
-  }
-  
-  // Extraire le code postal
-  const postalMatch = cleanLocation.match(postalCodePattern);
-  if (postalMatch) {
-    postal_code = postalMatch[0];
-    console.log('📮 Postal code found:', postal_code);
-  }
-  
-  // Stratégie améliorée : diviser par virgules ou retours à la ligne
-  const separators = /[,\n\r]/;
-  const segments = cleanLocation.split(separators).map(s => s.trim()).filter(s => s.length > 0);
-  
-  console.log('📋 Address segments:', segments);
-  
-  if (segments.length >= 2) {
-    // Stratégie : premier segment = adresse de rue
-    let potentialAddress = segments[0];
-    
-    // Nettoyer l'adresse de rue des éléments qui n'y appartiennent pas
-    if (postal_code) {
-      potentialAddress = potentialAddress.replace(postal_code, '').trim();
-    }
-    if (country && countryMatch) {
-      potentialAddress = potentialAddress.replace(new RegExp(countryMatch[0], 'gi'), '').trim();
-    }
-    
-    // Si ce qui reste ressemble à une adresse de rue (contient des chiffres ou certains mots clés)
-    if (potentialAddress && (
-      /\d+/.test(potentialAddress) || 
-      /\b(rue|avenue|boulevard|place|chemin|route|impasse|allée|square|cours|quai)\b/i.test(potentialAddress)
-    )) {
-      address = potentialAddress;
-      console.log('🏠 Street address found:', address);
-    }
-    
-    // Trouver la ville dans les segments restants
-    for (let i = 1; i < segments.length; i++) {
-      let segment = segments[i];
-      
-      // Nettoyer le segment
-      if (postal_code) {
-        segment = segment.replace(postal_code, '').trim();
-      }
-      if (country && countryMatch) {
-        segment = segment.replace(new RegExp(countryMatch[0], 'gi'), '').trim();
-      }
-      
-      // Si ce qui reste n'est pas vide et ne ressemble pas à une adresse de rue
-      if (segment && segment.length > 1 && 
-          !(/\d+\s*(rue|avenue|boulevard)/i.test(segment))) {
-        city = segment;
-        console.log('🏙️ City found:', city);
-        break;
-      }
-    }
-    
-  } else if (segments.length === 1) {
-    // Un seul segment - essayer de deviner la structure
-    let remaining = cleanLocation;
-    
-    // Retirer le pays et le code postal
-    if (country && countryMatch) {
-      remaining = remaining.replace(new RegExp(countryMatch[0], 'gi'), '').trim();
-    }
-    if (postal_code) {
-      remaining = remaining.replace(postal_code, '').trim();
-    }
-    
-    // Diviser par espaces et essayer de séparer
-    const words = remaining.split(/\s+/);
-    
-    if (words.length > 4) {
-      // Si on a beaucoup de mots, essayer de diviser intelligemment
-      // Chercher des indices d'adresse de rue (numéros + mots clés)
-      let addressWords = [];
-      let cityWords = [];
-      let foundStreetIndicator = false;
-      
-      for (let i = 0; i < words.length; i++) {
-        const word = words[i];
-        
-        if (/\d+/.test(word) || /\b(rue|avenue|boulevard|place|chemin|route)\b/i.test(word)) {
-          foundStreetIndicator = true;
-          addressWords.push(word);
-        } else if (foundStreetIndicator && addressWords.length < 4) {
-          // Continuer à ajouter des mots à l'adresse si on n'a pas trop de mots
-          addressWords.push(word);
-        } else {
-          // Les mots restants vont à la ville
-          cityWords.push(word);
-        }
-      }
-      
-      if (addressWords.length > 0) {
-        address = addressWords.join(' ');
-      }
-      if (cityWords.length > 0) {
-        city = cityWords.join(' ');
-      }
-    } else {
-      // Peu de mots - probablement juste une ville
-      city = remaining;
-    }
-  }
-  
-  // Nettoyage final
-  address = address.replace(/[,;]/g, '').trim();
-  city = city.replace(/[,;]/g, '').trim();
-  
-  const result = {
-    address: address || '',
-    postal_code: postal_code || '',
-    city: city || '',
-    country: country || ''
-  };
-  
-  console.log('✅ Final parsed address:', result);
-  return result;
-};
-
-/**
- * Nettoie et valide les données extraites par l'IA (améliorée)
+ * Nettoie et valide les données extraites par l'IA
  */
 const processAIExtractedData = (data: any): any => {
   console.log('🔧 Processing AI extracted data:', JSON.stringify(data, null, 2));
@@ -255,36 +106,6 @@ const processAIExtractedData = (data: any): any => {
   // Traduire le pays en français s'il est en anglais
   if (processedData.country) {
     processedData.country = translateCountryToFrench(processedData.country);
-  }
-  
-  // Logique améliorée pour la décomposition d'adresse
-  const hasStructuredAddress = processedData.address || processedData.postal_code || 
-                               processedData.city || processedData.country;
-  
-  // Si l'IA a fourni une adresse structurée, on la garde mais on l'améliore
-  if (hasStructuredAddress) {
-    console.log('📍 Using AI-provided structured address');
-    processedData.address = cleanAndDecodeText(processedData.address || '');
-    processedData.city = cleanAndDecodeText(processedData.city || '');
-    processedData.postal_code = cleanAndDecodeText(processedData.postal_code || '');
-    processedData.country = translateCountryToFrench(processedData.country || '');
-  } 
-  // Seulement si on n'a pas d'adresse structurée ET qu'on a une location complète
-  else if (processedData.location && processedData.location.length > 10) {
-    console.log('📍 Parsing location field into structured address');
-    const structuredAddress = parseLocationToStructuredAddress(processedData.location);
-    
-    // Seulement remplacer si on a extrait des données valides
-    if (structuredAddress.address || structuredAddress.postal_code || 
-        structuredAddress.city || structuredAddress.country) {
-      
-      processedData.address = structuredAddress.address;
-      processedData.postal_code = structuredAddress.postal_code;
-      processedData.city = structuredAddress.city;
-      processedData.country = structuredAddress.country;
-      
-      console.log('✅ Address decomposed successfully:', structuredAddress);
-    }
   }
   
   console.log('✅ Final processed data:', JSON.stringify(processedData, null, 2));
@@ -398,15 +219,13 @@ RÈGLES STRICTES:
 2. Si une information n'est pas présente, retourner une chaîne vide ""
 3. Pour les tableaux, retourner un tableau vide [] si aucune information
 4. Extraire les compétences sous forme de tableau de chaînes simples
-5. IMPORTANT - Pour l'adresse, extraire les champs séparément et précisément:
-   - address: adresse de rue complète avec numéro (ex: "45 Steinbachstrasse" ou "12 rue de la Paix")
-   - postal_code: code postal uniquement (ex: "8051", "75001")
-   - city: ville uniquement (ex: "Zurich", "Paris")
-   - country: pays EN FRANÇAIS (ex: "Suisse", "France", "Allemagne", "Belgique", etc.)
-6. IMPORTANT - Toujours utiliser les noms de pays en français
-7. Si l'adresse est dans un seul champ, bien la décomposer
-8. Ne pas mettre de caractères encodés (comme %20) dans les résultats
-9. Être très précis sur l'extraction de l'adresse - ne pas mélanger rue et ville
+5. Pour l'adresse complète, l'extraire dans le champ "location" tel quel
+6. Décomposer aussi l'adresse en champs séparés si possible:
+   - address: numéro et nom de rue (ex: "45 rue de la Paix")
+   - postal_code: code postal uniquement (ex: "75001")
+   - city: ville uniquement (ex: "Paris")
+   - country: pays EN FRANÇAIS (ex: "France", "Suisse", "Belgique")
+7. Ne pas mettre de caractères encodés (comme %20) dans les résultats
 
 Retourne un JSON avec EXACTEMENT cette structure:
 {
