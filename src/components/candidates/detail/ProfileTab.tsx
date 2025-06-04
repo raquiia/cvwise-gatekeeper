@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -9,7 +10,6 @@ import { toast } from '@/hooks/use-toast';
 import { candidateService } from '@/services/data/candidateService';
 import type { CandidateData } from '@/services/data/candidateService';
 import { useAuth } from '@/context/AuthContext';
-import { useDebounce } from '@/hooks/use-debounce';
 import ScoreDisplay from './ScoreDisplay';
 
 interface ProfileTabProps {
@@ -38,26 +38,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   const [notes, setNotes] = useState(candidate.notes || '');
   
   const [isSaving, setIsSaving] = useState(false);
-  const debouncedFirstName = useDebounce(firstName, 500);
-  const debouncedLastName = useDebounce(lastName, 500);
-  const debouncedEmail = useDebounce(email, 500);
-  const debouncedPosition = useDebounce(position, 500);
-  const debouncedLocation = useDebounce(location, 500);
-  const debouncedYearsExperience = useDebounce(yearsExperience, 500);
-  const debouncedSalaryExpectation = useDebounce(salaryExpectation, 500);
-  const debouncedAvailability = useDebounce(availability, 500);
-  const debouncedLinkedin = useDebounce(linkedin, 500);
-  const debouncedGithub = useDebounce(github, 500);
-  const debouncedPortfolio = useDebounce(portfolio, 500);
-  const debouncedPersonalWebsite = useDebounce(personalWebsite, 500);
-  const debouncedCv = useDebounce(cv, 500);
-  const debouncedProfileSummary = useDebounce(profileSummary, 500);
-  const debouncedOpenToRemote = useDebounce(openToRemote, 500);
-  const debouncedOpenToRelocation = useDebounce(openToRelocation, 500);
-  const debouncedNotes = useDebounce(notes, 500);
-  
   const { user } = useAuth();
   
+  // Update local state when candidate prop changes
   useEffect(() => {
     setFirstName(candidate.first_name || '');
     setLastName(candidate.last_name || '');
@@ -78,96 +61,51 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     setNotes(candidate.notes || '');
   }, [candidate]);
   
-  useEffect(() => {
-    const updateCandidate = async () => {
-      if (!candidate.id || !user?.id) return;
-      
-      try {
-        setIsSaving(true);
-        await candidateService.updateCandidate({
-          id: candidate.id,
-          first_name: debouncedFirstName,
-          last_name: debouncedLastName,
-          email: debouncedEmail,
-          position: debouncedPosition,
-          location: debouncedLocation,
-          years_experience: debouncedYearsExperience,
-          salary_expectations: debouncedSalaryExpectation,
-          availability: debouncedAvailability,
-          linkedin: debouncedLinkedin,
-          github: debouncedGithub,
-          portfolio: debouncedPortfolio,
-          personal_website: debouncedPersonalWebsite,
-          cv: debouncedCv,
-          profile_summary: debouncedProfileSummary,
-          open_to_remote: debouncedOpenToRemote,
-          open_to_relocation: debouncedOpenToRelocation,
-          notes: debouncedNotes
-        });
-        
-        toast({
-          title: "Profil mis à jour",
-          description: "Les informations du candidat ont été mises à jour avec succès.",
-        });
-        
-        if (onRefresh) {
-          onRefresh();
-        }
-      } catch (error: any) {
-        console.error("Error updating candidate:", error);
-        toast({
-          title: "Erreur de mise à jour",
-          description: error.message || "Une erreur s'est produite lors de la mise à jour du profil.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsSaving(false);
-      }
-    };
+  const handleSave = async () => {
+    if (!candidate.id || !user?.id) return;
     
-    if (
-      debouncedFirstName !== candidate.first_name ||
-      debouncedLastName !== candidate.last_name ||
-      debouncedEmail !== candidate.email ||
-      debouncedPosition !== candidate.position ||
-      debouncedLocation !== candidate.location ||
-      debouncedYearsExperience !== candidate.years_experience ||
-      debouncedSalaryExpectation !== (candidate.salary_expectations || candidate.salary_expectation) ||
-      debouncedAvailability !== candidate.availability ||
-      debouncedLinkedin !== candidate.linkedin ||
-      debouncedGithub !== candidate.github ||
-      debouncedPortfolio !== candidate.portfolio ||
-      debouncedPersonalWebsite !== candidate.personal_website ||
-      debouncedCv !== candidate.cv ||
-      debouncedProfileSummary !== candidate.profile_summary ||
-      debouncedOpenToRemote !== candidate.open_to_remote ||
-      debouncedOpenToRelocation !== candidate.open_to_relocation ||
-      debouncedNotes !== candidate.notes
-    ) {
-      updateCandidate();
+    try {
+      setIsSaving(true);
+      await candidateService.updateCandidate({
+        id: candidate.id,
+        first_name: firstName,
+        last_name: lastName,
+        email: email,
+        position: position,
+        location: location,
+        years_experience: yearsExperience,
+        salary_expectations: salaryExpectation,
+        availability: availability,
+        linkedin: linkedin,
+        github: github,
+        portfolio: portfolio,
+        personal_website: personalWebsite,
+        cv: cv,
+        profile_summary: profileSummary,
+        open_to_remote: openToRemote,
+        open_to_relocation: openToRelocation,
+        notes: notes
+      });
+      
+      toast({
+        title: "Profil mis à jour",
+        description: "Les informations du candidat ont été mises à jour avec succès.",
+      });
+      
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error: any) {
+      console.error("Error updating candidate:", error);
+      toast({
+        title: "Erreur de mise à jour",
+        description: error.message || "Une erreur s'est produite lors de la mise à jour du profil.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
-  }, [
-    candidate,
-    debouncedFirstName,
-    debouncedLastName,
-    debouncedEmail,
-    debouncedPosition,
-    debouncedLocation,
-    debouncedYearsExperience,
-    debouncedSalaryExpectation,
-    debouncedAvailability,
-    debouncedLinkedin,
-    debouncedGithub,
-    debouncedPortfolio,
-    debouncedPersonalWebsite,
-    debouncedCv,
-    debouncedProfileSummary,
-    debouncedOpenToRemote,
-    debouncedOpenToRelocation,
-    debouncedNotes,
-    onRefresh,
-    user
-  ]);
+  };
   
   const handleRefresh = () => {
     if (onRefresh) {
@@ -375,6 +313,23 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
           </div>
         </CardContent>
       </Card>
+
+      {/* Bouton de sauvegarde */}
+      <div className="flex justify-end gap-2">
+        <Button 
+          variant="outline" 
+          onClick={handleRefresh}
+          disabled={isSaving}
+        >
+          Actualiser
+        </Button>
+        <Button 
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? "Sauvegarde..." : "Sauvegarder"}
+        </Button>
+      </div>
 
       <ScoreDisplay 
         candidate={candidate}
