@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check, ChevronDown, Loader2 } from 'lucide-react';
@@ -10,7 +11,7 @@ import {
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, updateCandidateStatus, getCandidateStatus } from '@/services/data/candidateStatusService';
 import { toast } from '@/hooks/use-toast';
 
-// Define colors by status (SANS "initial")
+// Define colors by status
 const STATUS_COLORS: Record<string, string> = {
   'contact': 'bg-blue-500 hover:bg-blue-600',
   'qualification': 'bg-cyan-500 hover:bg-cyan-600',
@@ -28,19 +29,21 @@ interface StatusSelectorProps {
   currentStatus?: string;
   onStatusChange?: (newStatus: string) => void;
   onDataRefresh?: () => void;
+  onGlobalRefresh?: () => Promise<void>; // NEW: Global refresh callback
 }
 
 const StatusSelector: React.FC<StatusSelectorProps> = ({ 
   candidateId,
   currentStatus: propCurrentStatus,
   onStatusChange,
-  onDataRefresh 
+  onDataRefresh,
+  onGlobalRefresh
 }) => {
-  const [currentStatus, setCurrentStatus] = useState<string>(propCurrentStatus || 'contact'); // CHANGEMENT: défaut = 'contact'
+  const [currentStatus, setCurrentStatus] = useState<string>(propCurrentStatus || 'contact');
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState<boolean>(false);
   
-  // Charger le statut réel depuis la base de données
+  // Load current status from database
   useEffect(() => {
     const loadCurrentStatus = async () => {
       if (candidateId && !propCurrentStatus) {
@@ -48,11 +51,11 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         try {
           const status = await getCandidateStatus(candidateId);
           if (status) {
-            console.log('Loaded current status from DB:', status);
+            console.log('📥 Loaded current status from DB:', status);
             setCurrentStatus(status);
           }
         } catch (error) {
-          console.error('Error loading current status:', error);
+          console.error('❌ Error loading current status:', error);
         } finally {
           setIsLoadingStatus(false);
         }
@@ -62,26 +65,26 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
     loadCurrentStatus();
   }, [candidateId, propCurrentStatus]);
   
-  // Utiliser le statut passé en prop si disponible
+  // Use prop status if available
   useEffect(() => {
     if (propCurrentStatus) {
-      console.log('Using prop status:', propCurrentStatus);
+      console.log('📥 Using prop status:', propCurrentStatus);
       setCurrentStatus(propCurrentStatus);
     }
   }, [propCurrentStatus]);
   
-  // Change status
+  // Handle status change with comprehensive refresh
   const handleStatusChange = async (status: string) => {
     if (status === currentStatus || isUpdating) return;
     
-    console.log("Changing status from", currentStatus, "to:", status);
+    console.log("🔄 Changing status from", currentStatus, "to:", status);
     setIsUpdating(true);
     
     try {
       const success = await updateCandidateStatus(candidateId, status);
       
       if (success) {
-        console.log("Status updated successfully to:", status);
+        console.log("✅ Status updated successfully to:", status);
         setCurrentStatus(status);
         
         toast({
@@ -89,17 +92,22 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
           description: `Le statut a été modifié en "${CANDIDATE_STATUS_LABELS[status] || status}"`,
         });
         
-        // Notifier le parent
+        // Notify local components
         if (onStatusChange) {
           onStatusChange(status);
         }
         
-        // Trigger data refresh in parent components
         if (onDataRefresh) {
           onDataRefresh();
         }
+
+        // CRITICAL: Trigger global data refresh
+        if (onGlobalRefresh) {
+          console.log('🌍 Triggering global candidates refresh');
+          await onGlobalRefresh();
+        }
       } else {
-        console.error("Failed to update status");
+        console.error("❌ Failed to update status");
         toast({
           title: "Erreur de mise à jour",
           description: "La mise à jour du statut a échoué. Veuillez réessayer.",
@@ -107,7 +115,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         });
       }
     } catch (error: any) {
-      console.error("Error updating status:", error);
+      console.error("❌ Error updating status:", error);
       toast({
         title: "Erreur",
         description: error.message || "Impossible de mettre à jour le statut",
@@ -119,7 +127,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   };
   
   // Determine button color based on current status
-  const buttonColorClass = STATUS_COLORS[currentStatus] || 'bg-blue-500 hover:bg-blue-600'; // CHANGEMENT: défaut bleu au lieu de gris
+  const buttonColorClass = STATUS_COLORS[currentStatus] || 'bg-blue-500 hover:bg-blue-600';
   
   // Get display label for current status
   const currentStatusLabel = CANDIDATE_STATUS_LABELS[currentStatus] || currentStatus;

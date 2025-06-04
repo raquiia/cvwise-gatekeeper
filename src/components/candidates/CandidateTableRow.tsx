@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,7 @@ import { Eye, Trash2 } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
+import { useCandidateData } from '@/context/CandidateDataContext';
 import StatusSelector from './detail/StatusSelector';
 import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 
@@ -21,6 +23,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   onCandidateDeleted
 }) => {
   const { toast } = useToast();
+  const { onCandidateUpdated: globalRefresh } = useCandidateData();
 
   const handleDeleteCandidate = async () => {
     if (!candidate.id) return;
@@ -35,9 +38,13 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
         title: "Candidat supprimé",
         description: "Le candidat a été supprimé avec succès.",
       });
+      
       if (onCandidateDeleted) {
         onCandidateDeleted();
       }
+      
+      // Also trigger global refresh
+      await globalRefresh();
     } catch (error: any) {
       console.error('Error deleting candidate:', error);
       toast({
@@ -48,12 +55,15 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     }
   };
 
-  const handleStatusChange = (newStatus: string) => {
+  const handleStatusChange = async (newStatus: string) => {
     console.log(`Status changed for candidate ${candidate.id}: ${newStatus}`);
-    // Force refresh of the candidates list to reflect the new status
+    // Force refresh with both local and global mechanisms
     if (onCandidateDeleted) {
       onCandidateDeleted();
     }
+    
+    // Global refresh to update all views
+    await globalRefresh();
   };
 
   const getScoreColor = (score: number): string => {
@@ -63,8 +73,8 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   };
 
   const candidateScore = candidate.score || 0;
-  // S'assurer que nous avons un statut valide
-  const candidateStatus = candidate.detailed_status || 'initial';
+  // Ensuring we have a valid status
+  const candidateStatus = candidate.detailed_status || 'contact';
 
   return (
     <TableRow className="hover:bg-muted/50">
@@ -86,6 +96,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
           currentStatus={candidateStatus}
           onStatusChange={handleStatusChange}
           onDataRefresh={onCandidateDeleted}
+          onGlobalRefresh={globalRefresh}
         />
       </TableCell>
       <TableCell>

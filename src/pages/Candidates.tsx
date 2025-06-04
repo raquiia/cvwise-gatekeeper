@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -11,82 +10,24 @@ import CandidatesCardView from '@/components/candidates/CandidatesCardView';
 import EnhancedSearch from '@/components/candidates/EnhancedSearch';
 import CandidatesKanbanView from '@/components/candidates/kanban/CandidatesKanbanView';
 import CandidatesAnalyticsView from '@/components/candidates/analytics/CandidatesAnalyticsView';
-import { candidateService } from '@/services/data/candidateService';
-import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/AuthContext';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { semanticMatchingService } from '@/services/semantic/semanticMatchingService';
-import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
+import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 import { ActiveJobProvider } from '@/context/ActiveJobContext';
+import { CandidateDataProvider, useCandidateData } from '@/context/CandidateDataContext';
 import { Button } from '@/components/ui/button';
 import { Filter, Upload, FileText, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-// Helper function to extract status from candidate - Enhanced version
-const extractCandidateStatus = async (candidate: CandidateData): Promise<string> => {
-  // Default status if extraction fails
-  let statusValue = 'initial';
-  
-  try {
-    // First, try to get the status from detailed_status field
-    if (candidate.detailed_status && 
-        candidate.detailed_status !== '' && 
-        candidate.detailed_status !== 'undefined' && 
-        candidate.detailed_status !== 'null') {
-      
-      // If it's directly a string and not empty
-      if (typeof candidate.detailed_status === 'string') {
-        const trimmedStatus = candidate.detailed_status.trim();
-        if (trimmedStatus !== '' && trimmedStatus !== 'undefined' && trimmedStatus !== 'null') {
-          return trimmedStatus;
-        }
-      }
-      
-      // If it's an object, try to extract the value
-      if (typeof candidate.detailed_status === 'object' && candidate.detailed_status !== null) {
-        const statusObj = candidate.detailed_status as Record<string, any>;
-        
-        if ('value' in statusObj && statusObj.value !== undefined) {
-          const extractedValue = String(statusObj.value).trim();
-          if (extractedValue !== '' && extractedValue !== 'undefined' && extractedValue !== 'null') {
-            return extractedValue;
-          }
-        }
-        
-        if ('status' in statusObj && statusObj.status !== undefined) {
-          const extractedValue = String(statusObj.status).trim();
-          if (extractedValue !== '' && extractedValue !== 'undefined' && extractedValue !== 'null') {
-            return extractedValue;
-          }
-        }
-      }
-    }
-    
-    // If detailed_status is empty or invalid, try to get it from the database
-    if (candidate.id) {
-      console.log(`Fetching status from database for candidate ${candidate.id}`);
-      const dbStatus = await candidateStatusService.getCandidateStatus(candidate.id);
-      if (dbStatus && dbStatus !== '' && dbStatus !== 'undefined' && dbStatus !== 'null') {
-        console.log(`Retrieved status from DB: ${dbStatus}`);
-        return dbStatus;
-      }
-    }
-  } catch (err) {
-    console.error("Error extracting candidate status:", err);
-  }
-  
-  return statusValue;
-};
-
 const CandidatesContent = () => {
-  const [candidates, setCandidates] = useState<CandidateData[]>([]);
-  const [filteredCandidates, setFilteredCandidates] = useState<CandidateData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use the new context for candidate data
+  const { candidates, loading, error, onCandidateUpdated } = useCandidateData();
+  
+  const [filteredCandidates, setFilteredCandidates] = useState(candidates);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   
-  // Add missing state variables
+  // State variables
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [currentView, setCurrentView] = useState<'table' | 'cards' | 'kanban' | 'analytics'>('table');
@@ -101,91 +42,22 @@ const CandidatesContent = () => {
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
 
-  const fetchCandidates = async () => {
-    if (!user?.id) {
-      setError("Vous devez être connecté pour voir vos candidats");
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      setError(null);
-      
-      console.log("Fetching candidates for user:", user.id);
-      const data = await candidateService.getUserCandidates();
-      console.log("Retrieved candidates:", data);
-      
-      if (Array.isArray(data)) {
-        const sortedCandidates = [...data].sort((a, b) => 
-          new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
-        );
-        
-        // Log status distribution after fetch
-        console.log('📊 Status distribution after fetch:');
-        const statusCount = sortedCandidates.reduce((acc, candidate) => {
-          const status = candidate.detailed_status || 'unknown';
-          acc[status] = (acc[status] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-        
-        Object.entries(statusCount).forEach(([status, count]) => {
-          console.log(`   ${status}: ${count} candidate(s)`);
-        });
-        
-        setCandidates(sortedCandidates);
-        setFilteredCandidates(sortedCandidates);
-      } else {
-        console.error("Candidates data is not an array:", data);
-        setCandidates([]);
-        setFilteredCandidates([]);
-        setError("Format de données incorrect");
-      }
-    } catch (error: any) {
-      console.error('Error fetching candidates:', error);
-      setError(error?.message || "Impossible de récupérer les candidats");
-      
-      toast({
-        title: "Erreur",
-        description: error?.message || "Impossible de récupérer les candidats",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Enhanced function to handle candidate updates with forced refresh
-  const handleCandidateUpdated = async () => {
-    console.log('Candidate updated, forcing complete data refresh...');
-    // Force a complete data refresh to get the latest status updates
-    await fetchCandidates();
-  };
-
+  // Update filtered candidates when main candidates change
   useEffect(() => {
-    fetchCandidates();
-  }, [user]);
-
-  useEffect(() => {
-    if (!candidates || candidates.length === 0) return;
-    
+    console.log('🔄 Candidates data changed, updating filtered view');
     let result = [...candidates];
     
     if (selectedStatus) {
-      // Filter candidates by selected status
       result = result.filter(candidate => {
-        const candidateStatus = candidate.detailed_status || 'initial';
-        
-        console.log(`Candidate ${candidate.id} status: ${candidateStatus}, selected: ${selectedStatus}, match: ${candidateStatus === selectedStatus}`);
-        
+        const candidateStatus = candidate.detailed_status || 'contact';
+        console.log(`Filtering candidate ${candidate.id} status: ${candidateStatus}, selected: ${selectedStatus}`);
         return candidateStatus === selectedStatus;
       });
     }
     
     setFilteredCandidates(result);
-  }, [selectedStatus, candidates]);
+  }, [candidates, selectedStatus]);
 
   // Calculate stats
   const totalCandidates = candidates.length;
@@ -201,7 +73,6 @@ const CandidatesContent = () => {
   ).length;
   
   const topCandidates = candidates.filter(c => {
-    // This would normally use the scoring system
     return (c.score || 0) >= 85;
   }).length;
 
@@ -220,7 +91,7 @@ const CandidatesContent = () => {
   const handleViewCandidate = (candidateId: string) => {
     navigate(`/candidates/${candidateId}`);
   };
-  
+
   const handleLocationChange = (value: string) => {
     setLocation(value);
   };
@@ -254,7 +125,7 @@ const CandidatesContent = () => {
     
     if (selectedStatus) {
       result = result.filter(candidate => {
-        const candidateStatus = candidate.detailed_status || 'initial';
+        const candidateStatus = candidate.detailed_status || 'contact';
         return candidateStatus === selectedStatus;
       });
     }
@@ -342,7 +213,7 @@ const CandidatesContent = () => {
     
     if (selectedStatus) {
       setFilteredCandidates(candidates.filter(candidate => {
-        const candidateStatus = candidate.detailed_status || 'initial';
+        const candidateStatus = candidate.detailed_status || 'contact';
         return candidateStatus === selectedStatus;
       }));
     } else {
@@ -494,14 +365,14 @@ const CandidatesContent = () => {
             <CandidatesCardView 
               candidates={filteredCandidates}
               onViewCandidate={handleViewCandidate}
-              onCandidateDeleted={handleCandidateUpdated}
+              onCandidateDeleted={onCandidateUpdated}
             />
           ) : currentView === 'kanban' ? (
             <CandidatesKanbanView 
               candidates={filteredCandidates}
               onViewCandidate={handleViewCandidate}
-              onCandidateDeleted={handleCandidateUpdated}
-              onCandidateUpdated={handleCandidateUpdated}
+              onCandidateDeleted={onCandidateUpdated}
+              onCandidateUpdated={onCandidateUpdated}
             />
           ) : currentView === 'analytics' ? (
             <CandidatesAnalyticsView 
@@ -513,7 +384,7 @@ const CandidatesContent = () => {
               selectedStatus={selectedStatus}
               onStatusChange={handleStatusChange}
               onViewCandidate={handleViewCandidate}
-              onCandidateDeleted={handleCandidateUpdated}
+              onCandidateDeleted={onCandidateUpdated}
             />
           )}
         </div>
@@ -526,7 +397,9 @@ const Candidates = () => {
   return (
     <Layout>
       <ActiveJobProvider>
-        <CandidatesContent />
+        <CandidateDataProvider>
+          <CandidatesContent />
+        </CandidateDataProvider>
       </ActiveJobProvider>
     </Layout>
   );
