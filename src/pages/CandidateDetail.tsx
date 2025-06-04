@@ -50,19 +50,19 @@ const CandidateDetail = () => {
         // Convert the data to match our expected CandidateData type with safe type conversion
         const formattedCandidate: CandidateData = {
           ...candidateData,
-          detailed_status: candidateData.detailed_status || 'contact',
-          skills: Array.isArray(candidateData.skills) ? candidateData.skills : [],
-          experiences: Array.isArray(candidateData.experiences) ? candidateData.experiences : [],
-          education: Array.isArray(candidateData.education) ? candidateData.education : [],
-          certifications: Array.isArray(candidateData.certifications) ? candidateData.certifications : [],
-          languages: Array.isArray(candidateData.languages) ? candidateData.languages : [],
-          publications: Array.isArray(candidateData.publications) ? candidateData.publications : [],
-          professional_references: Array.isArray(candidateData.professional_references) ? candidateData.professional_references : [],
-          professional_networks: Array.isArray(candidateData.professional_networks) ? candidateData.professional_networks : [],
-          continuous_training: Array.isArray(candidateData.continuous_training) ? candidateData.continuous_training : [],
-          special_permits: Array.isArray(candidateData.special_permits) ? candidateData.special_permits : [],
-          industries: Array.isArray(candidateData.industries) ? candidateData.industries : [],
-          projects: Array.isArray(candidateData.projects) ? candidateData.projects : []
+          detailed_status: (candidateData as any).detailed_status || 'contact',
+          skills: Array.isArray((candidateData as any).skills) ? (candidateData as any).skills : [],
+          experiences: Array.isArray((candidateData as any).experiences) ? (candidateData as any).experiences : [],
+          education: Array.isArray((candidateData as any).education) ? (candidateData as any).education : [],
+          certifications: Array.isArray((candidateData as any).certifications) ? (candidateData as any).certifications : [],
+          languages: Array.isArray((candidateData as any).languages) ? (candidateData as any).languages : [],
+          publications: Array.isArray((candidateData as any).publications) ? (candidateData as any).publications : [],
+          professional_references: Array.isArray((candidateData as any).professional_references) ? (candidateData as any).professional_references : [],
+          professional_networks: Array.isArray((candidateData as any).professional_networks) ? (candidateData as any).professional_networks : [],
+          continuous_training: Array.isArray((candidateData as any).continuous_training) ? (candidateData as any).continuous_training : [],
+          special_permits: Array.isArray((candidateData as any).special_permits) ? (candidateData as any).special_permits : [],
+          industries: Array.isArray((candidateData as any).industries) ? (candidateData as any).industries : [],
+          projects: Array.isArray((candidateData as any).projects) ? (candidateData as any).projects : []
         };
         setCandidate(formattedCandidate);
         setError(null);
