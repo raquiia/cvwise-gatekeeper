@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -92,11 +91,11 @@ const CandidateDetail = () => {
     } finally {
       setLoading(false);
     }
-  }, [candidateId]);
+  }, [candidateId]); // ONLY candidateId as dependency
 
   useEffect(() => {
     fetchCandidateData();
-  }, [fetchCandidateData]);
+  }, [candidateId]); // ONLY candidateId as dependency, not fetchCandidateData
 
   const handleStatusChange = useCallback((newStatus: string) => {
     if (candidate) {
@@ -207,7 +206,7 @@ const CandidateDetail = () => {
               </TabsTrigger>
               <TabsTrigger 
                 value="details" 
-                className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state-active]:shadow-md transition-all duration-300"
+                className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
               >
                 Détails
               </TabsTrigger>
