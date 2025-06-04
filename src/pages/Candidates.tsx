@@ -195,6 +195,11 @@ const CandidatesContent = () => {
     await fetchCandidates();
   };
 
+  const handleCandidateDeletedRefresh = async () => {
+    console.log('Candidate deleted, refreshing list...');
+    await fetchCandidates();
+  };
+
   const renderCurrentView = () => {
     if (loading) {
       return (
@@ -229,7 +234,7 @@ const CandidatesContent = () => {
           <CandidatesCardView
             candidates={filteredCandidates}
             onViewCandidate={handleViewCandidate}
-            onCandidateDeleted={handleCandidateDeleted}
+            onCandidateDeleted={handleCandidateDeletedRefresh}
           />
         );
       case 'kanban':
@@ -237,7 +242,7 @@ const CandidatesContent = () => {
           <CandidatesKanbanView
             candidates={filteredCandidates}
             onViewCandidate={handleViewCandidate}
-            onCandidateDeleted={handleCandidateDeleted}
+            onCandidateDeleted={handleCandidateDeletedRefresh}
           />
         );
       case 'analytics':
