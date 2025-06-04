@@ -1,9 +1,10 @@
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-// Import the unified CandidateData type from candidateService
-export { CandidateData } from './candidateService';
 
-// Keep only the resume-specific types and functions here
+// Import the unified CandidateData type from candidateService
+export type { CandidateData } from './candidateService';
+
+// Keep the resume-specific types and functions here
 export interface ResumeData {
   id: string;
   file_name: string;
@@ -14,6 +15,11 @@ export interface ResumeData {
   updated_at: string;
   parsed: boolean;
   user_id: string;
+  candidates?: Array<{
+    id: string;
+    first_name: string;
+    last_name: string;
+  }>;
 }
 
 export const resumeDataService = {
@@ -23,7 +29,7 @@ export const resumeDataService = {
       
       if (error) throw error;
       
-      return data || [];
+      return (data || []) as ResumeData[];
     } catch (error: any) {
       console.error('Error fetching resumes:', error);
       throw new Error(`Failed to get resumes: ${error.message}`);

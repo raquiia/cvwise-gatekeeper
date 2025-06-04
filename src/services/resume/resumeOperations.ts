@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { resumeStorageService } from '../storage/resumeStorageService';
 import { supabase } from '@/integrations/supabase/client';
@@ -88,7 +87,7 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
         file_size: file.size,
         parsed: false,
         created_at: new Date().toISOString(),
-        candidates: []
+        updated_at: new Date().toISOString()
       };
       
       console.log('Resume record created successfully:', resumeData);

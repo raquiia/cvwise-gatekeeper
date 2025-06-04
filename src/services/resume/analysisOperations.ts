@@ -4,13 +4,11 @@ import { analyzeResume } from './resumeAnalysisService';
 import { extractResumeText } from './textExtractionService';
 import { checkResumeAlreadyAnalyzed } from './resumeValidationService';
 import { analyzeBatchResumes } from './batchAnalysisService';
-import { getCompleteCandidateData } from './candidateDataService';
 
 // Re-export all functions for backward compatibility
 export {
   analyzeResume,
   extractResumeText,
   checkResumeAlreadyAnalyzed,
-  analyzeBatchResumes,
-  getCompleteCandidateData
+  analyzeBatchResumes
 };
