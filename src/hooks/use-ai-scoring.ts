@@ -149,20 +149,28 @@ export const useAIScoring = () => {
   }, []);
   
   /**
-   * Précharger les scores depuis la base de données (amélioration : chargement immédiat dans l'état)
+   * Précharger les scores depuis la base de données et retourner le résultat directement
    */
-  const preloadScoresFromDatabase = useCallback(async (candidateIds: string[]): Promise<void> => {
+  const preloadScoresFromDatabase = useCallback(async (candidateIds: string[]): Promise<{ [candidateId: string]: any }> => {
     const contextKey = activeJobOfferId || 'general';
+    const loadedScores: { [candidateId: string]: any } = {};
     
     // Filtrer les candidats déjà préchargés pour ce contexte
     const newCandidateIds = candidateIds.filter(candidateId => {
       const fullKey = `${candidateId}_${contextKey}`;
-      return !preloadedCandidates.has(fullKey) && !scoringState[fullKey];
+      return !preloadedCandidates.has(fullKey);
     });
     
     if (newCandidateIds.length === 0) {
       console.log('All candidates already preloaded for current context');
-      return;
+      // Retourner les scores déjà en mémoire
+      candidateIds.forEach(candidateId => {
+        const key = `${candidateId}_${contextKey}`;
+        if (scoringState[key]) {
+          loadedScores[candidateId] = scoringState[key];
+        }
+      });
+      return loadedScores;
     }
     
     console.log('Preloading AI scores from permanent database cache for', newCandidateIds.length, 'new candidates');
@@ -186,20 +194,25 @@ export const useAIScoring = () => {
           const key = `${candidateId}_${contextKey}`;
           console.log('Successfully preloaded score from database for candidate:', candidateId, 'Score:', result.score);
           
+          const scoreData = {
+            score: result.score,
+            explanation: result.explanation,
+            breakdown: result.breakdown,
+            isLoading: false,
+            error: null,
+            isJobSpecific: result.isJobSpecific,
+            lastUpdated: Date.now(),
+            source: result.source
+          };
+          
           // Charger immédiatement dans l'état
           setScoringState(prev => ({
             ...prev,
-            [key]: {
-              score: result.score,
-              explanation: result.explanation,
-              breakdown: result.breakdown,
-              isLoading: false,
-              error: null,
-              isJobSpecific: result.isJobSpecific,
-              lastUpdated: Date.now(),
-              source: result.source
-            }
+            [key]: scoreData
           }));
+          
+          // Ajouter au résultat retourné
+          loadedScores[candidateId] = scoreData;
         } else {
           console.log('No cached score found in database for candidate:', candidateId);
         }
@@ -209,6 +222,7 @@ export const useAIScoring = () => {
     }
     
     console.log('Preloading completed for', newCandidateIds.length, 'candidates');
+    return loadedScores;
   }, [activeJobOfferId, preloadedCandidates, scoringState]);
   
   /**
