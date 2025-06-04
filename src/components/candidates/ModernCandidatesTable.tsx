@@ -15,6 +15,7 @@ import CandidateCard from './CandidateCard';
 import { useToast } from '@/hooks/use-toast';
 import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 import { cn } from '@/lib/utils';
+import { useAIScoring } from '@/hooks/use-ai-scoring';
 
 interface ModernCandidatesTableProps {
   candidates: CandidateData[];
@@ -36,6 +37,7 @@ const ModernCandidatesTable: React.FC<ModernCandidatesTableProps> = ({
   onCandidateDeleted
 }) => {
   const { toast } = useToast();
+  const { getAIScore, preloadScoresFromDatabase } = useAIScoring();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortBy, setSortBy] = useState<SortOption>('date');
   const [density, setDensity] = useState<DensityOption>('comfortable');
@@ -43,7 +45,16 @@ const ModernCandidatesTable: React.FC<ModernCandidatesTableProps> = ({
   const [sortedCandidates, setSortedCandidates] = useState<CandidateData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Sort candidates
+  // Précharger les scores AI au chargement
+  useEffect(() => {
+    const candidateIds = candidates.map(c => c.id!).filter(Boolean);
+    if (candidateIds.length > 0) {
+      console.log('Preloading AI scores for modern candidates table');
+      preloadScoresFromDatabase(candidateIds);
+    }
+  }, [candidates, preloadScoresFromDatabase]);
+
+  // Sort candidates avec scores AI
   useEffect(() => {
     if (!candidates || candidates.length === 0) {
       setSortedCandidates([]);
@@ -57,7 +68,10 @@ const ModernCandidatesTable: React.FC<ModernCandidatesTableProps> = ({
         case 'date':
           return new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime();
         case 'score':
-          return (b.score || 0) - (a.score || 0);
+          // Utiliser les scores AI si disponibles, sinon fallback sur l'ancien score
+          const scoreA = getAIScore(a.id!).score ?? a.score ?? 0;
+          const scoreB = getAIScore(b.id!).score ?? b.score ?? 0;
+          return scoreB - scoreA;
         case 'status':
           return (a.detailed_status || 'initial').localeCompare(b.detailed_status || 'initial');
         default:
@@ -66,7 +80,7 @@ const ModernCandidatesTable: React.FC<ModernCandidatesTableProps> = ({
     });
 
     setSortedCandidates(sorted);
-  }, [candidates, sortBy]);
+  }, [candidates, sortBy, getAIScore]);
 
   const handleCandidateDeleted = () => {
     toast({
@@ -201,7 +215,7 @@ const ModernCandidatesTable: React.FC<ModernCandidatesTableProps> = ({
                 </Button>
               </div>
 
-              {/* Sort dropdown */}
+              {/* Sort dropdown avec indication que le score utilisé est AI */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
@@ -230,7 +244,7 @@ const ModernCandidatesTable: React.FC<ModernCandidatesTableProps> = ({
                     onClick={() => setSortBy('score')} 
                     className={sortBy === 'score' ? "bg-purple-50 dark:bg-purple-900/20" : ""}
                   >
-                    Par score
+                    Par score IA
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={() => setSortBy('status')} 

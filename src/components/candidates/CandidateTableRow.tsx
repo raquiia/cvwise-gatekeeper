@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/utils/dateFormatter';
-import { useCandidateScore } from '@/hooks/use-candidate-score';
+import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { cn } from '@/lib/utils';
 
 interface CandidateTableRowProps {
@@ -28,9 +29,12 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
 }) => {
   const skills = ensureStringArray(candidate.skills);
   const { toast } = useToast();
+  const { getAIScore, isJobSpecific } = useAIScoring();
   
-  // Use unified scoring system
-  const { score: scoreBreakdown, isLoading: scoreLoading, isJobSpecific } = useCandidateScore(candidate);
+  // Utiliser le système AI scoring unifié
+  const aiScore = getAIScore(candidate.id!);
+  const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
+  const isAIScore = aiScore.score !== null;
 
   const getStatusBadge = (status: string) => {
     const statusLabel = CANDIDATE_STATUS_LABELS[status] || status;
@@ -106,7 +110,14 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     return 'text-red-600 bg-red-50';
   };
 
-  const displayScore = scoreBreakdown?.overall || 0;
+  const getScoreSource = (source?: string) => {
+    switch (source) {
+      case 'database': return 'BDD';
+      case 'fresh_calculation': return 'Nouveau';
+      case 'cache': return 'Cache';
+      default: return 'Ancien';
+    }
+  };
 
   return (
     <TableRow className="hover:bg-muted/50">
@@ -193,20 +204,45 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
         </div>
       </TableCell>
       
-      {/* Score Column */}
+      {/* Score Column avec système AI unifié */}
       {!hideScore && (
         <TableCell className="hidden xl:table-cell">
-          <div className="flex items-center">
-            {scoreLoading ? (
-              <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse flex items-center justify-center">
-                <span className="text-xs">...</span>
+          <div className="flex items-center gap-2">
+            {aiScore.isLoading ? (
+              <div className="flex items-center gap-1">
+                <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-xs text-gray-500">...</span>
+              </div>
+            ) : aiScore.error ? (
+              <div className="flex items-center gap-1" title={aiScore.error}>
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
+                  getScoreColor(candidate.score || 0)
+                )}>
+                  {candidate.score || 0}
+                </div>
+                <Badge variant="secondary" className="text-xs">
+                  Ancien
+                </Badge>
               </div>
             ) : (
-              <div className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
-                getScoreColor(displayScore)
-              )}>
-                {displayScore}
+              <div className="flex items-center gap-1">
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
+                  getScoreColor(displayScore)
+                )}>
+                  {displayScore}
+                </div>
+                <Badge 
+                  variant={isAIScore ? "default" : "secondary"} 
+                  className={cn(
+                    "text-xs",
+                    isAIScore ? "bg-purple-100 text-purple-800 border-purple-300" : ""
+                  )}
+                  title={isAIScore ? aiScore.explanation : "Score calculé avec l'ancien système"}
+                >
+                  {isAIScore ? getScoreSource(aiScore.source) : 'Ancien'}
+                </Badge>
               </div>
             )}
             {isJobSpecific && (

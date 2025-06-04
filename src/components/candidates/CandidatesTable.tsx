@@ -1,14 +1,16 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
-import { Trash2, Phone, Mail } from 'lucide-react';
+import { Trash2, Phone, Mail, TrendingUp } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/use-confirm';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ensureStringArray } from '@/utils/candidateUtils';
+import { useAIScoring } from '@/hooks/use-ai-scoring';
+import { cn } from '@/lib/utils';
 
 interface CandidatesTableProps {
   candidates: CandidateData[];
@@ -28,13 +30,23 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateData | null>(null);
   const { toast } = useToast();
   const { confirm } = useConfirm();
+  const { getAIScore, preloadScoresFromDatabase, isJobSpecific } = useAIScoring();
+
+  // Précharger les scores depuis la base de données au chargement
+  useEffect(() => {
+    const candidateIds = candidates.map(c => c.id!).filter(Boolean);
+    if (candidateIds.length > 0) {
+      console.log('Preloading AI scores for candidates table');
+      preloadScoresFromDatabase(candidateIds);
+    }
+  }, [candidates, preloadScoresFromDatabase]);
   
   const handleStatusChange = (status: string | null) => {
     onStatusChange(status);
   };
 
   const handleDeleteCandidate = async (candidateId: string, event: React.MouseEvent) => {
-    event.stopPropagation(); // Empêche la propagation du clic vers la ligne
+    event.stopPropagation();
     
     const confirmed = await confirm({
       title: 'Supprimer le candidat ?',
@@ -75,6 +87,15 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     return 'text-red-600 font-semibold';
   };
 
+  const getScoreSource = (source?: string) => {
+    switch (source) {
+      case 'database': return 'BDD';
+      case 'fresh_calculation': return 'Nouveau';
+      case 'cache': return 'Cache';
+      default: return 'Ancien';
+    }
+  };
+
   return (
     <div className="w-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <Table>
@@ -87,13 +108,16 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
             <TableHead className="font-semibold text-gray-700">Expérience</TableHead>
             <TableHead className="font-semibold text-gray-700">Compétences</TableHead>
             <TableHead className="font-semibold text-gray-700">Statut</TableHead>
-            <TableHead className="font-semibold text-gray-700">Score</TableHead>
+            <TableHead className="font-semibold text-gray-700">Score IA</TableHead>
             <TableHead className="font-semibold text-gray-700 text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {candidates.map((candidate) => {
             const skills = ensureStringArray(candidate.skills);
+            const aiScore = getAIScore(candidate.id!);
+            const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
+            const isAIScore = aiScore.score !== null;
             
             return (
               <TableRow 
@@ -164,16 +188,52 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                 </TableCell>
                 
                 <TableCell>
-                  <Badge className={getStatusColor(candidate.detailed_status || 'initial')}>
-                    {CANDIDATE_STATUS_LABELS[candidate.detailed_status || 'initial'] || 'Initial'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className={getStatusColor(candidate.detailed_status || 'initial')}>
+                      {CANDIDATE_STATUS_LABELS[candidate.detailed_status || 'initial'] || 'Initial'}
+                    </Badge>
+                    {aiScore.isJobSpecific && (
+                      <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300">
+                        <TrendingUp size={10} className="mr-1" />
+                        Match
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 
                 <TableCell>
-                  <div className="flex items-center">
-                    <span className={`font-bold ${getScoreColor(candidate.score || 0)}`}>
-                      {candidate.score || 0}%
-                    </span>
+                  <div className="flex items-center gap-2">
+                    {aiScore.isLoading ? (
+                      <div className="flex items-center gap-1">
+                        <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-xs text-gray-500">Calcul...</span>
+                      </div>
+                    ) : aiScore.error ? (
+                      <div className="flex items-center gap-1" title={aiScore.error}>
+                        <span className={cn("font-bold", getScoreColor(candidate.score || 0))}>
+                          {candidate.score || 0}%
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          Ancien
+                        </Badge>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <span className={cn("font-bold", getScoreColor(displayScore))}>
+                          {displayScore}%
+                        </span>
+                        <Badge 
+                          variant={isAIScore ? "default" : "secondary"} 
+                          className={cn(
+                            "text-xs",
+                            isAIScore ? "bg-purple-100 text-purple-800 border-purple-300" : ""
+                          )}
+                          title={isAIScore ? aiScore.explanation : "Score calculé avec l'ancien système"}
+                        >
+                          {isAIScore ? getScoreSource(aiScore.source) : 'Ancien'}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
                 </TableCell>
                 
