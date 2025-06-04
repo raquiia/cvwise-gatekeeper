@@ -267,7 +267,7 @@ const AdvancedAnalytics: React.FC<AdvancedAnalyticsProps> = ({
                 <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl">
                   <h4 className="font-semibold mb-2">Opportunités détectées</h4>
                   <p className="text-sm text-muted-foreground">
-                    5 candidats avec un score > 90% pourraient être disponibles pour un nouveau poste. 
+                    5 candidats avec un score &gt; 90% pourraient être disponibles pour un nouveau poste. 
                     Recommandation : les contacter dans les 48h.
                   </p>
                 </div>
