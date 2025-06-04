@@ -27,14 +27,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   const [yearsExperience, setYearsExperience] = useState(candidate.years_experience || 0);
   const [salaryExpectation, setSalaryExpectation] = useState(candidate.salary_expectations || candidate.salary_expectation || '');
   const [availability, setAvailability] = useState(candidate.availability || '');
-  const [linkedin, setLinkedin] = useState(candidate.linkedin || '');
-  const [github, setGithub] = useState(candidate.github || '');
-  const [portfolio, setPortfolio] = useState(candidate.portfolio || '');
-  const [personalWebsite, setPersonalWebsite] = useState(candidate.personal_website || '');
-  const [cv, setCv] = useState(candidate.cv || '');
-  const [profileSummary, setProfileSummary] = useState(candidate.profile_summary || '');
-  const [openToRemote, setOpenToRemote] = useState(candidate.open_to_remote || false);
-  const [openToRelocation, setOpenToRelocation] = useState(candidate.open_to_relocation || false);
   const [notes, setNotes] = useState(candidate.notes || '');
   
   const [isSaving, setIsSaving] = useState(false);
@@ -50,14 +42,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     setYearsExperience(candidate.years_experience || 0);
     setSalaryExpectation(candidate.salary_expectations || candidate.salary_expectation || '');
     setAvailability(candidate.availability || '');
-    setLinkedin(candidate.linkedin || '');
-    setGithub(candidate.github || '');
-    setPortfolio(candidate.portfolio || '');
-    setPersonalWebsite(candidate.personal_website || '');
-    setCv(candidate.cv || '');
-    setProfileSummary(candidate.profile_summary || '');
-    setOpenToRemote(candidate.open_to_remote || false);
-    setOpenToRelocation(candidate.open_to_relocation || false);
     setNotes(candidate.notes || '');
   }, [candidate]);
   
@@ -76,14 +60,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
         years_experience: yearsExperience,
         salary_expectations: salaryExpectation,
         availability: availability,
-        linkedin: linkedin,
-        github: github,
-        portfolio: portfolio,
-        personal_website: personalWebsite,
-        cv: cv,
-        profile_summary: profileSummary,
-        open_to_remote: openToRemote,
-        open_to_relocation: openToRelocation,
         notes: notes
       });
       
@@ -114,7 +90,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   };
   
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4 p-6">
       <Card>
         <CardHeader>
           <h3 className="text-lg font-semibold">Informations personnelles</h3>
@@ -203,102 +179,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
       
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">Liens</h3>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div>
-            <Label htmlFor="linkedin">LinkedIn</Label>
-            <Input
-              type="url"
-              id="linkedin"
-              value={linkedin}
-              onChange={(e) => setLinkedin(e.target.value)}
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="github">GitHub</Label>
-              <Input
-                type="url"
-                id="github"
-                value={github}
-                onChange={(e) => setGithub(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="portfolio">Portfolio</Label>
-              <Input
-                type="url"
-                id="portfolio"
-                value={portfolio}
-                onChange={(e) => setPortfolio(e.target.value)}
-              />
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="personalWebsite">Site personnel</Label>
-            <Input
-              type="url"
-              id="personalWebsite"
-              value={personalWebsite}
-              onChange={(e) => setPersonalWebsite(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label htmlFor="cv">CV</Label>
-            <Input
-              type="url"
-              id="cv"
-              value={cv}
-              onChange={(e) => setCv(e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Préférences</h3>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="openToRemote"
-              checked={openToRemote}
-              onCheckedChange={(checked) => setOpenToRemote(!!checked)}
-            />
-            <Label htmlFor="openToRemote">Ouvert au télétravail</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="openToRelocation"
-              checked={openToRelocation}
-              onCheckedChange={(checked) => setOpenToRelocation(!!checked)}
-            />
-            <Label htmlFor="openToRelocation">Ouvert à la relocalisation</Label>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold">Résumé</h3>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div>
-            <Label htmlFor="profileSummary">Résumé du profil</Label>
-            <Textarea
-              id="profileSummary"
-              value={profileSummary}
-              onChange={(e) => setProfileSummary(e.target.value)}
-              className="resize-none"
-            />
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
           <h3 className="text-lg font-semibold">Notes</h3>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -309,6 +189,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="resize-none"
+              rows={4}
             />
           </div>
         </CardContent>

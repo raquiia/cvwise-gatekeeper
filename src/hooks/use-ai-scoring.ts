@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { aiScoringService, AIScoringResult } from '@/services/scoring/aiScoringService';
 import { useActiveJob } from '@/context/ActiveJobContext';
 import { toast } from '@/hooks/use-toast';
@@ -41,9 +41,13 @@ export const useAIScoring = () => {
     setScoringState(prev => ({
       ...prev,
       [currentKey]: {
-        ...prev[currentKey],
+        score: null,
+        explanation: '',
+        breakdown: {},
         isLoading: true,
-        error: null
+        error: null,
+        isJobSpecific: Boolean(activeJobOfferId),
+        lastUpdated: Date.now()
       }
     }));
     
@@ -72,6 +76,11 @@ export const useAIScoring = () => {
       }));
       
       console.log('AI score calculated successfully:', result.score);
+      
+      toast({
+        title: "Score calculé",
+        description: `Score IA: ${result.score}%`,
+      });
       
       return newState;
       
@@ -104,48 +113,6 @@ export const useAIScoring = () => {
   }, [activeJobOfferId, scoringState]);
   
   /**
-   * Recalculer tous les scores avec l'IA
-   */
-  const recalculateAllAIScores = useCallback(async (candidateIds: string[]) => {
-    setIsCalculating(true);
-    try {
-      console.log('Recalculating AI scores for', candidateIds.length, 'candidates');
-      
-      // Invalider tous les caches
-      setScoringState({});
-      
-      // Calculer les nouveaux scores en parallèle (max 3 à la fois pour éviter de surcharger l'API)
-      const batchSize = 3;
-      for (let i = 0; i < candidateIds.length; i += batchSize) {
-        const batch = candidateIds.slice(i, i + batchSize);
-        await Promise.all(
-          batch.map(candidateId => calculateAIScore(candidateId, true))
-        );
-        
-        // Petite pause entre les batches
-        if (i + batchSize < candidateIds.length) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-      
-      toast({
-        title: "Recalcul terminé",
-        description: "Tous les scores IA ont été recalculés",
-      });
-      
-    } catch (error) {
-      console.error('Error recalculating AI scores:', error);
-      toast({
-        title: "Erreur de recalcul",
-        description: "Impossible de recalculer tous les scores",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCalculating(false);
-    }
-  }, [calculateAIScore]);
-  
-  /**
    * Obtenir le score d'un candidat
    */
   const getAIScore = useCallback((candidateId: string) => {
@@ -169,9 +136,13 @@ export const useAIScoring = () => {
     setScoringState({});
   }, []);
   
+  // Invalider les scores quand l'offre active change
+  useEffect(() => {
+    invalidateScores();
+  }, [activeJobOfferId]);
+  
   return {
     calculateAIScore,
-    recalculateAllAIScores,
     getAIScore,
     invalidateScores,
     isCalculating,

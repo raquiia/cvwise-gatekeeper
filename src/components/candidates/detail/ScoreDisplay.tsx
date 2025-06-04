@@ -1,6 +1,5 @@
 
-import React from 'react';
-import { useCandidateScore } from '@/hooks/use-candidate-score';
+import React, { useEffect } from 'react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import AIScoreDisplay from '../AIScoreDisplay';
 import type { CandidateData } from '@/services/data/candidateService';
@@ -15,8 +14,17 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRef
   const { calculateAIScore, getAIScore } = useAIScoring();
   const aiScoreData = getAIScore(candidate.id!);
   
+  // Calculer automatiquement le score au chargement si pas déjà calculé
+  useEffect(() => {
+    if (candidate.id && !aiScoreData.score && !aiScoreData.isLoading && !aiScoreData.error) {
+      console.log('Auto-calculating AI score for candidate:', candidate.id);
+      calculateAIScore(candidate.id);
+    }
+  }, [candidate.id, aiScoreData.score, aiScoreData.isLoading, aiScoreData.error, calculateAIScore]);
+  
   const handleRefresh = async () => {
     if (candidate.id) {
+      console.log('Manual refresh of AI score for candidate:', candidate.id);
       await calculateAIScore(candidate.id, true); // Force recalculate
     }
     if (onRefresh) {
