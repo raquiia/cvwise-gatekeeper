@@ -10,12 +10,12 @@ import { candidateService } from '@/services/data/candidateService';
 import type { CandidateData } from '@/services/data/candidateService';
 import { useAuth } from '@/context/AuthContext';
 import { useDebounce } from '@/hooks/use-debounce';
-import ScoreDisplay from '../ScoreDisplay';
+import ScoreDisplay from './ScoreDisplay';
 
 interface ProfileTabProps {
   candidate: CandidateData;
-  isLoading: boolean;
-  onRefresh: () => void;
+  isLoading?: boolean;
+  onRefresh?: () => void;
 }
 
 const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh }) => {
@@ -25,7 +25,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   const [position, setPosition] = useState(candidate.position || '');
   const [location, setLocation] = useState(candidate.location || '');
   const [yearsExperience, setYearsExperience] = useState(candidate.years_experience || 0);
-  const [salaryExpectation, setSalaryExpectation] = useState(candidate.salary_expectation || '');
+  const [salaryExpectation, setSalaryExpectation] = useState(candidate.salary_expectations || candidate.salary_expectation || '');
   const [availability, setAvailability] = useState(candidate.availability || '');
   const [linkedin, setLinkedin] = useState(candidate.linkedin || '');
   const [github, setGithub] = useState(candidate.github || '');
@@ -65,7 +65,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     setPosition(candidate.position || '');
     setLocation(candidate.location || '');
     setYearsExperience(candidate.years_experience || 0);
-    setSalaryExpectation(candidate.salary_expectation || '');
+    setSalaryExpectation(candidate.salary_expectations || candidate.salary_expectation || '');
     setAvailability(candidate.availability || '');
     setLinkedin(candidate.linkedin || '');
     setGithub(candidate.github || '');
@@ -84,14 +84,15 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
       
       try {
         setIsSaving(true);
-        await candidateService.updateCandidate(candidate.id, {
+        await candidateService.updateCandidate({
+          id: candidate.id,
           first_name: debouncedFirstName,
           last_name: debouncedLastName,
           email: debouncedEmail,
           position: debouncedPosition,
           location: debouncedLocation,
           years_experience: debouncedYearsExperience,
-          salary_expectation: debouncedSalaryExpectation,
+          salary_expectations: debouncedSalaryExpectation,
           availability: debouncedAvailability,
           linkedin: debouncedLinkedin,
           github: debouncedGithub,
@@ -131,7 +132,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
       debouncedPosition !== candidate.position ||
       debouncedLocation !== candidate.location ||
       debouncedYearsExperience !== candidate.years_experience ||
-      debouncedSalaryExpectation !== candidate.salary_expectation ||
+      debouncedSalaryExpectation !== (candidate.salary_expectations || candidate.salary_expectation) ||
       debouncedAvailability !== candidate.availability ||
       debouncedLinkedin !== candidate.linkedin ||
       debouncedGithub !== candidate.github ||
@@ -375,11 +376,11 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
         </CardContent>
       </Card>
 
-        <ScoreDisplay 
-          candidate={candidate}
-          isLoading={isLoading}
-          onRefresh={handleRefresh}
-        />
+      <ScoreDisplay 
+        candidate={candidate}
+        isLoading={isLoading}
+        onRefresh={handleRefresh}
+      />
     </div>
   );
 };

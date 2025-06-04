@@ -248,7 +248,11 @@ const CandidateDetail = () => {
                 className="animate-fade-in rounded-xl relative overflow-hidden bg-white/70 backdrop-blur-sm border border-navy/10 shadow-md"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
-                <ProfileTab candidate={candidate} />
+                <ProfileTab 
+                  candidate={candidate} 
+                  isLoading={loading}
+                  onRefresh={fetchCandidateData}
+                />
               </TabsContent>
               
               <TabsContent 

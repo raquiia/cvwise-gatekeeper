@@ -1,5 +1,5 @@
+
 import React, { useState } from 'react';
-import { DataGrid, GridColDef, GridRenderCellParams, GridRowParams, GridValueGetterParams } from '@mui/x-data-grid';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
@@ -9,6 +9,7 @@ import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/use-confirm';
 import ModernTableView from './ModernTableView';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface CandidatesTableProps {
   candidates: CandidateData[];
@@ -64,83 +65,64 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     );
   }
 
-  const columns: GridColDef[] = [
-    { field: 'id', headerName: 'ID', width: 70 },
-    { field: 'first_name', headerName: 'Prénom', width: 130 },
-    { field: 'last_name', headerName: 'Nom', width: 130 },
-    {
-      field: 'status',
-      headerName: 'Statut',
-      width: 150,
-      renderCell: (params: GridRenderCellParams) => {
-        const status = params.value as string;
-        const statusLabel = CANDIDATE_STATUS_LABELS[status] || 'Inconnu';
-        
-        const getStatusColor = (status: string) => {
-          switch (status) {
-            case 'qualification': return 'bg-blue-100 text-blue-800';
-            case 'contact': return 'bg-yellow-100 text-yellow-800';
-            case 'entretien': return 'bg-purple-100 text-purple-800';
-            case 'shortlist': return 'bg-green-100 text-green-800';
-            case 'refusé': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
-          }
-        };
-        
-        return (
-          <Badge className={getStatusColor(status)}>
-            {statusLabel}
-          </Badge>
-        );
-      },
-    },
-    {
-      field: 'actions',
-      headerName: 'Actions',
-      width: 150,
-      renderCell: (params: GridRenderCellParams) => {
-        const candidate = params.row as CandidateData;
-        
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Ouvrir le menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => handleCandidateSelect(candidate)}>
-                <Eye className="mr-2 h-4 w-4" />
-                Voir
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleDeleteCandidate(candidate.id!)}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Supprimer
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
-    },
-  ];
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'qualification': return 'bg-blue-100 text-blue-800';
+      case 'contact': return 'bg-yellow-100 text-yellow-800';
+      case 'entretien': return 'bg-purple-100 text-purple-800';
+      case 'shortlist': return 'bg-green-100 text-green-800';
+      case 'refusé': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   return (
-    <div style={{ height: 400, width: '100%' }}>
-      <DataGrid
-        rows={candidates}
-        columns={columns}
-        pageSize={5}
-        rowsPerPageOptions={[5, 10, 20]}
-        checkboxSelection
-        disableSelectionOnClick
-        onRowClick={(params: GridRowParams) => {
-          setSelectedCandidate(params.row);
-        }}
-        getRowId={(row) => row.id!}
-      />
+    <div className="w-full">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Prénom</TableHead>
+            <TableHead>Nom</TableHead>
+            <TableHead>Statut</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {candidates.map((candidate) => (
+            <TableRow key={candidate.id} onClick={() => setSelectedCandidate(candidate)}>
+              <TableCell>{candidate.first_name}</TableCell>
+              <TableCell>{candidate.last_name}</TableCell>
+              <TableCell>
+                <Badge className={getStatusColor(candidate.status || 'pending')}>
+                  {CANDIDATE_STATUS_LABELS[candidate.status || 'pending'] || 'Inconnu'}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">Ouvrir le menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => handleCandidateSelect(candidate)}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Voir
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleDeleteCandidate(candidate.id!)}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Supprimer
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 };

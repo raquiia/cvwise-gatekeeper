@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 import { extractFieldValue, extractNumberValue, extractArrayValue } from '@/components/candidates/edit/dataExtractionUtils';
@@ -33,6 +32,7 @@ export interface CandidateData {
   professional_references?: any[];
   availability?: string;
   salary_expectations?: string;
+  salary_expectation?: string; // Add both variants
   mobility?: string;
   contract_type?: string;
   remote_preference?: string;
@@ -48,6 +48,17 @@ export interface CandidateData {
   profile_completeness?: number;
   last_updated_at?: string;
   matchDetails?: any; // For matching functionality
+  
+  // Additional missing properties
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
+  personal_website?: string;
+  cv?: string;
+  profile_summary?: string;
+  open_to_remote?: boolean;
+  open_to_relocation?: boolean;
+  notes?: string;
 }
 
 // Define options for creating and updating candidates
@@ -75,6 +86,7 @@ export interface CreateCandidateOptions {
   professional_references?: any[];
   availability?: string;
   salary_expectations?: string;
+  salary_expectation?: string; // Add both variants
   mobility?: string;
   contract_type?: string;
   remote_preference?: string;
@@ -228,6 +240,7 @@ export const formatCandidateData = (candidate: any): CandidateData => {
     professional_references: extractArrayValue(candidate.professional_references),
     availability: extractFieldValue(candidate.availability),
     salary_expectations: extractFieldValue(candidate.salary_expectations),
+    salary_expectation: extractFieldValue(candidate.salary_expectation), // Add both variants
     mobility: extractFieldValue(candidate.mobility),
     contract_type: extractFieldValue(candidate.contract_type),
     remote_preference: extractFieldValue(candidate.remote_preference),
@@ -248,7 +261,7 @@ export const formatCandidateData = (candidate: any): CandidateData => {
   console.log('🏢 Company value specifically:', formatted.company);
   console.log('🏠 Remote preference value specifically:', formatted.remote_preference);
   console.log('🚗 Mobility value specifically:', formatted.mobility);
-  console.log('💰 Salary expectations value specifically:', formatted.salary_expectations);
+  console.log('💰 Salary expectations value specifically:', formatted.salary_expectation);
   console.log('📝 Contract type value specifically:', formatted.contract_type);
 
   return formatted;
