@@ -19,7 +19,7 @@ import StatusSelector from '@/components/candidates/detail/StatusSelector';
 import EnhancedScoreDisplay from '@/components/candidates/detail/EnhancedScoreDisplay';
 import ExportProfileButton from '@/components/candidates/detail/ExportProfileButton';
 import { getCompleteCandidateData } from '@/services/resume/candidateDataService';
-import { CandidateData } from '@/services/data/resumeDataService';
+import { CandidateData } from '@/services/data/candidateService';
 import { useCandidateData } from '@/context/CandidateDataContext';
 
 const CandidateDetail = () => {
@@ -47,7 +47,13 @@ const CandidateDetail = () => {
       if (!candidateData) {
         setError('Candidat non trouvé');
       } else {
-        setCandidate(candidateData);
+        // Convert the data to match our expected CandidateData type
+        const formattedCandidate: CandidateData = {
+          ...candidateData,
+          detailed_status: candidateData.detailed_status || 'contact',
+          skills: Array.isArray(candidateData.skills) ? candidateData.skills : []
+        };
+        setCandidate(formattedCandidate);
         setError(null);
       }
     } catch (error: any) {
@@ -91,7 +97,7 @@ const CandidateDetail = () => {
   if (error || !candidate) {
     return (
       <Layout>
-        <CandidateError message={error || 'Candidat introuvable'} />
+        <CandidateError errorMessage={error || 'Candidat introuvable'} />
       </Layout>
     );
   }
@@ -236,7 +242,7 @@ const CandidateDetail = () => {
                   <EducationTab candidate={candidate} onCandidateUpdated={onCandidateUpdated} />
                 </TabsContent>
                 <TabsContent value="notes">
-                  <NotesTab candidateId={id || ''} onDataRefresh={loadCandidateData} />
+                  <NotesTab candidate={candidate} onDataRefresh={loadCandidateData} />
                 </TabsContent>
               </Tabs>
             </div>
@@ -256,7 +262,7 @@ const CandidateDetail = () => {
                 <EducationTab candidate={candidate} onCandidateUpdated={onCandidateUpdated} />
               )}
               {activeTab === 'notes' && (
-                <NotesTab candidateId={id || ''} onDataRefresh={loadCandidateData} />
+                <NotesTab candidate={candidate} onDataRefresh={loadCandidateData} />
               )}
             </div>
           </div>

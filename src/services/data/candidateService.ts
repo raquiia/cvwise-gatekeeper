@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 import { extractFieldValue, extractNumberValue, extractArrayValue } from '@/components/candidates/edit/dataExtractionUtils';
@@ -17,7 +18,7 @@ export interface CandidateData {
   skills?: any[];
   score?: number;
   status?: string;
-  detailed_status?: string;
+  detailed_status?: string; // FIXED: Made this property available
   company?: string;
   created_at?: string;
   updated_at?: string;
