@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, X, Clock, Hash, MapPin, Briefcase } from 'lucide-react';
@@ -21,7 +21,7 @@ interface EnhancedSearchProps {
   recentSearches?: string[];
 }
 
-const EnhancedSearch: React.FC<EnhancedSearchProps> = React.memo(({
+const EnhancedSearch: React.FC<EnhancedSearchProps> = ({
   searchQuery,
   onSearchChange,
   suggestions = [],
@@ -31,59 +31,37 @@ const EnhancedSearch: React.FC<EnhancedSearchProps> = React.memo(({
   const [filteredSuggestions, setFilteredSuggestions] = useState<SearchSuggestion[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  // Stabiliser les suggestions par défaut avec useMemo
-  const defaultSuggestions = useMemo(() => [
-    { type: 'skill' as const, value: 'React', label: 'React', icon: Hash },
-    { type: 'skill' as const, value: 'TypeScript', label: 'TypeScript', icon: Hash },
-    { type: 'skill' as const, value: 'Python', label: 'Python', icon: Hash },
-    { type: 'location' as const, value: 'Paris', label: 'Paris', icon: MapPin },
-    { type: 'location' as const, value: 'Lyon', label: 'Lyon', icon: MapPin },
-    { type: 'company' as const, value: 'Google', label: 'Google', icon: Briefcase },
-    { type: 'company' as const, value: 'Microsoft', label: 'Microsoft', icon: Briefcase },
-  ], []);
+  // Mock suggestions for demo
+  const defaultSuggestions: SearchSuggestion[] = [
+    { type: 'skill', value: 'React', label: 'React', icon: Hash },
+    { type: 'skill', value: 'TypeScript', label: 'TypeScript', icon: Hash },
+    { type: 'skill', value: 'Python', label: 'Python', icon: Hash },
+    { type: 'location', value: 'Paris', label: 'Paris', icon: MapPin },
+    { type: 'location', value: 'Lyon', label: 'Lyon', icon: MapPin },
+    { type: 'company', value: 'Google', label: 'Google', icon: Briefcase },
+    { type: 'company', value: 'Microsoft', label: 'Microsoft', icon: Briefcase },
+  ];
 
-  // Combiner les suggestions de manière stable
-  const allSuggestions = useMemo(() => [...defaultSuggestions, ...suggestions], [defaultSuggestions, suggestions]);
+  const allSuggestions = [...defaultSuggestions, ...suggestions];
 
-  // Stabiliser recentSuggestions avec useMemo
-  const recentSuggestions = useMemo(() => 
-    recentSearches.slice(0, 4).map(search => ({
-      type: 'recent' as const,
-      value: search,
-      label: search,
-      icon: Clock
-    })), [recentSearches]
-  );
-
-  // Utiliser useCallback pour les handlers
-  const handleSuggestionClick = useCallback((suggestion: SearchSuggestion) => {
-    onSearchChange(suggestion.value);
-    setShowSuggestions(false);
-  }, [onSearchChange]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setShowSuggestions(false);
-    }
-  }, []);
-
-  const handleClearSearch = useCallback(() => {
-    onSearchChange('');
-  }, [onSearchChange]);
-
-  // Effet pour filtrer les suggestions - optimisé
   useEffect(() => {
     if (searchQuery.length > 0) {
       const filtered = allSuggestions.filter(suggestion =>
         suggestion.label.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 6);
-      setFilteredSuggestions(filtered);
+      );
+      setFilteredSuggestions(filtered.slice(0, 6));
     } else {
+      // Show recent searches when no query
+      const recentSuggestions = recentSearches.slice(0, 4).map(search => ({
+        type: 'recent' as const,
+        value: search,
+        label: search,
+        icon: Clock
+      }));
       setFilteredSuggestions(recentSuggestions);
     }
-  }, [searchQuery, allSuggestions, recentSuggestions]);
+  }, [searchQuery, suggestions, recentSearches]);
 
-  // Effet pour gérer les clics en dehors
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
@@ -95,7 +73,18 @@ const EnhancedSearch: React.FC<EnhancedSearchProps> = React.memo(({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const getTypeColor = useCallback((type: string) => {
+  const handleSuggestionClick = (suggestion: SearchSuggestion) => {
+    onSearchChange(suggestion.value);
+    setShowSuggestions(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setShowSuggestions(false);
+    }
+  };
+
+  const getTypeColor = (type: string) => {
     switch (type) {
       case 'skill': return 'bg-blue-50 text-blue-700';
       case 'location': return 'bg-green-50 text-green-700';
@@ -103,7 +92,7 @@ const EnhancedSearch: React.FC<EnhancedSearchProps> = React.memo(({
       case 'recent': return 'bg-gray-50 text-gray-700';
       default: return 'bg-gray-50 text-gray-700';
     }
-  }, []);
+  };
 
   return (
     <div ref={searchRef} className="relative w-full">
@@ -121,7 +110,7 @@ const EnhancedSearch: React.FC<EnhancedSearchProps> = React.memo(({
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleClearSearch}
+            onClick={() => onSearchChange('')}
             className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             <X size={14} />
@@ -159,8 +148,6 @@ const EnhancedSearch: React.FC<EnhancedSearchProps> = React.memo(({
       )}
     </div>
   );
-});
-
-EnhancedSearch.displayName = 'EnhancedSearch';
+};
 
 export default EnhancedSearch;

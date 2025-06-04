@@ -9,14 +9,11 @@ import { ensureStringArray } from '@/utils/candidateUtils';
 import { calculateCandidateScore } from '@/services/scoring/candidateScoring';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
-import { useCandidateData } from '@/context/CandidateDataContext';
-import StatusSelector from '../detail/StatusSelector';
 
 interface KanbanCandidateCardProps {
   candidate: CandidateData;
   onViewCandidate: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
-  onCandidateUpdated?: () => void;
   isDragging?: boolean;
 }
 
@@ -24,11 +21,9 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
   candidate,
   onViewCandidate,
   onCandidateDeleted,
-  onCandidateUpdated,
   isDragging = false
 }) => {
   const { toast } = useToast();
-  const { onCandidateUpdated: globalRefresh } = useCandidateData();
   const skills = ensureStringArray(candidate.skills);
   const scoreBreakdown = calculateCandidateScore(candidate);
 
@@ -42,13 +37,9 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
         title: "Candidat supprimé",
         description: "Le candidat a été supprimé avec succès",
       });
-      
       if (onCandidateDeleted) {
         onCandidateDeleted();
       }
-      
-      // Also trigger global refresh
-      await globalRefresh();
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -56,18 +47,6 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
         variant: "destructive",
       });
     }
-  };
-
-  const handleStatusChange = async (newStatus: string) => {
-    console.log(`Status changed for candidate ${candidate.id}: ${newStatus}`);
-    
-    // Trigger immediate refresh of kanban data
-    if (onCandidateUpdated) {
-      await onCandidateUpdated();
-    }
-    
-    // Also trigger global refresh
-    await globalRefresh();
   };
 
   const getScoreColor = (score: number) => {
@@ -102,16 +81,6 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
           <div className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(scoreBreakdown.overall)}`}>
             {scoreBreakdown.overall}%
           </div>
-        </div>
-
-        {/* Status Selector with global refresh capability */}
-        <div className="mb-3">
-          <StatusSelector 
-            candidateId={candidate.id!}
-            currentStatus={candidate.detailed_status}
-            onStatusChange={handleStatusChange}
-            onGlobalRefresh={globalRefresh}
-          />
         </div>
 
         {/* Company and Location */}

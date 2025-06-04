@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,12 +16,13 @@ import {
   Phone,
   Building
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
-import { CANDIDATE_STATUS_LABELS, updateCandidateStatus } from '@/services/data/candidateStatusService';
+import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
-import { useSimpleCandidateScore } from '@/hooks/use-simple-candidate-score';
+import { useOptimizedScoring } from '@/hooks/use-optimized-scoring';
 import { cn } from '@/lib/utils';
 
 interface ModernTableViewProps {
@@ -31,71 +32,9 @@ interface ModernTableViewProps {
   onSelectAll: () => void;
   onViewCandidate: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
-  refreshKey?: number;
 }
 
-// Composant séparé pour l'affichage du score
-const CandidateScoreBadge = React.memo(({ candidate }: { candidate: CandidateData }) => {
-  const { value: score, isJobSpecific, isLoading } = useSimpleCandidateScore(candidate);
-  
-  if (isLoading) {
-    return (
-      <Badge variant="outline" className="border text-xs px-2 py-1 animate-pulse bg-blue-50 border-blue-200">
-        <div className="flex items-center gap-1">
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-          Calcul...
-        </div>
-      </Badge>
-    );
-  }
-  
-  if (!score || score === 0) {
-    return (
-      <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200 text-xs px-2 py-1">
-        --
-      </Badge>
-    );
-  }
-
-  let bgColor = 'bg-red-100 text-red-700 border-red-200';
-  
-  if (isJobSpecific) {
-    // Job-specific scoring (0-100 match percentage)
-    if (score >= 70) {
-      bgColor = 'bg-green-100 text-green-700 border-green-200';
-    } else if (score >= 50) {
-      bgColor = 'bg-yellow-100 text-yellow-700 border-yellow-200';
-    }
-  } else {
-    // General profile completeness scoring
-    if (score >= 80) {
-      bgColor = 'bg-green-100 text-green-700 border-green-200';
-    } else if (score >= 60) {
-      bgColor = 'bg-yellow-100 text-yellow-700 border-yellow-200';
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <Badge 
-        variant="outline" 
-        className={cn(bgColor, 'border text-xs font-semibold px-2 py-1')}
-      >
-        {score}%
-      </Badge>
-      {isJobSpecific && (
-        <div className="flex items-center gap-1">
-          <Briefcase size={10} className="text-purple-600" />
-          <span className="text-xs text-purple-600 font-medium">Match</span>
-        </div>
-      )}
-    </div>
-  );
-});
-
-CandidateScoreBadge.displayName = 'CandidateScoreBadge';
-
-const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
+const ModernTableView: React.FC<ModernTableViewProps> = ({
   candidates,
   selectedCandidates,
   onSelectCandidate,
@@ -105,10 +44,57 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
 }) => {
   const { toast } = useToast();
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
-  const [updatingStatus, setUpdatingStatus] = useState<Set<string>>(new Set());
+  
+  const { 
+    getCachedScore, 
+    isScoreLoading, 
+    calculateContextualScore, 
+    isJobSpecific 
+  } = useOptimizedScoring();
+
+  // Calculate scores progressively when candidates or job context changes
+  useEffect(() => {
+    if (!candidates.length) return;
+    
+    const calculateScoresProgressively = async () => {
+      console.log(`Calculating scores for ${candidates.length} candidates, job specific: ${isJobSpecific}`);
+      
+      // Calculate scores for visible candidates first (first 10)
+      const visibleCandidates = candidates.slice(0, 10);
+      
+      for (let i = 0; i < visibleCandidates.length; i++) {
+        const candidate = visibleCandidates[i];
+        if (candidate.id && !getCachedScore(candidate.id) && !isScoreLoading(candidate.id)) {
+          try {
+            // Add small delay between calculations to prevent overwhelming
+            await new Promise(resolve => setTimeout(resolve, i * 200));
+            await calculateContextualScore(candidate);
+          } catch (error) {
+            console.error(`Error calculating score for candidate ${candidate.id}:`, error);
+          }
+        }
+      }
+      
+      // Calculate remaining candidates with longer delays
+      const remainingCandidates = candidates.slice(10);
+      remainingCandidates.forEach((candidate, index) => {
+        if (candidate.id && !getCachedScore(candidate.id) && !isScoreLoading(candidate.id)) {
+          setTimeout(async () => {
+            try {
+              await calculateContextualScore(candidate);
+            } catch (error) {
+              console.error(`Error calculating score for candidate ${candidate.id}:`, error);
+            }
+          }, 2000 + (index * 300));
+        }
+      });
+    };
+
+    calculateScoresProgressively();
+  }, [candidates.length, isJobSpecific]); // Re-run when job context changes
 
   // Fonction pour générer une couleur basée sur les initiales
-  const getAvatarColor = useCallback((firstName: string, lastName: string) => {
+  const getAvatarColor = (firstName: string, lastName: string) => {
     const colors = [
       'bg-gradient-to-br from-purple-500 to-pink-500',
       'bg-gradient-to-br from-blue-500 to-cyan-500',
@@ -121,10 +107,10 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
     ];
     const nameHash = (firstName + lastName).split('').reduce((a, b) => a + b.charCodeAt(0), 0);
     return colors[nameHash % colors.length];
-  }, []);
+  };
 
   // Function to format company name with line breaks for long names
-  const formatCompanyName = useCallback((companyName: string) => {
+  const formatCompanyName = (companyName: string) => {
     if (!companyName) return null;
     
     // If company name is longer than 20 characters, try to break it at logical points
@@ -151,19 +137,22 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
         {companyName}
       </div>
     );
-  }, []);
+  };
 
   // Function to extract city and country from location
-  const formatLocation = useCallback((location: string) => {
+  const formatLocation = (location: string) => {
     if (!location) return null;
     
     // Try to extract city and country from common location formats
+    // Examples: "Paris, France", "New York, NY, USA", "London, UK"
     const parts = location.split(',').map(part => part.trim());
     
     if (parts.length >= 2) {
+      // Take the first part as city and last part as country
       const city = parts[0];
       const country = parts[parts.length - 1];
       
+      // If there are 3 parts and the middle one looks like a state code (2 letters), use the last one
       if (parts.length === 3 && parts[1].length === 2) {
         return `${city}, ${country}`;
       }
@@ -171,12 +160,12 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
       return `${city}, ${country}`;
     }
     
+    // If only one part, return as is (might be just a city or country)
     return location;
-  }, []);
+  };
 
-  const getStatusBadge = useCallback((status: string, candidateId: string) => {
+  const getStatusBadge = (status: string) => {
     const statusLabel = CANDIDATE_STATUS_LABELS[status] || status;
-    const isUpdating = updatingStatus.has(candidateId);
     
     const statusConfig = {
       initial: { 
@@ -234,18 +223,78 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
         variant="outline" 
         className={cn(
           config.color,
-          'border text-xs font-medium flex items-center gap-1.5 px-2 py-1',
-          isUpdating && 'opacity-50 animate-pulse'
+          'border text-xs font-medium flex items-center gap-1.5 px-2 py-1'
         )}
       >
         <Icon size={10} />
         {statusLabel}
-        {isUpdating && <Clock size={10} className="animate-spin" />}
       </Badge>
     );
-  }, [updatingStatus]);
+  };
 
-  const handleDelete = useCallback(async (e: React.MouseEvent, candidateId: string) => {
+  const getScoreBadge = (candidateId: string) => {
+    const isLoading = isScoreLoading(candidateId);
+    const scoreData = getCachedScore(candidateId);
+    
+    if (isLoading) {
+      return (
+        <Badge variant="outline" className="border text-xs px-2 py-1 animate-pulse bg-blue-50 border-blue-200">
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+            Calcul...
+          </div>
+        </Badge>
+      );
+    }
+    
+    if (!scoreData) {
+      return (
+        <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200 text-xs px-2 py-1">
+          --
+        </Badge>
+      );
+    }
+
+    const score = scoreData.overall;
+    const isJobSpecificScore = scoreData.isJobSpecific;
+    
+    let bgColor = 'bg-red-100 text-red-700 border-red-200';
+    
+    if (isJobSpecificScore) {
+      // Job-specific scoring (0-100 match percentage)
+      if (score >= 70) {
+        bgColor = 'bg-green-100 text-green-700 border-green-200';
+      } else if (score >= 50) {
+        bgColor = 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      }
+    } else {
+      // General profile completeness scoring
+      if (score >= 80) {
+        bgColor = 'bg-green-100 text-green-700 border-green-200';
+      } else if (score >= 60) {
+        bgColor = 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      }
+    }
+
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <Badge 
+          variant="outline" 
+          className={cn(bgColor, 'border text-xs font-semibold px-2 py-1')}
+        >
+          {score}%
+        </Badge>
+        {isJobSpecificScore && (
+          <div className="flex items-center gap-1">
+            <Briefcase size={10} className="text-purple-600" />
+            <span className="text-xs text-purple-600 font-medium">Match</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const handleDelete = async (e: React.MouseEvent, candidateId: string) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -265,51 +314,20 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
         variant: "destructive",
       });
     }
-  }, [onCandidateDeleted, toast]);
+  };
 
-  const handleStatusChange = useCallback(async (candidateId: string, newStatus: string) => {
-    setUpdatingStatus(prev => new Set(prev).add(candidateId));
-    
-    try {
-      await updateCandidateStatus(candidateId, newStatus);
-      
-      toast({
-        title: "Statut mis à jour",
-        description: `Le statut du candidat a été mis à jour vers "${CANDIDATE_STATUS_LABELS[newStatus]}"`,
-      });
-      
-      // Rafraîchir la liste des candidats
-      if (onCandidateDeleted) {
-        onCandidateDeleted();
-      }
-    } catch (error: any) {
-      console.error('Error updating candidate status:', error);
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de mettre à jour le statut du candidat",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdatingStatus(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(candidateId);
-        return newSet;
-      });
-    }
-  }, [onCandidateDeleted, toast]);
-
-  const handleRowClick = useCallback((candidateId: string) => {
+  const handleRowClick = (candidateId: string) => {
     onViewCandidate(candidateId);
-  }, [onViewCandidate]);
+  };
 
-  const handleCheckboxChange = useCallback((e: React.ChangeEvent<HTMLInputElement>, candidateId: string) => {
-    e.stopPropagation();
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>, candidateId: string) => {
+    e.stopPropagation(); // Empêche la propagation vers le TableRow
     onSelectCandidate(candidateId, e.target.checked);
-  }, [onSelectCandidate]);
+  };
 
-  const handleCheckboxCellClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-  }, []);
+  const handleCheckboxCellClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Empêche la propagation vers le TableRow
+  };
 
   const candidatesCount = candidates.length;
   const selectedCount = selectedCandidates.size;
@@ -340,6 +358,9 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
               </Badge>
             )}
           </div>
+          <div className="text-xs text-gray-500">
+            {isJobSpecific ? 'Scores de correspondance activés' : 'Scores généraux de profil'}
+          </div>
         </div>
       </div>
 
@@ -349,7 +370,9 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
           <TableRow className="border-b border-purple-200/30 bg-gradient-to-r from-purple-50/50 to-transparent dark:from-purple-950/20 hover:bg-purple-50/50 dark:hover:bg-purple-950/20">
             <TableHead className="w-12"></TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-64">Candidat</TableHead>
-            <TableHead className="font-semibold text-navy-dark dark:text-sand w-24">Score</TableHead>
+            <TableHead className="font-semibold text-navy-dark dark:text-sand w-24">
+              {isJobSpecific ? 'Match' : 'Score'}
+            </TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-32">Statut</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-48">Entreprise actuelle</TableHead>
             <TableHead className="font-semibold text-navy-dark dark:text-sand w-32">Localisation</TableHead>
@@ -430,12 +453,12 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
 
                 {/* Score */}
                 <TableCell className="py-3">
-                  <CandidateScoreBadge candidate={candidate} />
+                  {getScoreBadge(candidate.id!)}
                 </TableCell>
 
                 {/* Statut */}
                 <TableCell className="py-3">
-                  {getStatusBadge(candidate.detailed_status || 'initial', candidate.id!)}
+                  {getStatusBadge(candidate.detailed_status || 'initial')}
                 </TableCell>
 
                 {/* Entreprise actuelle */}
@@ -542,8 +565,6 @@ const ModernTableView: React.FC<ModernTableViewProps> = React.memo(({
       )}
     </div>
   );
-});
-
-ModernTableView.displayName = 'ModernTableView';
+};
 
 export default ModernTableView;

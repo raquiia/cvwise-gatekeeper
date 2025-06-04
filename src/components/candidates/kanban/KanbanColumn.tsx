@@ -11,7 +11,6 @@ interface KanbanColumnProps {
   candidates: CandidateData[];
   onViewCandidate: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
-  onCandidateUpdated?: () => void; 
   onDrop?: (candidateId: string, newStatus: string) => void;
 }
 
@@ -21,7 +20,6 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
   candidates,
   onViewCandidate,
   onCandidateDeleted,
-  onCandidateUpdated,
   onDrop
 }) => {
   const handleDragOver = (e: React.DragEvent) => {
@@ -38,8 +36,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'initial': return 'bg-gray-100 text-gray-800';
       case 'contact': return 'bg-blue-100 text-blue-800';
-      case 'qualification': return 'bg-cyan-100 text-cyan-800';
       case 'prequalification': return 'bg-purple-100 text-purple-800';
       case 'ec1': return 'bg-orange-100 text-orange-800';
       case 'ec2': return 'bg-amber-100 text-amber-800';
@@ -83,7 +81,6 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
                 candidate={candidate}
                 onViewCandidate={onViewCandidate}
                 onCandidateDeleted={onCandidateDeleted}
-                onCandidateUpdated={onCandidateUpdated}
               />
             </div>
           ))

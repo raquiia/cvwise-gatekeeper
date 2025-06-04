@@ -8,14 +8,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, updateCandidateStatus, getCandidateStatus } from '@/services/data/candidateStatusService';
+import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
 import { toast } from '@/hooks/use-toast';
 
 // Define colors by status
 const STATUS_COLORS: Record<string, string> = {
+  'initial': 'bg-gray-500 hover:bg-gray-600',
   'contact': 'bg-blue-500 hover:bg-blue-600',
-  'qualification': 'bg-cyan-500 hover:bg-cyan-600',
-  'prequalification': 'bg-purple-500 hover:bg-purple-600',
+  'prequalification': 'bg-cyan-500 hover:bg-cyan-600',
   'ec1': 'bg-violet-500 hover:bg-violet-600',
   'ec2': 'bg-indigo-500 hover:bg-indigo-600',
   'presentation_client': 'bg-amber-500 hover:bg-amber-600',
@@ -26,88 +26,67 @@ const STATUS_COLORS: Record<string, string> = {
 
 interface StatusSelectorProps {
   candidateId: string;
-  currentStatus?: string;
   onStatusChange?: (newStatus: string) => void;
-  onDataRefresh?: () => void;
-  onGlobalRefresh?: () => Promise<void>; // NEW: Global refresh callback
 }
 
 const StatusSelector: React.FC<StatusSelectorProps> = ({ 
   candidateId,
-  currentStatus: propCurrentStatus,
-  onStatusChange,
-  onDataRefresh,
-  onGlobalRefresh
+  onStatusChange 
 }) => {
-  const [currentStatus, setCurrentStatus] = useState<string>(propCurrentStatus || 'contact');
+  const [currentStatus, setCurrentStatus] = useState<string>(CANDIDATE_STATUSES.INITIAL);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
-  const [isLoadingStatus, setIsLoadingStatus] = useState<boolean>(false);
   
-  // Load current status from database
+  // Load current status
   useEffect(() => {
     const loadCurrentStatus = async () => {
-      if (candidateId && !propCurrentStatus) {
-        setIsLoadingStatus(true);
-        try {
-          const status = await getCandidateStatus(candidateId);
-          if (status) {
-            console.log('📥 Loaded current status from DB:', status);
-            setCurrentStatus(status);
-          }
-        } catch (error) {
-          console.error('❌ Error loading current status:', error);
-        } finally {
-          setIsLoadingStatus(false);
+      if (!candidateId) {
+        console.error("No candidate ID provided");
+        setIsLoading(false);
+        return;
+      }
+      
+      setIsLoading(true);
+      try {
+        console.log("Loading status for candidate:", candidateId);
+        const status = await candidateStatusService.getCandidateStatus(candidateId);
+        console.log("Loaded status:", status);
+        
+        if (status) {
+          setCurrentStatus(status);
+        } else {
+          console.log("No status found, using initial");
+          setCurrentStatus(CANDIDATE_STATUSES.INITIAL);
         }
+      } catch (error) {
+        console.error("Error loading status:", error);
+        setCurrentStatus(CANDIDATE_STATUSES.INITIAL);
+      } finally {
+        setIsLoading(false);
       }
     };
     
     loadCurrentStatus();
-  }, [candidateId, propCurrentStatus]);
+  }, [candidateId]);
   
-  // Use prop status if available
-  useEffect(() => {
-    if (propCurrentStatus) {
-      console.log('📥 Using prop status:', propCurrentStatus);
-      setCurrentStatus(propCurrentStatus);
-    }
-  }, [propCurrentStatus]);
-  
-  // Handle status change with comprehensive refresh
+  // Change status
   const handleStatusChange = async (status: string) => {
-    if (status === currentStatus || isUpdating) return;
+    if (status === currentStatus) return; // Do nothing if status is already selected
     
-    console.log("🔄 Changing status from", currentStatus, "to:", status);
+    console.log("Changing status to:", status);
     setIsUpdating(true);
     
     try {
-      const success = await updateCandidateStatus(candidateId, status);
+      const success = await candidateStatusService.updateCandidateStatus(candidateId, status);
       
       if (success) {
-        console.log("✅ Status updated successfully to:", status);
+        console.log("Status updated successfully to:", status);
         setCurrentStatus(status);
-        
-        toast({
-          title: "Statut mis à jour",
-          description: `Le statut a été modifié en "${CANDIDATE_STATUS_LABELS[status] || status}"`,
-        });
-        
-        // Notify local components
         if (onStatusChange) {
           onStatusChange(status);
         }
-        
-        if (onDataRefresh) {
-          onDataRefresh();
-        }
-
-        // CRITICAL: Trigger global data refresh
-        if (onGlobalRefresh) {
-          console.log('🌍 Triggering global candidates refresh');
-          await onGlobalRefresh();
-        }
       } else {
-        console.error("❌ Failed to update status");
+        console.error("Failed to update status");
         toast({
           title: "Erreur de mise à jour",
           description: "La mise à jour du statut a échoué. Veuillez réessayer.",
@@ -115,7 +94,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         });
       }
     } catch (error: any) {
-      console.error("❌ Error updating status:", error);
+      console.error("Error updating status:", error);
       toast({
         title: "Erreur",
         description: error.message || "Impossible de mettre à jour le statut",
@@ -127,14 +106,11 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   };
   
   // Determine button color based on current status
-  const buttonColorClass = STATUS_COLORS[currentStatus] || 'bg-blue-500 hover:bg-blue-600';
+  const buttonColorClass = STATUS_COLORS[currentStatus] || 'bg-gray-500 hover:bg-gray-600';
   
-  // Get display label for current status
-  const currentStatusLabel = CANDIDATE_STATUS_LABELS[currentStatus] || currentStatus;
-  
-  if (isLoadingStatus) {
+  if (isLoading) {
     return (
-      <Button className="bg-gray-400 hover:bg-gray-400 text-white" disabled>
+      <Button disabled className="w-full md:w-auto">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         Chargement...
       </Button>
@@ -146,7 +122,6 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
       <DropdownMenuTrigger asChild disabled={isUpdating}>
         <Button 
           className={`w-full md:w-auto ${buttonColorClass} text-white`}
-          disabled={isUpdating}
         >
           {isUpdating ? (
             <>
@@ -155,7 +130,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
             </>
           ) : (
             <>
-              {currentStatusLabel}
+              Statut: {CANDIDATE_STATUS_LABELS[currentStatus] || 'Inconnu'}
               <ChevronDown className="ml-2 h-4 w-4" />
             </>
           )}

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 import { extractFieldValue, extractNumberValue, extractArrayValue } from '@/components/candidates/edit/dataExtractionUtils';
@@ -17,7 +18,7 @@ export interface CandidateData {
   skills?: any[];
   score?: number;
   status?: string;
-  detailed_status?: string; // This property is now properly included
+  detailed_status?: string;
   company?: string;
   created_at?: string;
   updated_at?: string;
@@ -95,7 +96,7 @@ export interface UpdateCandidateOptions extends Partial<Omit<CandidateData, 'id'
 
 // Valid status values for detailed_status field
 const VALID_DETAILED_STATUSES = [
-  'contact', 'qualification', 'prequalification', 'ec1', 'ec2', 
+  'initial', 'contact', 'prequalification', 'ec1', 'ec2', 
   'presentation_client', 'en_mission', 'refus', 'ancien_employe'
 ];
 
@@ -194,29 +195,11 @@ const extractLocalNumberValue = (field: any): number | undefined => {
   return undefined;
 };
 
-// MISE À JOUR: fonction formatCandidateData simplifiée après nettoyage des données
+// ENTIÈREMENT RÉÉCRITE: fonction formatCandidateData avec extraction robuste
 export const formatCandidateData = (candidate: any): CandidateData => {
   if (!candidate) return null as unknown as CandidateData;
   
-  console.log('🚀 Processing candidate:', candidate.first_name, candidate.last_name, 'Status:', candidate.detailed_status);
-  
-  // SIMPLIFIÉ: Maintenant que les données sont nettoyées, on fait confiance à la DB
-  const rawDetailedStatus = candidate.detailed_status;
-  let detailedStatus: string;
-  
-  // Vérifier si le statut est valide, sinon utiliser 'contact' par défaut
-  if (rawDetailedStatus && 
-      typeof rawDetailedStatus === 'string' && 
-      VALID_DETAILED_STATUSES.includes(rawDetailedStatus.trim())) {
-    
-    detailedStatus = rawDetailedStatus.trim();
-    console.log('✅ Using valid status from DB:', detailedStatus);
-    
-  } else {
-    // Fallback vers 'contact' pour tout statut invalide/manquant
-    detailedStatus = 'contact';
-    console.log('⚠️ Using fallback status "contact" for invalid status:', rawDetailedStatus);
-  }
+  console.log('🚀 RAW CANDIDATE DATA FROM DATABASE:', JSON.stringify(candidate, null, 2));
   
   const formatted = {
     id: candidate.id,
@@ -232,7 +215,7 @@ export const formatCandidateData = (candidate: any): CandidateData => {
     skills: extractArrayValue(candidate.skills),
     score: extractNumberValue(candidate.score),
     status: extractFieldValue(candidate.status) || 'pending',
-    detailed_status: detailedStatus,
+    detailed_status: extractFieldValue(candidate.detailed_status),
     company: extractFieldValue(candidate.company),
     created_at: candidate.created_at,
     updated_at: candidate.updated_at,
@@ -261,7 +244,12 @@ export const formatCandidateData = (candidate: any): CandidateData => {
     last_updated_at: candidate.last_updated_at
   };
 
-  console.log('🎯 Final status for', formatted.first_name, formatted.last_name, ':', formatted.detailed_status);
+  console.log('🎯 FORMATTED CANDIDATE DATA:', JSON.stringify(formatted, null, 2));
+  console.log('🏢 Company value specifically:', formatted.company);
+  console.log('🏠 Remote preference value specifically:', formatted.remote_preference);
+  console.log('🚗 Mobility value specifically:', formatted.mobility);
+  console.log('💰 Salary expectations value specifically:', formatted.salary_expectations);
+  console.log('📝 Contract type value specifically:', formatted.contract_type);
 
   return formatted;
 };
@@ -270,52 +258,17 @@ export const formatCandidateData = (candidate: any): CandidateData => {
 export const candidateService = {
   getUserCandidates: async (): Promise<CandidateData[]> => {
     try {
-      console.log('🔍 Fetching user candidates...');
-      
-      const currentUser = await supabase.auth.getUser();
-      const userId = currentUser.data.user?.id;
-      console.log('👤 Current user ID:', userId);
-      
       const { data, error } = await supabase.rpc('get_user_candidates', {
-        user_id_param: userId
+        user_id_param: (await supabase.auth.getUser()).data.user?.id
       });
       
-      if (error) {
-        console.error('❌ RPC Error in getUserCandidates:', error);
-        throw error;
-      }
-      
-      console.log('📥 RAW RPC RESPONSE getUserCandidates:', JSON.stringify(data, null, 2));
-      console.log('📊 Total candidates retrieved:', data?.length || 0);
+      if (error) throw error;
       
       if (!data || data.length === 0) {
-        console.log('📭 No candidates found for user:', userId);
         return [];
       }
       
-      // Diagnostic détaillé: vérifier chaque candidat individuellement
-      data.forEach((candidate: any, index: number) => {
-        console.log(`📋 Candidate ${index + 1} (${candidate.id}):`, {
-          name: `${candidate.first_name} ${candidate.last_name}`,
-          detailed_status: candidate.detailed_status || 'NOT_SET',
-          status: candidate.status || 'NOT_SET',
-          user_id: candidate.user_id,
-          created_at: candidate.created_at
-        });
-      });
-      
-      const formattedCandidates = data.map(formatCandidateData);
-      
-      // Diagnostic final: vérifier la répartition des statuts après formatage
-      const statusDistribution: Record<string, number> = {};
-      formattedCandidates.forEach(candidate => {
-        const status = candidate.detailed_status || 'undefined';
-        statusDistribution[status] = (statusDistribution[status] || 0) + 1;
-      });
-      
-      console.log('📈 Status distribution after formatting:', statusDistribution);
-      
-      return formattedCandidates;
+      return data.map(formatCandidateData);
     } catch (error: any) {
       console.error('Error in getUserCandidates:', error);
       throw new Error(`Failed to get candidates: ${error.message}`);
@@ -324,57 +277,30 @@ export const candidateService = {
   
   getCandidateById: async (candidateId: string): Promise<CandidateData> => {
     try {
-      console.log('🔍 getCandidateById called with ID:', candidateId);
-      
-      if (!candidateId || candidateId.trim() === '') {
-        throw new Error('Candidate ID is required');
-      }
-      
       console.log('🔍 Fetching candidate by ID:', candidateId);
       
-      const currentUser = await supabase.auth.getUser();
-      const userId = currentUser.data.user?.id;
-      console.log('👤 Current user ID for candidate fetch:', userId);
-      
-      const { data, error } = await supabase.rpc('get_user_candidates', {
-        user_id_param: userId
+      const { data, error } = await supabase.rpc('get_candidate_by_id', {
+        candidate_id_param: candidateId
       });
       
       if (error) {
-        console.error('❌ RPC Error in getCandidateById:', error);
+        console.error('❌ RPC Error:', error);
         throw error;
       }
       
-      console.log('📥 RAW RPC RESPONSE get_user_candidates:', data);
-      console.log('📊 Total candidates in response:', data?.length || 0);
+      console.log('📥 RAW RPC RESPONSE:', JSON.stringify(data, null, 2));
       
       if (!data || data.length === 0) {
-        console.log('📭 No candidates found for user');
-        throw new Error('No candidates found');
-      }
-      
-      // Find the specific candidate by ID
-      console.log('🔎 Looking for candidate with ID:', candidateId);
-      const candidate = data.find((c: any) => {
-        console.log('🔍 Checking candidate:', c.id, 'vs', candidateId);
-        return c.id === candidateId;
-      });
-      
-      if (!candidate) {
-        console.log('❌ Candidate not found in user candidates list');
-        console.log('📋 Available candidate IDs:', data.map((c: any) => c.id));
         throw new Error('Candidate not found');
       }
       
-      console.log('📋 Found candidate:', candidate);
-      
-      // Format the candidate data
-      const formatted = formatCandidateData(candidate);
-      console.log('✅ FINAL FORMATTED RESULT:', formatted);
+      // This should be formatted as a single CandidateData object
+      const formatted = formatCandidateData(data[0]);
+      console.log('✅ FINAL FORMATTED RESULT:', JSON.stringify(formatted, null, 2));
       
       return formatted;
     } catch (error: any) {
-      console.error('❌ Error in getCandidateById:', error);
+      console.error('Error in getCandidateById:', error);
       throw new Error(`Failed to get candidate: ${error.message}`);
     }
   },
@@ -406,10 +332,10 @@ export const candidateService = {
       // Don't modify it if it's not provided in the update
       if (updateData.hasOwnProperty('detailed_status') && updateData.detailed_status !== undefined) {
         if (!updateData.detailed_status || updateData.detailed_status === '') {
-          updateData.detailed_status = 'contact'; // CHANGEMENT: utiliser 'contact' au lieu de 'initial'
+          updateData.detailed_status = 'initial';
         } else if (!VALID_DETAILED_STATUSES.includes(updateData.detailed_status)) {
-          console.warn(`Invalid detailed_status "${updateData.detailed_status}", setting to contact`);
-          updateData.detailed_status = 'contact'; // CHANGEMENT: utiliser 'contact' au lieu de 'initial'
+          console.warn(`Invalid detailed_status "${updateData.detailed_status}", setting to initial`);
+          updateData.detailed_status = 'initial';
         }
       }
       

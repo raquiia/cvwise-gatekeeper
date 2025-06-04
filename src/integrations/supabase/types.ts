@@ -518,6 +518,10 @@ export type Database = {
         Args: { p_file_name: string; p_user_id: string }
         Returns: boolean
       }
+      check_profile_ownership: {
+        Args: { profile_id: string }
+        Returns: boolean
+      }
       delete_candidate_secure: {
         Args: { candidate_id_param: string }
         Returns: boolean
@@ -610,10 +614,6 @@ export type Database = {
         Args: { p_candidate_id: string }
         Returns: string
       }
-      get_candidate_status_direct: {
-        Args: { p_candidate_id: string }
-        Returns: string
-      }
       get_candidates_by_ids: {
         Args: { candidate_ids: string[] }
         Returns: {
@@ -665,6 +665,34 @@ export type Database = {
       }
       get_profile_by_id: {
         Args: { _id: string }
+        Returns: {
+          avatar_url: string | null
+          company: string | null
+          created_at: string | null
+          first_name: string | null
+          id: string
+          is_admin: boolean | null
+          last_name: string | null
+          title: string | null
+          updated_at: string | null
+        }[]
+      }
+      get_profile_by_id_no_rls: {
+        Args: { profile_id_param: string }
+        Returns: {
+          avatar_url: string | null
+          company: string | null
+          created_at: string | null
+          first_name: string | null
+          id: string
+          is_admin: boolean | null
+          last_name: string | null
+          title: string | null
+          updated_at: string | null
+        }[]
+      }
+      get_profile_by_id_secure: {
+        Args: { profile_id_param: string }
         Returns: {
           avatar_url: string | null
           company: string | null
@@ -813,10 +841,6 @@ export type Database = {
         }[]
       }
       update_candidate_status: {
-        Args: { p_candidate_id: string; p_detailed_status: string }
-        Returns: boolean
-      }
-      update_candidate_status_direct: {
         Args: { p_candidate_id: string; p_detailed_status: string }
         Returns: boolean
       }

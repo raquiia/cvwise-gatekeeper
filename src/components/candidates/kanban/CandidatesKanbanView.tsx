@@ -21,10 +21,8 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
   const { toast } = useToast();
   const [draggedCandidate, setDraggedCandidate] = useState<string | null>(null);
 
-  // Group candidates by status - simplified after data cleanup
+  // Group candidates by status
   const candidatesByStatus = useMemo(() => {
-    console.log('🔄 Kanban: Grouping', candidates.length, 'candidates');
-    
     const groups: Record<string, CandidateData[]> = {};
     
     // Initialize all status groups
@@ -32,29 +30,14 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
       groups[status] = [];
     });
     
-    // Group candidates by their detailed_status
-    candidates.forEach((candidate, index) => {
-      const status = candidate.detailed_status || 'contact';
-      
-      console.log(`📋 Candidate ${index + 1}: ${candidate.first_name} ${candidate.last_name} → ${status}`);
-      
-      // Vérifier que le statut existe dans nos labels
-      if (Object.keys(CANDIDATE_STATUS_LABELS).includes(status)) {
+    // Group candidates by their status
+    candidates.forEach(candidate => {
+      const status = candidate.detailed_status || 'initial';
+      if (groups[status]) {
         groups[status].push(candidate);
       } else {
-        console.warn(`⚠️ Status "${status}" not found, using contact`);
-        groups['contact'].push(candidate);
-      }
-    });
-    
-    // Log final distribution
-    console.log('📊 Kanban distribution:');
-    Object.entries(groups).forEach(([status, statusCandidates]) => {
-      if (statusCandidates.length > 0) {
-        console.log(`   ${status}: ${statusCandidates.length} candidate(s)`);
-        statusCandidates.forEach(c => 
-          console.log(`     - ${c.first_name} ${c.last_name}`)
-        );
+        // Fallback for unknown statuses
+        groups['initial'].push(candidate);
       }
     });
     
@@ -71,9 +54,7 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
           description: `Le statut du candidat a été modifié en "${CANDIDATE_STATUS_LABELS[newStatus]}"`,
         });
         
-        // Trigger immediate refresh of parent data
         if (onCandidateUpdated) {
-          console.log('Triggering data refresh after status update');
           onCandidateUpdated();
         }
       }
@@ -88,18 +69,10 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
     setDraggedCandidate(null);
   };
 
-  // Handle status change from within cards - ensure immediate refresh
-  const handleStatusChange = async () => {
-    console.log('Status changed in Kanban, triggering immediate refresh');
-    if (onCandidateUpdated) {
-      await onCandidateUpdated();
-    }
-  };
-
   // Define the order of statuses for display
   const statusOrder = [
+    'initial',
     'contact', 
-    'qualification',
     'prequalification',
     'ec1',
     'ec2',
@@ -120,7 +93,6 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
             candidates={candidatesByStatus[status] || []}
             onViewCandidate={onViewCandidate}
             onCandidateDeleted={onCandidateDeleted}
-            onCandidateUpdated={handleStatusChange}
             onDrop={handleDrop}
           />
         ))}

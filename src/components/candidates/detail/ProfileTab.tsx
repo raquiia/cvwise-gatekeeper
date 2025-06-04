@@ -5,6 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { MapPin, Phone, Mail, Calendar, FileText } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureArray, ensureStringArray, safeString, isUndefinedObject } from '@/utils/candidateUtils';
+import { useCandidateScore } from '@/hooks/use-candidate-score';
 import ScoreDisplay from './ScoreDisplay';
 
 interface ProfileTabProps {
@@ -32,6 +33,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
   const hasValidMobility = mobility.trim().length > 0;
   const hasValidTravelWillingness = travelWillingness.trim().length > 0;
   const hasValidSalaryExpectations = salaryExpectations.trim().length > 0;
+
+  // Use unified scoring system
+  const { score: scoreBreakdown, isLoading: scoreLoading } = useCandidateScore(candidate);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -165,7 +169,13 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
       <div className="space-y-6">
         <div>
           <h3 className="text-lg font-semibold mb-4">Évaluation intelligente</h3>
-          <ScoreDisplay candidate={candidate} />
+          {scoreBreakdown ? (
+            <ScoreDisplay scoreBreakdown={scoreBreakdown} isLoading={scoreLoading} />
+          ) : (
+            <div className="text-center p-4 text-muted-foreground">
+              Calcul du score en cours...
+            </div>
+          )}
         </div>
         
         {(hasValidRemotePreference || hasValidMobility || hasValidTravelWillingness || hasValidSalaryExpectations) && (
