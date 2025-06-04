@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -107,7 +106,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-gray-900">
-                        {candidate.first_name} {candidate.last_name}
+                        {candidate.first_name} <span className="font-bold">{candidate.last_name}</span>
                       </div>
                       {candidate.email && (
                         <div className="flex items-center text-sm text-gray-500 mt-1">
