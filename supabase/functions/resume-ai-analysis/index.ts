@@ -73,7 +73,7 @@ const translateCountryToFrench = (country: string): string => {
 };
 
 /**
- * Fonction pour décomposer une adresse complète en champs structurés
+ * Fonction améliorée pour décomposer une adresse complète en champs structurés
  */
 const parseLocationToStructuredAddress = (location: string): {
   address: string;
@@ -83,74 +83,142 @@ const parseLocationToStructuredAddress = (location: string): {
 } => {
   if (!location) return { address: '', postal_code: '', city: '', country: '' };
   
+  console.log('🏠 Parsing location:', location);
   const cleanLocation = cleanAndDecodeText(location);
   
-  const postalCodePattern = /\b\d{5}\b/;
-  const countryPattern = /\b(France|FRANCE|Allemagne|ALLEMAGNE|Belgique|BELGIQUE|Suisse|SUISSE|Espagne|ESPAGNE|Italie|ITALIE|Luxembourg|LUXEMBOURG|Royaume-Uni|ROYAUME-UNI|UK)\b/i;
+  // Patterns améliorés
+  const postalCodePattern = /\b\d{4,5}\b/;
+  const countryPattern = /\b(France|FRANCE|Allemagne|ALLEMAGNE|Belgique|BELGIQUE|Suisse|SUISSE|Espagne|ESPAGNE|Italie|ITALIE|Luxembourg|LUXEMBOURG|Royaume-Uni|ROYAUME-UNI|UK|Switzerland|Germany|Belgium|Spain|Italy|Netherlands|Austria|Portugal)\b/i;
   
   let address = '';
   let postal_code = '';
   let city = '';
   let country = '';
   
+  // Extraire le pays
   const countryMatch = cleanLocation.match(countryPattern);
   if (countryMatch) {
-    country = countryMatch[0];
+    country = translateCountryToFrench(countryMatch[0]);
+    console.log('🌍 Country found:', country);
   }
   
+  // Extraire le code postal
   const postalMatch = cleanLocation.match(postalCodePattern);
   if (postalMatch) {
     postal_code = postalMatch[0];
+    console.log('📮 Postal code found:', postal_code);
   }
   
-  const segments = cleanLocation.split(',').map(s => s.trim());
+  // Stratégie améliorée : diviser par virgules ou retours à la ligne
+  const separators = /[,\n\r]/;
+  const segments = cleanLocation.split(separators).map(s => s.trim()).filter(s => s.length > 0);
+  
+  console.log('📋 Address segments:', segments);
   
   if (segments.length >= 2) {
-    address = segments[0];
-    let lastSegment = segments[segments.length - 1];
+    // Stratégie : premier segment = adresse de rue
+    let potentialAddress = segments[0];
     
-    if (country) {
-      lastSegment = lastSegment.replace(new RegExp(country, 'i'), '').trim();
-    }
-    
+    // Nettoyer l'adresse de rue des éléments qui n'y appartiennent pas
     if (postal_code) {
-      lastSegment = lastSegment.replace(postal_code, '').trim();
+      potentialAddress = potentialAddress.replace(postal_code, '').trim();
+    }
+    if (country && countryMatch) {
+      potentialAddress = potentialAddress.replace(new RegExp(countryMatch[0], 'gi'), '').trim();
     }
     
-    city = lastSegment;
-    
-    if (segments.length >= 3 && !city) {
-      city = segments[1];
+    // Si ce qui reste ressemble à une adresse de rue (contient des chiffres ou certains mots clés)
+    if (potentialAddress && (
+      /\d+/.test(potentialAddress) || 
+      /\b(rue|avenue|boulevard|place|chemin|route|impasse|allée|square|cours|quai)\b/i.test(potentialAddress)
+    )) {
+      address = potentialAddress;
+      console.log('🏠 Street address found:', address);
     }
+    
+    // Trouver la ville dans les segments restants
+    for (let i = 1; i < segments.length; i++) {
+      let segment = segments[i];
+      
+      // Nettoyer le segment
+      if (postal_code) {
+        segment = segment.replace(postal_code, '').trim();
+      }
+      if (country && countryMatch) {
+        segment = segment.replace(new RegExp(countryMatch[0], 'gi'), '').trim();
+      }
+      
+      // Si ce qui reste n'est pas vide et ne ressemble pas à une adresse de rue
+      if (segment && segment.length > 1 && 
+          !(/\d+\s*(rue|avenue|boulevard)/i.test(segment))) {
+        city = segment;
+        console.log('🏙️ City found:', city);
+        break;
+      }
+    }
+    
   } else if (segments.length === 1) {
+    // Un seul segment - essayer de deviner la structure
     let remaining = cleanLocation;
     
-    if (country) {
-      remaining = remaining.replace(new RegExp(country, 'i'), '').trim();
+    // Retirer le pays et le code postal
+    if (country && countryMatch) {
+      remaining = remaining.replace(new RegExp(countryMatch[0], 'gi'), '').trim();
     }
-    
     if (postal_code) {
       remaining = remaining.replace(postal_code, '').trim();
     }
     
-    const parts = remaining.split(/\s+/);
-    if (parts.length > 3) {
-      address = parts.slice(0, Math.ceil(parts.length / 2)).join(' ');
-      city = parts.slice(Math.ceil(parts.length / 2)).join(' ');
+    // Diviser par espaces et essayer de séparer
+    const words = remaining.split(/\s+/);
+    
+    if (words.length > 4) {
+      // Si on a beaucoup de mots, essayer de diviser intelligemment
+      // Chercher des indices d'adresse de rue (numéros + mots clés)
+      let addressWords = [];
+      let cityWords = [];
+      let foundStreetIndicator = false;
+      
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        
+        if (/\d+/.test(word) || /\b(rue|avenue|boulevard|place|chemin|route)\b/i.test(word)) {
+          foundStreetIndicator = true;
+          addressWords.push(word);
+        } else if (foundStreetIndicator && addressWords.length < 4) {
+          // Continuer à ajouter des mots à l'adresse si on n'a pas trop de mots
+          addressWords.push(word);
+        } else {
+          // Les mots restants vont à la ville
+          cityWords.push(word);
+        }
+      }
+      
+      if (addressWords.length > 0) {
+        address = addressWords.join(' ');
+      }
+      if (cityWords.length > 0) {
+        city = cityWords.join(' ');
+      }
     } else {
+      // Peu de mots - probablement juste une ville
       city = remaining;
     }
   }
   
+  // Nettoyage final
   address = address.replace(/[,;]/g, '').trim();
   city = city.replace(/[,;]/g, '').trim();
   
-  return {
+  const result = {
     address: address || '',
     postal_code: postal_code || '',
     city: city || '',
     country: country || ''
   };
+  
+  console.log('✅ Final parsed address:', result);
+  return result;
 };
 
 /**
@@ -178,7 +246,6 @@ const processAIExtractedData = (data: any): any => {
         processedData[field] = '';
       }
       
-      // Vérifier si c'est "undefined" ou vide
       if (processedData[field] === 'undefined' || processedData[field] === 'null' || !processedData[field]) {
         processedData[field] = '';
       }
@@ -190,12 +257,21 @@ const processAIExtractedData = (data: any): any => {
     processedData.country = translateCountryToFrench(processedData.country);
   }
   
-  // Décomposer l'adresse si nécessaire
+  // Logique améliorée pour la décomposition d'adresse
   const hasStructuredAddress = processedData.address || processedData.postal_code || 
                                processedData.city || processedData.country;
   
-  if (!hasStructuredAddress && processedData.location) {
-    console.log('📍 Décomposing location into structured address:', processedData.location);
+  // Si l'IA a fourni une adresse structurée, on la garde mais on l'améliore
+  if (hasStructuredAddress) {
+    console.log('📍 Using AI-provided structured address');
+    processedData.address = cleanAndDecodeText(processedData.address || '');
+    processedData.city = cleanAndDecodeText(processedData.city || '');
+    processedData.postal_code = cleanAndDecodeText(processedData.postal_code || '');
+    processedData.country = translateCountryToFrench(processedData.country || '');
+  } 
+  // Seulement si on n'a pas d'adresse structurée ET qu'on a une location complète
+  else if (processedData.location && processedData.location.length > 10) {
+    console.log('📍 Parsing location field into structured address');
     const structuredAddress = parseLocationToStructuredAddress(processedData.location);
     
     // Seulement remplacer si on a extrait des données valides
@@ -209,11 +285,6 @@ const processAIExtractedData = (data: any): any => {
       
       console.log('✅ Address decomposed successfully:', structuredAddress);
     }
-  } else if (hasStructuredAddress) {
-    // Améliorer les données existantes
-    processedData.address = cleanAndDecodeText(processedData.address);
-    processedData.city = cleanAndDecodeText(processedData.city);
-    processedData.country = translateCountryToFrench(processedData.country);
   }
   
   console.log('✅ Final processed data:', JSON.stringify(processedData, null, 2));
@@ -227,34 +298,28 @@ serve(async (req) => {
 
   try {
     console.log('🚀 Starting resume-ai-analysis function');
-    console.log('📥 Request method:', req.method);
-    console.log('📥 Request headers:', Object.fromEntries(req.headers.entries()));
     
     const requestData = await req.json();
-    console.log('📦 Raw request data:', JSON.stringify(requestData, null, 2));
+    console.log('📦 Request data received');
     
-    // Support both 'text' and 'resumeText' for backward compatibility
-    const { resumeId, text, resumeText, overwriteExisting, fullAnalysis } = requestData;
-    const finalText = text || resumeText;
+    const { resumeId, resumeText, overwriteExisting, fullAnalysis } = requestData;
     
-    console.log('🔍 Extracted parameters:');
+    console.log('🔍 Parameters:');
     console.log('  - resumeId:', resumeId);
-    console.log('  - text length:', finalText?.length || 0);
+    console.log('  - text length:', resumeText?.length || 0);
     console.log('  - overwriteExisting:', overwriteExisting);
     console.log('  - fullAnalysis:', fullAnalysis);
     
-    if (!resumeId || !finalText) {
+    if (!resumeId || !resumeText) {
       console.error('❌ Missing required parameters');
-      console.error('  - resumeId present:', !!resumeId);
-      console.error('  - text present:', !!finalText);
       return new Response(
         JSON.stringify({ 
           success: false,
           error: 'Missing resumeId or resume text',
           details: {
             resumeId: !!resumeId,
-            text: !!finalText,
-            textLength: finalText?.length || 0
+            resumeText: !!resumeText,
+            textLength: resumeText?.length || 0
           }
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -266,17 +331,18 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
-    console.log('  - SUPABASE_URL present:', !!supabaseUrl);
-    console.log('  - SUPABASE_SERVICE_ROLE_KEY present:', !!supabaseServiceKey);
-    console.log('  - OPENAI_API_KEY present:', !!openaiApiKey);
+    console.log('  - Environment variables present:', {
+      supabaseUrl: !!supabaseUrl,
+      supabaseServiceKey: !!supabaseServiceKey,
+      openaiApiKey: !!openaiApiKey
+    });
 
     if (!openaiApiKey) {
-      console.error('❌ OpenAI API key not found in environment');
+      console.error('❌ OpenAI API key not found');
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'OpenAI API key not configured',
-          details: 'The OPENAI_API_KEY environment variable is missing'
+          error: 'OpenAI API key not configured'
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -287,8 +353,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Supabase configuration missing',
-          details: 'SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not found'
+          error: 'Supabase configuration missing'
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -297,7 +362,7 @@ serve(async (req) => {
     console.log('🔗 Creating Supabase client...');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('📄 Fetching resume data for ID:', resumeId);
+    console.log('📄 Fetching resume data...');
     const resumeDataResult = await supabase
       .from('resumes')
       .select('user_id')
@@ -305,7 +370,7 @@ serve(async (req) => {
       .single();
 
     if (resumeDataResult.error) {
-      console.error('❌ Error fetching resume data:', resumeDataResult.error);
+      console.error('❌ Error fetching resume:', resumeDataResult.error);
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -317,10 +382,9 @@ serve(async (req) => {
     }
 
     const resumeData = resumeDataResult.data;
-    console.log('✅ Resume data fetched successfully for user:', resumeData.user_id);
+    console.log('✅ Resume data fetched for user:', resumeData.user_id);
 
     console.log('🤖 Preparing OpenAI request...');
-    console.log('📝 Text sample (first 200 chars):', finalText.substring(0, 200) + '...');
     
     const openAIPayload = {
       model: 'gpt-4o-mini',
@@ -334,20 +398,15 @@ RÈGLES STRICTES:
 2. Si une information n'est pas présente, retourner une chaîne vide ""
 3. Pour les tableaux, retourner un tableau vide [] si aucune information
 4. Extraire les compétences sous forme de tableau de chaînes simples
-5. IMPORTANT - Pour l'adresse, décomposer intelligemment en champs séparés:
-   - address: rue et numéro (ex: "Steinbachstrasse 45")
-   - postal_code: code postal uniquement (ex: "8051")
-   - city: ville uniquement (ex: "Zurich")
+5. IMPORTANT - Pour l'adresse, extraire les champs séparément et précisément:
+   - address: adresse de rue complète avec numéro (ex: "45 Steinbachstrasse" ou "12 rue de la Paix")
+   - postal_code: code postal uniquement (ex: "8051", "75001")
+   - city: ville uniquement (ex: "Zurich", "Paris")
    - country: pays EN FRANÇAIS (ex: "Suisse", "France", "Allemagne", "Belgique", etc.)
-6. IMPORTANT - Toujours utiliser les noms de pays en français:
-   - Switzerland → Suisse
-   - Germany → Allemagne
-   - Belgium → Belgique
-   - Spain → Espagne
-   - Italy → Italie
-   - etc.
-7. Si l'adresse est dans un seul champ, la décomposer intelligemment
+6. IMPORTANT - Toujours utiliser les noms de pays en français
+7. Si l'adresse est dans un seul champ, bien la décomposer
 8. Ne pas mettre de caractères encodés (comme %20) dans les résultats
+9. Être très précis sur l'extraction de l'adresse - ne pas mélanger rue et ville
 
 Retourne un JSON avec EXACTEMENT cette structure:
 {
@@ -389,7 +448,7 @@ Retourne un JSON avec EXACTEMENT cette structure:
         },
         {
           role: 'user',
-          content: `Analyse ce CV et extrais les informations:\n\n${finalText}`
+          content: `Analyse ce CV et extrais les informations:\n\n${resumeText}`
         }
       ],
       temperature: 0.1,
@@ -397,7 +456,6 @@ Retourne un JSON avec EXACTEMENT cette structure:
     };
 
     console.log('🚀 Calling OpenAI API...');
-    console.log('📊 Payload size:', JSON.stringify(openAIPayload).length, 'bytes');
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -409,20 +467,27 @@ Retourne un JSON avec EXACTEMENT cette structure:
     });
 
     console.log('📡 OpenAI response status:', response.status);
-    console.log('📡 OpenAI response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorData = await response.json();
       console.error('❌ OpenAI API error:', errorData);
+      
+      if (errorData.error?.code === 'rate_limit_exceeded') {
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: `Limite de taux OpenAI atteinte: ${errorData.error.message}`,
+            code: 'rate_limit_exceeded'
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ 
           success: false,
           error: `OpenAI API error: ${errorData.error?.message || 'Unknown error'}`,
-          details: {
-            status: response.status,
-            statusText: response.statusText,
-            errorData: errorData
-          }
+          details: errorData
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -430,26 +495,21 @@ Retourne un JSON avec EXACTEMENT cette structure:
 
     const aiResponse = await response.json();
     console.log('✅ OpenAI response received');
-    console.log('📊 Response structure:', {
-      choices: aiResponse.choices?.length || 0,
-      usage: aiResponse.usage || 'No usage data'
-    });
     
     const content = aiResponse.choices[0]?.message?.content;
     
     if (!content) {
-      console.error('❌ No content received from OpenAI');
+      console.error('❌ No content from OpenAI');
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'No content received from AI',
-          details: 'OpenAI response did not contain any content'
+          error: 'No content received from AI'
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('📝 Raw AI response content (first 500 chars):', content.substring(0, 500) + '...');
+    console.log('📝 AI response content sample:', content.substring(0, 200) + '...');
 
     let extractedData;
     try {
@@ -457,7 +517,6 @@ Retourne un JSON avec EXACTEMENT cette structure:
       console.log('✅ AI response parsed successfully');
     } catch (parseError) {
       console.error('❌ Failed to parse AI response:', parseError);
-      console.error('Raw content:', content);
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -471,7 +530,6 @@ Retourne un JSON avec EXACTEMENT cette structure:
       );
     }
 
-    // Traiter et nettoyer les données extraites
     console.log('🔧 Processing extracted data...');
     const processedData = processAIExtractedData(extractedData);
 
@@ -481,8 +539,6 @@ Retourne un JSON avec EXACTEMENT cette structure:
       user_id: resumeData.user_id,
       ...processedData
     };
-    
-    console.log('📋 Candidate data to insert:', JSON.stringify(candidateInsertData, null, 2));
 
     const { data: candidate, error: insertError } = await supabase
       .from('candidates')
@@ -496,17 +552,13 @@ Retourne un JSON avec EXACTEMENT cette structure:
         JSON.stringify({ 
           success: false,
           error: 'Failed to create candidate',
-          details: {
-            dbError: insertError.message,
-            code: insertError.code,
-            hint: insertError.hint
-          }
+          details: insertError
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('✅ Candidate created successfully with ID:', candidate.id);
+    console.log('✅ Candidate created successfully:', candidate.id);
 
     return new Response(
       JSON.stringify({ 
@@ -520,12 +572,7 @@ Retourne un JSON avec EXACTEMENT cette structure:
     );
 
   } catch (error) {
-    console.error('💥 Unexpected error in resume analysis:', error);
-    console.error('📊 Error details:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack?.substring(0, 1000)
-    });
+    console.error('💥 Unexpected error:', error);
     
     return new Response(
       JSON.stringify({ 
@@ -533,8 +580,7 @@ Retourne un JSON avec EXACTEMENT cette structure:
         error: 'Unexpected error during resume analysis',
         details: {
           errorName: error.name,
-          errorMessage: error.message,
-          errorType: typeof error
+          errorMessage: error.message
         }
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
