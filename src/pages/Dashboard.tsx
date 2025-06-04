@@ -14,7 +14,6 @@ import { aggregateEducationData, aggregateSectorData } from '@/utils/dashboardUt
 // Import our modern components
 import DashboardHeader from '@/components/dashboard/modern/DashboardHeader';
 import ModernKPICards from '@/components/dashboard/modern/ModernKPICards';
-import IntelligenceSection from '@/components/dashboard/modern/IntelligenceSection';
 import AdvancedAnalytics from '@/components/dashboard/modern/AdvancedAnalytics';
 import RecentCandidatesTable from '@/components/dashboard/RecentCandidatesTable';
 
@@ -128,13 +127,7 @@ const Dashboard = () => {
           usersCount={realUsers.length}
         />
         
-        {/* Intelligence Section */}
-        <IntelligenceSection 
-          candidatesCount={candidatesCount}
-          topCandidatesCount={topCandidatesCount}
-        />
-        
-        {/* Advanced Analytics */}
+        {/* Advanced Analytics - Only Real Data */}
         <AdvancedAnalytics 
           candidatesData={candidatesData}
           educationData={educationData}
