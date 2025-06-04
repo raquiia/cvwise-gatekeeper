@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -209,26 +208,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate }) => {
             </CardContent>
           </Card>
         )}
-        
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Statut</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`p-3 rounded-md text-center ${
-              candidate.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
-              candidate.status === 'inactive' ? 'bg-red-100 text-red-800' :
-              'bg-amber-100 text-amber-800'
-            }`}>
-              {candidate.status === 'active' ? 'Actif' :
-               candidate.status === 'inactive' ? 'Inactif' :
-               candidate.status === 'qualification' ? 'En qualification' :
-               candidate.status === 'interview' ? 'En entretien' :
-               candidate.status === 'hired' ? 'Embauché' :
-               'Statut inconnu'}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
