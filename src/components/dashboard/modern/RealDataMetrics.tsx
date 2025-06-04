@@ -36,26 +36,40 @@ const RealDataMetrics: React.FC<RealDataMetricsProps> = ({ candidatesData }) => 
       .slice(-4); // 4 dernières semaines
   };
 
-  // Répartition par statut
+  // Répartition par statut - FIXED
   const getStatusData = () => {
     const statusMap = candidatesData.reduce((acc, candidate) => {
-      const status = candidate.detailed_status || 'initial';
+      // Vérifier plusieurs champs possibles pour le statut
+      const status = candidate.detailed_status || candidate.status || 'initial';
+      
+      console.log('Candidate status check:', { 
+        id: candidate.id, 
+        detailed_status: candidate.detailed_status, 
+        status: candidate.status,
+        final_status: status 
+      });
+      
       const statusLabels = {
         'initial': 'Initial',
         'contact': 'Contact',
-        'prequalification': 'Pré-qualification',
+        'prequalification': 'Pré-qualification', 
         'ec1': 'Entretien 1',
         'ec2': 'Entretien 2',
         'presentation_client': 'Présentation client',
         'en_mission': 'En mission',
         'refus': 'Refusé',
-        'ancien_employe': 'Ancien employé'
+        'ancien_employe': 'Ancien employé',
+        'pending': 'En attente',
+        'active': 'Actif',
+        'archived': 'Archivé'
       };
       
-      const label = statusLabels[status] || status;
+      const label = statusLabels[status] || status || 'Non défini';
       acc[label] = (acc[label] || 0) + 1;
       return acc;
     }, {});
+
+    console.log('Status distribution:', statusMap);
 
     return Object.entries(statusMap)
       .map(([name, value]) => ({ name, value }))
