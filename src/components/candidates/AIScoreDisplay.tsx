@@ -30,7 +30,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
   error,
   onRefresh
 }) => {
-  const [isExplanationOpen, setIsExplanationOpen] = useState(false);
+  const [isExplanationOpen, setIsExplanationOpen] = useState(true); // Ouvert par défaut
   
   if (error) {
     return (
@@ -236,7 +236,8 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
           ))}
         </div>
 
-        {explanation && (
+        {/* Toujours afficher l'explication si elle existe */}
+        {explanation && explanation.trim() && (
           <>
             <Separator className="my-4" />
             
@@ -253,7 +254,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3">
-                <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
+                <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">
                   {explanation}
                 </div>
               </CollapsibleContent>

@@ -44,6 +44,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
       };
       
       setScore(contextualScore);
+      // S'assurer que l'explication IA est toujours affichée
       setExplanation(aiScore.explanation || '');
       setIsLoading(false);
       setError(null);
@@ -77,7 +78,8 @@ export const useCandidateScore = (candidate: CandidateData) => {
       };
       
       setScore(fallbackScore);
-      setExplanation('');
+      // Conserver l'explication IA même en cas d'erreur si elle existe
+      setExplanation(aiScore.explanation || '');
       setIsLoading(false);
       setError(aiScore.error);
       return;
