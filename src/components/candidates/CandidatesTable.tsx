@@ -55,68 +55,138 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'qualification': return 'bg-blue-100 text-blue-800';
-      case 'contact': return 'bg-yellow-100 text-yellow-800';
-      case 'entretien': return 'bg-purple-100 text-purple-800';
-      case 'shortlist': return 'bg-green-100 text-green-800';
-      case 'refusé': return 'bg-red-100 text-red-800';
+      case 'initial': return 'bg-gray-100 text-gray-800';
+      case 'contact': return 'bg-blue-100 text-blue-800';
+      case 'prequalification': return 'bg-yellow-100 text-yellow-800';
+      case 'ec1': return 'bg-purple-100 text-purple-800';
+      case 'ec2': return 'bg-orange-100 text-orange-800';
+      case 'presentation_client': return 'bg-indigo-100 text-indigo-800';
+      case 'en_mission': return 'bg-green-100 text-green-800';
+      case 'refus': return 'bg-red-100 text-red-800';
+      case 'ancien_employe': return 'bg-emerald-100 text-emerald-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-green-600 font-semibold';
+    if (score >= 60) return 'text-yellow-600 font-semibold';
+    return 'text-red-600 font-semibold';
+  };
+
   return (
-    <div className="w-full">
+    <div className="w-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead>Prénom</TableHead>
-            <TableHead>Nom</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Poste</TableHead>
-            <TableHead>Expérience</TableHead>
-            <TableHead>Statut</TableHead>
-            <TableHead>Score</TableHead>
-            <TableHead>Actions</TableHead>
+          <TableRow className="bg-gray-50/50">
+            <TableHead className="font-semibold text-gray-700">Nom</TableHead>
+            <TableHead className="font-semibold text-gray-700">Email</TableHead>
+            <TableHead className="font-semibold text-gray-700">Poste</TableHead>
+            <TableHead className="font-semibold text-gray-700">Entreprise</TableHead>
+            <TableHead className="font-semibold text-gray-700">Localisation</TableHead>
+            <TableHead className="font-semibold text-gray-700">Expérience</TableHead>
+            <TableHead className="font-semibold text-gray-700">Compétences</TableHead>
+            <TableHead className="font-semibold text-gray-700">Statut</TableHead>
+            <TableHead className="font-semibold text-gray-700">Score</TableHead>
+            <TableHead className="font-semibold text-gray-700 text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {candidates.map((candidate) => (
             <TableRow 
               key={candidate.id} 
-              onClick={() => setSelectedCandidate(candidate)}
-              className="cursor-pointer hover:bg-gray-50"
+              className="hover:bg-gray-50/50 transition-colors duration-200 border-b border-gray-100"
             >
-              <TableCell>{candidate.first_name}</TableCell>
-              <TableCell>{candidate.last_name}</TableCell>
-              <TableCell>{candidate.email}</TableCell>
-              <TableCell>{candidate.position || 'Non spécifié'}</TableCell>
-              <TableCell>{candidate.years_experience || 0} ans</TableCell>
-              <TableCell>
-                <Badge className={getStatusColor(candidate.detailed_status || 'initial')}>
-                  {CANDIDATE_STATUS_LABELS[candidate.detailed_status || 'initial'] || 'Inconnu'}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center">
-                  <span className="font-medium">{candidate.score || 0}%</span>
+              <TableCell className="font-medium">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-white text-sm font-medium">
+                    {candidate.first_name?.[0]}{candidate.last_name?.[0]}
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-900">
+                      {candidate.first_name} {candidate.last_name}
+                    </div>
+                  </div>
                 </div>
               </TableCell>
+              
+              <TableCell className="text-gray-600">
+                {candidate.email}
+              </TableCell>
+              
+              <TableCell className="text-gray-800 font-medium">
+                {candidate.position || 'Non spécifié'}
+              </TableCell>
+              
+              <TableCell className="text-gray-600">
+                {candidate.company || 'Non spécifiée'}
+              </TableCell>
+              
+              <TableCell className="text-gray-600">
+                {candidate.location || 'Non spécifiée'}
+              </TableCell>
+              
+              <TableCell className="text-gray-600">
+                {candidate.years_experience ? `${candidate.years_experience} ans` : 'Non spécifiée'}
+              </TableCell>
+              
               <TableCell>
+                <div className="flex flex-wrap gap-1">
+                  {candidate.skills && Array.isArray(candidate.skills) ? (
+                    <>
+                      {candidate.skills.slice(0, 2).map((skill, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                          {skill}
+                        </Badge>
+                      ))}
+                      {candidate.skills.length > 2 && (
+                        <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600">
+                          +{candidate.skills.length - 2}
+                        </Badge>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-gray-400 text-sm">Aucune</span>
+                  )}
+                </div>
+              </TableCell>
+              
+              <TableCell>
+                <Badge className={getStatusColor(candidate.detailed_status || 'initial')}>
+                  {CANDIDATE_STATUS_LABELS[candidate.detailed_status || 'initial'] || 'Initial'}
+                </Badge>
+              </TableCell>
+              
+              <TableCell>
+                <div className="flex items-center">
+                  <span className={`font-bold ${getScoreColor(candidate.score || 0)}`}>
+                    {candidate.score || 0}%
+                  </span>
+                </div>
+              </TableCell>
+              
+              <TableCell className="text-center">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
+                    <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100">
                       <span className="sr-only">Ouvrir le menu</span>
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => handleCandidateSelect(candidate)}>
+                  <DropdownMenuContent align="end" className="bg-white border shadow-lg">
+                    <DropdownMenuLabel className="font-semibold">Actions</DropdownMenuLabel>
+                    <DropdownMenuItem 
+                      onClick={() => handleCandidateSelect(candidate)}
+                      className="cursor-pointer hover:bg-gray-50"
+                    >
                       <Eye className="mr-2 h-4 w-4" />
-                      Voir
+                      Voir le profil
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => handleDeleteCandidate(candidate.id!)}>
+                    <DropdownMenuItem 
+                      onClick={() => handleDeleteCandidate(candidate.id!)}
+                      className="cursor-pointer hover:bg-red-50 text-red-600"
+                    >
                       <Trash2 className="mr-2 h-4 w-4" />
                       Supprimer
                     </DropdownMenuItem>
@@ -127,6 +197,12 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
           ))}
         </TableBody>
       </Table>
+      
+      {candidates.length === 0 && (
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-lg">Aucun candidat trouvé</p>
+        </div>
+      )}
     </div>
   );
 };
