@@ -1,11 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import CandidatesHeader from '@/components/candidates/CandidatesHeader';
 import CandidatesTable from '@/components/candidates/CandidatesTable';
+import CandidatesCardView from '@/components/candidates/CandidatesCardView';
+import CandidatesKanbanView from '@/components/candidates/kanban/CandidatesKanbanView';
+import CandidatesAnalyticsView from '@/components/candidates/analytics/CandidatesAnalyticsView';
 import CandidatesFilters from '@/components/candidates/CandidatesFilters';
 import CandidateStats from '@/components/candidates/CandidateStats';
+import ViewSelector from '@/components/candidates/ViewSelector';
 import { candidateService } from '@/services/data/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
@@ -74,6 +77,7 @@ const CandidatesContent = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [currentView, setCurrentView] = useState<'table' | 'cards' | 'kanban' | 'analytics'>('table');
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -179,6 +183,74 @@ const CandidatesContent = () => {
     navigate(`/candidates/${candidateId}`);
   };
 
+  const handleViewChange = (view: 'table' | 'cards' | 'kanban' | 'analytics') => {
+    setCurrentView(view);
+  };
+
+  const renderCurrentView = () => {
+    if (loading) {
+      return (
+        <div className="flex justify-center items-center py-12">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="ml-4 text-gray-600">Chargement des candidats...</p>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          {error}
+        </div>
+      );
+    }
+
+    switch (currentView) {
+      case 'table':
+        return (
+          <CandidatesTable 
+            candidates={filteredCandidates}
+            selectedStatus={selectedStatus}
+            onStatusChange={handleStatusChange}
+            onViewCandidate={handleViewCandidate}
+            onCandidateDeleted={fetchCandidates}
+          />
+        );
+      case 'cards':
+        return (
+          <CandidatesCardView
+            candidates={filteredCandidates}
+            onViewCandidate={handleViewCandidate}
+            onCandidateDeleted={fetchCandidates}
+          />
+        );
+      case 'kanban':
+        return (
+          <CandidatesKanbanView
+            candidates={filteredCandidates}
+            onViewCandidate={handleViewCandidate}
+            onCandidateDeleted={fetchCandidates}
+          />
+        );
+      case 'analytics':
+        return (
+          <CandidatesAnalyticsView
+            candidates={filteredCandidates}
+          />
+        );
+      default:
+        return (
+          <CandidatesTable 
+            candidates={filteredCandidates}
+            selectedStatus={selectedStatus}
+            onStatusChange={handleStatusChange}
+            onViewCandidate={handleViewCandidate}
+            onCandidateDeleted={fetchCandidates}
+          />
+        );
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -232,6 +304,14 @@ const CandidatesContent = () => {
           topCandidates={topCandidates}
         />
 
+        {/* View Selector */}
+        <div className="mb-6 flex justify-center">
+          <ViewSelector 
+            currentView={currentView}
+            onViewChange={handleViewChange}
+          />
+        </div>
+
         {/* Filters */}
         {showFilters && (
           <div className="mb-6">
@@ -264,26 +344,9 @@ const CandidatesContent = () => {
           </div>
         )}
         
-        {/* Main Content */}
+        {/* Main Content with different views */}
         <div>
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              <p className="ml-4 text-gray-600">Chargement des candidats...</p>
-            </div>
-          ) : error ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-              {error}
-            </div>
-          ) : (
-            <CandidatesTable 
-              candidates={filteredCandidates}
-              selectedStatus={selectedStatus}
-              onStatusChange={handleStatusChange}
-              onViewCandidate={handleViewCandidate}
-              onCandidateDeleted={fetchCandidates}
-            />
-          )}
+          {renderCurrentView()}
         </div>
       </div>
     </div>
