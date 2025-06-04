@@ -8,8 +8,8 @@ export interface CandidateData {
   resume_id?: string;
   created_at?: string;
   updated_at?: string;
-  first_name?: string;
-  last_name?: string;
+  first_name: string;
+  last_name: string;
   email?: string;
   phone?: string;
   position?: string;
@@ -112,7 +112,7 @@ export const candidateService = {
   },
 
   // Create a new candidate
-  createCandidate: async (candidateData: Omit<CandidateData, 'id' | 'created_at'>): Promise<CandidateData> => {
+  createCandidate: async (candidateData: Partial<CandidateData> & { first_name: string; last_name: string; user_id: string }): Promise<CandidateData> => {
     try {
       const { data, error } = await supabase
         .from('candidates')
@@ -190,7 +190,7 @@ export const candidateService = {
   },
 
   // Delete a candidate
-  deleteCandidate: async (id: string): Promise<boolean> => {
+  deleteCandidate: async (id: string, force?: boolean): Promise<boolean> => {
     try {
       const { error } = await supabase
         .from('candidates')

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -114,7 +113,7 @@ const CandidatesCardView: React.FC<CandidatesCardViewProps> = ({
     if (!candidateId) return;
     
     try {
-      await candidateService.deleteCandidate(candidateId, true);
+      await candidateService.deleteCandidate(candidateId);
       toast({
         title: "Candidat supprimé",
         description: "Le candidat a été supprimé avec succès",

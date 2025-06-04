@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +31,7 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
     if (!candidate.id) return;
     
     try {
-      await candidateService.deleteCandidate(candidate.id, true);
+      await candidateService.deleteCandidate(candidate.id);
       toast({
         title: "Candidat supprimé",
         description: "Le candidat a été supprimé avec succès",

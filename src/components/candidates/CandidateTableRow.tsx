@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -84,7 +83,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
     if (!candidate.id) return;
     
     try {
-      await candidateService.deleteCandidate(candidate.id, true);
+      await candidateService.deleteCandidate(candidate.id);
       toast({
         title: "Candidat supprimé",
         description: "Le candidat a été supprimé avec succès",
