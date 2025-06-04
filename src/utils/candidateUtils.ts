@@ -21,6 +21,104 @@ const cleanAndDecodeText = (text: string): string => {
   }
 };
 
+/**
+ * Fonction pour décomposer une adresse complète en champs structurés
+ */
+const parseLocationToStructuredAddress = (location: string): {
+  address: string;
+  postal_code: string;
+  city: string;
+  country: string;
+} => {
+  if (!location) return { address: '', postal_code: '', city: '', country: '' };
+  
+  // Nettoyer d'abord l'adresse
+  const cleanLocation = cleanAndDecodeText(location);
+  
+  // Patterns pour identifier les différents éléments
+  const postalCodePattern = /\b\d{5}\b/; // Code postal français (5 chiffres)
+  const countryPattern = /\b(France|FRANCE|Allemagne|ALLEMAGNE|Belgique|BELGIQUE|Suisse|SUISSE|Espagne|ESPAGNE|Italie|ITALIE|Luxembourg|LUXEMBOURG|Royaume-Uni|ROYAUME-UNI|UK)\b/i;
+  
+  let address = '';
+  let postal_code = '';
+  let city = '';
+  let country = '';
+  
+  // Extraire le pays
+  const countryMatch = cleanLocation.match(countryPattern);
+  if (countryMatch) {
+    country = countryMatch[0];
+  }
+  
+  // Extraire le code postal
+  const postalMatch = cleanLocation.match(postalCodePattern);
+  if (postalMatch) {
+    postal_code = postalMatch[0];
+  }
+  
+  // Diviser par virgules pour analyser les segments
+  const segments = cleanLocation.split(',').map(s => s.trim());
+  
+  if (segments.length >= 2) {
+    // Premier segment = adresse (rue + numéro)
+    address = segments[0];
+    
+    // Dernier segment contient souvent ville et/ou pays
+    let lastSegment = segments[segments.length - 1];
+    
+    // Retirer le pays du dernier segment s'il y est
+    if (country) {
+      lastSegment = lastSegment.replace(new RegExp(country, 'i'), '').trim();
+    }
+    
+    // Retirer le code postal du segment pour obtenir la ville
+    if (postal_code) {
+      lastSegment = lastSegment.replace(postal_code, '').trim();
+    }
+    
+    city = lastSegment;
+    
+    // Si on a plusieurs segments, le deuxième pourrait être la ville
+    if (segments.length >= 3 && !city) {
+      city = segments[1];
+    }
+  } else if (segments.length === 1) {
+    // Un seul segment, essayer de deviner la structure
+    let remaining = cleanLocation;
+    
+    // Retirer le pays
+    if (country) {
+      remaining = remaining.replace(new RegExp(country, 'i'), '').trim();
+    }
+    
+    // Retirer le code postal
+    if (postal_code) {
+      remaining = remaining.replace(postal_code, '').trim();
+    }
+    
+    // Ce qui reste pourrait être adresse + ville
+    const parts = remaining.split(/\s+/);
+    if (parts.length > 3) {
+      // Les premiers mots = adresse, les derniers = ville
+      address = parts.slice(0, Math.ceil(parts.length / 2)).join(' ');
+      city = parts.slice(Math.ceil(parts.length / 2)).join(' ');
+    } else {
+      city = remaining;
+    }
+  }
+  
+  // Nettoyer les champs finaux
+  address = address.replace(/[,;]/g, '').trim();
+  city = city.replace(/[,;]/g, '').trim();
+  
+  return {
+    address: address || '',
+    postal_code: postal_code || '',
+    city: city || '',
+    country: country || ''
+  };
+};
+
 export const ensureStringArray = (data: Json | undefined | null): string[] => {
   if (!data) return [];
   
@@ -112,7 +210,7 @@ export const isUndefinedObject = (obj: any): boolean => {
 export const processCandidateData = (rawCandidate: any): any => {
   if (!rawCandidate) return null;
   
-  return {
+  const processedCandidate = {
     ...rawCandidate,
     // Apply URL decoding and cleaning to text fields
     first_name: safeString(rawCandidate.first_name),
@@ -139,6 +237,24 @@ export const processCandidateData = (rawCandidate: any): any => {
     industries: ensureArray(rawCandidate.industries),
     projects: ensureArray(rawCandidate.projects)
   };
+  
+  // Si les champs d'adresse structurés sont vides mais que location a des données, décomposer
+  const hasStructuredAddress = processedCandidate.address || processedCandidate.postal_code || 
+                               processedCandidate.city || processedCandidate.country;
+  
+  if (!hasStructuredAddress && processedCandidate.location) {
+    console.log('📍 Décomposition de l\'adresse complète:', processedCandidate.location);
+    const structuredAddress = parseLocationToStructuredAddress(processedCandidate.location);
+    
+    processedCandidate.address = structuredAddress.address;
+    processedCandidate.postal_code = structuredAddress.postal_code;
+    processedCandidate.city = structuredAddress.city;
+    processedCandidate.country = structuredAddress.country;
+    
+    console.log('✅ Adresse décomposée:', structuredAddress);
+  }
+  
+  return processedCandidate;
 };
 
 // Process job offer data from database format to application format
