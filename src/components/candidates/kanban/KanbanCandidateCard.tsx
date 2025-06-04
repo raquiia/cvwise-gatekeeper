@@ -9,7 +9,6 @@ import { ensureStringArray } from '@/utils/candidateUtils';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
-import { cn } from '@/lib/utils';
 
 interface KanbanCandidateCardProps {
   candidate: CandidateData;
@@ -25,7 +24,7 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
   isDragging = false
 }) => {
   const { toast } = useToast();
-  const { getAIScore, calculateAIScore, isJobSpecific } = useAIScoring();
+  const { getAIScore, isJobSpecific } = useAIScoring();
   const skills = ensureStringArray(candidate.skills);
   
   // Utiliser uniquement le système AI scoring unifié
@@ -68,13 +67,8 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
     }
   };
 
-  // Déclencher le calcul AI si aucun score n'est disponible
-  React.useEffect(() => {
-    if (candidate.id && !aiScore.score && !aiScore.isLoading && !aiScore.error) {
-      console.log('Auto-calculating AI score for kanban card:', candidate.id);
-      calculateAIScore(candidate.id);
-    }
-  }, [candidate.id, aiScore.score, aiScore.isLoading, aiScore.error, calculateAIScore]);
+  // SUPPRIMÉ : Plus de useEffect pour déclencher automatiquement les calculs
+  // Les scores seront calculés à la demande ou préchargés intelligemment
 
   return (
     <Card 

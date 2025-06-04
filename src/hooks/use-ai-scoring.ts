@@ -20,6 +20,7 @@ interface AIScoringState {
 export const useAIScoring = () => {
   const [scoringState, setScoringState] = useState<AIScoringState>({});
   const [isCalculating, setIsCalculating] = useState(false);
+  const [preloadedCandidates, setPreloadedCandidates] = useState<Set<string>>(new Set());
   const { activeJobOfferId } = useActiveJob();
   
   /**
@@ -32,7 +33,7 @@ export const useAIScoring = () => {
     const existing = scoringState[currentKey];
     if (!forceRecalculate && existing && !existing.isLoading && existing.score !== null) {
       const age = Date.now() - existing.lastUpdated;
-      if (age < 2 * 60 * 1000) { // 2 minutes en mémoire
+      if (age < 5 * 60 * 1000) { // 5 minutes en mémoire
         console.log('Using recent in-memory AI score for candidate:', candidateId);
         return existing;
       }
@@ -87,17 +88,13 @@ export const useAIScoring = () => {
       
       console.log('AI score calculated successfully:', result.score, 'Source:', result.source);
       
-      // Toast informatif sur la source du score
-      const sourceMessage = result.source === 'database' ? 
-        'Score récupéré depuis la base de données' :
-        result.source === 'fresh_calculation' ? 
-        'Nouveau score calculé avec l\'IA' : 
-        'Score récupéré depuis le cache';
-      
-      toast({
-        title: "Score calculé",
-        description: `${result.score}% - ${sourceMessage}`,
-      });
+      // Toast informatif uniquement pour les nouveaux calculs
+      if (result.source === 'fresh_calculation' || forceRecalculate) {
+        toast({
+          title: "Score calculé",
+          description: `${result.score}% - Nouveau score calculé avec l'IA`,
+        });
+      }
       
       return newState;
       
@@ -151,19 +148,42 @@ export const useAIScoring = () => {
   const invalidateScores = useCallback(() => {
     console.log('Invalidating AI scores due to context change');
     setScoringState({});
+    setPreloadedCandidates(new Set());
   }, []);
   
   /**
-   * Précharger les scores depuis la base de données
+   * Précharger les scores depuis la base de données (optimisé pour éviter les doublons)
    */
   const preloadScoresFromDatabase = useCallback(async (candidateIds: string[]) => {
-    console.log('Preloading AI scores from database for', candidateIds.length, 'candidates');
+    const contextKey = activeJobOfferId || 'general';
     
-    const promises = candidateIds.map(async (candidateId) => {
+    // Filtrer les candidats déjà préchargés pour ce contexte
+    const newCandidateIds = candidateIds.filter(candidateId => {
+      const fullKey = `${candidateId}_${contextKey}`;
+      return !preloadedCandidates.has(fullKey) && !scoringState[fullKey];
+    });
+    
+    if (newCandidateIds.length === 0) {
+      console.log('All candidates already preloaded for current context');
+      return;
+    }
+    
+    console.log('Preloading AI scores from database for', newCandidateIds.length, 'new candidates');
+    
+    // Marquer comme préchargés
+    setPreloadedCandidates(prev => {
+      const newSet = new Set(prev);
+      newCandidateIds.forEach(candidateId => {
+        newSet.add(`${candidateId}_${contextKey}`);
+      });
+      return newSet;
+    });
+    
+    const promises = newCandidateIds.map(async (candidateId) => {
       try {
         const result = await aiScoringService.getScoreWithExplanation(candidateId, activeJobOfferId);
         if (result && result.source === 'database') {
-          const key = `${candidateId}_${activeJobOfferId || 'general'}`;
+          const key = `${candidateId}_${contextKey}`;
           setScoringState(prev => ({
             ...prev,
             [key]: {
@@ -184,8 +204,8 @@ export const useAIScoring = () => {
     });
     
     await Promise.all(promises);
-    console.log('Preloading completed');
-  }, [activeJobOfferId]);
+    console.log('Preloading completed for', newCandidateIds.length, 'candidates');
+  }, [activeJobOfferId, preloadedCandidates, scoringState]);
   
   // Invalider les scores quand l'offre active change
   useEffect(() => {

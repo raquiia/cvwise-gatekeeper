@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CandidateData } from '@/services/data/candidateService';
 import KanbanColumn from './KanbanColumn';
@@ -20,15 +20,21 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
 }) => {
   const { preloadScoresFromDatabase } = useAIScoring();
   const { toast } = useToast();
+  const [localCandidates, setLocalCandidates] = useState<CandidateData[]>(candidates);
 
-  // Précharger les scores AI pour tous les candidats du kanban
+  // Synchroniser avec les props candidates
+  useEffect(() => {
+    setLocalCandidates(candidates);
+  }, [candidates]);
+
+  // Précharger les scores AI SEULEMENT une fois et de manière intelligente
   useEffect(() => {
     const candidateIds = candidates.map(c => c.id!).filter(Boolean);
     if (candidateIds.length > 0) {
-      console.log('Preloading AI scores for kanban candidates:', candidateIds.length);
+      console.log('Preloading AI scores for kanban candidates (once only):', candidateIds.length);
       preloadScoresFromDatabase(candidateIds);
     }
-  }, [candidates, preloadScoresFromDatabase]);
+  }, [candidates.length, preloadScoresFromDatabase]); // Dépendance sur length seulement
 
   const statuses = [
     'initial',
@@ -43,7 +49,7 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
   ];
 
   const getCandidatesByStatus = (status: string) => {
-    return candidates.filter(candidate => 
+    return localCandidates.filter(candidate => 
       (candidate.detailed_status || 'initial') === status
     );
   };
@@ -52,19 +58,28 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
     try {
       console.log('Updating candidate status via drag & drop:', { candidateId, newStatus });
       
+      // Mise à jour optimiste locale AVANT l'appel API
+      setLocalCandidates(prevCandidates => 
+        prevCandidates.map(candidate => 
+          candidate.id === candidateId 
+            ? { ...candidate, detailed_status: newStatus }
+            : candidate
+        )
+      );
+      
       const success = await candidateStatusService.updateCandidateStatus(candidateId, newStatus);
       
       if (success) {
-        // Rafraîchir la liste des candidats si la fonction est fournie
-        if (onCandidateDeleted) {
-          onCandidateDeleted();
-        }
-        
         toast({
           title: "Statut mis à jour",
           description: `Le candidat a été déplacé vers "${CANDIDATE_STATUS_LABELS[newStatus]}"`,
         });
+        
+        // PAS de rechargement complet - la mise à jour locale suffit
+        // On ne call onCandidateDeleted que si nécessaire pour d'autres vues
       } else {
+        // Rollback en cas d'échec
+        setLocalCandidates(candidates);
         toast({
           title: "Erreur",
           description: "Impossible de mettre à jour le statut du candidat",
@@ -73,11 +88,21 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
       }
     } catch (error) {
       console.error('Error updating candidate status:', error);
+      
+      // Rollback en cas d'erreur
+      setLocalCandidates(candidates);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue lors de la mise à jour du statut",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleCandidateDeleted = () => {
+    // Rafraîchir seulement si on a une vraie suppression
+    if (onCandidateDeleted) {
+      onCandidateDeleted();
     }
   };
 
@@ -95,7 +120,7 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
               title={statusLabel}
               candidates={statusCandidates}
               onViewCandidate={onViewCandidate}
-              onCandidateDeleted={onCandidateDeleted}
+              onCandidateDeleted={handleCandidateDeleted}
               onDrop={handleDrop}
             />
           );
