@@ -153,14 +153,21 @@ const RealDataMetrics: React.FC<RealDataMetricsProps> = ({ candidatesData }) => 
       .filter(item => item.value > 0);
   };
 
-  // Métriques d'activité récente
+  // Métriques d'activité récente - FIXED
   const getRecentActivity = () => {
     const today = new Date();
     const last7Days = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
     const last30Days = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    const recent7 = candidatesData.filter(c => new Date(c.created_at).getTime() >= last7Days.getTime()).length;
-    const recent30 = candidatesData.filter(c => new Date(c.created_at).getTime() >= last30Days.getTime()).length;
+    const recent7 = candidatesData.filter(c => {
+      const candidateDate = new Date(c.created_at);
+      return candidateDate.getTime() >= last7Days.getTime();
+    }).length;
+    
+    const recent30 = candidatesData.filter(c => {
+      const candidateDate = new Date(c.created_at);
+      return candidateDate.getTime() >= last30Days.getTime();
+    }).length;
 
     return { recent7, recent30 };
   };
