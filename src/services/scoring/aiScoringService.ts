@@ -40,17 +40,14 @@ class AIScoringService {
     }
     
     try {
-      // Vérifier dans la base de données
+      // Vérifier dans la base de données en utilisant une requête SQL brute
       console.log('Checking for cached AI score in database...', { candidateId, jobOfferId });
       
       const { data: cachedScore, error: cacheError } = await supabase
-        .from('ai_candidate_scores')
-        .select('*')
-        .eq('candidate_id', candidateId)
-        .eq('job_offer_id', jobOfferId || null)
-        .order('calculated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .rpc('get_ai_candidate_score', {
+          p_candidate_id: candidateId,
+          p_job_offer_id: jobOfferId || null
+        });
       
       if (cacheError) {
         console.warn('Error checking cached score:', cacheError);
@@ -88,6 +85,13 @@ class AIScoringService {
     this.scoreCache.delete(cacheKey);
     
     try {
+      // Supprimer l'ancien score de la base de données
+      await supabase
+        .rpc('delete_ai_candidate_score', {
+          p_candidate_id: candidateId,
+          p_job_offer_id: jobOfferId || null
+        });
+      
       // Calculer un nouveau score sans vérifier le cache
       const result = await this.calculateNewScore(candidateId, jobOfferId);
       
@@ -148,7 +152,7 @@ class AIScoringService {
    * Vérifier si un score en base de données est encore valide
    */
   private isScoreValid(scoreData: any): boolean {
-    if (!scoreData.score || !scoreData.explanation) {
+    if (!scoreData || !scoreData.score || !scoreData.explanation) {
       return false;
     }
     
