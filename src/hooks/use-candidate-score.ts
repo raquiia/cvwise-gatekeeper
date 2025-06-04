@@ -9,7 +9,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const { calculateContextualScore, getCachedScore, isScoreLoading } = useOptimizedScoring();
+  const { calculateContextualScore, getCachedScore, isScoreLoading, isJobSpecific } = useOptimizedScoring();
   
   useEffect(() => {
     if (!candidate.id) return;
@@ -82,6 +82,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
   return {
     score,
     isLoading,
-    error
+    error,
+    isJobSpecific
   };
 };

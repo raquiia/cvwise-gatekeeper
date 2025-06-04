@@ -58,20 +58,8 @@ export const ActiveJobProvider: React.FC<ActiveJobProviderProps> = ({ children }
           timestamp: Date.now()
         }));
         
-        // Trigger pre-calculation of job scores in background
-        // This is non-blocking and will improve user experience
-        if (typeof window !== 'undefined') {
-          setTimeout(async () => {
-            try {
-              console.log('Starting background score calculation for job:', jobOfferId);
-              const { persistentScoringService } = await import('@/services/scoring/persistentScoringService');
-              await persistentScoringService.calculateAllCandidatesJobScores(jobOfferId);
-              console.log('Background score calculation completed');
-            } catch (error) {
-              console.error('Error in background score calculation:', error);
-            }
-          }, 1000); // Start after 1 second to not block UI
-        }
+        // Log that job scores will be calculated on demand
+        console.log('Job context set, scores will be calculated on demand for job:', jobOfferId);
       } else {
         localStorage.removeItem(STORAGE_KEY);
       }

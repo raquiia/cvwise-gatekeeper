@@ -235,7 +235,7 @@ export class OptimizedScoringService {
       // Calculer les scores selon vos critères
       const scores = this.calculateMatchingScores(candidate, jobOffer, notes || []);
       
-      // Stocker le résultat dans la base de données
+      // Stocker le résultat dans la base de données avec le bon format de timestamp
       const { error: insertError } = await supabase
         .from('candidate_job_matching_scores')
         .upsert({
@@ -256,7 +256,7 @@ export class OptimizedScoringService {
           last_candidate_update: candidate.updated_at,
           last_job_update: jobOffer.updated_at,
           last_notes_update: notes && notes.length > 0 ? 
-            Math.max(...notes.map(n => new Date(n.updated_at).getTime())) : null
+            new Date(Math.max(...notes.map(n => new Date(n.updated_at).getTime()))).toISOString() : null
         });
       
       if (insertError) {
@@ -264,7 +264,15 @@ export class OptimizedScoringService {
       }
       
       return {
-        ...scores,
+        education_match_score: scores.education_match_score,
+        skills_tools_score: scores.skills_tools_score,
+        relevant_experience_score: scores.relevant_experience_score,
+        location_score: scores.location_score,
+        languages_match_score: scores.languages_match_score,
+        cultural_fit_score: scores.cultural_fit_score,
+        availability_mobility_score: scores.availability_mobility_score,
+        interview_notes_bonus: scores.interview_notes_bonus,
+        total_matching_score: scores.total_matching_score,
         calculated_at: new Date().toISOString(),
         is_job_specific: true,
         job_offer_id: jobOfferId,

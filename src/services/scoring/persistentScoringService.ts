@@ -84,6 +84,95 @@ export class PersistentScoringService {
   }
   
   /**
+   * Recalculer le score général d'un candidat
+   */
+  async recalculateGeneralScore(candidateId: string): Promise<number | null> {
+    try {
+      const scoreBreakdown = await optimizedScoringService.forceRecalculate(candidateId);
+      return scoreBreakdown ? scoreBreakdown.general_score : null;
+    } catch (error: any) {
+      console.error('Error recalculating general score:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Calculer et stocker le score de matching avec une offre
+   */
+  async calculateAndStoreJobScore(candidateId: string, jobOfferId: string): Promise<number | null> {
+    try {
+      const scoreBreakdown = await optimizedScoringService.calculateMatchingScore(candidateId, jobOfferId);
+      return scoreBreakdown ? scoreBreakdown.total_matching_score! : null;
+    } catch (error: any) {
+      console.error('Error calculating job score:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Obtenir le score général d'un candidat
+   */
+  async getCandidateGeneralScore(candidateId: string): Promise<any> {
+    try {
+      const scoreBreakdown = await optimizedScoringService.getCompletenessScore(candidateId);
+      if (!scoreBreakdown) return null;
+      
+      return {
+        skills: scoreBreakdown.skills_score,
+        experience: scoreBreakdown.experience_score,
+        education: scoreBreakdown.education_score,
+        profileCompleteness: scoreBreakdown.cv_structure_score,
+        overall: scoreBreakdown.general_score,
+        details: {
+          skillsCount: 0,
+          experienceYears: 0,
+          educationLevel: 'Non spécifié',
+          completenessPercentage: scoreBreakdown.general_score
+        }
+      };
+    } catch (error) {
+      console.error('Error getting general score:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Obtenir le score de matching avec une offre
+   */
+  async getCandidateJobScore(candidateId: string, jobOfferId: string): Promise<any> {
+    try {
+      const scoreBreakdown = await optimizedScoringService.calculateMatchingScore(candidateId, jobOfferId);
+      if (!scoreBreakdown) return null;
+      
+      return {
+        skills: scoreBreakdown.skills_tools_score!,
+        experience: scoreBreakdown.relevant_experience_score!,
+        education: scoreBreakdown.education_match_score!,
+        profileCompleteness: 50,
+        overall: scoreBreakdown.total_matching_score!,
+        matchContext: `Score de correspondance`,
+        details: {
+          skillsCount: 0,
+          experienceYears: 0,
+          educationLevel: 'Non spécifié',
+          completenessPercentage: scoreBreakdown.total_matching_score!
+        }
+      };
+    } catch (error) {
+      console.error('Error getting job score:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Calculer les scores de tous les candidats pour une offre d'emploi
+   */
+  async calculateAllCandidatesJobScores(jobOfferId: string): Promise<void> {
+    // Cette méthode sera implémentée plus tard si nécessaire
+    console.log('calculateAllCandidatesJobScores not yet implemented for jobOfferId:', jobOfferId);
+  }
+  
+  /**
    * Migrer les scores existants vers le nouveau système (si nécessaire)
    */
   async migrateExistingScores(candidates: CandidateData[]): Promise<void> {

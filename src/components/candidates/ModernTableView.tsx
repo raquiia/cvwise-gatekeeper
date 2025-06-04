@@ -255,8 +255,10 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
       );
     }
 
-    const score = scoreData.overall;
-    const isJobSpecificScore = scoreData.isJobSpecific;
+    const score = scoreData.is_job_specific ? 
+      scoreData.total_matching_score! : 
+      scoreData.general_score;
+    const isJobSpecificScore = scoreData.is_job_specific;
     
     let bgColor = 'bg-red-100 text-red-700 border-red-200';
     
