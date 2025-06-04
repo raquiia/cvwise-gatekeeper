@@ -1,134 +1,195 @@
 
-// A simplified PDF text extractor for Supabase Edge Functions
-// Properly imports PDF.js library for Deno environment
+// Extracteur de texte PDF simplifié et robuste pour Supabase Edge Functions
+// Version corrigée pour Deno avec meilleure compatibilité
 
-// Import PDF.js in a Deno-compatible way
-import pdfjs from "npm:pdfjs-dist@3.11.174";
-
-// Configure PDF.js for Deno environment
-const CMAP_URL = "npm:pdfjs-dist@3.11.174/cmaps/";
-const CMAP_PACKED = true;
+import * as pdfjs from "npm:pdfjs-dist@4.0.379";
 
 /**
- * Extract text from a PDF file
- * @param pdfData ArrayBuffer containing the PDF data
- * @returns Object with extracted text and page count
+ * Extraire le texte d'un fichier PDF
+ * @param pdfData ArrayBuffer contenant les données PDF
+ * @returns Objet avec le texte extrait et le nombre de pages
  */
 export async function extractTextFromPDF(pdfData: ArrayBuffer): Promise<{ extractedText: string; pageCount: number }> {
-  console.log("Starting PDF extraction process");
+  console.log("🔄 Début de l'extraction PDF");
+  console.log(`📊 Taille du fichier: ${(pdfData.byteLength / 1024).toFixed(2)} KB`);
   
   try {
-    // Load the PDF document using the correct import
+    // Configuration simplifiée pour éviter les problèmes de compatibilité
     const loadingTask = pdfjs.getDocument({
       data: pdfData,
-      cMapUrl: CMAP_URL,
-      cMapPacked: CMAP_PACKED,
+      // Configuration minimale pour éviter les erreurs
       disableFontFace: true,
       useSystemFonts: false,
+      verbosity: 0
     });
     
     const pdfDocument = await loadingTask.promise;
-    console.log(`PDF loaded successfully, contains ${pdfDocument.numPages} pages`);
+    const numPages = pdfDocument.numPages;
+    console.log(`📄 PDF chargé avec succès: ${numPages} pages`);
     
     let fullText = '';
+    let totalTextItems = 0;
     
-    // Process each page
-    for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
+    // Traiter chaque page avec gestion d'erreur individuelle
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
       try {
-        console.log(`Processing page ${pageNum}/${pdfDocument.numPages}`);
+        console.log(`🔍 Traitement de la page ${pageNum}/${numPages}`);
         const page = await pdfDocument.getPage(pageNum);
         
+        // Méthode principale d'extraction
         try {
-          // Extract text content with detailed options
           const textContent = await page.getTextContent({
             normalizeWhitespace: true,
             disableCombineTextItems: false,
+            includeMarkedContent: false
           });
           
-          // Process text items with position information
-          let lastY = null;
-          let pageText = '';
+          console.log(`📝 Page ${pageNum}: ${textContent.items.length} éléments de texte trouvés`);
           
-          for (const item of textContent.items) {
-            if ('str' in item && item.str) {
-              // Check if we need to add a new line based on Y position
-              if (lastY !== null && Math.abs(lastY - item.transform[5]) > 5) {
-                pageText += '\n';
+          if (textContent.items && textContent.items.length > 0) {
+            let pageText = '';
+            let lastY = null;
+            
+            for (const item of textContent.items) {
+              if ('str' in item && item.str && item.str.trim()) {
+                // Gestion des sauts de ligne basés sur la position Y
+                if (lastY !== null && item.transform && item.transform[5] !== undefined) {
+                  const currentY = item.transform[5];
+                  if (Math.abs(lastY - currentY) > 5) {
+                    pageText += '\n';
+                  }
+                  lastY = currentY;
+                } else if (lastY === null && item.transform && item.transform[5] !== undefined) {
+                  lastY = item.transform[5];
+                }
+                
+                pageText += item.str + ' ';
+                totalTextItems++;
               }
-              
-              // Add the text content
-              pageText += item.str + ' ';
-              
-              // Update lastY position
-              lastY = item.transform[5];
             }
+            
+            if (pageText.trim()) {
+              fullText += pageText.trim() + '\n\n';
+              console.log(`✅ Page ${pageNum}: ${pageText.trim().length} caractères extraits`);
+            } else {
+              console.warn(`⚠️ Page ${pageNum}: Aucun texte extrait malgré ${textContent.items.length} éléments`);
+            }
+          } else {
+            console.warn(`⚠️ Page ${pageNum}: Aucun élément de texte trouvé`);
           }
           
-          fullText += pageText + '\n\n';
-        } catch (textExtractionError) {
-          console.error(`Error extracting text from page ${pageNum}:`, textExtractionError);
-          // Try fallback method for this page
-          const textContent = await page.getTextContent();
-          const strings = textContent.items.map(item => 'str' in item ? item.str : '');
-          fullText += strings.join(' ') + '\n\n';
+        } catch (pageError) {
+          console.error(`❌ Erreur lors de l'extraction de la page ${pageNum}:`, pageError);
+          
+          // Méthode de fallback simplifiée pour cette page
+          try {
+            const fallbackContent = await page.getTextContent();
+            const fallbackText = fallbackContent.items
+              .filter(item => 'str' in item && item.str)
+              .map(item => 'str' in item ? item.str : '')
+              .join(' ');
+            
+            if (fallbackText.trim()) {
+              fullText += fallbackText.trim() + '\n\n';
+              console.log(`🔄 Page ${pageNum}: ${fallbackText.length} caractères extraits via fallback`);
+            }
+          } catch (fallbackError) {
+            console.error(`❌ Fallback échoué pour la page ${pageNum}:`, fallbackError);
+            fullText += `[Erreur d'extraction pour la page ${pageNum}]\n\n`;
+          }
         }
-      } catch (pageError) {
-        console.error(`Error processing page ${pageNum}:`, pageError);
-        fullText += `[Error extracting page ${pageNum}]\n\n`;
+        
+      } catch (pageLoadError) {
+        console.error(`❌ Impossible de charger la page ${pageNum}:`, pageLoadError);
+        fullText += `[Impossible de charger la page ${pageNum}]\n\n`;
       }
     }
     
-    // Clean up extracted text
+    console.log(`📊 Extraction terminée: ${totalTextItems} éléments de texte traités`);
+    
+    // Nettoyage du texte extrait
     let cleanedText = fullText
-      .replace(/\s+/g, ' ')           // Normalize whitespace
-      .replace(/\n+/g, '\n')          // Normalize line breaks
-      .replace(/\n /g, '\n')          // Remove spaces after line breaks
+      .replace(/\s+/g, ' ')           // Normaliser les espaces
+      .replace(/\n+/g, '\n')          // Normaliser les retours à la ligne
+      .replace(/\n /g, '\n')          // Supprimer les espaces après les retours
       .trim();
     
-    // Additional cleaning for better readability
+    // Nettoyage avancé pour une meilleure lisibilité
     cleanedText = cleanedText
-      .replace(/([.!?]) ([A-Z])/g, '$1\n$2')  // Add line breaks after sentences
-      .replace(/(\w) - (\w)/g, '$1-$2')       // Fix hyphenated words
-      .replace(/\n{3,}/g, '\n\n');            // Limit consecutive line breaks
+      .replace(/([.!?])\s+([A-ZÀ-Ÿ])/g, '$1\n$2')  // Retours après phrases
+      .replace(/(\w)\s*-\s*(\w)/g, '$1-$2')         // Corriger les mots coupés
+      .replace(/\n{3,}/g, '\n\n')                   // Limiter les retours multiples
+      .replace(/\s*\n\s*/g, '\n');                  // Nettoyer autour des retours
     
-    console.log(`Extraction complete. Extracted ${cleanedText.length} characters`);
+    const finalLength = cleanedText.length;
+    console.log(`📋 Texte final: ${finalLength} caractères`);
+    
+    if (finalLength > 0) {
+      console.log(`🎯 Aperçu du texte extrait: "${cleanedText.substring(0, 200)}..."`);
+    }
+    
+    // Validation du résultat
+    if (finalLength < 10) {
+      console.warn(`⚠️ Texte extrait très court (${finalLength} caractères)`);
+      
+      // Tentative de diagnostic
+      if (totalTextItems === 0) {
+        throw new Error("Aucun élément de texte trouvé dans le PDF - le document pourrait être basé sur des images ou protégé");
+      } else {
+        console.warn(`🔍 ${totalTextItems} éléments trouvés mais texte final court - possibles caractères spéciaux ou formatage complexe`);
+      }
+    }
     
     return {
       extractedText: cleanedText,
-      pageCount: pdfDocument.numPages
+      pageCount: numPages
     };
-  } catch (error) {
-    console.error("PDF extraction failed:", error);
     
-    // Try a simpler fallback method if the main extraction fails
+  } catch (error) {
+    console.error("💥 Échec de l'extraction PDF principale:", error);
+    
+    // Méthode de fallback globale ultra-simplifiée
     try {
-      console.log("Attempting fallback extraction method");
-      const loadingTask = pdfjs.getDocument({
+      console.log("🔄 Tentative de fallback avec configuration minimale");
+      
+      const fallbackTask = pdfjs.getDocument({
         data: pdfData,
-        disableFontFace: true,
+        verbosity: 0
       });
       
-      const pdfDocument = await loadingTask.promise;
+      const fallbackDoc = await fallbackTask.promise;
       let fallbackText = '';
       
-      for (let i = 1; i <= pdfDocument.numPages; i++) {
-        const page = await pdfDocument.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .filter(item => 'str' in item)
-          .map(item => 'str' in item ? item.str : '')
-          .join(' ');
-        
-        fallbackText += pageText + '\n\n';
+      for (let i = 1; i <= fallbackDoc.numPages; i++) {
+        try {
+          const page = await fallbackDoc.getPage(i);
+          const content = await page.getTextContent();
+          
+          const pageText = content.items
+            .filter(item => 'str' in item && item.str)
+            .map(item => 'str' in item ? item.str : '')
+            .join(' ');
+          
+          fallbackText += pageText + '\n\n';
+        } catch (pageError) {
+          console.error(`Erreur fallback page ${i}:`, pageError);
+        }
       }
       
-      return {
-        extractedText: fallbackText.trim(),
-        pageCount: pdfDocument.numPages
-      };
+      const cleanedFallback = fallbackText.trim();
+      console.log(`🔄 Fallback réussi: ${cleanedFallback.length} caractères`);
+      
+      if (cleanedFallback.length > 0) {
+        return {
+          extractedText: cleanedFallback,
+          pageCount: fallbackDoc.numPages
+        };
+      }
+      
     } catch (fallbackError) {
-      console.error("Fallback extraction also failed:", fallbackError);
-      throw new Error("Impossible d'extraire le texte du PDF: " + error.message);
+      console.error("💥 Fallback également échoué:", fallbackError);
     }
+    
+    throw new Error(`Impossible d'extraire le texte du PDF: ${error.message}`);
   }
 }
