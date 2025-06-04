@@ -9,6 +9,7 @@ import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/use-confirm';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ensureStringArray } from '@/utils/candidateUtils';
 
 interface CandidatesTableProps {
   candidates: CandidateData[];
@@ -92,109 +93,113 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {candidates.map((candidate) => (
-            <TableRow 
-              key={candidate.id} 
-              className="hover:bg-gray-50/50 transition-colors duration-200 border-b border-gray-100"
-            >
-              <TableCell className="font-medium">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-white text-sm font-medium">
-                    {candidate.first_name?.[0]}{candidate.last_name?.[0]}
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">
-                      {candidate.first_name} {candidate.last_name}
+          {candidates.map((candidate) => {
+            const skills = ensureStringArray(candidate.skills);
+            
+            return (
+              <TableRow 
+                key={candidate.id} 
+                className="hover:bg-gray-50/50 transition-colors duration-200 border-b border-gray-100"
+              >
+                <TableCell className="font-medium">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-white text-sm font-medium">
+                      {candidate.first_name?.[0]}{candidate.last_name?.[0]}
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {candidate.first_name} {candidate.last_name}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </TableCell>
-              
-              <TableCell className="text-gray-600">
-                {candidate.email}
-              </TableCell>
-              
-              <TableCell className="text-gray-800 font-medium">
-                {candidate.position || 'Non spécifié'}
-              </TableCell>
-              
-              <TableCell className="text-gray-600">
-                {candidate.company || 'Non spécifiée'}
-              </TableCell>
-              
-              <TableCell className="text-gray-600">
-                {candidate.location || 'Non spécifiée'}
-              </TableCell>
-              
-              <TableCell className="text-gray-600">
-                {candidate.years_experience ? `${candidate.years_experience} ans` : 'Non spécifiée'}
-              </TableCell>
-              
-              <TableCell>
-                <div className="flex flex-wrap gap-1">
-                  {candidate.skills && Array.isArray(candidate.skills) ? (
-                    <>
-                      {candidate.skills.slice(0, 2).map((skill, idx) => (
-                        <Badge key={idx} variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                          {skill}
-                        </Badge>
-                      ))}
-                      {candidate.skills.length > 2 && (
-                        <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600">
-                          +{candidate.skills.length - 2}
-                        </Badge>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-gray-400 text-sm">Aucune</span>
-                  )}
-                </div>
-              </TableCell>
-              
-              <TableCell>
-                <Badge className={getStatusColor(candidate.detailed_status || 'initial')}>
-                  {CANDIDATE_STATUS_LABELS[candidate.detailed_status || 'initial'] || 'Initial'}
-                </Badge>
-              </TableCell>
-              
-              <TableCell>
-                <div className="flex items-center">
-                  <span className={`font-bold ${getScoreColor(candidate.score || 0)}`}>
-                    {candidate.score || 0}%
-                  </span>
-                </div>
-              </TableCell>
-              
-              <TableCell className="text-center">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100">
-                      <span className="sr-only">Ouvrir le menu</span>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-white border shadow-lg">
-                    <DropdownMenuLabel className="font-semibold">Actions</DropdownMenuLabel>
-                    <DropdownMenuItem 
-                      onClick={() => handleCandidateSelect(candidate)}
-                      className="cursor-pointer hover:bg-gray-50"
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      Voir le profil
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={() => handleDeleteCandidate(candidate.id!)}
-                      className="cursor-pointer hover:bg-red-50 text-red-600"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Supprimer
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
+                </TableCell>
+                
+                <TableCell className="text-gray-600">
+                  {candidate.email}
+                </TableCell>
+                
+                <TableCell className="text-gray-800 font-medium">
+                  {candidate.position || 'Non spécifié'}
+                </TableCell>
+                
+                <TableCell className="text-gray-600">
+                  {candidate.company || 'Non spécifiée'}
+                </TableCell>
+                
+                <TableCell className="text-gray-600">
+                  {candidate.location || 'Non spécifiée'}
+                </TableCell>
+                
+                <TableCell className="text-gray-600">
+                  {candidate.years_experience ? `${candidate.years_experience} ans` : 'Non spécifiée'}
+                </TableCell>
+                
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {skills.length > 0 ? (
+                      <>
+                        {skills.slice(0, 2).map((skill, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                            {skill}
+                          </Badge>
+                        ))}
+                        {skills.length > 2 && (
+                          <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600">
+                            +{skills.length - 2}
+                          </Badge>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-gray-400 text-sm">Aucune</span>
+                    )}
+                  </div>
+                </TableCell>
+                
+                <TableCell>
+                  <Badge className={getStatusColor(candidate.detailed_status || 'initial')}>
+                    {CANDIDATE_STATUS_LABELS[candidate.detailed_status || 'initial'] || 'Initial'}
+                  </Badge>
+                </TableCell>
+                
+                <TableCell>
+                  <div className="flex items-center">
+                    <span className={`font-bold ${getScoreColor(candidate.score || 0)}`}>
+                      {candidate.score || 0}%
+                    </span>
+                  </div>
+                </TableCell>
+                
+                <TableCell className="text-center">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100">
+                        <span className="sr-only">Ouvrir le menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-white border shadow-lg">
+                      <DropdownMenuLabel className="font-semibold">Actions</DropdownMenuLabel>
+                      <DropdownMenuItem 
+                        onClick={() => handleCandidateSelect(candidate)}
+                        className="cursor-pointer hover:bg-gray-50"
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        Voir le profil
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => handleDeleteCandidate(candidate.id!)}
+                        className="cursor-pointer hover:bg-red-50 text-red-600"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Supprimer
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
       

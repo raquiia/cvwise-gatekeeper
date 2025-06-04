@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Brain, Sparkles, Briefcase, Target } from 'lucide-react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import type { CandidateData } from '@/services/data/candidateService';
+import { ensureStringArray } from '@/utils/candidateUtils';
 
 interface CandidateAIScoreCardProps {
   candidate: CandidateData;
@@ -52,6 +53,8 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
       return 'Profil incomplet';
     }
   };
+
+  const skills = ensureStringArray(candidate.skills);
   
   return (
     <Card 
@@ -132,17 +135,17 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
           )}
         </div>
         
-        {candidate.skills && Array.isArray(candidate.skills) && candidate.skills.length > 0 && (
+        {skills.length > 0 && (
           <div className="mt-3 pt-3 border-t border-gray-100">
             <div className="flex flex-wrap gap-1">
-              {candidate.skills.slice(0, 3).map((skill, index) => (
+              {skills.slice(0, 3).map((skill, index) => (
                 <Badge key={index} variant="outline" className="text-xs">
                   {skill}
                 </Badge>
               ))}
-              {candidate.skills.length > 3 && (
+              {skills.length > 3 && (
                 <Badge variant="outline" className="text-xs">
-                  +{candidate.skills.length - 3}
+                  +{skills.length - 3}
                 </Badge>
               )}
             </div>

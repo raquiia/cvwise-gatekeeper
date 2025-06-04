@@ -4,6 +4,13 @@ import autoTable from 'jspdf-autotable';
 import { CandidateData } from '@/services/data/candidateService';
 import { CandidateNote } from '@/services/data/candidateNotesService';
 import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
+import { Json } from '@/integrations/supabase/types';
+
+// Helper function to safely handle JSON arrays
+const ensureArray = (data: Json): any[] => {
+  if (Array.isArray(data)) return data;
+  return [];
+};
 
 // Fonction pour générer un PDF de profil candidat
 export const generateCandidateProfilePdf = async (
@@ -72,7 +79,8 @@ export const generateCandidateProfilePdf = async (
     yPosition += 10;
     
     // Expériences professionnelles
-    if (candidate.experiences && candidate.experiences.length > 0) {
+    const experiences = ensureArray(candidate.experiences);
+    if (experiences.length > 0) {
       doc.setFontSize(14);
       doc.setTextColor(41, 128, 185); // Couleur bleue
       doc.text('Expériences Professionnelles', 20, yPosition);
@@ -80,7 +88,7 @@ export const generateCandidateProfilePdf = async (
       doc.setFontSize(11);
       yPosition += 10;
       
-      candidate.experiences.forEach((exp: any) => {
+      experiences.forEach((exp: any) => {
         // Date de l'expérience
         const dateRange = `${exp.start_date || '?'} - ${exp.end_date || 'Présent'}`;
         doc.setFont(undefined, 'bold');
@@ -120,7 +128,8 @@ export const generateCandidateProfilePdf = async (
     }
     
     // Formation
-    if (candidate.education && candidate.education.length > 0) {
+    const education = ensureArray(candidate.education);
+    if (education.length > 0) {
       if (yPosition > 240) {
         doc.addPage();
         yPosition = 20;
@@ -133,7 +142,7 @@ export const generateCandidateProfilePdf = async (
       doc.setFontSize(11);
       yPosition += 10;
       
-      candidate.education.forEach((edu: any) => {
+      education.forEach((edu: any) => {
         const dateRange = `${edu.start_date || '?'} - ${edu.end_date || 'Présent'}`;
         doc.setFont(undefined, 'bold');
         doc.text(dateRange, 20, yPosition);
@@ -165,7 +174,8 @@ export const generateCandidateProfilePdf = async (
     }
     
     // Compétences
-    if (candidate.skills && candidate.skills.length > 0) {
+    const skills = ensureArray(candidate.skills);
+    if (skills.length > 0) {
       if (yPosition > 250) {
         doc.addPage();
         yPosition = 20;
@@ -178,20 +188,20 @@ export const generateCandidateProfilePdf = async (
       doc.setFontSize(11);
       yPosition += 10;
       
-      const skills = candidate.skills.map((skill: any) => {
+      const skillsArray = skills.map((skill: any) => {
         if (typeof skill === 'string') return skill;
         return skill.name || '';
       }).filter(Boolean);
       
       // Afficher les compétences sur plusieurs colonnes
       const skillsPerRow = 3;
-      const skillRows = Math.ceil(skills.length / skillsPerRow);
+      const skillRows = Math.ceil(skillsArray.length / skillsPerRow);
       
       for (let i = 0; i < skillRows; i++) {
         for (let j = 0; j < skillsPerRow; j++) {
           const index = i * skillsPerRow + j;
-          if (index < skills.length) {
-            doc.text(`• ${skills[index]}`, 20 + j * 60, yPosition);
+          if (index < skillsArray.length) {
+            doc.text(`• ${skillsArray[index]}`, 20 + j * 60, yPosition);
           }
         }
         yPosition += 7;
@@ -258,7 +268,7 @@ export const generateCandidateProfilePdf = async (
     }
     
     // Téléchargement du PDF
-    const fileName = `${candidate.last_name.toUpperCase()}_${candidate.first_name}_CV_${new Date().toISOString().slice(0, 10)}.pdf`;
+    const fileName = `${candidate.last_name?.toUpperCase() || 'CANDIDAT'}_${candidate.first_name || 'UNKNOWN'}_CV_${new Date().toISOString().slice(0, 10)}.pdf`;
     doc.save(fileName);
     
   } catch (error) {

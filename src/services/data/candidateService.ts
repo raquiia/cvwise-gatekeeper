@@ -37,7 +37,6 @@ export interface CandidateData {
   special_permits?: Json;
   industries?: Json;
   projects?: Json;
-  publications?: Json;
   detailed_status?: string;
   status?: string;
   score?: number;
@@ -113,7 +112,7 @@ export const candidateService = {
   },
 
   // Create a new candidate
-  createCandidate: async (candidateData: Omit<CandidateData, 'id' | 'created_at'>): Promise<CandidateData> => {
+  createCandidate: async (candidateData: Partial<CandidateData> & { first_name: string; last_name: string; user_id: string }): Promise<CandidateData> => {
     try {
       const { data, error } = await supabase
         .from('candidates')

@@ -25,7 +25,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   const [position, setPosition] = useState(candidate.position || '');
   const [location, setLocation] = useState(candidate.location || '');
   const [yearsExperience, setYearsExperience] = useState(candidate.years_experience || 0);
-  const [salaryExpectation, setSalaryExpectation] = useState(candidate.salary_expectations || candidate.salary_expectation || '');
+  const [salaryExpectation, setSalaryExpectation] = useState(candidate.salary_expectations || '');
   const [availability, setAvailability] = useState(candidate.availability || '');
   const [notes, setNotes] = useState(candidate.notes || '');
   
@@ -45,7 +45,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     setPosition(candidate.position || '');
     setLocation(candidate.location || '');
     setYearsExperience(candidate.years_experience || 0);
-    setSalaryExpectation(candidate.salary_expectations || candidate.salary_expectation || '');
+    setSalaryExpectation(candidate.salary_expectations || '');
     setAvailability(candidate.availability || '');
     setNotes(candidate.notes || '');
   }, [candidate]);

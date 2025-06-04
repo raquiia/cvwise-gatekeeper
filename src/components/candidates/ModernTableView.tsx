@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, ArrowUpDown, Brain, Sparkles, Briefcase, Target } from 'lucide-react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { CandidateData } from '@/services/data/candidateService';
+import { ensureStringArray } from '@/utils/candidateUtils';
 
 interface ModernTableViewProps {
   candidates: CandidateData[];
@@ -95,7 +96,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
       accessorKey: 'skills',
       header: 'Compétences',
       cell: ({ row }) => {
-        const skills = Array.isArray(row.original.skills) ? row.original.skills : [];
+        const skills = ensureStringArray(row.original.skills);
         return (
           <div className="flex flex-wrap gap-1 max-w-xs">
             {skills.slice(0, 2).map((skill, index) => (
@@ -211,7 +212,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
       accessorFn: (row) => getAIScore(row.id!).score || 0,
     },
     {
-      accessorKey: 'status',
+      accessorKey: 'detailed_status',
       header: 'Statut',
       cell: ({ row }) => {
         const getStatusColor = (status: string) => {
@@ -226,8 +227,8 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         };
         
         return (
-          <Badge className={getStatusColor(row.original.status || 'qualification')}>
-            {row.original.status || 'Qualification'}
+          <Badge className={getStatusColor(row.original.detailed_status || 'qualification')}>
+            {row.original.detailed_status || 'Qualification'}
           </Badge>
         );
       },
