@@ -84,7 +84,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ form }) => {
             <FormItem>
               <FormLabel>Adresse (rue, numéro)</FormLabel>
               <FormControl>
-                <Input placeholder="123 rue de la Paix" {...field} />
+                <Input placeholder="Rue et numéro" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -99,7 +99,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ form }) => {
               <FormItem>
                 <FormLabel>Code postal</FormLabel>
                 <FormControl>
-                  <Input placeholder="75001" {...field} />
+                  <Input placeholder="Code postal" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -113,7 +113,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ form }) => {
               <FormItem>
                 <FormLabel>Ville</FormLabel>
                 <FormControl>
-                  <Input placeholder="Paris" {...field} />
+                  <Input placeholder="Ville" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -127,7 +127,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ form }) => {
               <FormItem>
                 <FormLabel>Pays</FormLabel>
                 <FormControl>
-                  <Input placeholder="France" {...field} />
+                  <Input placeholder="Pays" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -142,7 +142,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ form }) => {
             <FormItem>
               <FormLabel>Adresse complète (pour compatibilité)</FormLabel>
               <FormControl>
-                <Input placeholder="123 rue de la Paix, 75001 Paris, France" {...field} />
+                <Input placeholder="Adresse complète" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

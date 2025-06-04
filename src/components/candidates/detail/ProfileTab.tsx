@@ -60,6 +60,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     setNotes(candidate.notes || '');
   }, [candidate]);
   
+  // Check if structured address fields have data
+  const hasStructuredAddress = address || postalCode || city || country;
+  
   const handleSave = async () => {
     if (!candidate.id || !user?.id) return;
     
@@ -200,7 +203,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                   id="address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="5 Rue de L'Ancre"
+                  placeholder="Rue et numéro"
                   className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                 />
               </div>
@@ -212,7 +215,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                     id="postalCode"
                     value={postalCode}
                     onChange={(e) => setPostalCode(e.target.value)}
-                    placeholder="68330"
+                    placeholder="Code postal"
                     className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                   />
                 </div>
@@ -223,7 +226,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                     id="city"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    placeholder="Huningue"
+                    placeholder="Ville"
                     className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                   />
                 </div>
@@ -234,12 +237,27 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                     id="country"
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
-                    placeholder="France"
+                    placeholder="Pays"
                     className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                   />
                 </div>
               </div>
-              {location && (
+              {location && !hasStructuredAddress && (
+                <div className="space-y-2">
+                  <Label htmlFor="location" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Localisation (extraite automatiquement)
+                  </Label>
+                  <Input
+                    type="text"
+                    id="location"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                  />
+                </div>
+              )}
+              {location && hasStructuredAddress && (
                 <div className="space-y-2">
                   <Label htmlFor="location" className="text-sm font-medium text-gray-500">Localisation complète (héritée)</Label>
                   <Input
