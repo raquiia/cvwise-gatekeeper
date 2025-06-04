@@ -19,13 +19,13 @@ import StatusSelector from '@/components/candidates/detail/StatusSelector';
 import EnhancedScoreDisplay from '@/components/candidates/detail/EnhancedScoreDisplay';
 import ExportProfileButton from '@/components/candidates/detail/ExportProfileButton';
 import { getCompleteCandidateData } from '@/services/resume/candidateDataService';
-import { CandidateData } from '@/services/data/candidateService';
+import { CandidateData as ResumeCandidateData } from '@/services/data/resumeDataService';
 import { useCandidateData } from '@/context/CandidateDataContext';
 
 const CandidateDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [candidate, setCandidate] = useState<CandidateData | null>(null);
+  const [candidate, setCandidate] = useState<ResumeCandidateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
@@ -48,7 +48,7 @@ const CandidateDetail = () => {
         setError('Candidat non trouvé');
       } else {
         // Convert the data to match our expected CandidateData type with safe type conversion
-        const formattedCandidate: CandidateData = {
+        const formattedCandidate: ResumeCandidateData = {
           ...candidateData,
           detailed_status: candidateData.detailed_status || 'contact',
           skills: Array.isArray(candidateData.skills) ? candidateData.skills : [],
