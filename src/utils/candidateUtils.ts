@@ -1,28 +1,87 @@
-
 import { Json } from '@/integrations/supabase/types';
 
 /**
- * Fonction pour décoder les URLs et nettoyer les caractères spéciaux
+ * Fonction pour décoder les URLs et nettoyer les caractères spéciaux (améliorée)
  */
 const cleanAndDecodeText = (text: string): string => {
   if (!text) return '';
   
   try {
-    // Décoder les caractères URL encodés
-    let cleaned = decodeURIComponent(text);
+    // Décoder les caractères URL encodés de manière récursive
+    let cleaned = text;
+    
+    // Répéter le décodage jusqu'à ce qu'il n'y ait plus de changement
+    let previousCleaned = '';
+    while (cleaned !== previousCleaned) {
+      previousCleaned = cleaned;
+      try {
+        cleaned = decodeURIComponent(cleaned);
+      } catch {
+        break; // Arrêter si le décodage échoue
+      }
+    }
     
     // Nettoyer les caractères résiduels problématiques
     cleaned = cleaned.replace(/%/g, '');
     
+    // Nettoyer les espaces supplémentaires
+    cleaned = cleaned.replace(/\s+/g, ' ');
+    
     return cleaned.trim();
   } catch (error) {
     // Si le décodage échoue, retourner le texte original nettoyé
-    return text.replace(/%/g, '').trim();
+    return text.replace(/%/g, '').replace(/\s+/g, ' ').trim();
   }
 };
 
 /**
- * Fonction pour décomposer une adresse complète en champs structurés
+ * Fonction pour traduire les noms de pays de l'anglais vers le français
+ */
+const translateCountryToFrench = (country: string): string => {
+  if (!country) return '';
+  
+  const countryTranslations: { [key: string]: string } = {
+    // Anglais -> Français
+    'Switzerland': 'Suisse',
+    'SWITZERLAND': 'Suisse',
+    'France': 'France',
+    'FRANCE': 'France',
+    'Germany': 'Allemagne',
+    'GERMANY': 'Allemagne',
+    'ALLEMAGNE': 'Allemagne',
+    'Belgium': 'Belgique',
+    'BELGIUM': 'Belgique',
+    'BELGIQUE': 'Belgique',
+    'Spain': 'Espagne',
+    'SPAIN': 'Espagne',
+    'ESPAGNE': 'Espagne',
+    'Italy': 'Italie',
+    'ITALY': 'Italie',
+    'ITALIE': 'Italie',
+    'Luxembourg': 'Luxembourg',
+    'LUXEMBOURG': 'Luxembourg',
+    'Netherlands': 'Pays-Bas',
+    'NETHERLANDS': 'Pays-Bas',
+    'United Kingdom': 'Royaume-Uni',
+    'UNITED KINGDOM': 'Royaume-Uni',
+    'UK': 'Royaume-Uni',
+    'Austria': 'Autriche',
+    'AUSTRIA': 'Autriche',
+    'Portugal': 'Portugal',
+    'PORTUGAL': 'Portugal',
+    'Canada': 'Canada',
+    'CANADA': 'Canada',
+    'United States': 'États-Unis',
+    'USA': 'États-Unis',
+    'US': 'États-Unis'
+  };
+  
+  const cleanCountry = country.trim();
+  return countryTranslations[cleanCountry] || cleanCountry;
+};
+
+/**
+ * Fonction pour décomposer une adresse complète en champs structurés (améliorée)
  */
 const parseLocationToStructuredAddress = (location: string): {
   address: string;
@@ -35,9 +94,9 @@ const parseLocationToStructuredAddress = (location: string): {
   // Nettoyer d'abord l'adresse
   const cleanLocation = cleanAndDecodeText(location);
   
-  // Patterns pour identifier les différents éléments
-  const postalCodePattern = /\b\d{5}\b/; // Code postal français (5 chiffres)
-  const countryPattern = /\b(France|FRANCE|Allemagne|ALLEMAGNE|Belgique|BELGIQUE|Suisse|SUISSE|Espagne|ESPAGNE|Italie|ITALIE|Luxembourg|LUXEMBOURG|Royaume-Uni|ROYAUME-UNI|UK)\b/i;
+  // Patterns pour identifier les différents éléments (améliorés)
+  const postalCodePattern = /\b\d{4,5}\b/; // Code postal (4-5 chiffres)
+  const countryPattern = /\b(Switzerland|SWITZERLAND|Suisse|SUISSE|France|FRANCE|Allemagne|ALLEMAGNE|Germany|GERMANY|Belgique|BELGIQUE|Belgium|BELGIUM|Suisse|SUISSE|Espagne|ESPAGNE|Spain|SPAIN|Italie|ITALIE|Italy|ITALY|Luxembourg|LUXEMBOURG|Pays-Bas|Netherlands|NETHERLANDS|Royaume-Uni|ROYAUME-UNI|United Kingdom|UNITED KINGDOM|UK|Autriche|Austria|AUSTRIA|Portugal|PORTUGAL|Canada|CANADA|États-Unis|United States|USA|US)\b/i;
   
   let address = '';
   let postal_code = '';
@@ -47,7 +106,7 @@ const parseLocationToStructuredAddress = (location: string): {
   // Extraire le pays
   const countryMatch = cleanLocation.match(countryPattern);
   if (countryMatch) {
-    country = countryMatch[0];
+    country = translateCountryToFrench(countryMatch[0]);
   }
   
   // Extraire le code postal
@@ -68,7 +127,7 @@ const parseLocationToStructuredAddress = (location: string): {
     
     // Retirer le pays du dernier segment s'il y est
     if (country) {
-      lastSegment = lastSegment.replace(new RegExp(country, 'i'), '').trim();
+      lastSegment = lastSegment.replace(new RegExp(countryMatch![0], 'i'), '').trim();
     }
     
     // Retirer le code postal du segment pour obtenir la ville
@@ -81,14 +140,21 @@ const parseLocationToStructuredAddress = (location: string): {
     // Si on a plusieurs segments, le deuxième pourrait être la ville
     if (segments.length >= 3 && !city) {
       city = segments[1];
+      // Nettoyer la ville
+      if (country && countryMatch) {
+        city = city.replace(new RegExp(countryMatch[0], 'i'), '').trim();
+      }
+      if (postal_code) {
+        city = city.replace(postal_code, '').trim();
+      }
     }
   } else if (segments.length === 1) {
     // Un seul segment, essayer de deviner la structure
     let remaining = cleanLocation;
     
     // Retirer le pays
-    if (country) {
-      remaining = remaining.replace(new RegExp(country, 'i'), '').trim();
+    if (country && countryMatch) {
+      remaining = remaining.replace(new RegExp(countryMatch[0], 'i'), '').trim();
     }
     
     // Retirer le code postal
@@ -110,6 +176,15 @@ const parseLocationToStructuredAddress = (location: string): {
   // Nettoyer les champs finaux
   address = address.replace(/[,;]/g, '').trim();
   city = city.replace(/[,;]/g, '').trim();
+  
+  // S'assurer que la ville n'est pas un pays
+  if (city && countryPattern.test(city)) {
+    const cityCountryMatch = city.match(countryPattern);
+    if (cityCountryMatch && !country) {
+      country = translateCountryToFrench(cityCountryMatch[0]);
+      city = city.replace(new RegExp(cityCountryMatch[0], 'i'), '').trim();
+    }
+  }
   
   return {
     address: address || '',
@@ -206,7 +281,7 @@ export const isUndefinedObject = (obj: any): boolean => {
   return Object.values(obj).every(value => value === undefined);
 };
 
-// Process candidate data from database format to application format
+// Process candidate data from database format to application format (amélioré)
 export const processCandidateData = (rawCandidate: any): any => {
   if (!rawCandidate) return null;
   
@@ -252,6 +327,11 @@ export const processCandidateData = (rawCandidate: any): any => {
     processedCandidate.country = structuredAddress.country;
     
     console.log('✅ Adresse décomposée:', structuredAddress);
+  } else if (hasStructuredAddress) {
+    // Améliorer les données existantes
+    processedCandidate.address = cleanAndDecodeText(processedCandidate.address);
+    processedCandidate.city = cleanAndDecodeText(processedCandidate.city);
+    processedCandidate.country = translateCountryToFrench(processedCandidate.country);
   }
   
   return processedCandidate;

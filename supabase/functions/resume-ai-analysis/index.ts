@@ -7,18 +7,68 @@ const corsHeaders = {
 };
 
 /**
- * Fonction pour nettoyer et décoder les textes avec caractères spéciaux
+ * Fonction pour nettoyer et décoder les textes avec caractères spéciaux (améliorée)
  */
 const cleanAndDecodeText = (text: string): string => {
   if (!text) return '';
   
   try {
-    let cleaned = decodeURIComponent(text);
-    cleaned = cleaned.replace(/%/g, '');
+    let cleaned = text;
+    let previousCleaned = '';
+    while (cleaned !== previousCleaned) {
+      previousCleaned = cleaned;
+      try {
+        cleaned = decodeURIComponent(cleaned);
+      } catch {
+        break;
+      }
+    }
+    cleaned = cleaned.replace(/%/g, '').replace(/\s+/g, ' ');
     return cleaned.trim();
   } catch (error) {
-    return text.replace(/%/g, '').trim();
+    return text.replace(/%/g, '').replace(/\s+/g, ' ').trim();
   }
+};
+
+/**
+ * Fonction pour traduire les noms de pays de l'anglais vers le français
+ */
+const translateCountryToFrench = (country: string): string => {
+  if (!country) return '';
+  
+  const countryTranslations: { [key: string]: string } = {
+    'Switzerland': 'Suisse',
+    'SWITZERLAND': 'Suisse',
+    'France': 'France',
+    'FRANCE': 'France',
+    'Germany': 'Allemagne',
+    'GERMANY': 'Allemagne',
+    'Belgium': 'Belgique',
+    'BELGIUM': 'Belgique',
+    'Spain': 'Espagne',
+    'SPAIN': 'Espagne',
+    'Italy': 'Italie',
+    'ITALY': 'Italie',
+    'Luxembourg': 'Luxembourg',
+    'LUXEMBOURG': 'Luxembourg',
+    'Netherlands': 'Pays-Bas',
+    'NETHERLANDS': 'Pays-Bas',
+    'United Kingdom': 'Royaume-Uni',
+    'UNITED KINGDOM': 'Royaume-Uni',
+    'UK': 'Royaume-Uni',
+    'Austria': 'Autriche',
+    'AUSTRIA': 'Autriche',
+    'Portugal': 'Portugal',
+    'PORTUGAL': 'Portugal',
+    'Canada': 'Canada',
+    'CANADA': 'Canada',
+    'United States': 'États-Unis',
+    'USA': 'États-Unis',
+    'US': 'États-Unis'
+  };
+  
+  const cleanCountry = country.trim();
+  return countryTranslations[cleanCountry] || cleanCountry;
 };
 
 /**
@@ -103,7 +153,7 @@ const parseLocationToStructuredAddress = (location: string): {
 };
 
 /**
- * Nettoie et valide les données extraites par l'IA
+ * Nettoie et valide les données extraites par l'IA (améliorée)
  */
 const processAIExtractedData = (data: any): any => {
   console.log('🔧 Processing AI extracted data:', JSON.stringify(data, null, 2));
@@ -134,6 +184,11 @@ const processAIExtractedData = (data: any): any => {
     }
   });
   
+  // Traduire le pays en français s'il est en anglais
+  if (processedData.country) {
+    processedData.country = translateCountryToFrench(processedData.country);
+  }
+  
   // Décomposer l'adresse si nécessaire
   const hasStructuredAddress = processedData.address || processedData.postal_code || 
                                processedData.city || processedData.country;
@@ -153,6 +208,11 @@ const processAIExtractedData = (data: any): any => {
       
       console.log('✅ Address decomposed successfully:', structuredAddress);
     }
+  } else if (hasStructuredAddress) {
+    // Améliorer les données existantes
+    processedData.address = cleanAndDecodeText(processedData.address);
+    processedData.city = cleanAndDecodeText(processedData.city);
+    processedData.country = translateCountryToFrench(processedData.country);
   }
   
   console.log('✅ Final processed data:', JSON.stringify(processedData, null, 2));
@@ -220,12 +280,20 @@ RÈGLES STRICTES:
 2. Si une information n'est pas présente, retourner une chaîne vide ""
 3. Pour les tableaux, retourner un tableau vide [] si aucune information
 4. Extraire les compétences sous forme de tableau de chaînes simples
-5. Décomposer l'adresse en champs séparés quand possible:
-   - address: rue et numéro
-   - postal_code: code postal (5 chiffres en France)
-   - city: ville
-   - country: pays
-6. Si l'adresse est dans un seul champ, essayer de la décomposer intelligemment
+5. IMPORTANT - Pour l'adresse, décomposer intelligemment en champs séparés:
+   - address: rue et numéro (ex: "Steinbachstrasse 45")
+   - postal_code: code postal uniquement (ex: "8051")
+   - city: ville uniquement (ex: "Zurich")
+   - country: pays EN FRANÇAIS (ex: "Suisse", "France", "Allemagne", "Belgique", etc.)
+6. IMPORTANT - Toujours utiliser les noms de pays en français:
+   - Switzerland → Suisse
+   - Germany → Allemagne
+   - Belgium → Belgique
+   - Spain → Espagne
+   - Italy → Italie
+   - etc.
+7. Si l'adresse est dans un seul champ, la décomposer intelligemment
+8. Ne pas mettre de caractères encodés (comme %20) dans les résultats
 
 Retourne un JSON avec EXACTEMENT cette structure:
 {
