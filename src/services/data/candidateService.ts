@@ -112,7 +112,7 @@ export const candidateService = {
   },
 
   // Create a new candidate
-  createCandidate: async (candidateData: Partial<CandidateData> & { first_name: string; last_name: string; user_id: string }): Promise<CandidateData> => {
+  createCandidate: async (candidateData: Omit<CandidateData, 'id' | 'created_at'>): Promise<CandidateData> => {
     try {
       const { data, error } = await supabase
         .from('candidates')
@@ -169,7 +169,6 @@ export const candidateService = {
           special_permits: candidateData.special_permits,
           industries: candidateData.industries,
           projects: candidateData.projects,
-          publications: candidateData.publications,
           notes: candidateData.notes,
           updated_at: new Date().toISOString()
         })
@@ -191,7 +190,7 @@ export const candidateService = {
   },
 
   // Delete a candidate
-  deleteCandidate: async (id: string, force?: boolean): Promise<boolean> => {
+  deleteCandidate: async (id: string): Promise<boolean> => {
     try {
       const { error } = await supabase
         .from('candidates')
@@ -226,6 +225,5 @@ export const formatCandidateData = (candidate: any): CandidateData => {
     special_permits: candidate.special_permits || [],
     industries: candidate.industries || [],
     projects: candidate.projects || [],
-    publications: candidate.publications || [],
   };
 };
