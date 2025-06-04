@@ -1,3 +1,4 @@
+
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -29,7 +30,7 @@ export const resumeDataService = {
       
       if (error) throw error;
       
-      return (data || []) as ResumeData[];
+      return (data || []) as unknown as ResumeData[];
     } catch (error: any) {
       console.error('Error fetching resumes:', error);
       throw new Error(`Failed to get resumes: ${error.message}`);
