@@ -1,9 +1,9 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
-import { MoreHorizontal, Eye, Trash2, Phone, Mail } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Trash2, Phone, Mail } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/use-confirm';
@@ -33,7 +33,9 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     onStatusChange(status);
   };
 
-  const handleDeleteCandidate = async (candidateId: string) => {
+  const handleDeleteCandidate = async (candidateId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Empêche la propagation du clic vers la ligne
+    
     const confirmed = await confirm({
       title: 'Supprimer le candidat ?',
       description: 'Êtes-vous sûr de vouloir supprimer ce candidat ? Cette action est irréversible.',
@@ -48,8 +50,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     }
   };
 
-  const handleCandidateSelect = (candidate: CandidateData) => {
-    setSelectedCandidate(candidate);
+  const handleRowClick = (candidate: CandidateData) => {
     onViewCandidate(candidate.id!);
   };
 
@@ -97,7 +98,8 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
             return (
               <TableRow 
                 key={candidate.id} 
-                className="hover:bg-gray-50/50 transition-colors duration-200 border-b border-gray-100"
+                className="hover:bg-gray-50/50 transition-colors duration-200 border-b border-gray-100 cursor-pointer"
+                onClick={() => handleRowClick(candidate)}
               >
                 <TableCell className="font-medium">
                   <div className="flex items-center space-x-3">
@@ -176,32 +178,14 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                 </TableCell>
                 
                 <TableCell className="text-center">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100">
-                        <span className="sr-only">Ouvrir le menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-white border shadow-lg">
-                      <DropdownMenuLabel className="font-semibold">Actions</DropdownMenuLabel>
-                      <DropdownMenuItem 
-                        onClick={() => handleCandidateSelect(candidate)}
-                        className="cursor-pointer hover:bg-gray-50"
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        Voir le profil
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={() => handleDeleteCandidate(candidate.id!)}
-                        className="cursor-pointer hover:bg-red-50 text-red-600"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Supprimer
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={(e) => handleDeleteCandidate(candidate.id!, e)}
+                    className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </TableCell>
               </TableRow>
             );
