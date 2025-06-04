@@ -1,30 +1,21 @@
-
-import React, { useEffect, useState } from 'react';
-import { ArrowUpDown, SlidersHorizontal, ChevronDown, CheckCircle, XCircle, AlertTriangle, Briefcase, RefreshCw, Calculator } from 'lucide-react';
+import React, { useState } from 'react';
+import { DataGrid, GridColDef, GridRenderCellParams, GridRowParams, GridValueGetterParams } from '@mui/x-data-grid';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
+import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
+import { MoreHorizontal, Eye, Trash2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CandidateData } from '@/services/data/candidateService';
-import ModernCandidatesTable from './ModernCandidatesTable';
-import ModernTableView from './ModernTableView';
 import { useToast } from '@/hooks/use-toast';
-import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
-import { useOptimizedScoring } from '@/hooks/use-optimized-scoring';
-import { useActiveJob } from '@/context/ActiveJobContext';
-import { CANDIDATE_STATUS_LABELS, CANDIDATE_STATUSES } from '@/services/data/candidateStatusService';
+import { useConfirm } from '@/components/ui/use-confirm';
+import ModernTableView from './ModernTableView';
 
 interface CandidatesTableProps {
   candidates: CandidateData[];
   selectedStatus: string | null;
   onStatusChange: (status: string | null) => void;
   onViewCandidate: (candidateId: string) => void;
-  onCandidateDeleted?: () => void;
+  onCandidateDeleted: (candidateId: string) => void;
 }
 
 const CandidatesTable: React.FC<CandidatesTableProps> = ({
@@ -34,237 +25,122 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   onViewCandidate,
   onCandidateDeleted
 }) => {
+  const [selectedCandidate, setSelectedCandidate] = useState<CandidateData | null>(null);
+  const [currentView, setCurrentView] = useState<'classic' | 'modern'>('modern');
   const { toast } = useToast();
-  const [jobOffers, setJobOffers] = useState<any[]>([]);
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
-  const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
+  const { confirm } = useConfirm();
   
-  const { 
-    activeJobOfferId, 
-    activeJobOfferTitle, 
-    setActiveJobOffer,
-    isLoading: jobLoading 
-  } = useActiveJob();
-  
-  const { 
-    isJobSpecific,
-    invalidateScores,
-    preCalculateJobScores,
-    recalculateAllScores,
-    isRecalculating
-  } = useOptimizedScoring();
-  
-  // Fetch job offers on component mount
-  useEffect(() => {
-    const fetchJobOffers = async () => {
-      try {
-        const offers = await jobOfferService.getUserJobOffers();
-        setJobOffers(offers);
-      } catch (error) {
-        console.error("Error fetching job offers:", error);
-      }
-    };
+  const handleStatusChange = (status: string | null) => {
+    onStatusChange(status);
+  };
+
+  const handleDeleteCandidate = async (candidateId: string) => {
+    const confirmed = await confirm({
+      title: 'Supprimer le candidat ?',
+      description: 'Êtes-vous sûr de vouloir supprimer ce candidat ? Cette action est irréversible.',
+    });
     
-    fetchJobOffers();
-  }, []);
-  
-  // Handle changing the active job offer
-  const handleJobOfferChange = async (jobOfferId: string | null) => {
-    try {
-      if (jobOfferId) {
-        console.log("Activating job offer:", jobOfferId);
-        const selectedOffer = jobOffers.find(offer => offer.id === jobOfferId);
-        await setActiveJobOffer(jobOfferId, selectedOffer?.title);
-        
-        toast({
-          title: "Offre d'emploi activée",
-          description: `Les scores sont maintenant relatifs à "${selectedOffer?.title || 'cette offre'}". Calcul en cours...`,
-        });
-        
-        // Pre-calculate scores for better performance
-        setTimeout(() => {
-          preCalculateJobScores();
-        }, 500);
-      } else {
-        await setActiveJobOffer(null);
-        
-        toast({
-          title: "Mode de scoring standard",
-          description: "Les scores affichent maintenant la complétude des profils",
-        });
-      }
-      
-      // Force refresh of all scores
-      invalidateScores();
-    } catch (error) {
-      console.error("Error activating job offer:", error);
+    if (confirmed) {
+      onCandidateDeleted(candidateId);
       toast({
-        title: "Erreur d'activation",
-        description: "Impossible d'activer cette offre d'emploi",
-        variant: "destructive"
+        title: "Candidat supprimé",
+        description: "Le candidat a été supprimé avec succès.",
       });
     }
   };
-  
-  const handleCandidateDeleted = () => {
-    console.log('Candidate deleted, notifying parent component');
-    toast({
-      title: "Candidat supprimé",
-      description: "Le candidat et le CV associé ont été supprimés avec succès",
-    });
-    
-    if (onCandidateDeleted) {
-      onCandidateDeleted();
-    }
+
+  const handleCandidateSelect = (candidate: CandidateData) => {
+    setSelectedCandidate(candidate);
+    onViewCandidate(candidate.id!);
   };
 
-  const handleSelectCandidate = (candidateId: string, selected: boolean) => {
-    const newSelected = new Set(selectedCandidates);
-    if (selected) {
-      newSelected.add(candidateId);
-    } else {
-      newSelected.delete(candidateId);
-    }
-    setSelectedCandidates(newSelected);
-  };
+  if (currentView === 'modern') {
+    return (
+      <ModernTableView
+        candidates={candidates}
+        onCandidateSelect={handleCandidateSelect}
+        selectedCandidate={selectedCandidate}
+      />
+    );
+  }
 
-  const handleSelectAll = () => {
-    if (selectedCandidates.size === candidates.length) {
-      setSelectedCandidates(new Set());
-    } else {
-      setSelectedCandidates(new Set(candidates.map(c => c.id!).filter(Boolean)));
-    }
-  };
-  
-  return (
-    <div className="space-y-6">
-      {/* Enhanced Job Offer Selection */}
-      <div className="flex justify-between items-center">
-        {/* Context indicator */}
-        <div className="flex items-center gap-3">
-          {isJobSpecific ? (
-            <Badge variant="default" className="bg-purple-100 text-purple-800 border-purple-200">
-              <Briefcase size={12} className="mr-1" />
-              Scores contextuels : {activeJobOfferTitle}
-            </Badge>
-          ) : (
-            <Badge variant="secondary" className="bg-gray-100 text-gray-700">
-              Scores généraux de profil
-            </Badge>
-          )}
-          
-          {/* Refresh button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={invalidateScores}
-            className="h-8 w-8 p-0"
-            title="Actualiser les scores (cache)"
-          >
-            <RefreshCw size={14} />
-          </Button>
-          
-          {/* Recalculate button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={recalculateAllScores}
-            disabled={isRecalculating}
-            className="h-8 px-2 text-xs"
-            title={isJobSpecific ? "Recalculer tous les scores pour cette offre" : "Recalculer tous les scores généraux"}
-          >
-            {isRecalculating ? (
-              <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mr-1" />
-            ) : (
-              <Calculator size={14} className="mr-1" />
-            )}
-            Recalculer
-          </Button>
-          
-          {/* Pre-calculate button for job scores */}
-          {isJobSpecific && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={preCalculateJobScores}
-              className="h-8 px-2 text-xs"
-              title="Pré-calculer les scores en arrière-plan"
-            >
-              Pré-calculer
-            </Button>
-          )}
-        </div>
+  const columns: GridColDef[] = [
+    { field: 'id', headerName: 'ID', width: 70 },
+    { field: 'first_name', headerName: 'Prénom', width: 130 },
+    { field: 'last_name', headerName: 'Nom', width: 130 },
+    {
+      field: 'status',
+      headerName: 'Statut',
+      width: 150,
+      renderCell: (params: GridRenderCellParams) => {
+        const status = params.value as string;
+        const statusLabel = CANDIDATE_STATUS_LABELS[status] || 'Inconnu';
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-1 border-purple-200/50 dark:border-purple-800/30 hover:bg-purple-50 dark:hover:bg-purple-900/20"
-              disabled={jobLoading}
-            >
-              <Briefcase size={14} className="mr-1 text-purple-600 dark:text-purple-400" />
-              {activeJobOfferId ? (activeJobOfferTitle || "Offre active") : "Sélectionner une offre d'emploi"}
-              <ChevronDown size={14} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white/95 backdrop-blur-md border-purple-100/50 shadow-lg dark:bg-navy-dark/95 dark:border-purple-800/30 min-w-[300px]">
-            <DropdownMenuItem 
-              onClick={() => handleJobOfferChange(null)}
-              className={!activeJobOfferId ? "bg-purple-50 dark:bg-purple-900/20" : ""}
-            >
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${!activeJobOfferId ? 'bg-purple-600' : 'bg-transparent border border-gray-300'}`} />
-                Score général (sans contexte)
-              </div>
-            </DropdownMenuItem>
-            
-            <Separator className="my-1" />
-            
-            {jobOffers.length === 0 ? (
-              <DropdownMenuItem disabled>
-                Aucune offre d'emploi disponible
+        const getStatusColor = (status: string) => {
+          switch (status) {
+            case 'qualification': return 'bg-blue-100 text-blue-800';
+            case 'contact': return 'bg-yellow-100 text-yellow-800';
+            case 'entretien': return 'bg-purple-100 text-purple-800';
+            case 'shortlist': return 'bg-green-100 text-green-800';
+            case 'refusé': return 'bg-red-100 text-red-800';
+            default: return 'bg-gray-100 text-gray-800';
+          }
+        };
+        
+        return (
+          <Badge className={getStatusColor(status)}>
+            {statusLabel}
+          </Badge>
+        );
+      },
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 150,
+      renderCell: (params: GridRenderCellParams) => {
+        const candidate = params.row as CandidateData;
+        
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Ouvrir le menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => handleCandidateSelect(candidate)}>
+                <Eye className="mr-2 h-4 w-4" />
+                Voir
               </DropdownMenuItem>
-            ) : (
-              jobOffers.map(offer => (
-                <DropdownMenuItem 
-                  key={offer.id} 
-                  onClick={() => handleJobOfferChange(offer.id)}
-                  className={activeJobOfferId === offer.id ? "bg-purple-50 dark:bg-purple-900/20" : ""}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${activeJobOfferId === offer.id ? 'bg-purple-600' : 'bg-transparent border border-gray-300'}`} />
-                    <div className="flex-1">
-                      <div className="font-medium">{offer.title}</div>
-                      <div className="text-xs text-muted-foreground">{offer.company}</div>
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              ))
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleDeleteCandidate(candidate.id!)}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Supprimer
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
 
-      {/* Content based on view mode */}
-      {viewMode === 'table' ? (
-        <ModernTableView
-          candidates={candidates}
-          selectedCandidates={selectedCandidates}
-          onSelectCandidate={handleSelectCandidate}
-          onSelectAll={handleSelectAll}
-          onViewCandidate={onViewCandidate}
-          onCandidateDeleted={handleCandidateDeleted}
-        />
-      ) : (
-        <ModernCandidatesTable
-          candidates={candidates}
-          selectedStatus={selectedStatus}
-          onStatusChange={onStatusChange}
-          onViewCandidate={onViewCandidate}
-          onCandidateDeleted={handleCandidateDeleted}
-        />
-      )}
+  return (
+    <div style={{ height: 400, width: '100%' }}>
+      <DataGrid
+        rows={candidates}
+        columns={columns}
+        pageSize={5}
+        rowsPerPageOptions={[5, 10, 20]}
+        checkboxSelection
+        disableSelectionOnClick
+        onRowClick={(params: GridRowParams) => {
+          setSelectedCandidate(params.row);
+        }}
+        getRowId={(row) => row.id!}
+      />
     </div>
   );
 };
