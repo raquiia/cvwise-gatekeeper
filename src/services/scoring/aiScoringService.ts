@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from '@/services/data/candidateService';
 
@@ -32,13 +31,12 @@ export class AIScoringService {
   /**
    * Calculer le hash des données candidat pour détecter les changements
    */
-  private calculateCandidateHash(candidateId: string, jobOfferId?: string): Promise<string> {
-    return supabase.rpc('calculate_candidate_data_hash', { 
+  private async calculateCandidateHash(candidateId: string, jobOfferId?: string): Promise<string> {
+    const { data } = await supabase.rpc('calculate_candidate_data_hash', { 
       p_candidate_id: candidateId 
-    }).then(({ data }) => {
-      const baseHash = data || '';
-      return jobOfferId ? `${baseHash}_${jobOfferId}` : baseHash;
     });
+    const baseHash = data || '';
+    return jobOfferId ? `${baseHash}_${jobOfferId}` : baseHash;
   }
   
   /**
