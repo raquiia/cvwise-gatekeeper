@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { 
   ColumnDef, 
@@ -84,12 +83,34 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-medium">{row.original.years_experience || 0} ans</span>
-          <span className="text-sm text-gray-500">{row.original.location || 'Lieu non spécifié'}</span>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const candidate = row.original;
+        
+        // Format location to show only city and country
+        const formatLocation = () => {
+          const city = candidate.city || '';
+          const country = candidate.country || '';
+          
+          if (city && country) {
+            return `${city}, ${country}`;
+          } else if (city) {
+            return city;
+          } else if (country) {
+            return country;
+          } else if (candidate.location) {
+            // Fallback to original location if structured fields are empty
+            return candidate.location;
+          }
+          return 'Lieu non spécifié';
+        };
+        
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium">{candidate.years_experience || 0} ans</span>
+            <span className="text-sm text-gray-500">{formatLocation()}</span>
+          </div>
+        );
+      },
       accessorFn: (row) => row.years_experience || 0,
     },
     {
