@@ -149,9 +149,9 @@ export const useAIScoring = () => {
   }, []);
   
   /**
-   * Précharger les scores depuis la base de données (optimisé pour éviter les doublons)
+   * Précharger les scores depuis la base de données (amélioration : chargement immédiat dans l'état)
    */
-  const preloadScoresFromDatabase = useCallback(async (candidateIds: string[]) => {
+  const preloadScoresFromDatabase = useCallback(async (candidateIds: string[]): Promise<void> => {
     const contextKey = activeJobOfferId || 'general';
     
     // Filtrer les candidats déjà préchargés pour ce contexte
@@ -176,11 +176,17 @@ export const useAIScoring = () => {
       return newSet;
     });
     
-    const promises = newCandidateIds.map(async (candidateId) => {
+    // Précharger de manière séquentielle pour éviter la surcharge
+    for (const candidateId of newCandidateIds) {
       try {
+        console.log('Preloading score for candidate:', candidateId);
         const result = await aiScoringService.getScoreWithExplanation(candidateId, activeJobOfferId);
+        
         if (result && result.source === 'database') {
           const key = `${candidateId}_${contextKey}`;
+          console.log('Successfully preloaded score from database for candidate:', candidateId, 'Score:', result.score);
+          
+          // Charger immédiatement dans l'état
           setScoringState(prev => ({
             ...prev,
             [key]: {
@@ -194,13 +200,14 @@ export const useAIScoring = () => {
               source: result.source
             }
           }));
+        } else {
+          console.log('No cached score found in database for candidate:', candidateId);
         }
       } catch (error) {
         console.warn('Failed to preload score for candidate:', candidateId, error);
       }
-    });
+    }
     
-    await Promise.all(promises);
     console.log('Preloading completed for', newCandidateIds.length, 'candidates');
   }, [activeJobOfferId, preloadedCandidates, scoringState]);
   
