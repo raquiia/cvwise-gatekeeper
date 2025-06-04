@@ -141,6 +141,26 @@ function ensureProperDataFormat(data: any): any {
     return [value];
   };
 
+  // Fonction pour nettoyer et décoder les chaînes de caractères
+  const cleanString = (value: any): string => {
+    if (!value) return '';
+    
+    const str = String(value);
+    
+    try {
+      // Décoder les caractères URL encodés
+      let cleaned = decodeURIComponent(str);
+      
+      // Nettoyer les caractères résiduels problématiques
+      cleaned = cleaned.replace(/%/g, '');
+      
+      return cleaned.trim();
+    } catch (error) {
+      // Si le décodage échoue, retourner le texte original nettoyé
+      return str.replace(/%/g, '').trim();
+    }
+  };
+
   // Convertir les propriétés qui devraient être des tableaux
   const arrayProperties = [
     'skills', 'experiences', 'education', 'certifications', 
@@ -155,6 +175,26 @@ function ensureProperDataFormat(data: any): any {
       // Log de debugging pour les propriétés importantes
       if (prop === 'experiences' || prop === 'education' || prop === 'languages' || prop === 'certifications') {
         console.log(`Formatting ${prop}, final result:`, JSON.stringify(data[prop]));
+      }
+    }
+  });
+
+  // Nettoyer et décoder les champs texte importants
+  const textProperties = [
+    'first_name', 'last_name', 'email', 'phone', 'position', 
+    'location', 'address', 'postal_code', 'city', 'country', 
+    'company', 'availability', 'salary_expectations', 'mobility',
+    'contract_type', 'remote_preference', 'travel_willingness',
+    'career_objectives', 'professional_values', 'work_authorization', 'interests'
+  ];
+
+  textProperties.forEach(prop => {
+    if (prop in data) {
+      data[prop] = cleanString(data[prop]);
+      
+      // Log pour les champs d'adresse
+      if (['address', 'postal_code', 'city', 'country'].includes(prop)) {
+        console.log(`Cleaned ${prop}:`, data[prop]);
       }
     }
   });
@@ -680,7 +720,7 @@ Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne
           (Array.isArray(parsedData.certifications) ? parsedData.certifications.length * 2 : 0))
       };
       
-      // S'assurer que toutes les propriétés complexes sont correctement formatées
+      // S'assurer que toutes les propriétés complexes sont correctement formatées ET nettoyées
       const formattedCandidateData = ensureProperDataFormat(candidateData);
       
       console.log("Données du candidat préparées avec succès");
@@ -690,6 +730,10 @@ Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne
       console.log("Nombre de certifications:", Array.isArray(formattedCandidateData.certifications) ? formattedCandidateData.certifications.length : 0);
       console.log("Téléphone final:", formattedCandidateData.phone || "Non disponible");
       console.log("Localisation finale:", formattedCandidateData.location || "Non disponible");
+      console.log("Adresse finale:", formattedCandidateData.address || "Non disponible");
+      console.log("Code postal final:", formattedCandidateData.postal_code || "Non disponible");
+      console.log("Ville finale:", formattedCandidateData.city || "Non disponible");
+      console.log("Pays final:", formattedCandidateData.country || "Non disponible");
       
       // Upsert du candidat dans la base de données
       console.log("Enregistrement du candidat dans la base de données");

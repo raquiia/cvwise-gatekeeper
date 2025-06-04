@@ -2,6 +2,26 @@
 import { CandidateData } from '@/services/data/candidateService';
 
 /**
+ * Fonction pour décoder les URLs et nettoyer les caractères spéciaux
+ */
+export const cleanAndDecodeText = (text: string): string => {
+  if (!text) return '';
+  
+  try {
+    // Décoder les caractères URL encodés
+    let cleaned = decodeURIComponent(text);
+    
+    // Nettoyer les caractères résiduels problématiques
+    cleaned = cleaned.replace(/%/g, '');
+    
+    return cleaned.trim();
+  } catch (error) {
+    // Si le décodage échoue, retourner le texte original nettoyé
+    return text.replace(/%/g, '').trim();
+  }
+};
+
+/**
  * Fonction ultra-robuste pour extraire les valeurs de champs qui peuvent être dans différents formats
  */
 export const extractFieldValue = (field: any): string => {
@@ -17,7 +37,8 @@ export const extractFieldValue = (field: any): string => {
     if (field === 'undefined' || field === 'null' || field === '') {
       return '';
     }
-    return field;
+    // Appliquer le nettoyage et décodage
+    return cleanAndDecodeText(field);
   }
   
   // Si c'est un nombre
@@ -31,24 +52,24 @@ export const extractFieldValue = (field: any): string => {
     if (field.hasOwnProperty('value')) {
       const value = field.value;
       if (value && value !== 'undefined' && value !== 'null' && value !== '') {
-        return String(value);
+        return cleanAndDecodeText(String(value));
       }
     }
     
     // Si l'objet a d'autres propriétés, on essaie de les extraire
     if (field.hasOwnProperty('text')) {
-      return String(field.text);
+      return cleanAndDecodeText(String(field.text));
     }
     
     if (field.hasOwnProperty('name')) {
-      return String(field.name);
+      return cleanAndDecodeText(String(field.name));
     }
     
     // En dernier recours, on essaie de stringifier
     try {
       const stringified = JSON.stringify(field);
       if (stringified !== '{}' && stringified !== 'null') {
-        return stringified;
+        return cleanAndDecodeText(stringified);
       }
     } catch (e) {
       // Ignore
@@ -114,9 +135,9 @@ export const extractArrayValue = (field: any): any[] => {
     }
     try {
       const parsed = JSON.parse(field);
-      return Array.isArray(parsed) ? parsed : [field];
+      return Array.isArray(parsed) ? parsed : [cleanAndDecodeText(field)];
     } catch {
-      return [field];
+      return [cleanAndDecodeText(field)];
     }
   }
   
@@ -127,9 +148,9 @@ export const extractArrayValue = (field: any): any[] => {
       if (value && value !== 'undefined' && value !== 'null') {
         try {
           const parsed = JSON.parse(String(value));
-          return Array.isArray(parsed) ? parsed : [value];
+          return Array.isArray(parsed) ? parsed : [cleanAndDecodeText(String(value))];
         } catch {
-          return [value];
+          return [cleanAndDecodeText(String(value))];
         }
       }
     }
@@ -151,6 +172,10 @@ export const extractCandidateFormData = (candidate: CandidateData) => {
     phone: extractFieldValue(candidate.phone),
     position: extractFieldValue(candidate.position),
     location: extractFieldValue(candidate.location),
+    address: extractFieldValue(candidate.address),
+    postal_code: extractFieldValue(candidate.postal_code),
+    city: extractFieldValue(candidate.city),
+    country: extractFieldValue(candidate.country),
     years_experience: extractNumberValue(candidate.years_experience),
     company: extractFieldValue(candidate.company),
     skills: extractArrayValue(candidate.skills),
@@ -174,6 +199,10 @@ export const extractCandidateFormData = (candidate: CandidateData) => {
   console.log('🚗 Mobility:', formData.mobility);
   console.log('💰 Salary expectations:', formData.salary_expectations);
   console.log('📝 Contract type:', formData.contract_type);
+  console.log('🏠 Address:', formData.address);
+  console.log('📮 Postal code:', formData.postal_code);
+  console.log('🏙️ City:', formData.city);
+  console.log('🌍 Country:', formData.country);
   
   return formData;
 };

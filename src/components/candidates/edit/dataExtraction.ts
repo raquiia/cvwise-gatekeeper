@@ -2,6 +2,26 @@
 import { CandidateData } from '@/services/data/candidateService';
 import { FormValues } from './candidateEditSchema';
 
+/**
+ * Fonction pour décoder les URLs et nettoyer les caractères spéciaux
+ */
+const cleanAndDecodeText = (text: string): string => {
+  if (!text) return '';
+  
+  try {
+    // Décoder les caractères URL encodés
+    let cleaned = decodeURIComponent(text);
+    
+    // Nettoyer les caractères résiduels problématiques
+    cleaned = cleaned.replace(/%/g, '');
+    
+    return cleaned.trim();
+  } catch (error) {
+    // Si le décodage échoue, retourner le texte original nettoyé
+    return text.replace(/%/g, '').trim();
+  }
+};
+
 // ULTRA-SIMPLE: Enhanced extraction function that handles all data formats correctly including complex objects
 export const extractValue = (field: any): string => {
   console.log('📝 Enhanced extracting value from field:', field, 'Type:', typeof field);
@@ -20,7 +40,8 @@ export const extractValue = (field: any): string => {
       return '';
     }
     console.log('✅ Field is valid string:', field);
-    return field;
+    // Apply cleaning and URL decoding
+    return cleanAndDecodeText(field);
   }
   
   // CRITICAL FIX: Handle complex objects with _type and value properties
@@ -34,7 +55,7 @@ export const extractValue = (field: any): string => {
       // If the value property contains real data (not "undefined"), return it
       if (field.value && field.value !== 'undefined' && field.value !== 'null' && field.value !== '') {
         console.log('✅ Extracted real value from object:', field.value);
-        return String(field.value);
+        return cleanAndDecodeText(String(field.value));
       } else {
         console.log('⚪ Object value is empty or undefined');
         return '';
@@ -46,7 +67,7 @@ export const extractValue = (field: any): string => {
       console.log('🎯 Found simple value structure:', field.value);
       if (field.value && field.value !== 'undefined' && field.value !== 'null' && field.value !== '') {
         console.log('✅ Extracted value from simple object:', field.value);
-        return String(field.value);
+        return cleanAndDecodeText(String(field.value));
       }
     }
     
@@ -111,9 +132,9 @@ const safeArray = (value: any): any[] => {
       if (value.value && value.value !== 'undefined' && value.value !== 'null') {
         try {
           const parsed = JSON.parse(String(value.value));
-          return Array.isArray(parsed) ? parsed : [value.value];
+          return Array.isArray(parsed) ? parsed : [cleanAndDecodeText(String(value.value))];
         } catch {
-          return [value.value];
+          return [cleanAndDecodeText(String(value.value))];
         }
       }
     }
@@ -121,9 +142,9 @@ const safeArray = (value: any): any[] => {
       if (value.value && value.value !== 'undefined' && value.value !== 'null') {
         try {
           const parsed = JSON.parse(String(value.value));
-          return Array.isArray(parsed) ? parsed : [value.value];
+          return Array.isArray(parsed) ? parsed : [cleanAndDecodeText(String(value.value))];
         } catch {
-          return [value.value];
+          return [cleanAndDecodeText(String(value.value))];
         }
       }
     }
@@ -134,9 +155,9 @@ const safeArray = (value: any): any[] => {
     if (value === '' || value === 'undefined' || value === 'null') return [];
     try {
       const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [value];
+      return Array.isArray(parsed) ? parsed : [cleanAndDecodeText(value)];
     } catch {
-      return [value];
+      return [cleanAndDecodeText(value)];
     }
   }
   

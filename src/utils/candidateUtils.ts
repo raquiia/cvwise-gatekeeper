@@ -1,16 +1,36 @@
 
 import { Json } from '@/integrations/supabase/types';
 
+/**
+ * Fonction pour décoder les URLs et nettoyer les caractères spéciaux
+ */
+const cleanAndDecodeText = (text: string): string => {
+  if (!text) return '';
+  
+  try {
+    // Décoder les caractères URL encodés
+    let cleaned = decodeURIComponent(text);
+    
+    // Nettoyer les caractères résiduels problématiques
+    cleaned = cleaned.replace(/%/g, '');
+    
+    return cleaned.trim();
+  } catch (error) {
+    // Si le décodage échoue, retourner le texte original nettoyé
+    return text.replace(/%/g, '').trim();
+  }
+};
+
 export const ensureStringArray = (data: Json | undefined | null): string[] => {
   if (!data) return [];
   
   if (Array.isArray(data)) {
     return data.map(item => {
-      if (typeof item === 'string') return item;
+      if (typeof item === 'string') return cleanAndDecodeText(item);
       if (typeof item === 'object' && item !== null && 'name' in item) {
-        return String(item.name);
+        return cleanAndDecodeText(String(item.name));
       }
-      return String(item);
+      return cleanAndDecodeText(String(item));
     }).filter(Boolean);
   }
   
@@ -18,10 +38,10 @@ export const ensureStringArray = (data: Json | undefined | null): string[] => {
     try {
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed)) {
-        return parsed.map(item => String(item)).filter(Boolean);
+        return parsed.map(item => cleanAndDecodeText(String(item))).filter(Boolean);
       }
     } catch {
-      return [data];
+      return [cleanAndDecodeText(data)];
     }
   }
   
@@ -51,24 +71,24 @@ export const ensureArray = <T = any>(data: Json | undefined | null): T[] => {
   return [];
 };
 
-// Safe string extraction from Json
+// Safe string extraction from Json with URL decoding
 export const safeString = (data: Json | undefined | null): string => {
   if (!data) return '';
   
-  if (typeof data === 'string') return data;
+  if (typeof data === 'string') return cleanAndDecodeText(data);
   if (typeof data === 'number') return String(data);
   if (typeof data === 'boolean') return String(data);
   
   // For objects, try to extract a meaningful string
   if (typeof data === 'object' && data !== null) {
     if ('value' in data && typeof data.value === 'string') {
-      return data.value;
+      return cleanAndDecodeText(data.value);
     }
     if ('name' in data && typeof data.name === 'string') {
-      return data.name;
+      return cleanAndDecodeText(data.name);
     }
     if ('text' in data && typeof data.text === 'string') {
-      return data.text;
+      return cleanAndDecodeText(data.text);
     }
   }
   
@@ -94,6 +114,19 @@ export const processCandidateData = (rawCandidate: any): any => {
   
   return {
     ...rawCandidate,
+    // Apply URL decoding and cleaning to text fields
+    first_name: safeString(rawCandidate.first_name),
+    last_name: safeString(rawCandidate.last_name),
+    email: safeString(rawCandidate.email),
+    phone: safeString(rawCandidate.phone),
+    position: safeString(rawCandidate.position),
+    location: safeString(rawCandidate.location),
+    address: safeString(rawCandidate.address),
+    postal_code: safeString(rawCandidate.postal_code),
+    city: safeString(rawCandidate.city),
+    country: safeString(rawCandidate.country),
+    company: safeString(rawCandidate.company),
+    // Process arrays
     skills: ensureStringArray(rawCandidate.skills),
     education: ensureArray(rawCandidate.education),
     experiences: ensureArray(rawCandidate.experiences),
