@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Tooltip, Legend } from 'recharts';
@@ -10,6 +11,48 @@ interface RealDataMetricsProps {
 
 const RealDataMetrics: React.FC<RealDataMetricsProps> = ({ candidatesData }) => {
   const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+  // Helper function to extract correct status (same logic as Candidates page)
+  const extractCandidateStatus = (candidate: any): string => {
+    let statusValue = 'initial';
+    
+    try {
+      if (candidate.detailed_status && 
+          candidate.detailed_status !== '' && 
+          candidate.detailed_status !== 'undefined' && 
+          candidate.detailed_status !== 'null') {
+        
+        if (typeof candidate.detailed_status === 'string') {
+          const trimmedStatus = candidate.detailed_status.trim();
+          if (trimmedStatus !== '' && trimmedStatus !== 'undefined' && trimmedStatus !== 'null') {
+            return trimmedStatus;
+          }
+        }
+        
+        if (typeof candidate.detailed_status === 'object' && candidate.detailed_status !== null) {
+          const statusObj = candidate.detailed_status as Record<string, any>;
+          
+          if ('value' in statusObj && statusObj.value !== undefined) {
+            const extractedValue = String(statusObj.value).trim();
+            if (extractedValue !== '' && extractedValue !== 'undefined' && extractedValue !== 'null') {
+              return extractedValue;
+            }
+          }
+          
+          if ('status' in statusObj && statusObj.status !== undefined) {
+            const extractedValue = String(statusObj.status).trim();
+            if (extractedValue !== '' && extractedValue !== 'undefined' && extractedValue !== 'null') {
+              return extractedValue;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error extracting candidate status:", err);
+    }
+    
+    return statusValue;
+  };
 
   // Calcul des métriques temporelles
   const getActivityData = () => {
@@ -37,17 +80,17 @@ const RealDataMetrics: React.FC<RealDataMetricsProps> = ({ candidatesData }) => 
       .slice(-4); // 4 dernières semaines
   };
 
-  // Répartition par statut - FIXED
+  // Répartition par statut - IMPROVED with correct status extraction
   const getStatusData = () => {
     const statusMap = candidatesData.reduce((acc, candidate) => {
-      // Vérifier plusieurs champs possibles pour le statut
-      const status = candidate.detailed_status || candidate.status || 'initial';
+      // Use the same extraction logic as the Candidates page
+      const status = extractCandidateStatus(candidate);
       
-      console.log('Candidate status check:', { 
+      console.log('Dashboard - Candidate status extracted:', { 
         id: candidate.id, 
         detailed_status: candidate.detailed_status, 
         status: candidate.status,
-        final_status: status 
+        extracted_status: status 
       });
       
       const statusLabels = {
@@ -70,7 +113,7 @@ const RealDataMetrics: React.FC<RealDataMetricsProps> = ({ candidatesData }) => 
       return acc;
     }, {});
 
-    console.log('Status distribution:', statusMap);
+    console.log('Dashboard - Status distribution:', statusMap);
 
     return Object.entries(statusMap)
       .map(([name, value]) => ({ name, value }))
