@@ -194,31 +194,28 @@ const extractLocalNumberValue = (field: any): number | undefined => {
   return undefined;
 };
 
-// ENTIÈREMENT RÉÉCRITE: fonction formatCandidateData avec logique de statut corrigée
+// MISE À JOUR: fonction formatCandidateData simplifiée après nettoyage des données
 export const formatCandidateData = (candidate: any): CandidateData => {
   if (!candidate) return null as unknown as CandidateData;
   
-  console.log('🚀 RAW CANDIDATE DATA FROM DATABASE:', JSON.stringify(candidate, null, 2));
+  console.log('🚀 Processing candidate:', candidate.first_name, candidate.last_name, 'Status:', candidate.detailed_status);
   
-  // CORRECTION CRITIQUE: Préserver TOUS les statuts valides de la DB
+  // SIMPLIFIÉ: Maintenant que les données sont nettoyées, on fait confiance à la DB
   const rawDetailedStatus = candidate.detailed_status;
   let detailedStatus: string;
   
-  console.log('🔍 Processing detailed_status:', rawDetailedStatus, 'Type:', typeof rawDetailedStatus);
-  
-  // Vérifier si le statut est valide et le préserver
+  // Vérifier si le statut est valide, sinon utiliser 'contact' par défaut
   if (rawDetailedStatus && 
       typeof rawDetailedStatus === 'string' && 
-      rawDetailedStatus.trim() !== '' && 
       VALID_DETAILED_STATUSES.includes(rawDetailedStatus.trim())) {
     
     detailedStatus = rawDetailedStatus.trim();
-    console.log('✅ Using valid detailed_status from DB:', detailedStatus);
+    console.log('✅ Using valid status from DB:', detailedStatus);
     
   } else {
-    // Seulement utiliser 'contact' si le statut est invalide, vide, ou 'initial'
+    // Fallback vers 'contact' pour tout statut invalide/manquant
     detailedStatus = 'contact';
-    console.log('⚠️ Converting invalid/empty/initial status to contact. Original was:', rawDetailedStatus);
+    console.log('⚠️ Using fallback status "contact" for invalid status:', rawDetailedStatus);
   }
   
   const formatted = {
@@ -264,8 +261,7 @@ export const formatCandidateData = (candidate: any): CandidateData => {
     last_updated_at: candidate.last_updated_at
   };
 
-  console.log('🎯 FORMATTED CANDIDATE DATA:', JSON.stringify(formatted, null, 2));
-  console.log('🏷️ Final detailed_status for', formatted.first_name, formatted.last_name, ':', formatted.detailed_status);
+  console.log('🎯 Final status for', formatted.first_name, formatted.last_name, ':', formatted.detailed_status);
 
   return formatted;
 };

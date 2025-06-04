@@ -84,9 +84,6 @@ const CandidatesContent = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [currentView, setCurrentView] = useState<'table' | 'cards' | 'kanban' | 'analytics'>('table');
   
   const [location, setLocation] = useState('');
   const [company, setCompany] = useState('');
@@ -120,11 +117,16 @@ const CandidatesContent = () => {
           new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
         );
         
-        // CORRECTION: Ne pas modifier les statuts, utiliser les vraies données de la DB
-        console.log('📊 Candidates with their real statuses:');
-        sortedCandidates.forEach(candidate => {
-          const status = candidate.detailed_status || 'contact';
-          console.log(`  ${candidate.first_name} ${candidate.last_name}: "${status}"`);
+        // Log status distribution after fetch
+        console.log('📊 Status distribution after fetch:');
+        const statusCount = sortedCandidates.reduce((acc, candidate) => {
+          const status = candidate.detailed_status || 'unknown';
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        Object.entries(statusCount).forEach(([status, count]) => {
+          console.log(`   ${status}: ${count} candidate(s)`);
         });
         
         setCandidates(sortedCandidates);
@@ -151,7 +153,7 @@ const CandidatesContent = () => {
 
   // Enhanced function to handle candidate updates with forced refresh
   const handleCandidateUpdated = async () => {
-    console.log('Candidate updated, forcing data refresh...');
+    console.log('Candidate updated, forcing complete data refresh...');
     // Force a complete data refresh to get the latest status updates
     await fetchCandidates();
   };

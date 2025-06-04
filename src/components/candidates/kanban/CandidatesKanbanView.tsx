@@ -21,10 +21,9 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
   const { toast } = useToast();
   const [draggedCandidate, setDraggedCandidate] = useState<string | null>(null);
 
-  // Group candidates by status with enhanced debugging
+  // Group candidates by status - simplified after data cleanup
   const candidatesByStatus = useMemo(() => {
-    console.log('🔄 Kanban: Processing candidates for grouping...');
-    console.log('🔄 Total candidates received:', candidates.length);
+    console.log('🔄 Kanban: Grouping', candidates.length, 'candidates');
     
     const groups: Record<string, CandidateData[]> = {};
     
@@ -33,33 +32,29 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
       groups[status] = [];
     });
     
-    // Group candidates by their detailed_status with enhanced logging
+    // Group candidates by their detailed_status
     candidates.forEach((candidate, index) => {
-      const rawStatus = candidate.detailed_status;
-      const status = rawStatus || 'contact';
+      const status = candidate.detailed_status || 'contact';
       
-      console.log(`🎯 Kanban grouping candidate ${index + 1}: ${candidate.first_name} ${candidate.last_name}`);
-      console.log(`   📊 Raw detailed_status: "${rawStatus}"`);
-      console.log(`   📊 Final status used: "${status}"`);
-      console.log(`   🔍 Status exists in labels: ${Object.keys(CANDIDATE_STATUS_LABELS).includes(status)}`);
+      console.log(`📋 Candidate ${index + 1}: ${candidate.first_name} ${candidate.last_name} → ${status}`);
       
       // Vérifier que le statut existe dans nos labels
       if (Object.keys(CANDIDATE_STATUS_LABELS).includes(status)) {
         groups[status].push(candidate);
-        console.log(`   ✅ Added to group "${status}" (total in group: ${groups[status].length})`);
       } else {
-        console.warn(`   ⚠️ Status "${status}" not found in CANDIDATE_STATUS_LABELS, using contact`);
+        console.warn(`⚠️ Status "${status}" not found, using contact`);
         groups['contact'].push(candidate);
-        console.log(`   ⚠️ Added to contact group instead (total in contact: ${groups['contact'].length})`);
       }
     });
     
-    // Debug: Afficher la répartition finale avec détails
-    console.log('📊 Final Kanban distribution:');
-    Object.entries(groups).forEach(([status, candidates]) => {
-      console.log(`   ${status} (${CANDIDATE_STATUS_LABELS[status]}): ${candidates.length} candidates`);
-      if (candidates.length > 0) {
-        candidates.forEach(c => console.log(`     - ${c.first_name} ${c.last_name} (ID: ${c.id}, detailed_status: "${c.detailed_status}")`));
+    // Log final distribution
+    console.log('📊 Kanban distribution:');
+    Object.entries(groups).forEach(([status, statusCandidates]) => {
+      if (statusCandidates.length > 0) {
+        console.log(`   ${status}: ${statusCandidates.length} candidate(s)`);
+        statusCandidates.forEach(c => 
+          console.log(`     - ${c.first_name} ${c.last_name}`)
+        );
       }
     });
     
