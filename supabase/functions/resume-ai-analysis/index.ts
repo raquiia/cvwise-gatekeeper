@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.33.2";
@@ -364,7 +363,7 @@ serve(async (req) => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini", // Utiliser gpt-4o-mini qui est plus efficace avec les tokens
+          model: "gpt-4o-mini",
           messages: [
             {
               role: "system",
@@ -373,7 +372,12 @@ serve(async (req) => {
 1. Informations personnelles:
    - Prénom et nom
    - Email et téléphone (TRÈS IMPORTANT - cherche tous les formats possibles : +33, 0X XX XX XX XX, etc.)
-   - Adresse/localisation complète STRUCTURÉE (adresse exacte, code postal, ville, pays si disponible)
+   - **ADRESSE STRUCTURÉE** : Tu dois absolument décomposer l'adresse complète en :
+     * "address" : numéro et nom de rue (ex: "123 rue de la Paix")
+     * "postal_code" : code postal uniquement (ex: "75001")
+     * "city" : ville uniquement (ex: "Paris")
+     * "country" : pays (ex: "France")
+     * "location" : adresse complète pour compatibilité (ex: "123 rue de la Paix, 75001 Paris, France")
    - LinkedIn ou autres profils professionnels
 
 2. Profil professionnel:
@@ -447,7 +451,7 @@ IMPORTANT:
 - Les expériences et éducation doivent TOUJOURS être des tableaux d'objets, même s'il n'y a qu'un seul élément.
 - Ne laisse pas de champs vides - si l'information n'est pas disponible, tu peux utiliser null pour les valeurs numériques ou des chaînes vides pour le texte.
 - TÉLÉPHONE : Cherche absolument TOUS les formats de numéros de téléphone possibles dans le texte.
-- LOCALISATION : Structure l'adresse de manière détaillée avec tous les éléments disponibles.
+- **ADRESSE : DÉCOMPOSE OBLIGATOIREMENT l'adresse en composants séparés (address, postal_code, city, country)**
 
 Retourne ces informations sous forme d'un objet JSON structuré:
 
@@ -458,6 +462,10 @@ Retourne ces informations sous forme d'un objet JSON structuré:
   "phone": "...",
   "position": "...",
   "years_experience": number,
+  "address": "...",
+  "postal_code": "...",
+  "city": "...",
+  "country": "...",
   "location": "...",
   "skills": ["skill1", "skill2", ...],
   "company": "...",
@@ -543,7 +551,7 @@ Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne
             },
             {
               role: "user",
-              content: `Voici le texte extrait d'un CV. Analyse-le et extrait toutes les informations structurées demandées, en étant aussi exhaustif que possible. ATTENTION PARTICULIÈRE : cherche absolument le numéro de téléphone sous tous les formats possibles et structure bien l'adresse complète:\n\n${truncatedText}`
+              content: `Voici le texte extrait d'un CV. Analyse-le et extrait toutes les informations structurées demandées, en étant aussi exhaustif que possible. ATTENTION PARTICULIÈRE : cherche absolument le numéro de téléphone sous tous les formats possibles et DÉCOMPOSE OBLIGATOIREMENT l'adresse en composants séparés (address, postal_code, city, country):\n\n${truncatedText}`
             }
           ],
           temperature: 0.2,
@@ -632,6 +640,10 @@ Tu dois fournir un JSON valide sans utiliser de blocs de code markdown. Retourne
         position: parsedData.position || parsedData.title || parsedData.currentPosition || "",
         years_experience: parsedData.years_experience || parsedData.yearsExperience || 0,
         location: parsedData.location || "",
+        address: parsedData.address || "",
+        postal_code: parsedData.postal_code || "",
+        city: parsedData.city || "",
+        country: parsedData.country || "",
         skills: parsedData.skills || [],
         company: parsedData.company || parsedData.currentCompany || "",
         experiences: parsedData.experiences || parsedData.experience || parsedData.professionalExperiences || [],

@@ -153,6 +153,10 @@ export const extractFormDataFromCandidate = (data: CandidateData): FormValues =>
     phone: extractValue(data.phone),
     position: extractValue(data.position),
     location: extractValue(data.location),
+    address: extractValue(data.address),
+    postal_code: extractValue(data.postal_code),
+    city: extractValue(data.city),
+    country: extractValue(data.country),
     years_experience: safeNumber(data.years_experience),
     company: extractValue(data.company),
     skills: safeArray(data.skills),
@@ -174,6 +178,10 @@ export const extractFormDataFromCandidate = (data: CandidateData): FormValues =>
   console.log('🚗 Mobility extracted:', formData.mobility);
   console.log('💰 Salary expectations extracted:', formData.salary_expectations);
   console.log('📝 Contract type extracted:', formData.contract_type);
+  console.log('📍 Address extracted:', formData.address);
+  console.log('📮 Postal code extracted:', formData.postal_code);
+  console.log('🏙️ City extracted:', formData.city);
+  console.log('🌍 Country extracted:', formData.country);
   
   return formData;
 };

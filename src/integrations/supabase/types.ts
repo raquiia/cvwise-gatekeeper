@@ -331,12 +331,15 @@ export type Database = {
       }
       candidates: {
         Row: {
+          address: string | null
           availability: string | null
           career_objectives: string | null
           certifications: Json | null
+          city: string | null
           company: string | null
           continuous_training: Json | null
           contract_type: string | null
+          country: string | null
           created_at: string | null
           detailed_status: string | null
           education: Json | null
@@ -354,6 +357,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           position: string | null
+          postal_code: string | null
           professional_networks: Json | null
           professional_references: Json | null
           professional_values: string | null
@@ -374,12 +378,15 @@ export type Database = {
           years_experience: number | null
         }
         Insert: {
+          address?: string | null
           availability?: string | null
           career_objectives?: string | null
           certifications?: Json | null
+          city?: string | null
           company?: string | null
           continuous_training?: Json | null
           contract_type?: string | null
+          country?: string | null
           created_at?: string | null
           detailed_status?: string | null
           education?: Json | null
@@ -397,6 +404,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           position?: string | null
+          postal_code?: string | null
           professional_networks?: Json | null
           professional_references?: Json | null
           professional_values?: string | null
@@ -417,12 +425,15 @@ export type Database = {
           years_experience?: number | null
         }
         Update: {
+          address?: string | null
           availability?: string | null
           career_objectives?: string | null
           certifications?: Json | null
+          city?: string | null
           company?: string | null
           continuous_training?: Json | null
           contract_type?: string | null
+          country?: string | null
           created_at?: string | null
           detailed_status?: string | null
           education?: Json | null
@@ -440,6 +451,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           position?: string | null
+          postal_code?: string | null
           professional_networks?: Json | null
           professional_references?: Json | null
           professional_values?: string | null
@@ -828,12 +840,15 @@ export type Database = {
       get_candidates_by_ids: {
         Args: { candidate_ids: string[] }
         Returns: {
+          address: string | null
           availability: string | null
           career_objectives: string | null
           certifications: Json | null
+          city: string | null
           company: string | null
           continuous_training: Json | null
           contract_type: string | null
+          country: string | null
           created_at: string | null
           detailed_status: string | null
           education: Json | null
@@ -851,6 +866,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           position: string | null
+          postal_code: string | null
           professional_networks: Json | null
           professional_references: Json | null
           professional_values: string | null
@@ -1003,12 +1019,15 @@ export type Database = {
       update_candidate_secure: {
         Args: { p_candidate_id: string; p_data: Json }
         Returns: {
+          address: string | null
           availability: string | null
           career_objectives: string | null
           certifications: Json | null
+          city: string | null
           company: string | null
           continuous_training: Json | null
           contract_type: string | null
+          country: string | null
           created_at: string | null
           detailed_status: string | null
           education: Json | null
@@ -1026,6 +1045,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           position: string | null
+          postal_code: string | null
           professional_networks: Json | null
           professional_references: Json | null
           professional_values: string | null

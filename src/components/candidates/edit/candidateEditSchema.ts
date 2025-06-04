@@ -1,26 +1,30 @@
 
 import { z } from 'zod';
 
-export const candidateSchema = z.object({
-  first_name: z.string().min(1, { message: "Le prénom est requis" }),
-  last_name: z.string().min(1, { message: "Le nom est requis" }),
-  email: z.string().email({ message: "Email invalide" }).optional().or(z.literal("")),
-  phone: z.string().optional().or(z.literal("")),
-  position: z.string().optional().or(z.literal("")),
-  location: z.string().optional().or(z.literal("")),
-  years_experience: z.union([z.number(), z.literal("")]).optional(),
-  company: z.string().optional().or(z.literal("")),
-  skills: z.array(z.any()).optional(),
-  availability: z.string().optional().or(z.literal("")),
-  salary_expectations: z.string().optional().or(z.literal("")),
-  mobility: z.string().optional().or(z.literal("")),
-  contract_type: z.string().optional().or(z.literal("")),
-  remote_preference: z.string().optional().or(z.literal("")),
-  travel_willingness: z.string().optional().or(z.literal("")),
-  career_objectives: z.string().optional().or(z.literal("")),
-  professional_values: z.string().optional().or(z.literal("")),
-  work_authorization: z.string().optional().or(z.literal("")),
-  interests: z.string().optional().or(z.literal(""))
+export const candidateEditSchema = z.object({
+  first_name: z.string().min(1, "Le prénom est requis"),
+  last_name: z.string().min(1, "Le nom est requis"),
+  email: z.string().email("Email invalide").optional().or(z.literal("")),
+  phone: z.string().optional(),
+  position: z.string().optional(),
+  location: z.string().optional(),
+  address: z.string().optional(),
+  postal_code: z.string().optional(),
+  city: z.string().optional(),
+  country: z.string().optional(),
+  years_experience: z.number().min(0).optional(),
+  company: z.string().optional(),
+  skills: z.array(z.string()).optional(),
+  availability: z.string().optional(),
+  salary_expectations: z.string().optional(),
+  mobility: z.string().optional(),
+  contract_type: z.string().optional(),
+  remote_preference: z.string().optional(),
+  travel_willingness: z.string().optional(),
+  career_objectives: z.string().optional(),
+  professional_values: z.string().optional(),
+  work_authorization: z.string().optional(),
+  interests: z.string().optional(),
 });
 
-export type FormValues = z.infer<typeof candidateSchema>;
+export type FormValues = z.infer<typeof candidateEditSchema>;

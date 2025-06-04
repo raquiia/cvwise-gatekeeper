@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -14,6 +13,10 @@ export interface CandidateData {
   phone?: string;
   position?: string;
   location?: string;
+  address?: string;
+  postal_code?: string;
+  city?: string;
+  country?: string;
   years_experience?: number;
   company?: string;
   skills?: Json;
@@ -146,6 +149,10 @@ export const candidateService = {
           phone: candidateData.phone,
           position: candidateData.position,
           location: candidateData.location,
+          address: candidateData.address,
+          postal_code: candidateData.postal_code,
+          city: candidateData.city,
+          country: candidateData.country,
           years_experience: candidateData.years_experience,
           company: candidateData.company,
           skills: candidateData.skills,
