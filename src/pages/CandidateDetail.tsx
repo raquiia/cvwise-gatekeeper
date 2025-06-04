@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { candidateService } from '@/services/data/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
-import { ArrowLeft, Briefcase, FileText, Edit, Sparkles } from 'lucide-react';
+import { ArrowLeft, Briefcase, Edit, Sparkles } from 'lucide-react';
 import { processCandidateData } from '@/utils/candidateUtils';
 import { toast } from '@/hooks/use-toast';
 import { getCompleteCandidateData } from '@/services/resume/candidateDataService';
@@ -30,9 +31,8 @@ const CandidateDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
 
-  const fetchCandidateData = async () => {
+  const fetchCandidateData = useCallback(async () => {
     if (!candidateId) {
       console.error("No candidate ID provided");
       setError("Identifiant de candidat manquant");
@@ -53,19 +53,8 @@ const CandidateDetail = () => {
         console.log("Received data from getCompleteCandidateData:", data ? "Success" : "No data");
       } catch (directError: any) {
         console.error("Error with direct function, falling back to standard service:", directError);
-        
-        // If direct function fails with a specific error, we'll try the regular service
-        if (directError.message && (
-            directError.message.includes('ambiguous') || 
-            directError.message.includes('recursion')
-        )) {
-          console.log("Detected specific error, trying fallback method");
-          data = await candidateService.getCandidateById(candidateId);
-          console.log("Fallback method result:", data ? "Success" : "No data");
-        } else {
-          // Rethrow if it's a different error
-          throw directError;
-        }
+        data = await candidateService.getCandidateById(candidateId);
+        console.log("Fallback method result:", data ? "Success" : "No data");
       }
       
       if (!data) {
@@ -77,8 +66,7 @@ const CandidateDetail = () => {
         // Process the data to ensure arrays and properties are correctly formatted
         const processedData = processCandidateData(data);
         
-        // Vérification améliorée des données incomplètes
-        // On vérifie chaque section critique pour détecter si des données importantes sont manquantes
+        // Check data completeness
         const hasEmptyExperiences = !processedData.experiences || 
           (Array.isArray(processedData.experiences) && processedData.experiences.length === 0);
         const hasEmptyEducation = !processedData.education || 
@@ -86,7 +74,6 @@ const CandidateDetail = () => {
         const hasEmptyLanguages = !processedData.languages || 
           (Array.isArray(processedData.languages) && processedData.languages.length === 0);
         
-        // Détection plus précise des données incomplètes
         const hasIncompleteData = hasEmptyExperiences || hasEmptyEducation || hasEmptyLanguages;
         
         console.log("Data completeness check:", {
@@ -102,36 +89,23 @@ const CandidateDetail = () => {
     } catch (err: any) {
       console.error("Error loading candidate:", err);
       setError(`Une erreur s'est produite lors du chargement des données: ${err.message}`);
-      
-      // If we have less than 3 retries and the error contains specific keywords,
-      // automatically retry after a short delay
-      if (retryCount < 2 && err.message && (
-          err.message.includes('ambiguous') || 
-          err.message.includes('recursion')
-      )) {
-        console.log(`Auto-retrying (${retryCount + 1}/3) after error...`);
-        setRetryCount(prev => prev + 1);
-        setTimeout(() => {
-          fetchCandidateData();
-        }, 1500);
-      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [candidateId]);
 
   useEffect(() => {
     fetchCandidateData();
-  }, [candidateId]);
+  }, [fetchCandidateData]);
 
-  const handleStatusChange = (newStatus: string) => {
+  const handleStatusChange = useCallback((newStatus: string) => {
     if (candidate) {
       setCandidate(prevCandidate => ({
         ...prevCandidate!,
         detailed_status: newStatus
       }));
     }
-  };
+  }, [candidate]);
 
   if (loading) {
     return (
@@ -233,7 +207,7 @@ const CandidateDetail = () => {
               </TabsTrigger>
               <TabsTrigger 
                 value="details" 
-                className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
+                className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state-active]:shadow-md transition-all duration-300"
               >
                 Détails
               </TabsTrigger>

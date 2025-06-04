@@ -8,7 +8,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/use-confirm';
-import ModernTableView from './ModernTableView';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface CandidatesTableProps {
@@ -27,7 +26,6 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   onCandidateDeleted
 }) => {
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateData | null>(null);
-  const [currentView, setCurrentView] = useState<'classic' | 'modern'>('modern');
   const { toast } = useToast();
   const { confirm } = useConfirm();
   
@@ -55,16 +53,6 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     onViewCandidate(candidate.id!);
   };
 
-  if (currentView === 'modern') {
-    return (
-      <ModernTableView
-        candidates={candidates}
-        onCandidateSelect={handleCandidateSelect}
-        selectedCandidate={selectedCandidate}
-      />
-    );
-  }
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'qualification': return 'bg-blue-100 text-blue-800';
@@ -83,19 +71,35 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
           <TableRow>
             <TableHead>Prénom</TableHead>
             <TableHead>Nom</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Poste</TableHead>
+            <TableHead>Expérience</TableHead>
             <TableHead>Statut</TableHead>
+            <TableHead>Score</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {candidates.map((candidate) => (
-            <TableRow key={candidate.id} onClick={() => setSelectedCandidate(candidate)}>
+            <TableRow 
+              key={candidate.id} 
+              onClick={() => setSelectedCandidate(candidate)}
+              className="cursor-pointer hover:bg-gray-50"
+            >
               <TableCell>{candidate.first_name}</TableCell>
               <TableCell>{candidate.last_name}</TableCell>
+              <TableCell>{candidate.email}</TableCell>
+              <TableCell>{candidate.position || 'Non spécifié'}</TableCell>
+              <TableCell>{candidate.years_experience || 0} ans</TableCell>
               <TableCell>
-                <Badge className={getStatusColor(candidate.status || 'pending')}>
-                  {CANDIDATE_STATUS_LABELS[candidate.status || 'pending'] || 'Inconnu'}
+                <Badge className={getStatusColor(candidate.detailed_status || 'initial')}>
+                  {CANDIDATE_STATUS_LABELS[candidate.detailed_status || 'initial'] || 'Inconnu'}
                 </Badge>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center">
+                  <span className="font-medium">{candidate.score || 0}%</span>
+                </div>
               </TableCell>
               <TableCell>
                 <DropdownMenu>

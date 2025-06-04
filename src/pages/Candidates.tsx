@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -19,7 +20,7 @@ import { semanticMatchingService } from '@/services/semantic/semanticMatchingSer
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
 import { ActiveJobProvider } from '@/context/ActiveJobContext';
 import { Button } from '@/components/ui/button';
-import { Filter, Upload, FileText, UserPlus } from 'lucide-react';
+import { Filter, Upload, FileText, UserPlus, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 // Helper function to extract status from candidate - Enhanced version
@@ -351,7 +352,10 @@ const CandidatesContent = () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* ... keep existing code (background gradients and layout) */}
+      {/* Background gradients */}
+      <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-indigo-50/30 to-blue-50/50 dark:from-purple-950/20 dark:via-indigo-950/10 dark:to-blue-950/20"></div>
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-200/20 dark:bg-purple-800/10 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-200/20 dark:bg-blue-800/10 rounded-full blur-3xl"></div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         {/* Enhanced Header */}
@@ -382,6 +386,15 @@ const CandidatesContent = () => {
               >
                 <Filter size={16} />
                 <span className="hidden sm:inline">Filtres</span>
+              </Button>
+              
+              <Button 
+                variant="outline"
+                onClick={() => navigate('/job-offers')}
+                className="gap-2 border-purple-200/50 hover:bg-purple-50"
+              >
+                <Target size={16} />
+                <span className="hidden sm:inline">Matching</span>
               </Button>
               
               <Link to="/resumes/upload">
@@ -443,11 +456,11 @@ const CandidatesContent = () => {
           <div className="mb-6 animate-in fade-in duration-300">
             <CandidatesFilters 
               showFilters={true}
-              onLocationChange={handleLocationChange}
-              onCompanyChange={handleCompanyChange}
-              onPreviousCompanyChange={handlePreviousCompanyChange}
-              onSkillsChange={handleSkillsChange}
-              onExperienceChange={handleExperienceChange}
+              onLocationChange={(value: string) => setLocation(value)}
+              onCompanyChange={(value: string) => setCompany(value)}
+              onPreviousCompanyChange={(value: string) => setPreviousCompany(value)}
+              onSkillsChange={(skills: string[]) => setSelectedSkills(skills)}
+              onExperienceChange={(value: string) => setExperience(value)}
               onEducationLevelChange={() => {}}
               onCertificationChange={() => {}}
               onLanguageChange={() => {}}
@@ -456,10 +469,18 @@ const CandidatesContent = () => {
               onContractTypeChange={() => {}}
               onRemotePreferenceChange={() => {}}
               onMobilityChange={() => {}}
-              onReset={handleResetFilters}
-              onSemanticSearchChange={handleSemanticSearchChange}
-              onApplyFilters={handleApplyFilters}
-              onResetFilters={handleResetFilters}
+              onReset={() => {
+                setLocation('');
+                setCompany('');
+                setPreviousCompany('');
+                setExperience('all');
+                setSelectedSkills([]);
+                setSemanticSearch('');
+                setFilteredCandidates(candidates);
+              }}
+              onSemanticSearchChange={(query: string) => setSemanticSearch(query)}
+              onApplyFilters={() => {}}
+              onResetFilters={() => {}}
               location={location}
               company={company}
               previousCompany={previousCompany}
