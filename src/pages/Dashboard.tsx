@@ -1,9 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Upload, Users } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import Layout from '@/components/Layout';
-import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUserData } from '@/hooks/useUserData';
@@ -12,15 +9,16 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { formatDate } from '@/utils/dateFormatter';
 import { calculateCandidateScore } from '@/services/scoring/candidateScoring';
 import { formatCandidateData } from '@/services/data/candidateService';
-
-// Import our new components
-import StatCards from '@/components/dashboard/StatCards';
-import RecentCandidatesTable from '@/components/dashboard/RecentCandidatesTable';
-import ChartSections from '@/components/dashboard/ChartSections';
 import { aggregateEducationData, aggregateSectorData } from '@/utils/dashboardUtils';
 
+// Import our modern components
+import DashboardHeader from '@/components/dashboard/modern/DashboardHeader';
+import ModernKPICards from '@/components/dashboard/modern/ModernKPICards';
+import IntelligenceSection from '@/components/dashboard/modern/IntelligenceSection';
+import AdvancedAnalytics from '@/components/dashboard/modern/AdvancedAnalytics';
+import RecentCandidatesTable from '@/components/dashboard/RecentCandidatesTable';
+
 const Dashboard = () => {
-  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [recentCandidates, setRecentCandidates] = useState([]);
   const { toast } = useToast();
@@ -32,6 +30,12 @@ const Dashboard = () => {
   const [educationData, setEducationData] = useState([]);
   const [sectorData, setSectorData] = useState([]);
   
+  const handleSearch = (query: string) => {
+    // Implement search functionality here
+    console.log('Searching for:', query);
+    // You could filter candidates or redirect to candidates page with search
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -109,60 +113,36 @@ const Dashboard = () => {
   }, [toast]);
   
   return (
-    <Layout className="py-8 bg-gradient-to-br from-purple-50/50 to-white dark:from-navy-dark/90 dark:to-navy-dark">
-      <div className="container mx-auto px-4 pb-16">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
-          <div className="mb-4 md:mb-0">
-            <h1 className="text-2xl font-bold text-navy-dark dark:text-sand mb-1 bg-gradient-to-r from-purple-700 to-indigo-600 dark:from-purple-400 dark:to-indigo-300 bg-clip-text text-transparent">
-              Tableau de bord
-            </h1>
-            <p className="text-muted-foreground">
-              Bienvenue sur le tableau de bord de Migso. Voici un aperçu de votre activité.
-            </p>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
-              <input
-                type="text"
-                placeholder="Rechercher un candidat..."
-                className="border-purple-200/50 dark:border-purple-800/30 focus-visible:ring-purple-500 rounded-md pl-10 w-full sm:w-auto border bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm py-2 pr-4"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            
-            <Link to="/resumes/upload">
-              <Button className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800 w-full sm:w-auto">
-                <Upload size={18} className="mr-2" />
-                Importer un CV
-              </Button>
-            </Link>
-          </div>
-        </div>
+    <Layout className="min-h-screen bg-gradient-to-br from-purple-50/30 via-white to-blue-50/30 dark:from-navy-dark/90 dark:via-navy-dark dark:to-purple-950/30">
+      <div className="container mx-auto px-4 py-6 pb-16 space-y-8">
         
-        {/* Stat Cards */}
-        <div className="mb-8">
-          <StatCards 
-            loading={loading}
-            resumesCount={resumesCount}
-            candidatesCount={candidatesCount}
-            topCandidatesCount={topCandidatesCount}
-            usersCount={realUsers.length}
-          />
-        </div>
+        {/* Modern Header */}
+        <DashboardHeader onSearch={handleSearch} />
         
-        {/* Charts */}
-        <div className="mb-8">
-          <ChartSections 
-            loading={loading}
-            educationData={educationData}
-            sectorData={sectorData}
-          />
-        </div>
+        {/* Modern KPI Cards */}
+        <ModernKPICards 
+          loading={loading}
+          resumesCount={resumesCount}
+          candidatesCount={candidatesCount}
+          topCandidatesCount={topCandidatesCount}
+          usersCount={realUsers.length}
+        />
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Intelligence Section */}
+        <IntelligenceSection 
+          candidatesCount={candidatesCount}
+          topCandidatesCount={topCandidatesCount}
+        />
+        
+        {/* Advanced Analytics */}
+        <AdvancedAnalytics 
+          candidatesData={candidatesData}
+          educationData={educationData}
+          sectorData={sectorData}
+        />
+        
+        {/* Bottom Grid - Recent Data & User Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <RecentCandidatesTable 
               loading={loading}
@@ -173,7 +153,7 @@ const Dashboard = () => {
           <div>
             {!usersLoading && (
               <div className="animate-fade-in">
-                <Card className="border-purple-200/30 dark:border-purple-800/20 overflow-hidden shadow-xl bg-white/50 dark:bg-navy-dark/30 backdrop-blur-sm">
+                <Card className="border-purple-200/30 dark:border-purple-800/20 overflow-hidden shadow-xl bg-white/70 dark:bg-navy-dark/40 backdrop-blur-xl">
                   <CardHeader className="p-5 border-b border-purple-100/50 dark:border-purple-900/30 backdrop-blur-sm bg-gradient-to-r from-white/80 to-purple-50/80 dark:from-navy-dark/90 dark:to-purple-950/30">
                     <CardTitle className="text-lg font-semibold text-navy-dark dark:text-sand">Statistiques utilisateurs</CardTitle>
                   </CardHeader>
