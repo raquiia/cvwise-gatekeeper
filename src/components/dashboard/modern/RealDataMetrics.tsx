@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Tooltip, Legend } from 'recharts';
@@ -12,46 +10,18 @@ interface RealDataMetricsProps {
 const RealDataMetrics: React.FC<RealDataMetricsProps> = ({ candidatesData }) => {
   const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-  // Helper function to extract correct status (same logic as Candidates page)
+  // Helper function to extract correct status (simplified version matching ModernTableView logic)
   const extractCandidateStatus = (candidate: any): string => {
-    let statusValue = 'initial';
+    // Use the detailed_status directly like in ModernTableView
+    const status = candidate.detailed_status || 'initial';
     
-    try {
-      if (candidate.detailed_status && 
-          candidate.detailed_status !== '' && 
-          candidate.detailed_status !== 'undefined' && 
-          candidate.detailed_status !== 'null') {
-        
-        if (typeof candidate.detailed_status === 'string') {
-          const trimmedStatus = candidate.detailed_status.trim();
-          if (trimmedStatus !== '' && trimmedStatus !== 'undefined' && trimmedStatus !== 'null') {
-            return trimmedStatus;
-          }
-        }
-        
-        if (typeof candidate.detailed_status === 'object' && candidate.detailed_status !== null) {
-          const statusObj = candidate.detailed_status as Record<string, any>;
-          
-          if ('value' in statusObj && statusObj.value !== undefined) {
-            const extractedValue = String(statusObj.value).trim();
-            if (extractedValue !== '' && extractedValue !== 'undefined' && extractedValue !== 'null') {
-              return extractedValue;
-            }
-          }
-          
-          if ('status' in statusObj && statusObj.status !== undefined) {
-            const extractedValue = String(statusObj.status).trim();
-            if (extractedValue !== '' && extractedValue !== 'undefined' && extractedValue !== 'null') {
-              return extractedValue;
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Error extracting candidate status:", err);
-    }
+    console.log('Dashboard - Raw candidate status:', { 
+      id: candidate.id, 
+      detailed_status: candidate.detailed_status,
+      extracted_status: status
+    });
     
-    return statusValue;
+    return status;
   };
 
   // Calcul des métriques temporelles
@@ -80,40 +50,41 @@ const RealDataMetrics: React.FC<RealDataMetricsProps> = ({ candidatesData }) => 
       .slice(-4); // 4 dernières semaines
   };
 
-  // Répartition par statut - IMPROVED with correct status extraction
+  // Répartition par statut - Using the same logic as ModernTableView
   const getStatusData = () => {
     const statusMap = candidatesData.reduce((acc, candidate) => {
-      // Use the same extraction logic as the Candidates page
+      // Use the same logic as ModernTableView
       const status = extractCandidateStatus(candidate);
       
-      console.log('Dashboard - Candidate status extracted:', { 
+      console.log('Dashboard - Processing candidate:', { 
         id: candidate.id, 
         detailed_status: candidate.detailed_status, 
-        status: candidate.status,
-        extracted_status: status 
+        final_status: status 
       });
       
+      // Map status values to display labels - matching what ModernTableView uses
       const statusLabels = {
         'initial': 'Initial',
-        'contact': 'Contact',
-        'prequalification': 'Pré-qualification', 
+        'contact': 'Prise de contact',
+        'prequalification': 'Préqualification', 
+        'qualification': 'Qualification',
         'ec1': 'Entretien 1',
         'ec2': 'Entretien 2',
+        'entretien': 'Entretien',
         'presentation_client': 'Présentation client',
+        'shortlist': 'Shortlist',
         'en_mission': 'En mission',
         'refus': 'Refusé',
-        'ancien_employe': 'Ancien employé',
-        'pending': 'En attente',
-        'active': 'Actif',
-        'archived': 'Archivé'
+        'refusé': 'Refusé',
+        'ancien_employe': 'Ancien employé'
       };
       
-      const label = statusLabels[status] || status || 'Non défini';
+      const label = statusLabels[status] || status || 'Initial';
       acc[label] = (acc[label] || 0) + 1;
       return acc;
     }, {});
 
-    console.log('Dashboard - Status distribution:', statusMap);
+    console.log('Dashboard - Final status distribution:', statusMap);
 
     return Object.entries(statusMap)
       .map(([name, value]) => ({ name, value }))
