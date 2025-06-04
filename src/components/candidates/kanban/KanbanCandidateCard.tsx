@@ -25,13 +25,11 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
   isDragging = false
 }) => {
   const { toast } = useToast();
-  const { getAIScore, isJobSpecific } = useAIScoring();
+  const { getAIScore, calculateAIScore, isJobSpecific } = useAIScoring();
   const skills = ensureStringArray(candidate.skills);
   
-  // Utiliser le système AI scoring unifié
+  // Utiliser uniquement le système AI scoring unifié
   const aiScore = getAIScore(candidate.id!);
-  const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
-  const isAIScore = aiScore.score !== null;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -66,9 +64,17 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
       case 'database': return 'BDD';
       case 'fresh_calculation': return 'Nouveau';
       case 'cache': return 'Cache';
-      default: return 'Ancien';
+      default: return 'IA';
     }
   };
+
+  // Déclencher le calcul AI si aucun score n'est disponible
+  React.useEffect(() => {
+    if (candidate.id && !aiScore.score && !aiScore.isLoading && !aiScore.error) {
+      console.log('Auto-calculating AI score for kanban card:', candidate.id);
+      calculateAIScore(candidate.id);
+    }
+  }, [candidate.id, aiScore.score, aiScore.isLoading, aiScore.error, calculateAIScore]);
 
   return (
     <Card 
@@ -94,37 +100,35 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
             </div>
           </div>
           
-          {/* Score avec système AI unifié */}
+          {/* Score - Uniquement système AI */}
           <div className="flex flex-col items-end gap-1">
             {aiScore.isLoading ? (
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-xs text-muted-foreground">Calcul...</span>
               </div>
             ) : aiScore.error ? (
               <div className="flex flex-col items-end gap-1" title={aiScore.error}>
-                <div className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(candidate.score || 0)}`}>
-                  {candidate.score || 0}%
+                <div className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                  N/A
                 </div>
-                <Badge variant="secondary" className="text-xs">
-                  Ancien
+                <Badge variant="destructive" className="text-xs">
+                  Erreur
                 </Badge>
               </div>
-            ) : (
+            ) : aiScore.score !== null ? (
               <div className="flex flex-col items-end gap-1">
-                <div className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(displayScore)}`}>
-                  {displayScore}%
+                <div className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(aiScore.score)}`}>
+                  {aiScore.score}%
                 </div>
                 <div className="flex items-center gap-1">
                   <Badge 
-                    variant={isAIScore ? "default" : "secondary"} 
-                    className={cn(
-                      "text-xs",
-                      isAIScore ? "bg-purple-100 text-purple-800 border-purple-300" : ""
-                    )}
-                    title={isAIScore ? aiScore.explanation : "Score calculé avec l'ancien système"}
+                    variant="default"
+                    className="text-xs bg-purple-100 text-purple-800 border-purple-300"
+                    title={aiScore.explanation || "Score calculé par l'IA"}
                   >
-                    {isAIScore && <Brain size={8} className="mr-1" />}
-                    {isAIScore ? getScoreSource(aiScore.source) : 'Ancien'}
+                    <Brain size={8} className="mr-1" />
+                    {getScoreSource(aiScore.source)}
                   </Badge>
                   {isJobSpecific && (
                     <div title="Score de correspondance">
@@ -132,6 +136,16 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
                     </div>
                   )}
                 </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-end gap-1">
+                <div className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                  En attente
+                </div>
+                <Badge variant="secondary" className="text-xs">
+                  <Brain size={8} className="mr-1" />
+                  IA
+                </Badge>
               </div>
             )}
           </div>
