@@ -312,6 +312,7 @@ export type Database = {
           last_updated_at: string | null
           location: string | null
           mobility: string | null
+          notes: string | null
           phone: string | null
           position: string | null
           professional_networks: Json | null
@@ -354,6 +355,7 @@ export type Database = {
           last_updated_at?: string | null
           location?: string | null
           mobility?: string | null
+          notes?: string | null
           phone?: string | null
           position?: string | null
           professional_networks?: Json | null
@@ -396,6 +398,7 @@ export type Database = {
           last_updated_at?: string | null
           location?: string | null
           mobility?: string | null
+          notes?: string | null
           phone?: string | null
           position?: string | null
           professional_networks?: Json | null
@@ -787,6 +790,7 @@ export type Database = {
           last_updated_at: string | null
           location: string | null
           mobility: string | null
+          notes: string | null
           phone: string | null
           position: string | null
           professional_networks: Json | null
@@ -940,6 +944,7 @@ export type Database = {
           last_updated_at: string | null
           location: string | null
           mobility: string | null
+          notes: string | null
           phone: string | null
           position: string | null
           professional_networks: Json | null

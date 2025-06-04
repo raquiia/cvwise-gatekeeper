@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface CandidateData {
@@ -101,7 +102,6 @@ export const candidateService = {
   },
 
   // Update an existing candidate
-  // Add debugging to the updateCandidate function to see what's happening
   updateCandidate: async (candidateData: Partial<CandidateData> & { id: string }): Promise<CandidateData> => {
     console.log('candidateService.updateCandidate called with:', candidateData);
     
@@ -128,7 +128,7 @@ export const candidateService = {
           professional_values: candidateData.professional_values,
           work_authorization: candidateData.work_authorization,
           interests: candidateData.interests,
-          notes: candidateData.notes, // This field needs to be added to the database
+          notes: candidateData.notes,
           updated_at: new Date().toISOString()
         })
         .eq('id', candidateData.id)
