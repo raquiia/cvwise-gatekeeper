@@ -18,8 +18,7 @@ import NotesTab from '@/components/candidates/detail/NotesTab';
 import StatusSelector from '@/components/candidates/detail/StatusSelector';
 import EnhancedScoreDisplay from '@/components/candidates/detail/EnhancedScoreDisplay';
 import ExportProfileButton from '@/components/candidates/detail/ExportProfileButton';
-import { getCompleteCandidateData } from '@/services/resume/candidateDataService';
-import { CandidateData } from '@/services/data/candidateService';
+import { candidateService, CandidateData } from '@/services/data/candidateService';
 import { useCandidateData } from '@/context/CandidateDataContext';
 
 const CandidateDetail = () => {
@@ -41,30 +40,13 @@ const CandidateDetail = () => {
     try {
       console.log('🔍 Fetching candidate data for ID:', id);
       setLoading(true);
-      const candidateData = await getCompleteCandidateData(id);
+      const candidateData = await candidateService.getCandidateById(id);
       console.log('📥 Received candidate data:', candidateData);
       
       if (!candidateData) {
         setError('Candidat non trouvé');
       } else {
-        // Convert the data to match our expected CandidateData type with safe type conversion
-        const formattedCandidate: CandidateData = {
-          ...candidateData,
-          detailed_status: (candidateData as any).detailed_status || 'contact',
-          skills: Array.isArray((candidateData as any).skills) ? (candidateData as any).skills : [],
-          experiences: Array.isArray((candidateData as any).experiences) ? (candidateData as any).experiences : [],
-          education: Array.isArray((candidateData as any).education) ? (candidateData as any).education : [],
-          certifications: Array.isArray((candidateData as any).certifications) ? (candidateData as any).certifications : [],
-          languages: Array.isArray((candidateData as any).languages) ? (candidateData as any).languages : [],
-          publications: Array.isArray((candidateData as any).publications) ? (candidateData as any).publications : [],
-          professional_references: Array.isArray((candidateData as any).professional_references) ? (candidateData as any).professional_references : [],
-          professional_networks: Array.isArray((candidateData as any).professional_networks) ? (candidateData as any).professional_networks : [],
-          continuous_training: Array.isArray((candidateData as any).continuous_training) ? (candidateData as any).continuous_training : [],
-          special_permits: Array.isArray((candidateData as any).special_permits) ? (candidateData as any).special_permits : [],
-          industries: Array.isArray((candidateData as any).industries) ? (candidateData as any).industries : [],
-          projects: Array.isArray((candidateData as any).projects) ? (candidateData as any).projects : []
-        };
-        setCandidate(formattedCandidate);
+        setCandidate(candidateData);
         setError(null);
       }
     } catch (error: any) {
