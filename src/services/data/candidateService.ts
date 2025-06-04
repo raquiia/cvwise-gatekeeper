@@ -326,8 +326,8 @@ export const candidateService = {
     try {
       console.log('🔍 Fetching candidate by ID:', candidateId);
       
-      const { data, error } = await supabase.rpc('get_candidate_by_id', {
-        candidate_id_param: candidateId
+      const { data, error } = await supabase.rpc('get_user_candidates', {
+        user_id_param: (await supabase.auth.getUser()).data.user?.id
       });
       
       if (error) {
@@ -335,15 +335,24 @@ export const candidateService = {
         throw error;
       }
       
-      console.log('📥 RAW RPC RESPONSE:', JSON.stringify(data, null, 2));
+      console.log('📥 RAW RPC RESPONSE get_user_candidates:', data);
       
       if (!data || data.length === 0) {
+        throw new Error('No candidates found');
+      }
+      
+      // Find the specific candidate by ID
+      const candidate = data.find((c: any) => c.id === candidateId);
+      
+      if (!candidate) {
         throw new Error('Candidate not found');
       }
       
-      // This should be formatted as a single CandidateData object
-      const formatted = formatCandidateData(data[0]);
-      console.log('✅ FINAL FORMATTED RESULT:', JSON.stringify(formatted, null, 2));
+      console.log('📋 Found candidate:', candidate);
+      
+      // Format the candidate data
+      const formatted = formatCandidateData(candidate);
+      console.log('✅ FINAL FORMATTED RESULT:', formatted);
       
       return formatted;
     } catch (error: any) {

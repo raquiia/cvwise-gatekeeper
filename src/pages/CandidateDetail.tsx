@@ -38,27 +38,24 @@ const CandidateDetail = () => {
     }
 
     try {
-      console.log('🔍 Fetching candidate data for ID:', id);
+      console.log('🔍 Loading candidate data for ID:', id);
       setLoading(true);
+      setError(null);
+      
       const candidateData = await candidateService.getCandidateById(id);
       console.log('📥 Received candidate data:', candidateData);
       
-      if (!candidateData) {
-        setError('Candidat non trouvé');
-      } else {
-        setCandidate(candidateData);
-        setError(null);
-      }
+      setCandidate(candidateData);
     } catch (error: any) {
       console.error('❌ Error fetching candidate:', error);
       setError(error.message || 'Erreur lors du chargement du candidat');
+      setCandidate(null);
     } finally {
       setLoading(false);
     }
   };
 
   const handleStatusChange = async (newStatus: string) => {
-    // Refresh candidate data locally
     console.log(`🟢 Status changed for candidate ${id}: ${newStatus}`);
     
     // Update local state first
