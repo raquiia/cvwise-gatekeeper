@@ -134,7 +134,7 @@ const CandidateDetail = () => {
             {/* Status Selector with global refresh capability */}
             <StatusSelector 
               candidateId={id || ''} 
-              currentStatus={candidate.detailed_status} 
+              currentStatus={candidate.detailed_status || 'contact'} 
               onStatusChange={handleStatusChange}
               onGlobalRefresh={onCandidateUpdated}
             />
