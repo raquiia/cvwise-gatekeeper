@@ -10,7 +10,7 @@ import { candidateService } from '@/services/data/candidateService';
 import type { CandidateData } from '@/services/data/candidateService';
 import { useAuth } from '@/context/AuthContext';
 import ScoreDisplay from './ScoreDisplay';
-import { User, Briefcase, MapPin, Calendar, DollarSign, Clock, FileText, Save, RotateCcw, Phone } from 'lucide-react';
+import { User, Briefcase, MapPin, Calendar, DollarSign, Clock, FileText, Save, RotateCcw, Phone, Home } from 'lucide-react';
 
 interface ProfileTabProps {
   candidate: CandidateData;
@@ -25,6 +25,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   const [phone, setPhone] = useState(candidate.phone || '');
   const [position, setPosition] = useState(candidate.position || '');
   const [location, setLocation] = useState(candidate.location || '');
+  const [address, setAddress] = useState(candidate.address || '');
+  const [postalCode, setPostalCode] = useState(candidate.postal_code || '');
+  const [city, setCity] = useState(candidate.city || '');
+  const [country, setCountry] = useState(candidate.country || '');
   const [yearsExperience, setYearsExperience] = useState(candidate.years_experience || 0);
   const [salaryExpectation, setSalaryExpectation] = useState(candidate.salary_expectations || '');
   const [availability, setAvailability] = useState(candidate.availability || '');
@@ -46,6 +50,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     setPhone(candidate.phone || '');
     setPosition(candidate.position || '');
     setLocation(candidate.location || '');
+    setAddress(candidate.address || '');
+    setPostalCode(candidate.postal_code || '');
+    setCity(candidate.city || '');
+    setCountry(candidate.country || '');
     setYearsExperience(candidate.years_experience || 0);
     setSalaryExpectation(candidate.salary_expectations || '');
     setAvailability(candidate.availability || '');
@@ -67,6 +75,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
         phone: phone,
         position: position,
         location: location,
+        address: address,
+        postal_code: postalCode,
+        city: city,
+        country: country,
         years_experience: yearsExperience,
         salary_expectations: salaryExpectation,
         availability: availability,
@@ -170,6 +182,79 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardContent>
           </Card>
 
+          {/* Adresse structurée */}
+          <Card className="shadow-sm border border-gray-200/80">
+            <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-200/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <Home className="h-5 w-5 text-emerald-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Adresse</h3>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="address" className="text-sm font-medium text-gray-700">Adresse</Label>
+                <Input
+                  type="text"
+                  id="address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="5 Rue de L'Ancre"
+                  className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="postalCode" className="text-sm font-medium text-gray-700">Code postal</Label>
+                  <Input
+                    type="text"
+                    id="postalCode"
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(e.target.value)}
+                    placeholder="68330"
+                    className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="city" className="text-sm font-medium text-gray-700">Ville</Label>
+                  <Input
+                    type="text"
+                    id="city"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="Huningue"
+                    className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="country" className="text-sm font-medium text-gray-700">Pays</Label>
+                  <Input
+                    type="text"
+                    id="country"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    placeholder="France"
+                    className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+              {location && (
+                <div className="space-y-2">
+                  <Label htmlFor="location" className="text-sm font-medium text-gray-500">Localisation complète (héritée)</Label>
+                  <Input
+                    type="text"
+                    id="location"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="border-gray-200 bg-gray-50 text-gray-600"
+                    readOnly
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Informations professionnelles */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200/50">
@@ -196,21 +281,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="location" className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Localisation
-                  </Label>
-                  <Input
-                    type="text"
-                    id="location"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
                   <Label htmlFor="yearsExperience" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
                     Années d'expérience
@@ -223,6 +293,8 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                     className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="salaryExpectation" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     <DollarSign className="h-4 w-4" />
@@ -236,19 +308,19 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                     className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="availability" className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Disponibilité
-                </Label>
-                <Input
-                  type="text"
-                  id="availability"
-                  value={availability}
-                  onChange={(e) => setAvailability(e.target.value)}
-                  className="border-gray-300 focus:border-green-500 focus:ring-green-500"
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="availability" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Disponibilité
+                  </Label>
+                  <Input
+                    type="text"
+                    id="availability"
+                    value={availability}
+                    onChange={(e) => setAvailability(e.target.value)}
+                    className="border-gray-300 focus:border-green-500 focus:ring-green-500"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
