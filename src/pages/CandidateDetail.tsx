@@ -47,11 +47,22 @@ const CandidateDetail = () => {
       if (!candidateData) {
         setError('Candidat non trouvé');
       } else {
-        // Convert the data to match our expected CandidateData type
+        // Convert the data to match our expected CandidateData type with safe type conversion
         const formattedCandidate: CandidateData = {
           ...candidateData,
           detailed_status: candidateData.detailed_status || 'contact',
-          skills: Array.isArray(candidateData.skills) ? candidateData.skills : []
+          skills: Array.isArray(candidateData.skills) ? candidateData.skills : [],
+          experiences: Array.isArray(candidateData.experiences) ? candidateData.experiences : [],
+          education: Array.isArray(candidateData.education) ? candidateData.education : [],
+          certifications: Array.isArray(candidateData.certifications) ? candidateData.certifications : [],
+          languages: Array.isArray(candidateData.languages) ? candidateData.languages : [],
+          publications: Array.isArray(candidateData.publications) ? candidateData.publications : [],
+          professional_references: Array.isArray(candidateData.professional_references) ? candidateData.professional_references : [],
+          professional_networks: Array.isArray(candidateData.professional_networks) ? candidateData.professional_networks : [],
+          continuous_training: Array.isArray(candidateData.continuous_training) ? candidateData.continuous_training : [],
+          special_permits: Array.isArray(candidateData.special_permits) ? candidateData.special_permits : [],
+          industries: Array.isArray(candidateData.industries) ? candidateData.industries : [],
+          projects: Array.isArray(candidateData.projects) ? candidateData.projects : []
         };
         setCandidate(formattedCandidate);
         setError(null);
@@ -230,19 +241,19 @@ const CandidateDetail = () => {
             <div className="block lg:hidden">
               <Tabs value={activeTab} className="w-full">
                 <TabsContent value="profile">
-                  <ProfileTab candidate={candidate} onCandidateUpdated={onCandidateUpdated} />
+                  <ProfileTab candidate={candidate} />
                 </TabsContent>
                 <TabsContent value="details">
-                  <DetailsTab candidate={candidate} onCandidateUpdated={onCandidateUpdated} />
+                  <DetailsTab candidate={candidate} />
                 </TabsContent>
                 <TabsContent value="experience">
-                  <ExperienceTab candidate={candidate} onCandidateUpdated={onCandidateUpdated} />
+                  <ExperienceTab candidate={candidate} />
                 </TabsContent>
                 <TabsContent value="education">
-                  <EducationTab candidate={candidate} onCandidateUpdated={onCandidateUpdated} />
+                  <EducationTab candidate={candidate} />
                 </TabsContent>
                 <TabsContent value="notes">
-                  <NotesTab candidate={candidate} onDataRefresh={loadCandidateData} />
+                  <NotesTab candidate={candidate} onDataUpdate={loadCandidateData} />
                 </TabsContent>
               </Tabs>
             </div>
@@ -250,19 +261,19 @@ const CandidateDetail = () => {
             {/* Desktop content */}
             <div className="hidden lg:block">
               {activeTab === 'profile' && (
-                <ProfileTab candidate={candidate} onCandidateUpdated={onCandidateUpdated} />
+                <ProfileTab candidate={candidate} />
               )}
               {activeTab === 'details' && (
-                <DetailsTab candidate={candidate} onCandidateUpdated={onCandidateUpdated} />
+                <DetailsTab candidate={candidate} />
               )}
               {activeTab === 'experience' && (
-                <ExperienceTab candidate={candidate} onCandidateUpdated={onCandidateUpdated} />
+                <ExperienceTab candidate={candidate} />
               )}
               {activeTab === 'education' && (
-                <EducationTab candidate={candidate} onCandidateUpdated={onCandidateUpdated} />
+                <EducationTab candidate={candidate} />
               )}
               {activeTab === 'notes' && (
-                <NotesTab candidate={candidate} onDataRefresh={loadCandidateData} />
+                <NotesTab candidate={candidate} onDataUpdate={loadCandidateData} />
               )}
             </div>
           </div>
