@@ -324,27 +324,45 @@ export const candidateService = {
   
   getCandidateById: async (candidateId: string): Promise<CandidateData> => {
     try {
+      console.log('🔍 getCandidateById called with ID:', candidateId);
+      
+      if (!candidateId || candidateId.trim() === '') {
+        throw new Error('Candidate ID is required');
+      }
+      
       console.log('🔍 Fetching candidate by ID:', candidateId);
       
+      const currentUser = await supabase.auth.getUser();
+      const userId = currentUser.data.user?.id;
+      console.log('👤 Current user ID for candidate fetch:', userId);
+      
       const { data, error } = await supabase.rpc('get_user_candidates', {
-        user_id_param: (await supabase.auth.getUser()).data.user?.id
+        user_id_param: userId
       });
       
       if (error) {
-        console.error('❌ RPC Error:', error);
+        console.error('❌ RPC Error in getCandidateById:', error);
         throw error;
       }
       
       console.log('📥 RAW RPC RESPONSE get_user_candidates:', data);
+      console.log('📊 Total candidates in response:', data?.length || 0);
       
       if (!data || data.length === 0) {
+        console.log('📭 No candidates found for user');
         throw new Error('No candidates found');
       }
       
       // Find the specific candidate by ID
-      const candidate = data.find((c: any) => c.id === candidateId);
+      console.log('🔎 Looking for candidate with ID:', candidateId);
+      const candidate = data.find((c: any) => {
+        console.log('🔍 Checking candidate:', c.id, 'vs', candidateId);
+        return c.id === candidateId;
+      });
       
       if (!candidate) {
+        console.log('❌ Candidate not found in user candidates list');
+        console.log('📋 Available candidate IDs:', data.map((c: any) => c.id));
         throw new Error('Candidate not found');
       }
       
@@ -356,7 +374,7 @@ export const candidateService = {
       
       return formatted;
     } catch (error: any) {
-      console.error('Error in getCandidateById:', error);
+      console.error('❌ Error in getCandidateById:', error);
       throw new Error(`Failed to get candidate: ${error.message}`);
     }
   },

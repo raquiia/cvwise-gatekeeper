@@ -31,7 +31,10 @@ const CandidateDetail = () => {
   const { onCandidateUpdated } = useCandidateData();
 
   const loadCandidateData = async () => {
-    if (!id) {
+    console.log('🔍 Starting loadCandidateData with ID:', id);
+    
+    if (!id || id.trim() === '') {
+      console.error('❌ No candidate ID provided');
       setError('Aucun ID de candidat spécifié');
       setLoading(false);
       return;
@@ -43,7 +46,11 @@ const CandidateDetail = () => {
       setError(null);
       
       const candidateData = await candidateService.getCandidateById(id);
-      console.log('📥 Received candidate data:', candidateData);
+      console.log('📥 Successfully received candidate data:', candidateData);
+      
+      if (!candidateData) {
+        throw new Error('Aucune donnée de candidat reçue');
+      }
       
       setCandidate(candidateData);
     } catch (error: any) {
@@ -72,6 +79,7 @@ const CandidateDetail = () => {
 
   // Load candidate data on component mount
   useEffect(() => {
+    console.log('🚀 CandidateDetail useEffect triggered with ID:', id);
     loadCandidateData();
   }, [id]);
 
