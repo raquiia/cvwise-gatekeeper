@@ -18,6 +18,7 @@ import { ActiveJobProvider } from '@/context/ActiveJobContext';
 import { Button } from '@/components/ui/button';
 import { Filter, Upload, FileText, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import ReprocessDataButton from '@/components/candidates/ReprocessDataButton';
 
 // Helper function to extract status from candidate
 const extractCandidateStatus = async (candidate: CandidateData): Promise<string> => {
@@ -266,6 +267,8 @@ const CandidatesContent = () => {
           </div>
           
           <div className="flex gap-2">
+            <ReprocessDataButton />
+            
             <Button 
               variant={showFilters ? "default" : "outline"} 
               className="gap-2"
