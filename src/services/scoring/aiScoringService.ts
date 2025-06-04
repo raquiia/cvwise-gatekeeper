@@ -1,214 +1,356 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { CandidateData } from '@/services/data/candidateService';
 
 export interface AIScoringResult {
-  score: number;
+  education_score: number;
+  skills_score: number;
+  experience_score: number;
+  location_score: number;
+  languages_score: number;
+  profile_summary_score?: number;
+  cv_structure_score?: number;
+  cultural_fit_score?: number;
+  availability_score?: number;
+  interview_bonus?: number;
+  total_score: number;
   explanation: string;
-  breakdown: {
-    skills: number;
-    experience: number;
-    education: number;
-    languages: number;
-    location: number;
-    profileSummary: number;
-    cvStructure: number;
-    culturalFit?: number;
-    availability?: number;
-    interviewBonus?: number;
-  };
-  isJobSpecific: boolean;
-  source: 'database' | 'fresh_calculation' | 'cache';
 }
 
-class AIScoringService {
-  private scoreCache: Map<string, { score: AIScoringResult; timestamp: number }> = new Map();
-  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+export interface CachedAIScore {
+  score: number;
+  explanation: string;
+  breakdown: any;
+  isJobSpecific: boolean;
+  lastCalculated: string;
+  dataHash: string;
+  source: 'cache' | 'database' | 'fresh_calculation';
+}
 
+export class AIScoringService {
+  
   /**
-   * Obtenir le score avec explication, en utilisant le cache optimisé
+   * Calculer le hash des données candidat pour détecter les changements
    */
-  async getScoreWithExplanation(candidateId: string, jobOfferId?: string | null): Promise<AIScoringResult | null> {
-    console.log('Getting AI score with explanation for candidate:', candidateId, 'job:', jobOfferId);
-    
-    const cacheKey = `${candidateId}_${jobOfferId || 'general'}`;
-    
-    // Vérifier le cache en mémoire d'abord
-    const cached = this.scoreCache.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp) < this.CACHE_DURATION) {
-      console.log('Using in-memory cached AI score for candidate:', candidateId);
-      return cached.score;
-    }
-    
+  private async calculateCandidateHash(candidateId: string, jobOfferId?: string): Promise<string> {
+    const { data } = await supabase.rpc('calculate_candidate_data_hash', { 
+      p_candidate_id: candidateId 
+    });
+    const baseHash = data || '';
+    return jobOfferId ? `${baseHash}_${jobOfferId}` : baseHash;
+  }
+  
+  /**
+   * Récupérer un score AI depuis la base de données si disponible et récent
+   */
+  private async getCachedAIScore(candidateId: string, jobOfferId?: string): Promise<CachedAIScore | null> {
     try {
-      // Vérifier dans la base de données en utilisant la fonction edge
       console.log('Checking for cached AI score in database...', { candidateId, jobOfferId });
       
-      // S'assurer que jobOfferId est null et non "null" string
-      const normalizedJobOfferId = jobOfferId === "null" || jobOfferId === "" ? null : jobOfferId;
+      // Calculer le hash actuel des données
+      const currentHash = await this.calculateCandidateHash(candidateId, jobOfferId);
       
-      const { data: cachedScore, error: cacheError } = await supabase.functions.invoke('ai-score-helpers', {
-        body: {
-          action: 'get',
-          candidateId,
-          jobOfferId: normalizedJobOfferId
+      if (jobOfferId) {
+        // Score de matching job-spécifique
+        const { data: cachedScore, error } = await supabase
+          .from('candidate_job_matching_scores')
+          .select('*')
+          .eq('candidate_id', candidateId)
+          .eq('job_offer_id', jobOfferId)
+          .eq('data_hash', currentHash)
+          .single();
+        
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching cached matching score:', error);
+          return null;
         }
-      });
-      
-      if (cacheError) {
-        console.warn('Error checking cached score:', cacheError);
+        
+        if (cachedScore) {
+          // Vérifier si le score n'est pas trop ancien (24h)
+          const scoreAge = Date.now() - new Date(cachedScore.calculated_at).getTime();
+          const maxAge = 24 * 60 * 60 * 1000; // 24 heures
+          
+          if (scoreAge < maxAge) {
+            console.log('Found valid cached matching score from database');
+            return {
+              score: cachedScore.total_matching_score,
+              explanation: 'Score de correspondance calculé précédemment',
+              breakdown: {
+                education: cachedScore.education_match_score,
+                skills: cachedScore.skills_tools_score,
+                experience: cachedScore.relevant_experience_score,
+                location: cachedScore.location_score,
+                languages: cachedScore.languages_match_score,
+                culturalFit: cachedScore.cultural_fit_score,
+                availability: cachedScore.availability_mobility_score,
+                interviewBonus: cachedScore.interview_notes_bonus
+              },
+              isJobSpecific: true,
+              lastCalculated: cachedScore.calculated_at,
+              dataHash: cachedScore.data_hash,
+              source: 'database'
+            };
+          }
+        }
+      } else {
+        // Score de complétude général
+        const { data: cachedScore, error } = await supabase
+          .from('candidate_scores')
+          .select('*')
+          .eq('candidate_id', candidateId)
+          .eq('data_hash', currentHash)
+          .single();
+        
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching cached completeness score:', error);
+          return null;
+        }
+        
+        if (cachedScore) {
+          // Vérifier si le score n'est pas trop ancien (24h)
+          const scoreAge = Date.now() - new Date(cachedScore.calculated_at).getTime();
+          const maxAge = 24 * 60 * 60 * 1000; // 24 heures
+          
+          if (scoreAge < maxAge) {
+            console.log('Found valid cached completeness score from database');
+            return {
+              score: cachedScore.general_score,
+              explanation: 'Score de complétude calculé précédemment',
+              breakdown: {
+                education: cachedScore.education_score,
+                skills: cachedScore.skills_score,
+                experience: cachedScore.experience_score,
+                languages: cachedScore.languages_score,
+                locationMobility: cachedScore.location_mobility_score,
+                profileSummary: cachedScore.profile_summary_score,
+                cvStructure: cachedScore.cv_structure_score
+              },
+              isJobSpecific: false,
+              lastCalculated: cachedScore.calculated_at,
+              dataHash: cachedScore.data_hash,
+              source: 'database'
+            };
+          }
+        }
       }
       
-      if (cachedScore && cachedScore.success && this.isScoreValid(cachedScore.data)) {
-        console.log('Found valid cached score from database');
-        const result = this.formatDatabaseScore(cachedScore.data, Boolean(jobOfferId));
-        
-        // Mettre en cache en mémoire
-        this.scoreCache.set(cacheKey, { score: result, timestamp: Date.now() });
-        
-        return result;
-      }
-      
-      // Pas de score valide en cache, calculer un nouveau score
-      console.log('No valid cached score found, calculating new AI score');
-      return await this.calculateNewScore(candidateId, jobOfferId);
-      
+      return null;
     } catch (error: any) {
-      console.error('Error in getScoreWithExplanation:', error);
-      throw error;
+      console.error('Error checking cached AI score:', error);
+      return null;
     }
   }
-
+  
   /**
-   * Forcer le recalcul du score (ignorer complètement le cache)
+   * Calculer le score de complétude avec vérification cache
    */
-  async forceRecalculate(candidateId: string, jobOfferId?: string | null): Promise<AIScoringResult | null> {
-    console.log('Force recalculating AI score for candidate:', candidateId, 'job:', jobOfferId);
-    
-    const cacheKey = `${candidateId}_${jobOfferId || 'general'}`;
-    
-    // Supprimer du cache en mémoire
-    this.scoreCache.delete(cacheKey);
-    
+  async calculateCompletenessScore(candidateId: string): Promise<AIScoringResult | null> {
     try {
-      // S'assurer que jobOfferId est null et non "null" string
-      const normalizedJobOfferId = jobOfferId === "null" || jobOfferId === "" ? null : jobOfferId;
+      console.log('Calculating AI completeness score with cache check for candidate:', candidateId);
       
-      // Supprimer l'ancien score de la base de données
-      await supabase.functions.invoke('ai-score-helpers', {
-        body: {
-          action: 'delete',
-          candidateId,
-          jobOfferId: normalizedJobOfferId
-        }
-      });
-      
-      // Calculer un nouveau score sans vérifier le cache
-      const result = await this.calculateNewScore(candidateId, jobOfferId);
-      
-      if (result) {
-        // Mettre à jour le cache en mémoire avec le nouveau score
-        this.scoreCache.set(cacheKey, { score: result, timestamp: Date.now() });
+      // Vérifier d'abord le cache en base de données
+      const cachedResult = await this.getCachedAIScore(candidateId);
+      if (cachedResult) {
+        console.log('Using cached completeness score from database');
+        return {
+          education_score: cachedResult.breakdown.education || 0,
+          skills_score: cachedResult.breakdown.skills || 0,
+          experience_score: cachedResult.breakdown.experience || 0,
+          location_score: cachedResult.breakdown.locationMobility || 0,
+          languages_score: cachedResult.breakdown.languages || 0,
+          profile_summary_score: cachedResult.breakdown.profileSummary || 0,
+          cv_structure_score: cachedResult.breakdown.cvStructure || 0,
+          total_score: cachedResult.score,
+          explanation: cachedResult.explanation
+        };
       }
       
-      return result;
-    } catch (error: any) {
-      console.error('Error in forceRecalculate:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Calculer un nouveau score avec l'IA
-   */
-  private async calculateNewScore(candidateId: string, jobOfferId?: string | null): Promise<AIScoringResult | null> {
-    try {
-      console.log('Calling ai-scoring edge function for candidate:', candidateId);
-      
-      // S'assurer que jobOfferId est null et non "null" string
-      const normalizedJobOfferId = jobOfferId === "null" || jobOfferId === "" ? null : jobOfferId;
+      console.log('No valid cache found, calculating new AI score via OpenAI...');
       
       const { data, error } = await supabase.functions.invoke('ai-scoring', {
-        body: { 
+        body: {
           candidateId,
-          jobOfferId: normalizedJobOfferId,
-          forceRecalculate: true // Toujours forcer le recalcul quand on appelle cette méthode
+          scoringType: 'completeness'
         }
       });
       
       if (error) {
-        console.error('Error calling ai-scoring function:', error);
-        throw new Error(`Erreur lors du calcul du score IA: ${error.message}`);
+        console.error('Error calling AI scoring function:', error);
+        throw error;
       }
       
-      if (!data || !data.success) {
-        console.error('AI scoring failed:', data?.error || 'Raison inconnue');
-        throw new Error(data?.error || 'Calcul du score IA échoué');
+      if (!data.success) {
+        throw new Error(data.error || 'AI scoring failed');
       }
       
-      console.log('AI scoring completed successfully, score:', data.result.score);
+      console.log('AI completeness score calculated successfully (fresh calculation)');
+      return data.scoringResult;
+      
+    } catch (error: any) {
+      console.error('Error in calculateCompletenessScore:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Calculer le score de matching avec vérification cache
+   */
+  async calculateMatchingScore(candidateId: string, jobOfferId: string): Promise<AIScoringResult | null> {
+    try {
+      console.log('Calculating AI matching score with cache check for candidate:', candidateId, 'and job:', jobOfferId);
+      
+      // Vérifier d'abord le cache en base de données
+      const cachedResult = await this.getCachedAIScore(candidateId, jobOfferId);
+      if (cachedResult) {
+        console.log('Using cached matching score from database');
+        return {
+          education_score: cachedResult.breakdown.education || 0,
+          skills_score: cachedResult.breakdown.skills || 0,
+          experience_score: cachedResult.breakdown.experience || 0,
+          location_score: cachedResult.breakdown.location || 0,
+          languages_score: cachedResult.breakdown.languages || 0,
+          cultural_fit_score: cachedResult.breakdown.culturalFit || 0,
+          availability_score: cachedResult.breakdown.availability || 0,
+          interview_bonus: cachedResult.breakdown.interviewBonus || 0,
+          total_score: cachedResult.score,
+          explanation: cachedResult.explanation
+        };
+      }
+      
+      console.log('No valid cache found, calculating new AI matching score via OpenAI...');
+      
+      const { data, error } = await supabase.functions.invoke('ai-scoring', {
+        body: {
+          candidateId,
+          jobOfferId,
+          scoringType: 'matching'
+        }
+      });
+      
+      if (error) {
+        console.error('Error calling AI scoring function:', error);
+        throw error;
+      }
+      
+      if (!data.success) {
+        throw new Error(data.error || 'AI scoring failed');
+      }
+      
+      console.log('AI matching score calculated successfully (fresh calculation)');
+      return data.scoringResult;
+      
+    } catch (error: any) {
+      console.error('Error in calculateMatchingScore:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Obtenir le score avec explication pour l'interface (optimisé avec cache)
+   */
+  async getScoreWithExplanation(candidateId: string, jobOfferId?: string): Promise<{
+    score: number;
+    breakdown: any;
+    explanation: string;
+    isJobSpecific: boolean;
+    source?: string;
+  } | null> {
+    try {
+      // Vérifier d'abord le cache
+      const cachedResult = await this.getCachedAIScore(candidateId, jobOfferId);
+      if (cachedResult) {
+        console.log(`Using ${cachedResult.source} score for candidate:`, candidateId);
+        return {
+          score: cachedResult.score,
+          breakdown: cachedResult.breakdown,
+          explanation: `${cachedResult.explanation} (Source: ${cachedResult.source === 'database' ? 'Base de données' : 'Cache'})`,
+          isJobSpecific: cachedResult.isJobSpecific,
+          source: cachedResult.source
+        };
+      }
+      
+      // Sinon calculer un nouveau score
+      let result: AIScoringResult | null;
+      
+      if (jobOfferId) {
+        result = await this.calculateMatchingScore(candidateId, jobOfferId);
+      } else {
+        result = await this.calculateCompletenessScore(candidateId);
+      }
+      
+      if (!result) {
+        return null;
+      }
       
       return {
-        score: data.result.score,
-        explanation: data.result.explanation,
-        breakdown: data.result.breakdown,
+        score: result.total_score,
+        breakdown: {
+          education: result.education_score,
+          skills: result.skills_score,
+          experience: result.experience_score,
+          location: result.location_score,
+          languages: result.languages_score,
+          profileSummary: result.profile_summary_score,
+          cvStructure: result.cv_structure_score,
+          culturalFit: result.cultural_fit_score,
+          availability: result.availability_score,
+          interviewBonus: result.interview_bonus
+        },
+        explanation: `${result.explanation} (Source: Nouveau calcul IA)`,
         isJobSpecific: Boolean(jobOfferId),
         source: 'fresh_calculation'
       };
       
     } catch (error: any) {
-      console.error('Error calculating new AI score:', error);
-      throw error;
+      console.error('Error getting score with explanation:', error);
+      return null;
     }
   }
-
+  
   /**
-   * Vérifier si un score en base de données est encore valide
+   * Forcer le recalcul (ignorer le cache)
    */
-  private isScoreValid(scoreData: any): boolean {
-    if (!scoreData || !scoreData.score || !scoreData.explanation) {
-      return false;
-    }
-    
-    // Vérifier que le score n'est pas trop ancien (par exemple, plus de 24h)
-    const scoreAge = Date.now() - new Date(scoreData.calculated_at).getTime();
-    const maxAge = 24 * 60 * 60 * 1000; // 24 heures
-    
-    return scoreAge < maxAge;
-  }
-
-  /**
-   * Formater un score depuis la base de données
-   */
-  private formatDatabaseScore(scoreData: any, isJobSpecific: boolean): AIScoringResult {
-    console.log('Using database score for candidate:', scoreData.candidate_id);
-    
-    return {
-      score: scoreData.score,
-      explanation: scoreData.explanation,
-      breakdown: scoreData.breakdown || {},
-      isJobSpecific,
-      source: 'database'
-    };
-  }
-
-  /**
-   * Invalider le cache pour un candidat
-   */
-  invalidateCache(candidateId: string, jobOfferId?: string | null): void {
-    const cacheKey = `${candidateId}_${jobOfferId || 'general'}`;
-    this.scoreCache.delete(cacheKey);
-    console.log('Invalidated AI score cache for candidate:', candidateId);
-  }
-
-  /**
-   * Nettoyer le cache expiré
-   */
-  cleanExpiredCache(): void {
-    const now = Date.now();
-    for (const [key, value] of this.scoreCache.entries()) {
-      if (now - value.timestamp > this.CACHE_DURATION) {
-        this.scoreCache.delete(key);
+  async forceRecalculate(candidateId: string, jobOfferId?: string): Promise<{
+    score: number;
+    breakdown: any;
+    explanation: string;
+    isJobSpecific: boolean;
+  } | null> {
+    try {
+      console.log('Force recalculating AI score (bypassing cache)...');
+      
+      let result: AIScoringResult | null;
+      
+      if (jobOfferId) {
+        result = await this.calculateMatchingScore(candidateId, jobOfferId);
+      } else {
+        result = await this.calculateCompletenessScore(candidateId);
       }
+      
+      if (!result) {
+        return null;
+      }
+      
+      return {
+        score: result.total_score,
+        breakdown: {
+          education: result.education_score,
+          skills: result.skills_score,
+          experience: result.experience_score,
+          location: result.location_score,
+          languages: result.languages_score,
+          profileSummary: result.profile_summary_score,
+          cvStructure: result.cv_structure_score,
+          culturalFit: result.cultural_fit_score,
+          availability: result.availability_score,
+          interviewBonus: result.interview_bonus
+        },
+        explanation: `${result.explanation} (Source: Nouveau calcul forcé)`,
+        isJobSpecific: Boolean(jobOfferId)
+      };
+      
+    } catch (error: any) {
+      console.error('Error in forceRecalculate:', error);
+      return null;
     }
   }
 }

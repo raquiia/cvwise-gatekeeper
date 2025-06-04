@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { optimizedScoringService } from '@/services/scoring/optimizedScoringService';
 import { useOptimizedScoring, ContextualScore } from './use-optimized-scoring';
 import { useAIScoring } from './use-ai-scoring';
@@ -14,20 +14,10 @@ export const useCandidateScore = (candidate: CandidateData) => {
   const { calculateContextualScore, getCachedScore, isScoreLoading, isJobSpecific } = useOptimizedScoring();
   const { calculateAIScore, getAIScore } = useAIScoring();
   
-  // Utiliser des refs pour éviter les boucles infinies
-  const candidateIdRef = useRef<string | undefined>(candidate.id);
-  const hasTriedCalculation = useRef<boolean>(false);
-  
   useEffect(() => {
     if (!candidate.id) return;
     
     const candidateId = candidate.id;
-    
-    // Reset flag when candidateId changes
-    if (candidateIdRef.current !== candidateId) {
-      candidateIdRef.current = candidateId;
-      hasTriedCalculation.current = false;
-    }
     
     // Priorité absolue : utiliser le score IA (système unifié)
     const aiScore = getAIScore(candidateId);
@@ -54,6 +44,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
       };
       
       setScore(contextualScore);
+      // S'assurer que l'explication IA est toujours affichée
       setExplanation(aiScore.explanation || '');
       setIsLoading(false);
       setError(null);
@@ -87,6 +78,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
       };
       
       setScore(fallbackScore);
+      // Conserver l'explication IA même en cas d'erreur si elle existe
       setExplanation(aiScore.explanation || '');
       setIsLoading(false);
       setError(aiScore.error);
@@ -157,10 +149,8 @@ export const useCandidateScore = (candidate: CandidateData) => {
       return;
     }
     
-    // Aucun score disponible - essayer de calculer avec l'IA UNE SEULE FOIS
-    if (!isScoreLoading(candidateId) && !aiScore.isLoading && !hasTriedCalculation.current) {
-      hasTriedCalculation.current = true; // Marquer qu'on a essayé
-      
+    // Aucun score disponible - essayer de calculer avec l'IA de manière asynchrone
+    if (!isScoreLoading(candidateId) && !aiScore.isLoading) {
       const loadScore = async () => {
         try {
           setIsLoading(true);
@@ -191,7 +181,8 @@ export const useCandidateScore = (candidate: CandidateData) => {
       
       loadScore();
     }
-  }, [candidate.id]); // Seulement candidate.id comme dépendance principale
+  }, [candidate.id, candidate.skills, candidate.years_experience, candidate.education, candidate.score,
+      calculateContextualScore, getCachedScore, isScoreLoading, calculateAIScore, getAIScore]);
 
   const getSourceLabel = (source: string) => {
     switch (source) {

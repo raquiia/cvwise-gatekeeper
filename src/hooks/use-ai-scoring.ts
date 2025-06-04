@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { aiScoringService, AIScoringResult } from '@/services/scoring/aiScoringService';
 import { useActiveJob } from '@/context/ActiveJobContext';
 import { toast } from '@/hooks/use-toast';
@@ -22,10 +22,6 @@ export const useAIScoring = () => {
   const [isCalculating, setIsCalculating] = useState(false);
   const { activeJobOfferId } = useActiveJob();
   
-  // Utiliser une ref pour éviter les dépendances cycliques
-  const scoringStateRef = useRef(scoringState);
-  scoringStateRef.current = scoringState;
-  
   /**
    * Calculer le score avec l'IA pour un candidat (avec vérification cache optimisée)
    */
@@ -33,19 +29,13 @@ export const useAIScoring = () => {
     const currentKey = `${candidateId}_${activeJobOfferId || 'general'}`;
     
     // Vérifier si on a déjà un score récent en mémoire (sauf si forceRecalculate)
-    const existing = scoringStateRef.current[currentKey];
+    const existing = scoringState[currentKey];
     if (!forceRecalculate && existing && !existing.isLoading && existing.score !== null) {
       const age = Date.now() - existing.lastUpdated;
       if (age < 2 * 60 * 1000) { // 2 minutes en mémoire
         console.log('Using recent in-memory AI score for candidate:', candidateId);
         return existing;
       }
-    }
-    
-    // Éviter les appels multiples simultanés pour le même candidat
-    if (existing && existing.isLoading) {
-      console.log('AI score calculation already in progress for candidate:', candidateId);
-      return existing;
     }
     
     // Marquer comme en cours de calcul
@@ -63,7 +53,7 @@ export const useAIScoring = () => {
     }));
     
     try {
-      console.log(`Calculating AI score ${forceRecalculate ? 'with force recalculate' : 'with optimized caching'} for candidate:`, candidateId, 'job:', activeJobOfferId);
+      console.log('Calculating AI score with optimized caching for candidate:', candidateId, 'job:', activeJobOfferId);
       
       let result;
       
@@ -104,18 +94,10 @@ export const useAIScoring = () => {
         'Nouveau score calculé avec l\'IA' : 
         'Score récupéré depuis le cache';
       
-      // Ne pas afficher de toast pour le forceRecalculate car c'est explicitement demandé par l'utilisateur
-      if (!forceRecalculate) {
-        toast({
-          title: "Score calculé",
-          description: `${result.score}% - ${sourceMessage}`,
-        });
-      } else {
-        toast({
-          title: "Score recalculé",
-          description: `${result.score}% - Nouvelle analyse IA terminée`,
-        });
-      }
+      toast({
+        title: "Score calculé",
+        description: `${result.score}% - ${sourceMessage}`,
+      });
       
       return newState;
       
@@ -145,14 +127,14 @@ export const useAIScoring = () => {
       
       return errorState;
     }
-  }, [activeJobOfferId]); // Seulement activeJobOfferId comme dépendance
+  }, [activeJobOfferId, scoringState]);
   
   /**
    * Obtenir le score d'un candidat
    */
   const getAIScore = useCallback((candidateId: string) => {
     const key = `${candidateId}_${activeJobOfferId || 'general'}`;
-    return scoringStateRef.current[key] || {
+    return scoringState[key] || {
       score: null,
       explanation: '',
       breakdown: {},
@@ -161,7 +143,7 @@ export const useAIScoring = () => {
       isJobSpecific: Boolean(activeJobOfferId),
       lastUpdated: 0
     };
-  }, [activeJobOfferId]);
+  }, [scoringState, activeJobOfferId]);
   
   /**
    * Invalider les scores (changement d'offre active)
@@ -169,7 +151,6 @@ export const useAIScoring = () => {
   const invalidateScores = useCallback(() => {
     console.log('Invalidating AI scores due to context change');
     setScoringState({});
-    scoringStateRef.current = {};
   }, []);
   
   /**
@@ -204,6 +185,11 @@ export const useAIScoring = () => {
     
     await Promise.all(promises);
     console.log('Preloading completed');
+  }, [activeJobOfferId]);
+  
+  // Invalider les scores quand l'offre active change
+  useEffect(() => {
+    invalidateScores();
   }, [activeJobOfferId]);
   
   return {
