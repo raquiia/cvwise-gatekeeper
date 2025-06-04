@@ -40,22 +40,24 @@ class AIScoringService {
     }
     
     try {
-      // Vérifier dans la base de données en utilisant une requête SQL brute
+      // Vérifier dans la base de données en utilisant la fonction edge
       console.log('Checking for cached AI score in database...', { candidateId, jobOfferId });
       
-      const { data: cachedScore, error: cacheError } = await supabase
-        .rpc('get_ai_candidate_score', {
-          p_candidate_id: candidateId,
-          p_job_offer_id: jobOfferId || null
-        });
+      const { data: cachedScore, error: cacheError } = await supabase.functions.invoke('ai-score-helpers', {
+        body: {
+          action: 'get',
+          candidateId,
+          jobOfferId: jobOfferId || null
+        }
+      });
       
       if (cacheError) {
         console.warn('Error checking cached score:', cacheError);
       }
       
-      if (cachedScore && this.isScoreValid(cachedScore)) {
-        console.log('Found valid cached completeness score from database');
-        const result = this.formatDatabaseScore(cachedScore, Boolean(jobOfferId));
+      if (cachedScore && cachedScore.success && this.isScoreValid(cachedScore.data)) {
+        console.log('Found valid cached score from database');
+        const result = this.formatDatabaseScore(cachedScore.data, Boolean(jobOfferId));
         
         // Mettre en cache en mémoire
         this.scoreCache.set(cacheKey, { score: result, timestamp: Date.now() });
@@ -86,11 +88,13 @@ class AIScoringService {
     
     try {
       // Supprimer l'ancien score de la base de données
-      await supabase
-        .rpc('delete_ai_candidate_score', {
-          p_candidate_id: candidateId,
-          p_job_offer_id: jobOfferId || null
-        });
+      await supabase.functions.invoke('ai-score-helpers', {
+        body: {
+          action: 'delete',
+          candidateId,
+          jobOfferId: jobOfferId || null
+        }
+      });
       
       // Calculer un nouveau score sans vérifier le cache
       const result = await this.calculateNewScore(candidateId, jobOfferId);

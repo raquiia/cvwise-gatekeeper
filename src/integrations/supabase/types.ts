@@ -710,6 +710,10 @@ export type Database = {
         Args: { p_file_name: string; p_user_id: string }
         Returns: boolean
       }
+      delete_ai_candidate_score: {
+        Args: { p_candidate_id: string; p_job_offer_id?: string }
+        Returns: boolean
+      }
       delete_candidate_secure: {
         Args: { candidate_id_param: string }
         Returns: boolean
@@ -717,6 +721,21 @@ export type Database = {
       delete_resume_by_id: {
         Args: { resume_id_param: string }
         Returns: boolean
+      }
+      get_ai_candidate_score: {
+        Args: { p_candidate_id: string; p_job_offer_id?: string }
+        Returns: {
+          id: string
+          candidate_id: string
+          job_offer_id: string
+          user_id: string
+          score: number
+          explanation: string
+          breakdown: Json
+          calculated_at: string
+          created_at: string
+          updated_at: string
+        }[]
       }
       get_all_profiles_secure: {
         Args: Record<PropertyKey, never>
@@ -959,6 +978,27 @@ export type Database = {
           p_file_size: number
         }
         Returns: string
+      }
+      save_ai_candidate_score: {
+        Args: {
+          p_candidate_id: string
+          p_score: number
+          p_explanation: string
+          p_job_offer_id?: string
+          p_breakdown?: Json
+        }
+        Returns: {
+          id: string
+          candidate_id: string
+          job_offer_id: string
+          user_id: string
+          score: number
+          explanation: string
+          breakdown: Json
+          calculated_at: string
+          created_at: string
+          updated_at: string
+        }[]
       }
       update_candidate_secure: {
         Args: { p_candidate_id: string; p_data: Json }
