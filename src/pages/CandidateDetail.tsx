@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -31,6 +32,7 @@ const CandidateDetail = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
 
+  // Stable function that doesn't depend on state
   const fetchCandidateData = useCallback(async () => {
     if (!candidateId) {
       console.error("No candidate ID provided");
@@ -91,20 +93,25 @@ const CandidateDetail = () => {
     } finally {
       setLoading(false);
     }
-  }, [candidateId]); // ONLY candidateId as dependency
+  }, [candidateId]);
 
+  // Effect that runs only when candidateId changes
   useEffect(() => {
     fetchCandidateData();
-  }, [candidateId]); // ONLY candidateId as dependency, not fetchCandidateData
+  }, [candidateId, fetchCandidateData]);
 
+  // Stable status change handler
   const handleStatusChange = useCallback((newStatus: string) => {
-    if (candidate) {
-      setCandidate(prevCandidate => ({
-        ...prevCandidate!,
-        detailed_status: newStatus
-      }));
-    }
-  }, [candidate]);
+    setCandidate(prevCandidate => {
+      if (prevCandidate) {
+        return {
+          ...prevCandidate,
+          detailed_status: newStatus
+        };
+      }
+      return prevCandidate;
+    });
+  }, []);
 
   if (loading) {
     return (
