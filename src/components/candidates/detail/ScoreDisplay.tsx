@@ -1,6 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
+import { useCandidateScore } from '@/hooks/use-candidate-score';
 import AIScoreDisplay from '../AIScoreDisplay';
 import type { CandidateData } from '@/services/data/candidateService';
 
@@ -12,6 +13,7 @@ interface ScoreDisplayProps {
 
 const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRefresh }) => {
   const { calculateAIScore, getAIScore } = useAIScoring();
+  const { score: candidateScore, explanation, isLoading: scoreLoading } = useCandidateScore(candidate);
   const aiScoreData = getAIScore(candidate.id!);
   
   // Calculer automatiquement le score au chargement si pas déjà calculé
@@ -37,9 +39,9 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRef
     <AIScoreDisplay
       candidateId={candidate.id!}
       score={aiScoreData.score}
-      explanation={aiScoreData.explanation}
+      explanation={explanation || aiScoreData.explanation} // Utiliser l'explication du hook unifié ou celle de l'AI
       breakdown={aiScoreData.breakdown}
-      isLoading={isLoading || aiScoreData.isLoading}
+      isLoading={isLoading || aiScoreData.isLoading || scoreLoading}
       isJobSpecific={aiScoreData.isJobSpecific}
       error={aiScoreData.error}
       onRefresh={handleRefresh}

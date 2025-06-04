@@ -245,7 +245,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
                 <Button variant="ghost" className="w-full justify-between p-0 h-auto">
                   <span className="text-sm font-medium flex items-center gap-2">
                     <Info size={16} />
-                    Explication détaillée de l'IA
+                    Analyse détaillée de l'IA
                   </span>
                   <span className="text-xs text-gray-500">
                     {isExplanationOpen ? 'Masquer' : 'Voir'}

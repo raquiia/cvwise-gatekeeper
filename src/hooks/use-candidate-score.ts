@@ -9,6 +9,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
   const [score, setScore] = useState<ContextualScore | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [explanation, setExplanation] = useState<string>('');
   
   const { calculateContextualScore, getCachedScore, isScoreLoading, isJobSpecific } = useOptimizedScoring();
   const { calculateAIScore, getAIScore } = useAIScoring();
@@ -43,6 +44,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
       };
       
       setScore(contextualScore);
+      setExplanation(aiScore.explanation || '');
       setIsLoading(false);
       setError(null);
       return;
@@ -75,6 +77,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
       };
       
       setScore(fallbackScore);
+      setExplanation('');
       setIsLoading(false);
       setError(aiScore.error);
       return;
@@ -112,6 +115,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
       };
       
       setScore(contextualScore);
+      setExplanation('');
       setIsLoading(false);
       setError(null);
       return;
@@ -137,6 +141,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
       };
       
       setScore(legacyScore);
+      setExplanation('');
       setIsLoading(false);
       setError(null);
       return;
@@ -161,9 +166,11 @@ export const useCandidateScore = (candidate: CandidateData) => {
             // Fallback sur le système classique
             const contextualScore = await calculateContextualScore(candidate);
             setScore(contextualScore);
+            setExplanation('');
           } catch (classicErr: any) {
             console.error('Classic scoring also failed:', classicErr);
             setError('Impossible de calculer le score du candidat');
+            setExplanation('');
           }
         } finally {
           setIsLoading(false);
@@ -186,6 +193,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
   
   return {
     score,
+    explanation,
     isLoading: isLoading || getAIScore(candidate.id!).isLoading,
     error: error || getAIScore(candidate.id!).error,
     isJobSpecific
