@@ -13,6 +13,7 @@ interface AIScoringState {
     error: string | null;
     isJobSpecific: boolean;
     lastUpdated: number;
+    source?: string;
   };
 }
 
@@ -22,17 +23,17 @@ export const useAIScoring = () => {
   const { activeJobOfferId } = useActiveJob();
   
   /**
-   * Calculer le score avec l'IA pour un candidat
+   * Calculer le score avec l'IA pour un candidat (avec vérification cache optimisée)
    */
   const calculateAIScore = useCallback(async (candidateId: string, forceRecalculate = false) => {
     const currentKey = `${candidateId}_${activeJobOfferId || 'general'}`;
     
-    // Vérifier si on a déjà un score récent (sauf si forceRecalculate)
+    // Vérifier si on a déjà un score récent en mémoire (sauf si forceRecalculate)
     const existing = scoringState[currentKey];
     if (!forceRecalculate && existing && !existing.isLoading && existing.score !== null) {
       const age = Date.now() - existing.lastUpdated;
-      if (age < 5 * 60 * 1000) { // 5 minutes
-        console.log('Using cached AI score for candidate:', candidateId);
+      if (age < 2 * 60 * 1000) { // 2 minutes en mémoire
+        console.log('Using recent in-memory AI score for candidate:', candidateId);
         return existing;
       }
     }
@@ -52,9 +53,17 @@ export const useAIScoring = () => {
     }));
     
     try {
-      console.log('Calculating AI score for candidate:', candidateId, 'job:', activeJobOfferId);
+      console.log('Calculating AI score with optimized caching for candidate:', candidateId, 'job:', activeJobOfferId);
       
-      const result = await aiScoringService.getScoreWithExplanation(candidateId, activeJobOfferId);
+      let result;
+      
+      if (forceRecalculate) {
+        // Forcer le recalcul (ignorer complètement le cache)
+        result = await aiScoringService.forceRecalculate(candidateId, activeJobOfferId);
+      } else {
+        // Utiliser le système de cache optimisé
+        result = await aiScoringService.getScoreWithExplanation(candidateId, activeJobOfferId);
+      }
       
       if (!result) {
         throw new Error('Impossible de calculer le score avec l\'IA');
@@ -67,7 +76,8 @@ export const useAIScoring = () => {
         isLoading: false,
         error: null,
         isJobSpecific: result.isJobSpecific,
-        lastUpdated: Date.now()
+        lastUpdated: Date.now(),
+        source: result.source
       };
       
       setScoringState(prev => ({
@@ -75,11 +85,18 @@ export const useAIScoring = () => {
         [currentKey]: newState
       }));
       
-      console.log('AI score calculated successfully:', result.score);
+      console.log('AI score calculated successfully:', result.score, 'Source:', result.source);
+      
+      // Toast informatif sur la source du score
+      const sourceMessage = result.source === 'database' ? 
+        'Score récupéré depuis la base de données' :
+        result.source === 'fresh_calculation' ? 
+        'Nouveau score calculé avec l\'IA' : 
+        'Score récupéré depuis le cache';
       
       toast({
         title: "Score calculé",
-        description: `Score IA: ${result.score}%`,
+        description: `${result.score}% - ${sourceMessage}`,
       });
       
       return newState;
@@ -136,6 +153,40 @@ export const useAIScoring = () => {
     setScoringState({});
   }, []);
   
+  /**
+   * Précharger les scores depuis la base de données
+   */
+  const preloadScoresFromDatabase = useCallback(async (candidateIds: string[]) => {
+    console.log('Preloading AI scores from database for', candidateIds.length, 'candidates');
+    
+    const promises = candidateIds.map(async (candidateId) => {
+      try {
+        const result = await aiScoringService.getScoreWithExplanation(candidateId, activeJobOfferId);
+        if (result && result.source === 'database') {
+          const key = `${candidateId}_${activeJobOfferId || 'general'}`;
+          setScoringState(prev => ({
+            ...prev,
+            [key]: {
+              score: result.score,
+              explanation: result.explanation,
+              breakdown: result.breakdown,
+              isLoading: false,
+              error: null,
+              isJobSpecific: result.isJobSpecific,
+              lastUpdated: Date.now(),
+              source: result.source
+            }
+          }));
+        }
+      } catch (error) {
+        console.warn('Failed to preload score for candidate:', candidateId, error);
+      }
+    });
+    
+    await Promise.all(promises);
+    console.log('Preloading completed');
+  }, [activeJobOfferId]);
+  
   // Invalider les scores quand l'offre active change
   useEffect(() => {
     invalidateScores();
@@ -145,6 +196,7 @@ export const useAIScoring = () => {
     calculateAIScore,
     getAIScore,
     invalidateScores,
+    preloadScoresFromDatabase,
     isCalculating,
     isJobSpecific: Boolean(activeJobOfferId)
   };

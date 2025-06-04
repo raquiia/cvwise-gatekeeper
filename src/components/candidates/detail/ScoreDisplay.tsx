@@ -15,17 +15,18 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRef
   const aiScoreData = getAIScore(candidate.id!);
   
   // Calculer automatiquement le score au chargement si pas déjà calculé
+  // Le nouveau système vérifiera d'abord la base de données avant d'appeler OpenAI
   useEffect(() => {
     if (candidate.id && !aiScoreData.score && !aiScoreData.isLoading && !aiScoreData.error) {
-      console.log('Auto-calculating AI score for candidate:', candidate.id);
+      console.log('Auto-calculating AI score with cache optimization for candidate:', candidate.id);
       calculateAIScore(candidate.id);
     }
   }, [candidate.id, aiScoreData.score, aiScoreData.isLoading, aiScoreData.error, calculateAIScore]);
   
   const handleRefresh = async () => {
     if (candidate.id) {
-      console.log('Manual refresh of AI score for candidate:', candidate.id);
-      await calculateAIScore(candidate.id, true); // Force recalculate
+      console.log('Manual refresh of AI score for candidate (force recalculate):', candidate.id);
+      await calculateAIScore(candidate.id, true); // Force recalculate bypasse complètement le cache
     }
     if (onRefresh) {
       onRefresh();
