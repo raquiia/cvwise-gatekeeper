@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 import { Trash2, Phone, Mail, TrendingUp } from 'lucide-react';
-import { CandidateData } from '@/services/data/candidateService';
+import { CandidateData, candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/use-confirm';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -48,16 +47,38 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   const handleDeleteCandidate = async (candidateId: string, event: React.MouseEvent) => {
     event.stopPropagation();
     
-    const confirmed = await confirm({
-      title: 'Supprimer le candidat ?',
-      description: 'Êtes-vous sûr de vouloir supprimer ce candidat ? Cette action est irréversible.',
-    });
-    
-    if (confirmed) {
-      onCandidateDeleted(candidateId);
+    try {
+      const confirmed = await confirm({
+        title: 'Supprimer le candidat ?',
+        description: 'Êtes-vous sûr de vouloir supprimer ce candidat ? Cette action est irréversible.',
+      });
+      
+      if (confirmed) {
+        console.log('Deleting candidate:', candidateId);
+        
+        // Supprimer le candidat via le service
+        const success = await candidateService.deleteCandidate(candidateId);
+        
+        if (success) {
+          console.log('Candidate deleted successfully');
+          
+          // Informer le parent que le candidat a été supprimé
+          onCandidateDeleted(candidateId);
+          
+          toast({
+            title: "Candidat supprimé",
+            description: "Le candidat a été supprimé avec succès.",
+          });
+        } else {
+          throw new Error('Échec de la suppression');
+        }
+      }
+    } catch (error: any) {
+      console.error('Error deleting candidate:', error);
       toast({
-        title: "Candidat supprimé",
-        description: "Le candidat a été supprimé avec succès.",
+        title: "Erreur",
+        description: error.message || "Impossible de supprimer le candidat",
+        variant: "destructive",
       });
     }
   };

@@ -188,6 +188,13 @@ const CandidatesContent = () => {
     setCurrentView(view);
   };
 
+  // Fonction corrigée pour gérer la suppression
+  const handleCandidateDeleted = async (candidateId: string) => {
+    console.log('Candidate deleted, refreshing list...');
+    // Recharger la liste des candidats
+    await fetchCandidates();
+  };
+
   const renderCurrentView = () => {
     if (loading) {
       return (
@@ -214,7 +221,7 @@ const CandidatesContent = () => {
             selectedStatus={selectedStatus}
             onStatusChange={handleStatusChange}
             onViewCandidate={handleViewCandidate}
-            onCandidateDeleted={fetchCandidates}
+            onCandidateDeleted={handleCandidateDeleted}
           />
         );
       case 'cards':
@@ -222,7 +229,7 @@ const CandidatesContent = () => {
           <CandidatesCardView
             candidates={filteredCandidates}
             onViewCandidate={handleViewCandidate}
-            onCandidateDeleted={fetchCandidates}
+            onCandidateDeleted={handleCandidateDeleted}
           />
         );
       case 'kanban':
@@ -230,7 +237,7 @@ const CandidatesContent = () => {
           <CandidatesKanbanView
             candidates={filteredCandidates}
             onViewCandidate={handleViewCandidate}
-            onCandidateDeleted={fetchCandidates}
+            onCandidateDeleted={handleCandidateDeleted}
           />
         );
       case 'analytics':
@@ -246,7 +253,7 @@ const CandidatesContent = () => {
             selectedStatus={selectedStatus}
             onStatusChange={handleStatusChange}
             onViewCandidate={handleViewCandidate}
-            onCandidateDeleted={fetchCandidates}
+            onCandidateDeleted={handleCandidateDeleted}
           />
         );
     }
