@@ -3,8 +3,9 @@ import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CandidateData } from '@/services/data/candidateService';
 import KanbanColumn from './KanbanColumn';
-import { CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
+import { CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
+import { useToast } from '@/hooks/use-toast';
 
 interface CandidatesKanbanViewProps {
   candidates: CandidateData[];
@@ -18,6 +19,7 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
   onCandidateDeleted
 }) => {
   const { preloadScoresFromDatabase } = useAIScoring();
+  const { toast } = useToast();
 
   // Précharger les scores AI pour tous les candidats du kanban
   useEffect(() => {
@@ -46,6 +48,39 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
     );
   };
 
+  const handleDrop = async (candidateId: string, newStatus: string) => {
+    try {
+      console.log('Updating candidate status via drag & drop:', { candidateId, newStatus });
+      
+      const success = await candidateStatusService.updateCandidateStatus(candidateId, newStatus);
+      
+      if (success) {
+        // Rafraîchir la liste des candidats si la fonction est fournie
+        if (onCandidateDeleted) {
+          onCandidateDeleted();
+        }
+        
+        toast({
+          title: "Statut mis à jour",
+          description: `Le candidat a été déplacé vers "${CANDIDATE_STATUS_LABELS[newStatus]}"`,
+        });
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Impossible de mettre à jour le statut du candidat",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating candidate status:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la mise à jour du statut",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="w-full">
       <div className="flex space-x-4 overflow-x-auto pb-4">
@@ -61,6 +96,7 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
               candidates={statusCandidates}
               onViewCandidate={onViewCandidate}
               onCandidateDeleted={onCandidateDeleted}
+              onDrop={handleDrop}
             />
           );
         })}
