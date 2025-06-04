@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
-import { MoreHorizontal, Eye, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Eye, Trash2, Phone } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
@@ -80,8 +80,8 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow className="bg-gray-50/50">
-            <TableHead className="font-semibold text-gray-700">Nom</TableHead>
-            <TableHead className="font-semibold text-gray-700">Email</TableHead>
+            <TableHead className="font-semibold text-gray-700">Contact</TableHead>
+            <TableHead className="font-semibold text-gray-700">Téléphone</TableHead>
             <TableHead className="font-semibold text-gray-700">Poste</TableHead>
             <TableHead className="font-semibold text-gray-700">Entreprise</TableHead>
             <TableHead className="font-semibold text-gray-700">Localisation</TableHead>
@@ -110,12 +110,24 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                       <div className="font-medium text-gray-900">
                         {candidate.first_name} {candidate.last_name}
                       </div>
+                      {candidate.email && (
+                        <div className="text-sm text-gray-500">
+                          {candidate.email}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </TableCell>
                 
                 <TableCell className="text-gray-600">
-                  {candidate.email}
+                  {candidate.phone ? (
+                    <div className="flex items-center text-sm">
+                      <Phone size={14} className="mr-1 text-gray-400" />
+                      {candidate.phone}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-sm">Non renseigné</span>
+                  )}
                 </TableCell>
                 
                 <TableCell className="text-gray-800 font-medium">
