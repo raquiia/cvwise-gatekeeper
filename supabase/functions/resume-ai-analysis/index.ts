@@ -73,9 +73,55 @@ const translateCountryToFrench = (country: string): string => {
 };
 
 /**
+ * Fonction pour extraire l'adresse du texte brut si l'IA n'a pas réussi
+ */
+const extractAddressFromText = (text: string): { address: string; postal_code: string; city: string; country: string; location: string } => {
+  console.log('🔍 Tentative d\'extraction d\'adresse manuelle du texte...');
+  
+  // Patterns pour reconnaître les adresses françaises/européennes
+  const addressPatterns = [
+    // Format français: numéro rue, code postal ville
+    /(\d+[\w\s,-]+?)\s*,?\s*(\d{5})\s+([A-Za-zÀ-ÿ\s-]+?)(?:\s*,\s*(France|Suisse|Belgique|Luxembourg))?/gi,
+    // Format avec rue sur une ligne, ville sur une autre
+    /(\d+\s+[^\d\n]+?)\n.*?(\d{5})\s+([A-Za-zÀ-ÿ\s-]+)/gi,
+    // Format simple: ville, pays
+    /([A-Za-zÀ-ÿ\s-]+?)\s*,\s*(France|Suisse|Belgique|Luxembourg|Allemagne|Italie|Espagne)/gi
+  ];
+  
+  let bestMatch = { address: '', postal_code: '', city: '', country: '', location: '' };
+  
+  for (const pattern of addressPatterns) {
+    const matches = text.matchAll(pattern);
+    for (const match of matches) {
+      console.log('📍 Match trouvé:', match);
+      
+      if (match.length >= 4) {
+        const address = cleanAndDecodeText(match[1] || '');
+        const postal_code = match[2] || '';
+        const city = cleanAndDecodeText(match[3] || '');
+        const country = translateCountryToFrench(match[4] || 'France');
+        const location = `${address}${address && ', '}${postal_code} ${city}${country && ', ' + country}`.trim();
+        
+        // Si on a trouvé une adresse plus complète, on la garde
+        if (address && postal_code && city) {
+          bestMatch = { address, postal_code, city, country, location };
+          console.log('✅ Adresse complète extraite:', bestMatch);
+          break;
+        } else if (city && !bestMatch.city) {
+          bestMatch = { address, postal_code, city, country, location };
+        }
+      }
+    }
+    if (bestMatch.address && bestMatch.postal_code && bestMatch.city) break;
+  }
+  
+  return bestMatch;
+};
+
+/**
  * Nettoie et valide les données extraites par l'IA
  */
-const processAIExtractedData = (data: any): any => {
+const processAIExtractedData = (data: any, originalText: string): any => {
   console.log('🔧 Processing AI extracted data:', JSON.stringify(data, null, 2));
   
   const processedData = { ...data };
@@ -106,6 +152,34 @@ const processAIExtractedData = (data: any): any => {
   // Traduire le pays en français s'il est en anglais
   if (processedData.country) {
     processedData.country = translateCountryToFrench(processedData.country);
+  }
+  
+  // NOUVEAU: Tentative d'extraction manuelle si l'adresse est manquante
+  if (!processedData.address || !processedData.postal_code || !processedData.city) {
+    console.log('⚠️ Adresse incomplète détectée, tentative d\'extraction manuelle...');
+    const extractedAddress = extractAddressFromText(originalText);
+    
+    // Utiliser les données extraites manuellement si elles sont meilleures
+    if (extractedAddress.address && !processedData.address) {
+      processedData.address = extractedAddress.address;
+      console.log('📍 Adresse extraite manuellement:', extractedAddress.address);
+    }
+    if (extractedAddress.postal_code && !processedData.postal_code) {
+      processedData.postal_code = extractedAddress.postal_code;
+      console.log('📮 Code postal extrait manuellement:', extractedAddress.postal_code);
+    }
+    if (extractedAddress.city && !processedData.city) {
+      processedData.city = extractedAddress.city;
+      console.log('🏙️ Ville extraite manuellement:', extractedAddress.city);
+    }
+    if (extractedAddress.country && !processedData.country) {
+      processedData.country = extractedAddress.country;
+      console.log('🌍 Pays extrait manuellement:', extractedAddress.country);
+    }
+    if (extractedAddress.location && !processedData.location) {
+      processedData.location = extractedAddress.location;
+      console.log('📍 Localisation complète extraite manuellement:', extractedAddress.location);
+    }
   }
   
   console.log('✅ Final processed data:', JSON.stringify(processedData, null, 2));
@@ -146,6 +220,9 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Log d'un échantillon du texte pour debug
+    console.log('📋 Échantillon du texte CV (premiers 500 caractères):', resumeText.substring(0, 500));
 
     console.log('🔑 Checking environment variables...');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -214,18 +291,32 @@ serve(async (req) => {
           role: 'system',
           content: `Tu es un expert en analyse de CV. Analyse le CV fourni et extrais UNIQUEMENT les informations présentes dans le document.
 
-RÈGLES STRICTES:
-1. Ne jamais inventer ou déduire d'informations non présentes
-2. Si une information n'est pas présente, retourner une chaîne vide ""
-3. Pour les tableaux, retourner un tableau vide [] si aucune information
-4. Extraire les compétences sous forme de tableau de chaînes simples
-5. Pour l'adresse complète, l'extraire dans le champ "location" tel quel
-6. Décomposer aussi l'adresse en champs séparés si possible:
+RÈGLES STRICTES POUR L'EXTRACTION D'ADRESSE:
+1. Cherche l'adresse dans TOUTES les sections du CV (en-tête, contact, informations personnelles, etc.)
+2. L'adresse peut être sous différents formats :
+   - "45 rue de la Paix, 75001 Paris"
+   - "45 rue de la Paix\n75001 Paris"
+   - "Paris 75001"
+   - "Paris, France"
+3. Décompose TOUJOURS l'adresse trouvée en :
    - address: numéro et nom de rue (ex: "45 rue de la Paix")
    - postal_code: code postal uniquement (ex: "75001")
    - city: ville uniquement (ex: "Paris")
    - country: pays EN FRANÇAIS (ex: "France", "Suisse", "Belgique")
-7. Ne pas mettre de caractères encodés (comme %20) dans les résultats
+   - location: adresse complète tel quel (ex: "45 rue de la Paix, 75001 Paris, France")
+
+FORMATS D'ADRESSE À RECONNAÎTRE:
+- Adresses françaises: "numéro rue, code postal ville"
+- Adresses suisses: "rue numéro, code postal ville"
+- Adresses belges, luxembourgeoises, etc.
+- Même si une partie manque, extrais ce qui est disponible
+
+AUTRES RÈGLES:
+1. Ne jamais inventer ou déduire d'informations non présentes
+2. Si une information n'est pas présente, retourner une chaîne vide ""
+3. Pour les tableaux, retourner un tableau vide [] si aucune information
+4. Extraire les compétences sous forme de tableau de chaînes simples
+5. Ne pas mettre de caractères encodés (comme %20) dans les résultats
 
 Retourne un JSON avec EXACTEMENT cette structure:
 {
@@ -267,7 +358,7 @@ Retourne un JSON avec EXACTEMENT cette structure:
         },
         {
           role: 'user',
-          content: `Analyse ce CV et extrais les informations:\n\n${resumeText}`
+          content: `Analyse ce CV et extrais les informations, en portant une attention particulière à l'adresse :\n\n${resumeText}`
         }
       ],
       temperature: 0.1,
@@ -349,8 +440,8 @@ Retourne un JSON avec EXACTEMENT cette structure:
       );
     }
 
-    console.log('🔧 Processing extracted data...');
-    const processedData = processAIExtractedData(extractedData);
+    console.log('🔧 Processing extracted data with original text for address fallback...');
+    const processedData = processAIExtractedData(extractedData, resumeText);
 
     console.log('💾 Inserting candidate into database...');
     const candidateInsertData = {
