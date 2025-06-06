@@ -67,7 +67,7 @@ export const matchDbService = {
         console.log(`[Match DB Service] Processing item:`, {
           hasCandidate: !!candidateData,
           candidateId: candidateData?.id,
-          candidateName: candidateData ? `${candidateData.first_name} ${candidateData.last_name}` : 'N/A'
+          candidateName: candidateData ? `${candidateData.first_name || ''} ${candidateData.last_name || ''}` : 'N/A'
         });
         
         // Vérification plus souple pour les candidats
@@ -134,7 +134,7 @@ export const matchDbService = {
           // Sauvegarder le nouveau score avec les timestamps (seulement pour ses propres candidats)
           const shouldSaveMatch = !globalMode || (candidateInfo && candidateInfo.is_own_candidate);
           
-          if (shouldSaveMatch) {
+          if (shouldSaveMatch && candidate?.id) {
             const candidateUpdatedAt = new Date(candidate?.updated_at || candidate?.created_at || new Date());
             const jobOfferUpdatedAt = new Date(rawJobOffer.updated_at);
             const matchDetailsData = matchDetailsToJson(newMatch.details);
@@ -163,7 +163,7 @@ export const matchDbService = {
             if (insertError) {
               console.error('[Match DB Service] Error saving match results:', insertError);
             } else {
-              console.log(`[Match DB Service] Successfully cached new score for candidate ${candidate?.id}`);
+              console.log(`[Match DB Service] Successfully cached new score for candidate ${candidate?.id || 'unknown'}`);
             }
           }
           
@@ -187,7 +187,7 @@ export const matchDbService = {
           ));
           
         } catch (matchError) {
-          console.error(`[Match DB Service] Error calculating match for candidate ${candidate?.id}:`, matchError);
+          console.error(`[Match DB Service] Error calculating match for candidate ${candidate?.id || 'unknown'}:`, matchError);
           
           // Utiliser les données existantes en cas d'erreur
           matches.push(this.createCandidateMatch(
