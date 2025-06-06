@@ -135,7 +135,7 @@ export const matchDbService = {
           const shouldSaveMatch = !globalMode || (candidateInfo && candidateInfo.is_own_candidate);
           
           if (shouldSaveMatch && candidate?.id) {
-            const candidateUpdatedAt = new Date(candidate?.updated_at || candidate?.created_at || new Date());
+            const candidateUpdatedAt = new Date(candidate.updated_at || candidate.created_at || new Date());
             const jobOfferUpdatedAt = new Date(rawJobOffer.updated_at);
             const matchDetailsData = matchDetailsToJson(newMatch.details);
             
@@ -163,7 +163,7 @@ export const matchDbService = {
             if (insertError) {
               console.error('[Match DB Service] Error saving match results:', insertError);
             } else {
-              console.log(`[Match DB Service] Successfully cached new score for candidate ${candidate?.id || 'unknown'}`);
+              console.log(`[Match DB Service] Successfully cached new score for candidate ${candidate.id || 'unknown'}`);
             }
           }
           
