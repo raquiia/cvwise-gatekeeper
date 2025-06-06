@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import ConfirmClaireButton from '@/components/admin/ConfirmClaireButton';
 
 // Admin components
 import PendingUsersList from '@/components/admin/PendingUsersList';
@@ -203,6 +204,11 @@ const Admin = () => {
           <p className="text-muted-foreground mb-2">
             Gérez les paramètres administratifs de votre espace CVwise.
           </p>
+          
+          {/* Bouton de confirmation pour Claire Laurent */}
+          <div className="mt-4">
+            <ConfirmClaireButton />
+          </div>
         </div>
 
         {/* Interface principale d'administration - toujours affichée, sans vérification des droits */}
