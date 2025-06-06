@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Loader2, Users, ArrowRight, RefreshCw } from 'lucide-react';
 import { CandidateMatch } from '@/services/data/candidate-matching/types';
 import { JobOffer } from '@/services/data/job-offers/types';
@@ -53,12 +52,12 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
   const sortedMatches = [...candidateMatches];
   
   // Sort by score (highest first)
-  sortedMatches.sort((a, b) => (b.score || 0) - (a.score || 0));
+  sortedMatches.sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
   
   const topMatches = sortedMatches.slice(0, 5);
   const recentMatches = [...sortedMatches].sort((a, b) => {
-    const dateA = new Date(a.last_updated || a.updated_at || '').getTime();
-    const dateB = new Date(b.last_updated || b.updated_at || '').getTime();
+    const dateA = new Date(a.updated_at || '').getTime();
+    const dateB = new Date(b.updated_at || '').getTime();
     return dateB - dateA;
   }).slice(0, 5);
   
@@ -113,7 +112,7 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
           <div className="space-y-4">
             {displayedMatches.map((match) => (
               <CandidateMatchItem
-                key={match.id || match.candidateId}
+                key={match.id || match.candidate_id}
                 match={match}
                 onViewCandidate={onViewCandidate}
                 jobId={jobOffer.id!}

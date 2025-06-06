@@ -1,392 +1,422 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { serve } from 'https://deno.land/std@0.131.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.8.0';
+import { corsHeaders } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+// Interface for expected request body
+interface RequestBody {
+  candidateId: string;
+  jobOfferId?: string;
+  scoringType: 'completeness' | 'job_matching';
+}
+
+interface ScoringBreakdown {
+  skills: number;
+  experience: number;
+  education: number;
+  cvStructure?: number;
+  profileSummary?: number;
+  location?: number;
+  cultural?: number;
+  languages?: number;
+  [key: string]: number | undefined;
+}
+
+interface ScoringResult {
+  score: number;
+  explanation: string;
+  breakdown: ScoringBreakdown;
+}
 
 serve(async (req) => {
-  // CORS preflight handler
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
-
+  
   try {
-    console.log('AI Scoring request:', await req.json());
-
-    // Re-parse since first read consumed the body
-    const { candidateId, jobOfferId, scoringType } = await req.json();
+    if (req.method !== 'POST') {
+      return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+        status: 405,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
     
-    console.log('AI Scoring request:', { candidateId, jobOfferId, scoringType });
+    // Parse request body
+    const requestBody: RequestBody = await req.json();
+    const { candidateId, jobOfferId, scoringType } = requestBody;
     
     if (!candidateId) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'candidateId is required' 
-      }), { 
-        status: 400, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ error: 'Candidate ID is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-
-    // Get configuration from environment variables
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     
-    if (!supabaseUrl || !supabaseServiceKey || !openaiApiKey) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Missing environment variables' 
-      }), { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    if (scoringType === 'job_matching' && !jobOfferId) {
+      return new Response(JSON.stringify({ error: 'Job offer ID is required for job matching' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-
-    // Create Supabase client with admin privileges
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Fetch candidate data
-    const { data: candidate, error: candidateError } = await supabase
+    // Initialize Supabase clients
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Get auth user from JWT
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized', details: authError }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Get candidate data
+    const { data: candidateData, error: candidateError } = await supabaseAdmin
       .from('candidates')
       .select('*')
       .eq('id', candidateId)
+      .eq('user_id', user.id)
       .single();
-    
-    if (candidateError || !candidate) {
+      
+    if (candidateError || !candidateData) {
       return new Response(JSON.stringify({ 
-        success: false, 
-        error: candidateError?.message || 'Candidate not found' 
-      }), { 
-        status: 404, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        error: 'Failed to retrieve candidate data',
+        details: candidateError 
+      }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-
-    // Fetch job offer data if provided
-    let jobOffer = null;
-    if (jobOfferId && scoringType === 'job_matching') {
-      const { data: jobData, error: jobError } = await supabase
+    
+    // Get candidate notes (optional, for additional context)
+    const { data: candidateNotes } = await supabaseAdmin
+      .from('candidate_notes')
+      .select('*')
+      .eq('candidate_id', candidateId)
+      .eq('user_id', user.id);
+    
+    // For job matching, get job offer data
+    let jobOfferData = null;
+    if (scoringType === 'job_matching' && jobOfferId) {
+      const { data: jobOffer, error: jobError } = await supabaseAdmin
         .from('job_offers')
         .select('*')
         .eq('id', jobOfferId)
+        .eq('user_id', user.id)
         .single();
-      
-      if (jobError || !jobData) {
+        
+      if (jobError || !jobOffer) {
         return new Response(JSON.stringify({ 
-          success: false, 
-          error: jobError?.message || 'Job offer not found' 
-        }), { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          error: 'Failed to retrieve job offer data',
+          details: jobError 
+        }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
       
-      jobOffer = jobData;
+      jobOfferData = jobOffer;
     }
     
-    // Check for existing AI score in the database
-    const { data: existingScore } = await supabase
-      .from('ai_candidate_scores')
-      .select('*')
-      .eq('candidate_id', candidateId)
-      .eq('job_offer_id', jobOfferId || null)
-      .order('calculated_at', { ascending: false })
-      .limit(1);
+    // Calculate the scoring based on type
+    let scoringResult: ScoringResult;
     
-    // If we have a recent score (less than 1 hour old), return it
-    if (existingScore && existingScore.length > 0) {
-      const score = existingScore[0];
-      const scoreAge = Date.now() - new Date(score.calculated_at).getTime();
-      const oneHour = 60 * 60 * 1000;
-      
-      // Use cached score if it's recent
-      if (scoreAge < oneHour) {
-        console.log('Using cached AI score:', score);
-        return new Response(JSON.stringify({ 
-          success: true, 
-          score: score.score,
-          explanation: score.explanation,
-          breakdown: score.breakdown
-        }), { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    if (scoringType === 'completeness') {
+      scoringResult = calculateCompletenessScore(candidateData, candidateNotes || []);
+    } else {
+      if (!jobOfferData) {
+        return new Response(JSON.stringify({ error: 'Job offer data is required for job matching' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
+      scoringResult = calculateJobMatchingScore(candidateData, jobOfferData, candidateNotes || []);
     }
     
-    console.log('Calling OpenAI for scoring analysis');
-    
-    // Prepare data for AI analysis
-    const candidateData = {
-      id: candidate.id,
-      name: `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim(),
-      position: candidate.position,
-      company: candidate.company,
-      years_experience: candidate.years_experience,
-      skills: Array.isArray(candidate.skills) ? candidate.skills : [],
-      education: Array.isArray(candidate.education) ? candidate.education : [],
-      experiences: Array.isArray(candidate.experiences) ? candidate.experiences : [],
-      certifications: Array.isArray(candidate.certifications) ? candidate.certifications : [],
-      languages: Array.isArray(candidate.languages) ? candidate.languages : [],
-      location: candidate.location,
-      availability: candidate.availability,
-      mobility: candidate.mobility,
-      remote_preference: candidate.remote_preference,
-      contract_type: candidate.contract_type,
-      career_objectives: candidate.career_objectives,
-      detailed_status: candidate.detailed_status
-    };
-    
-    let jobOfferData = null;
-    if (jobOffer) {
-      jobOfferData = {
-        id: jobOffer.id,
-        title: jobOffer.title,
-        company: jobOffer.company,
-        location: jobOffer.location,
-        description: jobOffer.description,
-        required_skills: Array.isArray(jobOffer.required_skills) ? jobOffer.required_skills : [],
-        preferred_skills: Array.isArray(jobOffer.preferred_skills) ? jobOffer.preferred_skills : [],
-        experience_years_min: jobOffer.experience_years_min,
-        experience_years_max: jobOffer.experience_years_max,
-        education_level: jobOffer.education_level,
-        required_languages: Array.isArray(jobOffer.required_languages) ? jobOffer.required_languages : []
-      };
-    }
-    
-    // Get candidate notes if available
-    const { data: notes } = await supabase
-      .from('candidate_notes')
-      .select('*')
-      .eq('candidate_id', candidateId);
-    
-    // Call OpenAI with different prompts based on scoring type
-    const prompt = scoringType === 'job_matching'
-      ? generateMatchingPrompt(candidateData, jobOfferData, notes || [])
-      : generateCompletenessPrompt(candidateData, notes || []);
-    
-    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'You are an AI expert in candidate evaluation and job matching.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.2,
-        max_tokens: 1000,
-      }),
-    });
-    
-    if (!aiResponse.ok) {
-      const errorData = await aiResponse.json();
-      console.error('OpenAI API error:', errorData);
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Error from AI service: ' + (errorData.error?.message || 'Unknown error') 
-      }), { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    }
-    
-    const aiData = await aiResponse.json();
-    console.log('AI analysis received');
-    
-    if (!aiData.choices || !aiData.choices[0]) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Invalid response from AI service' 
-      }), { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    }
-    
-    let scoreData;
-    try {
-      const aiText = aiData.choices[0].message.content;
-      const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/) || aiText.match(/\{[\s\S]*\}/);
-      
-      if (!jsonMatch) {
-        throw new Error('AI response does not contain valid JSON data');
+    // Save the score in Supabase
+    const { data: savedScore, error: saveError } = await supabaseAdmin.rpc(
+      'save_ai_candidate_score',
+      {
+        p_candidate_id: candidateId,
+        p_score: scoringResult.score,
+        p_explanation: scoringResult.explanation,
+        p_job_offer_id: jobOfferId || null,
+        p_breakdown: scoringResult.breakdown
       }
-      
-      const jsonText = jsonMatch[1] || jsonMatch[0];
-      scoreData = JSON.parse(jsonText);
-      
-      if (!scoreData.score || !scoreData.explanation) {
-        throw new Error('AI response is missing required fields');
-      }
-    } catch (error) {
-      console.error('Error parsing AI response:', error);
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Failed to parse AI evaluation: ' + error.message,
-        aiResponse: aiData.choices[0].message.content
-      }), { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      });
-    }
-    
-    // Ensure breakdown has consistent structure
-    const breakdown = scoreData.breakdown || {
-      skills: 0,
-      experience: 0,
-      education: 0,
-      cvStructure: 0,
-      profileSummary: 0
-    };
-    
-    // Store the score in the database
-    const { data: savedScore, error: saveError } = await supabase
-      .from('ai_candidate_scores')
-      .upsert({
-        candidate_id: candidateId,
-        job_offer_id: jobOfferId || null,
-        user_id: candidate.user_id,
-        score: scoreData.score,
-        explanation: scoreData.explanation,
-        breakdown: breakdown,
-        calculated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
+    );
     
     if (saveError) {
-      console.error('Error saving AI score to database:', saveError);
+      console.error('Error saving AI score:', saveError);
+      // Continue anyway, as we want to return the calculated score even if saving fails
     }
     
-    console.log('AI scoring completed successfully');
-    
-    return new Response(JSON.stringify({ 
-      success: true, 
-      score: scoreData.score,
-      explanation: scoreData.explanation,
-      breakdown: breakdown
-    }), { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    // Return success response with score
+    return new Response(JSON.stringify({
+      success: true,
+      candidateId,
+      jobOfferId: jobOfferId || null,
+      score: scoringResult.score,
+      explanation: scoringResult.explanation,
+      breakdown: scoringResult.breakdown,
+      savedToDatabase: !saveError,
+      scoringType
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
     
   } catch (error) {
     console.error('Unexpected error in AI scoring function:', error);
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: 'Internal server error: ' + error.message 
-    }), { 
-      status: 500, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'An unexpected error occurred',
+      details: error.message
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });
 
-function generateMatchingPrompt(candidate, jobOffer, notes) {
-  const noteTexts = notes.map(note => note.content).join('\n\n');
+/**
+ * Calculate score for profile completeness
+ */
+function calculateCompletenessScore(
+  candidate: any, 
+  notes: any[]
+): ScoringResult {
+  // --------- SCORE 1: INFORMATION DE BASE (20 points) ---------
+  let baseInfoScore = 0;
+  const baseInfoChecks = [
+    candidate.first_name && candidate.last_name ? 4 : 0,  // Nom complet
+    candidate.email ? 4 : 0,                              // Email
+    candidate.phone ? 3 : 0,                              // Téléphone
+    candidate.position ? 5 : 0,                           // Poste actuel
+    candidate.location ? 4 : 0,                           // Localisation
+  ];
+  baseInfoScore = baseInfoChecks.reduce((sum, val) => sum + val, 0);
   
-  return `
-  # JOB MATCHING ANALYSIS
-
-  Analyze how well this candidate matches the job requirements. Provide:
-  1. A score from 0 to 100
-  2. A brief explanation
-  3. A breakdown of component scores
-
-  ## Job Details
-  Title: ${jobOffer.title}
-  Company: ${jobOffer.company || 'Not specified'}
-  Location: ${jobOffer.location || 'Not specified'}
-  Required Skills: ${JSON.stringify(jobOffer.required_skills)}
-  Preferred Skills: ${JSON.stringify(jobOffer.preferred_skills)}
-  Required Experience: ${jobOffer.experience_years_min || 0} - ${jobOffer.experience_years_max || 'Not specified'} years
-  Education Level: ${jobOffer.education_level || 'Not specified'}
-  Required Languages: ${JSON.stringify(jobOffer.required_languages)}
-  Description: ${jobOffer.description || 'Not provided'}
-
-  ## Candidate Details
-  Name: ${candidate.name}
-  Current Position: ${candidate.position || 'Not specified'}
-  Current Company: ${candidate.company || 'Not specified'}
-  Years of Experience: ${candidate.years_experience || 'Not specified'}
-  Skills: ${JSON.stringify(candidate.skills)}
-  Education: ${JSON.stringify(candidate.education)}
-  Work Experiences: ${JSON.stringify(candidate.experiences)}
-  Certifications: ${JSON.stringify(candidate.certifications)}
-  Languages: ${JSON.stringify(candidate.languages)}
-  Location: ${candidate.location || 'Not specified'}
-  Mobility: ${candidate.mobility || 'Not specified'}
-  Remote Preference: ${candidate.remote_preference || 'Not specified'}
-  Contract Type Preference: ${candidate.contract_type || 'Not specified'}
-  Career Objectives: ${candidate.career_objectives || 'Not specified'}
-
-  ${notes.length > 0 ? `## Interview Notes\n${noteTexts}` : ''}
-
-  Output your analysis in the following JSON format only, no other text:
-  \`\`\`json
-  {
-    "score": 85,
-    "explanation": "Clear explanation here...",
-    "breakdown": {
-      "skills": 80,
-      "experience": 90,
-      "education": 70,
-      "location": 65,
-      "cultural": 85
-    }
+  // --------- SCORE 2: COMPÉTENCES (25 points) ---------
+  let skillsScore = 0;
+  const skills = candidate.skills || [];
+  if (Array.isArray(skills)) {
+    if (skills.length >= 10) skillsScore = 25;
+    else if (skills.length >= 7) skillsScore = 20;
+    else if (skills.length >= 5) skillsScore = 15;
+    else if (skills.length >= 3) skillsScore = 10;
+    else if (skills.length >= 1) skillsScore = 5;
   }
-  \`\`\`
-  `;
+  
+  // --------- SCORE 3: EXPÉRIENCE (25 points) ---------
+  let experienceScore = 0;
+  const experiences = candidate.experiences || [];
+  if (candidate.years_experience) {
+    experienceScore += 10; // Points pour avoir renseigné les années d'expérience
+  }
+  if (Array.isArray(experiences)) {
+    // Points pour le nombre d'expériences détaillées
+    if (experiences.length >= 3) experienceScore += 15;
+    else if (experiences.length >= 2) experienceScore += 10;
+    else if (experiences.length >= 1) experienceScore += 5;
+  }
+  // Plafonner à 25
+  experienceScore = Math.min(experienceScore, 25);
+  
+  // --------- SCORE 4: ÉDUCATION (15 points) ---------
+  let educationScore = 0;
+  const education = candidate.education || [];
+  if (Array.isArray(education)) {
+    if (education.length >= 2) educationScore = 15;
+    else if (education.length >= 1) educationScore = 10;
+  }
+  
+  // --------- SCORE 5: STRUCTURE ET FORME DU CV (15 points) ---------
+  let cvStructureScore = 0;
+  const cvStructureFeatures = [
+    candidate.languages && Array.isArray(candidate.languages) && candidate.languages.length > 0 ? 3 : 0,
+    candidate.availability ? 3 : 0,
+    candidate.mobility ? 3 : 0,
+    candidate.career_objectives ? 3 : 0,
+    candidate.interests ? 3 : 0
+  ];
+  cvStructureScore = cvStructureFeatures.reduce((sum, val) => sum + val, 0);
+  
+  // Calculer le score total et les pourcentages par section
+  const totalScore = Math.min(
+    Math.round(baseInfoScore + skillsScore + experienceScore + educationScore + cvStructureScore),
+    100
+  );
+  
+  // Normaliser les scores en pourcentage pour le breakdown
+  const totalMaxScore = 100;
+  const skillsPercent = Math.round((skillsScore / 25) * 100);
+  const experiencePercent = Math.round((experienceScore / 25) * 100);
+  const educationPercent = Math.round((educationScore / 15) * 100);
+  const cvStructurePercent = Math.round((cvStructureScore / 15) * 100);
+  const profileSummaryPercent = Math.round((baseInfoScore / 20) * 100);
+  
+  let explanation = 'Score de complétude du profil calculé automatiquement ';
+  explanation += `(Infos de base: ${baseInfoScore}/20, Compétences: ${skillsScore}/25, `;
+  explanation += `Expérience: ${experienceScore}/25, Éducation: ${educationScore}/15, `;
+  explanation += `Structure du CV: ${cvStructureScore}/15)`;
+  
+  return {
+    score: totalScore,
+    explanation,
+    breakdown: {
+      skills: skillsPercent,
+      experience: experiencePercent,
+      education: educationPercent,
+      cvStructure: cvStructurePercent,
+      profileSummary: profileSummaryPercent
+    }
+  };
 }
 
-function generateCompletenessPrompt(candidate, notes) {
-  const noteTexts = notes.map(note => note.content).join('\n\n');
+/**
+ * Calculate job matching score
+ */
+function calculateJobMatchingScore(
+  candidate: any, 
+  jobOffer: any, 
+  notes: any[]
+): ScoringResult {
+  // --------- SCORE 1: COMPÉTENCES (40 points) ---------
+  let skillsScore = 0;
+  const candidateSkills = new Set(
+    (candidate.skills || [])
+      .map((s: any) => typeof s === 'string' ? s.toLowerCase() : 
+           (typeof s === 'object' && s !== null && s.name ? s.name.toLowerCase() : null))
+      .filter(Boolean)
+  );
   
-  return `
-  # CANDIDATE PROFILE COMPLETENESS ANALYSIS
-
-  Analyze this candidate's profile completeness and quality. Provide:
-  1. A score from 0 to 100
-  2. A brief explanation
-  3. A breakdown of component scores
-
-  ## Candidate Details
-  Name: ${candidate.name}
-  Current Position: ${candidate.position || 'Not specified'}
-  Current Company: ${candidate.company || 'Not specified'}
-  Years of Experience: ${candidate.years_experience || 'Not specified'}
-  Skills: ${JSON.stringify(candidate.skills)}
-  Education: ${JSON.stringify(candidate.education)}
-  Work Experiences: ${JSON.stringify(candidate.experiences)}
-  Certifications: ${JSON.stringify(candidate.certifications)}
-  Languages: ${JSON.stringify(candidate.languages)}
-  Location: ${candidate.location || 'Not specified'}
-  Mobility: ${candidate.mobility || 'Not specified'}
-  Remote Preference: ${candidate.remote_preference || 'Not specified'}
-  Contract Type Preference: ${candidate.contract_type || 'Not specified'}
-  Career Objectives: ${candidate.career_objectives || 'Not specified'}
-
-  ${notes.length > 0 ? `## Interview Notes\n${noteTexts}` : ''}
-
-  Output your analysis in the following JSON format only, no other text:
-  \`\`\`json
-  {
-    "score": 85,
-    "explanation": "Clear explanation here...",
-    "breakdown": {
-      "skills": 80,
-      "experience": 90,
-      "education": 70,
-      "cvStructure": 65,
-      "profileSummary": 85
+  const requiredSkills = new Set(
+    (jobOffer.required_skills || [])
+      .map((s: any) => typeof s === 'string' ? s.toLowerCase() : 
+           (typeof s === 'object' && s !== null && s.name ? s.name.toLowerCase() : null))
+      .filter(Boolean)
+  );
+  
+  const preferredSkills = new Set(
+    (jobOffer.preferred_skills || [])
+      .map((s: any) => typeof s === 'string' ? s.toLowerCase() : 
+           (typeof s === 'object' && s !== null && s.name ? s.name.toLowerCase() : null))
+      .filter(Boolean)
+  );
+  
+  // Calculer le score des compétences requises (30 points max)
+  let matchedRequiredSkills = 0;
+  requiredSkills.forEach(skill => {
+    if (candidateSkills.has(skill)) matchedRequiredSkills++;
+  });
+  
+  const requiredSkillsScore = requiredSkills.size > 0
+    ? Math.round((matchedRequiredSkills / requiredSkills.size) * 30)
+    : 15; // Score moyen si aucune compétence requise
+  
+  // Calculer le score des compétences préférées (10 points max)
+  let matchedPreferredSkills = 0;
+  preferredSkills.forEach(skill => {
+    if (candidateSkills.has(skill)) matchedPreferredSkills++;
+  });
+  
+  const preferredSkillsScore = preferredSkills.size > 0
+    ? Math.round((matchedPreferredSkills / preferredSkills.size) * 10)
+    : 5; // Score moyen si aucune compétence préférée
+  
+  skillsScore = requiredSkillsScore + preferredSkillsScore;
+  
+  // --------- SCORE 2: EXPÉRIENCE (30 points) ---------
+  let experienceScore = 0;
+  const candidateYears = candidate.years_experience || 0;
+  const minYears = jobOffer.experience_years_min || 0;
+  const maxYears = jobOffer.experience_years_max || minYears + 5;
+  
+  if (candidateYears >= minYears) {
+    // Candidat atteint le minimum requis
+    if (maxYears === minYears || candidateYears <= maxYears) {
+      // Correspondance parfaite avec la fourchette
+      experienceScore = 30;
+    } else if (candidateYears <= maxYears + 5) {
+      // Légèrement au-dessus de la fourchette
+      experienceScore = 25;
+    } else {
+      // Beaucoup trop d'expérience
+      experienceScore = 20;
     }
+  } else if (candidateYears >= minYears * 0.75) {
+    // Presque le minimum requis
+    experienceScore = 15;
+  } else if (candidateYears >= minYears * 0.5) {
+    // Moitié du minimum requis
+    experienceScore = 10;
+  } else {
+    // Trop peu d'expérience
+    experienceScore = 5;
   }
-  \`\`\`
-  `;
+  
+  // --------- SCORE 3: ÉDUCATION (20 points) ---------
+  let educationScore = 0;
+  // Par défaut, attribuer un score moyen car l'éducation est difficile à évaluer
+  // sans analyse sémantique avancée
+  educationScore = 10;
+  
+  // --------- SCORE 4: LOCALISATION (10 points) ---------
+  let locationScore = 0;
+  const candidateLocation = candidate.location?.toLowerCase() || '';
+  const jobLocation = jobOffer.location?.toLowerCase() || '';
+  
+  if (candidateLocation && jobLocation) {
+    if (candidateLocation.includes(jobLocation) || jobLocation.includes(candidateLocation)) {
+      locationScore = 10; // Même ville ou région
+    } else {
+      // Vérifier la mobilité du candidat
+      if (candidate.mobility && candidate.mobility.toLowerCase().includes('oui')) {
+        locationScore = 5; // Candidat mobile
+      } else {
+        locationScore = 0; // Pas mobile et localisations différentes
+      }
+    }
+  } else {
+    locationScore = 5; // Informations manquantes, score moyen
+  }
+  
+  // --------- SCORE 5: LANGUES (0 bonus points) ---------
+  // Bonus pour les langues si le job en spécifie
+  let languagesScore = 0;
+  
+  // Calculer le score total (max 100)
+  const totalScore = Math.min(
+    Math.round(skillsScore + experienceScore + educationScore + locationScore + languagesScore),
+    100
+  );
+  
+  // Générer l'explication du score
+  let explanation = `Match de ${totalScore}% avec l'offre "${jobOffer.title || 'Sans titre'}". `;
+  explanation += `Compétences: ${matchedRequiredSkills}/${requiredSkills.size} requises, ${matchedPreferredSkills}/${preferredSkills.size} préférées. `;
+  explanation += `Expérience: ${candidate.years_experience || 0} ans (requis: ${minYears}-${maxYears}). `;
+  if (candidateLocation && jobLocation) {
+    explanation += `Localisation: ${locationScore === 10 ? 'Correspondance' : 'Différente'}.`;
+  }
+  
+  return {
+    score: totalScore,
+    explanation,
+    breakdown: {
+      skills: skillsScore / 0.4,
+      experience: experienceScore / 0.3,
+      education: educationScore / 0.2,
+      location: locationScore / 0.1,
+      languages: languagesScore || 0
+    }
+  };
 }

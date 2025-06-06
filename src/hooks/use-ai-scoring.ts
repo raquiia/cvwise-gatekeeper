@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveJob } from '@/context/ActiveJobContext';
 import { toast } from '@/hooks/use-toast';
+import { AIScoringBreakdown } from '@/services/data/ai-scoring/types';
 
 interface AIScoringState {
   [candidateId: string]: {
@@ -11,14 +12,7 @@ interface AIScoringState {
     error: string | null;
     explanation: string;
     source: string | null;
-    breakdown: {
-      skills: number;
-      experience: number;
-      education: number;
-      cvStructure: number;
-      profileSummary: number;
-      [key: string]: number;
-    } | null;
+    breakdown: AIScoringBreakdown | null;
     isJobSpecific: boolean;
     lastUpdated: number;
   };
@@ -34,7 +28,8 @@ export const useAIScoring = () => {
 
   // Préchargement des scores depuis la base de données
   const preloadScoresFromDatabase = useCallback(async (candidateIds: string[]) => {
-    if (!candidateIds.length) return;
+    if (!candidateIds.length) return {};
+    const results: AIScoringState = {};
 
     try {
       console.log(`Preloading AI scores for ${candidateIds.length} candidates...`);
@@ -73,43 +68,59 @@ export const useAIScoring = () => {
               lastUpdated: Date.now()
             }
           }));
+          results[candidateId] = {
+            score: null,
+            isLoading: false,
+            error: error.message,
+            explanation: '',
+            source: null,
+            breakdown: null,
+            isJobSpecific: isJobSpecific,
+            lastUpdated: Date.now()
+          };
           continue;
         }
         
         if (scoreData) {
           console.log(`Found cached AI score for candidate ${candidateId}:`, scoreData);
+          const stateUpdate = {
+            score: scoreData.score,
+            isLoading: false,
+            error: null,
+            explanation: scoreData.explanation || '',
+            source: 'database',
+            breakdown: scoreData.breakdown || null,
+            isJobSpecific: Boolean(scoreData.job_offer_id),
+            lastUpdated: Date.now()
+          };
           setState(prev => ({
             ...prev,
-            [candidateId]: {
-              score: scoreData.score,
-              isLoading: false,
-              error: null,
-              explanation: scoreData.explanation || '',
-              source: 'database',
-              breakdown: scoreData.breakdown || null,
-              isJobSpecific: Boolean(scoreData.job_offer_id),
-              lastUpdated: Date.now()
-            }
+            [candidateId]: stateUpdate
           }));
+          results[candidateId] = stateUpdate;
         } else {
           console.log(`No cached AI score found for candidate ${candidateId}, setting null state`);
+          const stateUpdate = {
+            score: null,
+            isLoading: false,
+            error: null,
+            explanation: '',
+            source: null,
+            breakdown: null,
+            isJobSpecific: isJobSpecific,
+            lastUpdated: Date.now()
+          };
           setState(prev => ({
             ...prev,
-            [candidateId]: {
-              score: null,
-              isLoading: false,
-              error: null,
-              explanation: '',
-              source: null,
-              breakdown: null,
-              isJobSpecific: isJobSpecific,
-              lastUpdated: Date.now()
-            }
+            [candidateId]: stateUpdate
           }));
+          results[candidateId] = stateUpdate;
         }
       }
+      return results;
     } catch (err) {
       console.error('Error in preloadScoresFromDatabase:', err);
+      return {};
     }
   }, [activeJobOfferId, isJobSpecific]);
 
@@ -191,7 +202,7 @@ export const useAIScoring = () => {
         variant: "destructive"
       });
     }
-  }, [activeJobOfferId, state, toast]);
+  }, [activeJobOfferId, state]);
 
   // Obtenir le score AI d'un candidat
   const getAIScore = useCallback((candidateId: string) => {
@@ -208,6 +219,45 @@ export const useAIScoring = () => {
       }
     );
   }, [state, isJobSpecific]);
+
+  // Forcer le recalcul du score pour un candidat spécifique
+  const forceReanalyzeCandidate = useCallback(async (candidateId: string) => {
+    try {
+      // Indiquer le chargement
+      setState(prev => ({
+        ...prev,
+        [candidateId]: {
+          ...prev[candidateId],
+          isLoading: true,
+          error: null,
+          source: null
+        }
+      }));
+      
+      // Suppression du score existant (si présent)
+      await supabase.rpc('delete_ai_candidate_score', {
+        p_candidate_id: candidateId,
+        p_job_offer_id: activeJobOfferId || null
+      });
+      
+      // Recalculer le score
+      await calculateAIScore(candidateId);
+      
+      return true;
+    } catch (err) {
+      console.error('Error forcing reanalysis:', err);
+      setState(prev => ({
+        ...prev,
+        [candidateId]: {
+          ...prev[candidateId],
+          isLoading: false,
+          error: 'Erreur lors du recalcul forcé',
+          source: null
+        }
+      }));
+      return false;
+    }
+  }, [activeJobOfferId, calculateAIScore]);
 
   // Recalculer tous les scores pour une liste de candidats
   const recalculateAllScores = useCallback(async (candidateIds: string[], onlyNew: boolean = true) => {
@@ -282,6 +332,7 @@ export const useAIScoring = () => {
     invalidateAllScores,
     preloadScoresFromDatabase,
     isGlobalRecalculating,
-    isJobSpecific
+    isJobSpecific,
+    forceReanalyzeCandidate
   };
 };

@@ -37,6 +37,15 @@ const JobOfferDetail = () => {
     navigate(`/job-offers/${jobOfferId}/edit`);
   };
   
+  // Create wrapper functions to adapt the renderSkills functions to what CandidatesMatchingSection expects
+  const renderMatchedSkillsForSection = (candidateId: string, jobOfferId: string) => {
+    return renderMatchedSkills(candidateId, jobOfferId);
+  };
+  
+  const renderMissingSkillsForSection = (candidateId: string, jobOfferId: string) => {
+    return renderMissingSkills(candidateId, jobOfferId);
+  };
+  
   if (loading) {
     return (
       <Layout className="py-8 bg-gradient-to-br from-purple-50/50 to-white dark:from-navy-dark/90 dark:to-navy-dark">
@@ -81,8 +90,8 @@ const JobOfferDetail = () => {
           onViewCandidate={handleViewCandidate}
           onRecalculateMatches={handleRecalculateMatches}
           matchLoading={matchLoading}
-          renderMatchedSkills={renderMatchedSkills}
-          renderMissingSkills={renderMissingSkills}
+          renderMatchedSkills={renderMatchedSkillsForSection}
+          renderMissingSkills={renderMissingSkillsForSection}
         />
       </div>
     </Layout>
