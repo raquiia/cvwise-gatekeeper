@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
-import { candidateMatchingService } from '@/services/data/candidate-matching';
+import { matchDbService } from '@/services/data/candidate-matching/matchDbService';
 import { supabase } from '@/integrations/supabase/client';
 import { processCandidateData } from '@/utils/candidateUtils';
 import { useActiveJob } from '@/context/ActiveJobContext';
@@ -64,43 +64,32 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
     if (!jobOfferId) return;
     
     try {
-      console.log(`[Job Offer Details] Fetching candidate matches for job offer: ${jobOfferId} (Global mode: ${globalMode})`);
+      console.log(`[Job Offer Details] Using intelligent caching for job offer: ${jobOfferId} (Global mode: ${globalMode})`);
       
-      // Utiliser la fonction RPC appropriée selon le mode
-      const rpcFunction = globalMode ? 'get_all_matches_for_job_offer' : 'get_matches_for_job_offer';
+      // Utiliser le nouveau service optimisé avec cache intelligent
+      const matches = await matchDbService.calculateMatchesForJobOffer(jobOfferId, globalMode);
       
-      const { data, error } = await supabase
-        .rpc(rpcFunction, { p_job_offer_id: jobOfferId });
+      console.log(`[Job Offer Details] Received ${matches?.length || 0} matches with intelligent caching (${globalMode ? 'global' : 'private'} mode)`);
       
-      if (error) {
-        console.error(`[Job Offer Details] RPC Error (${rpcFunction}):`, error);
-        throw error;
-      }
-      
-      console.log(`[Job Offer Details] RPC returned ${data?.length || 0} candidates (${globalMode ? 'global' : 'private'} mode)`);
-      
-      if (data && data.length > 0) {
-        const processedMatches = data.map((item: any) => {
-          const candidate = processCandidateData(item.candidate || {});
-          const match = item.match || {};
-          
-          console.log(`[Job Offer Details] Processing candidate: ${candidate.first_name} ${candidate.last_name} with score: ${match.match_score || 0}${globalMode ? ` (Own: ${item.candidate?.is_own_candidate})` : ''}`);
+      if (matches && matches.length > 0) {
+        const processedMatches = matches.map((match) => {
+          console.log(`[Job Offer Details] Processing cached/calculated match: ${match.firstName} ${match.lastName} with scores: Local=${match.localScore}%, Global=${match.globalScore}%, Skills=${match.skillsOnlyScore}%${globalMode && !match.isOwnCandidate ? ' (Externe)' : ''}`);
           
           return {
-            candidateId: candidate.id,
-            firstName: candidate.first_name || '',
-            lastName: candidate.last_name || '',
-            position: candidate.position || '',
-            company: candidate.company || '',
-            score: match.match_score || 0,
-            globalScore: match.global_score || 0,
-            localScore: match.local_score || 0,
-            skillsOnlyScore: match.skills_only_score || 0,
+            candidateId: match.candidateId,
+            firstName: match.firstName || '',
+            lastName: match.lastName || '',
+            position: match.position || '',
+            company: match.company || '',
+            score: match.localScore || match.score || 0, // Utiliser localScore comme score principal
+            globalScore: match.globalScore || 0,
+            localScore: match.localScore || 0,
+            skillsOnlyScore: match.skillsOnlyScore || 0,
             // Propriétés pour le mode global
-            isOwnCandidate: globalMode ? item.candidate?.is_own_candidate : true,
-            ownerFirstName: globalMode ? item.candidate?.owner_first_name : undefined,
-            ownerLastName: globalMode ? item.candidate?.owner_last_name : undefined,
-            details: match.match_details || {
+            isOwnCandidate: match.isOwnCandidate,
+            ownerFirstName: match.ownerFirstName,
+            ownerLastName: match.ownerLastName,
+            details: match.details || {
               skills: { matched: [], missing: [], additional: [], matchPercentage: 0 },
               experienceLevel: { required: 0, candidate: 0, match: false },
               location: { required: '', candidate: '', match: false },
@@ -108,23 +97,28 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
               overall: 0
             },
             candidate: {
-              ...candidate,
-              owner_first_name: globalMode ? item.candidate?.owner_first_name : undefined,
-              owner_last_name: globalMode ? item.candidate?.owner_last_name : undefined,
-              is_own_candidate: globalMode ? item.candidate?.is_own_candidate : true
+              id: match.candidateId,
+              first_name: match.firstName,
+              last_name: match.lastName,
+              position: match.position,
+              company: match.company,
+              location: match.details?.location?.candidate || '',
+              years_experience: match.details?.experienceLevel?.candidate || 0,
+              // Propriétés pour le mode global
+              owner_first_name: match.ownerFirstName,
+              owner_last_name: match.ownerLastName,
+              is_own_candidate: match.isOwnCandidate
             },
             match: {
-              match_score: match.match_score || 0,
-              global_score: match.global_score || 0,
-              local_score: match.local_score || 0,
-              skills_only_score: match.skills_only_score || 0,
-              skills_match_score: match.skills_match_score || 0,
-              experience_match_score: match.experience_match_score || 0,
-              education_match_score: match.education_match_score || 0,
-              location_match_score: match.location_match_score || 0,
-              match_details: match.match_details || {
-                skills: { matched: [], missing: [], additional: [], matchPercentage: 0 }
-              }
+              match_score: match.localScore || match.score || 0,
+              global_score: match.globalScore || 0,
+              local_score: match.localScore || 0,
+              skills_only_score: match.skillsOnlyScore || 0,
+              skills_match_score: match.details?.skills?.matchPercentage || 0,
+              experience_match_score: match.details?.experienceLevel?.score || 0,
+              education_match_score: match.details?.educationLevel?.score || 0,
+              location_match_score: match.details?.location?.score || 0,
+              match_details: match.details || {}
             }
           } as ExtendedCandidateMatch;
         });
@@ -133,15 +127,15 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
         const sortedMatches = processedMatches.sort((a, b) => b.score - a.score);
         setCandidateMatches(sortedMatches);
         
-        console.log(`[Job Offer Details] Processed ${sortedMatches.length} matches (${globalMode ? 'global' : 'private'} mode). Top scores (Local/Global/Skills):`, 
-          sortedMatches.slice(0, 3).map(m => `${m.firstName} ${m.lastName}: ${m.score}%/${m.globalScore}%/${m.skillsOnlyScore}%${globalMode && !m.isOwnCandidate ? ' (Externe)' : ''}`));
+        console.log(`[Job Offer Details] Processed ${sortedMatches.length} matches with intelligent caching. Top scores:`, 
+          sortedMatches.slice(0, 3).map(m => `${m.firstName} ${m.lastName}: Local=${m.localScore}%/Global=${m.globalScore}%/Skills=${m.skillsOnlyScore}%${globalMode && !m.isOwnCandidate ? ' (Externe)' : ''}`));
       } else {
-        console.log(`[Job Offer Details] No candidates found or returned by RPC (${globalMode ? 'global' : 'private'} mode)`);
+        console.log(`[Job Offer Details] No matches returned from intelligent caching (${globalMode ? 'global' : 'private'} mode)`);
         setCandidateMatches([]);
       }
       
     } catch (error) {
-      console.error('[Job Offer Details] Error fetching candidate matches:', error);
+      console.error('[Job Offer Details] Error fetching candidate matches with intelligent caching:', error);
       setCandidateMatches([]);
       
       toast({
@@ -152,27 +146,38 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
     }
   };
 
-  const handleRecalculateMatches = async (globalMode: boolean = isGlobalMode) => {
+  const handleRecalculateMatches = async (globalMode: boolean = isGlobalMode, forceRecalculation: boolean = false) => {
     if (!jobOfferId) return;
     
     try {
       setMatchLoading(true);
       setIsGlobalMode(globalMode);
       
-      console.log(`[Job Offer Details] Starting recalculation of matches for job offer: ${jobOfferId} (Global mode: ${globalMode})`);
+      console.log(`[Job Offer Details] ${forceRecalculation ? 'Force recalculating' : 'Smart recalculating'} matches for job offer: ${jobOfferId} (Global mode: ${globalMode})`);
       
-      // Utiliser le service de matching pour forcer le recalcul
-      const newMatches = await candidateMatchingService.calculateMatchesForJobOffer(jobOfferId);
-      
-      console.log(`[Job Offer Details] Recalculation completed. Found ${newMatches.length} matches`);
+      let matches;
+      if (forceRecalculation) {
+        // Forcer le recalcul complet (ignorer le cache)
+        matches = await matchDbService.forceRecalculateAllScores(jobOfferId, globalMode);
+        console.log(`[Job Offer Details] Force recalculation completed. Found ${matches.length} matches`);
+        
+        toast({
+          title: "Recalcul forcé terminé",
+          description: `${matches.length} correspondances ont été entièrement recalculées`,
+        });
+      } else {
+        // Utiliser le cache intelligent (par défaut)
+        matches = await matchDbService.calculateMatchesForJobOffer(jobOfferId, globalMode);
+        console.log(`[Job Offer Details] Smart recalculation completed. Found ${matches.length} matches`);
+        
+        toast({
+          title: "Actualisation terminée",
+          description: `${matches.length} correspondances actualisées avec cache intelligent`,
+        });
+      }
       
       // Rafraîchir les données avec le mode sélectionné
       await fetchCandidateMatches(globalMode);
-      
-      toast({
-        title: "Calcul terminé",
-        description: `${candidateMatches.length} correspondances ont été recalculées avec succès`,
-      });
       
     } catch (error: any) {
       console.error('[Job Offer Details] Error recalculating matches:', error);

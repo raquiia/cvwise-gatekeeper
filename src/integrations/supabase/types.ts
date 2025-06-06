@@ -50,42 +50,60 @@ export type Database = {
       }
       candidate_job_matches: {
         Row: {
+          calculation_version: number | null
           candidate_id: string
+          candidate_updated_at: string | null
           created_at: string | null
           education_match_score: number | null
           experience_match_score: number | null
+          global_score: number | null
           id: string
           job_offer_id: string
+          job_offer_updated_at: string | null
+          local_score: number | null
           location_match_score: number | null
           match_details: Json | null
           match_score: number | null
           skills_match_score: number | null
+          skills_only_score: number | null
           updated_at: string | null
         }
         Insert: {
+          calculation_version?: number | null
           candidate_id: string
+          candidate_updated_at?: string | null
           created_at?: string | null
           education_match_score?: number | null
           experience_match_score?: number | null
+          global_score?: number | null
           id?: string
           job_offer_id: string
+          job_offer_updated_at?: string | null
+          local_score?: number | null
           location_match_score?: number | null
           match_details?: Json | null
           match_score?: number | null
           skills_match_score?: number | null
+          skills_only_score?: number | null
           updated_at?: string | null
         }
         Update: {
+          calculation_version?: number | null
           candidate_id?: string
+          candidate_updated_at?: string | null
           created_at?: string | null
           education_match_score?: number | null
           experience_match_score?: number | null
+          global_score?: number | null
           id?: string
           job_offer_id?: string
+          job_offer_updated_at?: string | null
+          local_score?: number | null
           location_match_score?: number | null
           match_details?: Json | null
           match_score?: number | null
           skills_match_score?: number | null
+          skills_only_score?: number | null
           updated_at?: string | null
         }
         Relationships: [
