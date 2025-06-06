@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveJob } from '@/context/ActiveJobContext';
@@ -89,7 +90,7 @@ export const useAIScoring = () => {
           const errorState = {
             score: null,
             isLoading: false,
-            error: error.message,
+            error: `Erreur de récupération: ${error.message}`,
             explanation: '',
             source: null,
             breakdown: null,
@@ -171,44 +172,42 @@ export const useAIScoring = () => {
       
       console.log(`Requesting AI score calculation for candidate ${candidateId}${activeJobOfferId ? ` and job offer ${activeJobOfferId}` : ''}`);
       
-      // Appeler la fonction Edge pour le calcul AI
+      // Appeler la fonction Edge correctement via Supabase
       const scoringType = activeJobOfferId ? 'job_matching' : 'completeness';
       
-      const res = await fetch('/api/ai-scoring', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('ai-scoring', {
+        body: {
           candidateId,
           jobOfferId: activeJobOfferId,
           scoringType
-        })
+        }
       });
       
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Failed to calculate AI score: ${errorText}`);
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(`Erreur Supabase: ${error.message}`);
       }
       
-      const data = await res.json();
-      
-      if (data.success) {
-        console.log(`AI score calculation successful for ${candidateId}:`, data.score);
-        setState(prev => ({
-          ...prev,
-          [candidateId]: {
-            score: data.score,
-            isLoading: false,
-            error: null,
-            explanation: data.explanation || '',
-            source: 'fresh_calculation',
-            breakdown: data.breakdown || null,
-            isJobSpecific: Boolean(activeJobOfferId),
-            lastUpdated: Date.now()
-          }
-        }));
-      } else {
-        throw new Error(data.error || 'Unknown error in AI scoring');
+      if (!data || !data.success) {
+        console.error('AI scoring failed:', data);
+        throw new Error(data?.error || 'Erreur inconnue lors du calcul du score');
       }
+      
+      console.log(`AI score calculation successful for ${candidateId}:`, data.score);
+      setState(prev => ({
+        ...prev,
+        [candidateId]: {
+          score: data.score,
+          isLoading: false,
+          error: null,
+          explanation: data.explanation || '',
+          source: 'fresh_calculation',
+          breakdown: data.breakdown || null,
+          isJobSpecific: Boolean(activeJobOfferId),
+          lastUpdated: Date.now()
+        }
+      }));
+      
     } catch (err: any) {
       console.error(`Error calculating AI score for candidate ${candidateId}:`, err);
       setState(prev => ({
@@ -216,12 +215,12 @@ export const useAIScoring = () => {
         [candidateId]: {
           ...prev[candidateId],
           isLoading: false,
-          error: err.message,
+          error: err.message || 'Erreur inconnue',
           source: null
         }
       }));
       
-      // Afficher une notification d'erreur
+      // Afficher une notification d'erreur plus informative
       toast({
         title: "Erreur de calcul du score",
         description: `Impossible de calculer le score pour ce candidat: ${err.message}`,

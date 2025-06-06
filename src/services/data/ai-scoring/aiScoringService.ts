@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AICandidateScore, AIScoringResult, AIScoringError, AIScoreFetchOptions, AIScoringBreakdown } from './types';
 
@@ -101,25 +100,23 @@ export class AIScoringService {
       
       const scoringType = jobOfferId ? 'job_matching' : 'completeness';
       
-      const res = await fetch('/api/ai-scoring', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // Utiliser correctement la fonction Edge via Supabase
+      const { data, error } = await supabase.functions.invoke('ai-scoring', {
+        body: {
           candidateId,
           jobOfferId,
           scoringType
-        })
+        }
       });
       
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Failed to calculate AI score: ${errorText}`);
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(`Erreur Supabase: ${error.message}`);
       }
       
-      const data = await res.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Unknown error in AI scoring');
+      if (!data || !data.success) {
+        console.error('AI scoring failed:', data);
+        throw new Error(data?.error || 'Erreur inconnue lors du calcul du score AI');
       }
       
       console.log(`AI score calculation successful for ${candidateId}:`, data.score);

@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Sparkles, Briefcase, Target } from 'lucide-react';
+import { Brain, Sparkles, Briefcase, Target, AlertCircle } from 'lucide-react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import type { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
@@ -92,7 +92,7 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
                 {scoreData.isLoading ? (
                   <Sparkles className="w-4 h-4 animate-pulse" />
                 ) : scoreData.error ? (
-                  '?'
+                  <AlertCircle className="w-4 h-4" />
                 ) : (
                   scoreData.score !== null ? scoreData.score : '?'
                 )}
@@ -104,7 +104,7 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
         <div className="flex items-center justify-between">
           <div className="text-xs">
             {scoreData.error ? (
-              <span className="text-red-600">Erreur de calcul</span>
+              <span className="text-red-600" title={scoreData.error}>Erreur de calcul</span>
             ) : scoreData.isLoading ? (
               <span className="text-purple-600">Analyse IA en cours...</span>
             ) : (
@@ -117,7 +117,7 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
             )}
           </div>
           
-          {scoreData.score === null && !scoreData.isLoading && !scoreData.error && (
+          {(scoreData.score === null && !scoreData.isLoading) || scoreData.error ? (
             <Button 
               size="sm" 
               variant="outline" 
@@ -130,9 +130,9 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
               className="text-xs h-6 px-2"
             >
               <Sparkles size={12} className="mr-1" />
-              Calculer
+              {scoreData.error ? 'Retry' : 'Calculer'}
             </Button>
-          )}
+          ) : null}
         </div>
         
         {skills.length > 0 && (
