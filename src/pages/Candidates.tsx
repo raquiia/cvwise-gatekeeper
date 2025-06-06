@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -14,7 +15,6 @@ import { CandidateData } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
-import { ActiveJobProvider } from '@/context/ActiveJobContext';
 import { Button } from '@/components/ui/button';
 import { Filter, Upload, FileText, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -376,9 +376,7 @@ const CandidatesContent = () => {
 const Candidates = () => {
   return (
     <Layout>
-      <ActiveJobProvider>
-        <CandidatesContent />
-      </ActiveJobProvider>
+      <CandidatesContent />
     </Layout>
   );
 };
