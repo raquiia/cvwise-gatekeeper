@@ -59,8 +59,10 @@ export const matchDbService = {
       const candidatesUsingCache = [];
       
       for (const item of matchData) {
-        const candidate = processCandidateData(item.candidate || {});
-        const existingMatch = item.match || {};
+        // Type assertion pour corriger les types de Supabase
+        const itemData = item as any;
+        const candidate = processCandidateData(itemData.candidate || {});
+        const existingMatch = itemData.match || {};
         const candidateUpdatedAt = new Date(candidate.updated_at || candidate.created_at);
         
         // Vérifier si on peut utiliser le cache
@@ -71,10 +73,10 @@ export const matchDbService = {
         );
         
         if (canUseCache) {
-          candidatesUsingCache.push({ candidate, existingMatch, item });
+          candidatesUsingCache.push({ candidate, existingMatch, item: itemData });
           console.log(`[Match DB Service] Using cached score for ${candidate.first_name} ${candidate.last_name}: ${existingMatch.match_score}%`);
         } else {
-          candidatesNeedingRecalculation.push({ candidate, existingMatch, item });
+          candidatesNeedingRecalculation.push({ candidate, existingMatch, item: itemData });
           console.log(`[Match DB Service] Needs recalculation: ${candidate.first_name} ${candidate.last_name} (${canUseCache ? 'cached' : 'stale/missing score'})`);
         }
       }
@@ -134,8 +136,8 @@ export const matchDbService = {
                 education_match_score: newMatch.details.educationLevel.score || 0,
                 location_match_score: newMatch.details.location.score || 0,
                 match_details: matchDetailsData as any,
-                candidate_updated_at: candidateUpdatedAt,
-                job_offer_updated_at: jobOfferUpdatedAt,
+                candidate_updated_at: candidateUpdatedAt.toISOString(),
+                job_offer_updated_at: jobOfferUpdatedAt.toISOString(),
                 calculation_version: 1
               }, {
                 onConflict: 'candidate_id,job_offer_id'
@@ -257,9 +259,6 @@ export const matchDbService = {
       firstName: candidate.first_name,
       lastName: candidate.last_name,
       score: matchData.local_score || matchData.match_score || 0, // Utiliser local_score comme score principal
-      globalScore: matchData.global_score || 0,
-      localScore: matchData.local_score || 0,
-      skillsOnlyScore: matchData.skills_only_score || 0,
       details: calculatedDetails || matchData.match_details || {
         skills: { matched: [], missing: [], additional: [], matchPercentage: 0 },
         experienceLevel: { required: 0, candidate: 0, match: false },

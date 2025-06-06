@@ -73,7 +73,7 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
       
       if (matches && matches.length > 0) {
         const processedMatches = matches.map((match) => {
-          console.log(`[Job Offer Details] Processing cached/calculated match: ${match.firstName} ${match.lastName} with scores: Local=${match.localScore}%, Global=${match.globalScore}%, Skills=${match.skillsOnlyScore}%${globalMode && !match.isOwnCandidate ? ' (Externe)' : ''}`);
+          console.log(`[Job Offer Details] Processing cached/calculated match: ${match.firstName} ${match.lastName} with scores: Local=${match.local_score}%, Global=${match.global_score}%, Skills=${match.skills_only_score}%${globalMode && !match.isOwnCandidate ? ' (Externe)' : ''}`);
           
           return {
             candidateId: match.candidateId,
@@ -81,10 +81,10 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
             lastName: match.lastName || '',
             position: match.position || '',
             company: match.company || '',
-            score: match.localScore || match.score || 0, // Utiliser localScore comme score principal
-            globalScore: match.globalScore || 0,
-            localScore: match.localScore || 0,
-            skillsOnlyScore: match.skillsOnlyScore || 0,
+            score: match.local_score || match.score || 0, // Utiliser local_score comme score principal
+            globalScore: match.global_score || 0,
+            localScore: match.local_score || 0,
+            skillsOnlyScore: match.skills_only_score || 0,
             // Propriétés pour le mode global
             isOwnCandidate: match.isOwnCandidate,
             ownerFirstName: match.ownerFirstName,
@@ -110,10 +110,10 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
               is_own_candidate: match.isOwnCandidate
             },
             match: {
-              match_score: match.localScore || match.score || 0,
-              global_score: match.globalScore || 0,
-              local_score: match.localScore || 0,
-              skills_only_score: match.skillsOnlyScore || 0,
+              match_score: match.local_score || match.score || 0,
+              global_score: match.global_score || 0,
+              local_score: match.local_score || 0,
+              skills_only_score: match.skills_only_score || 0,
               skills_match_score: match.details?.skills?.matchPercentage || 0,
               experience_match_score: match.details?.experienceLevel?.score || 0,
               education_match_score: match.details?.educationLevel?.score || 0,
