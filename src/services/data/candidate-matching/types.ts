@@ -19,6 +19,10 @@ export interface CandidateMatch {
   experience_match_score?: number;
   education_match_score?: number;
   location_match_score?: number;
+  // Nouveaux scores séparés
+  global_score?: number; // Score sans pénalité de localisation
+  local_score?: number;  // Score avec pénalité de localisation
+  skills_only_score?: number; // Score basé uniquement sur les compétences
   match_details?: {
     matched_skills?: string[];
     missing_skills?: string[];
@@ -48,6 +52,9 @@ export interface CandidateMatch {
 // Candidate match with job (individual candidate-job pairing)
 export interface CandidateJobMatch {
   score: number;
+  globalScore: number; // Score sans localisation
+  localScore: number;  // Score avec localisation
+  skillsOnlyScore: number; // Score compétences pures
   details: MatchDetails;
 }
 
@@ -65,6 +72,7 @@ export interface MatchDetails {
     candidate: string;
     match: boolean;
     score?: number;
+    needsRelocation?: boolean;
   };
   educationLevel: {
     required: string;
@@ -73,6 +81,10 @@ export interface MatchDetails {
     score?: number;
   };
   overall: number;
+  roleMatch?: {
+    score: number;
+    explanation: string;
+  };
 }
 
 // Skills match details

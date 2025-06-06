@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
@@ -90,6 +89,9 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
             position: candidate.position || '',
             company: candidate.company || '',
             score: match.match_score || 0,
+            globalScore: match.global_score || 0,
+            localScore: match.local_score || 0,
+            skillsOnlyScore: match.skills_only_score || 0,
             details: match.match_details || {
               skills: { matched: [], missing: [], additional: [], matchPercentage: 0 },
               experienceLevel: { required: 0, candidate: 0, match: false },
@@ -100,6 +102,9 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
             candidate: candidate,
             match: {
               match_score: match.match_score || 0,
+              global_score: match.global_score || 0,
+              local_score: match.local_score || 0,
+              skills_only_score: match.skills_only_score || 0,
               skills_match_score: match.skills_match_score || 0,
               experience_match_score: match.experience_match_score || 0,
               education_match_score: match.education_match_score || 0,
@@ -111,12 +116,12 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
           } as ExtendedCandidateMatch;
         });
         
-        // Trier par score décroissant
+        // Trier par score décroissant (score local par défaut)
         const sortedMatches = processedMatches.sort((a, b) => b.score - a.score);
         setCandidateMatches(sortedMatches);
         
-        console.log(`[Job Offer Details] Processed ${sortedMatches.length} matches. Top scores:`, 
-          sortedMatches.slice(0, 3).map(m => `${m.firstName} ${m.lastName}: ${m.score}%`));
+        console.log(`[Job Offer Details] Processed ${sortedMatches.length} matches. Top scores (Local/Global/Skills):`, 
+          sortedMatches.slice(0, 3).map(m => `${m.firstName} ${m.lastName}: ${m.score}%/${m.globalScore}%/${m.skillsOnlyScore}%`));
       } else {
         console.log('[Job Offer Details] No candidates found or returned by RPC');
         setCandidateMatches([]);
@@ -166,10 +171,16 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
               position: match.position,
               company: match.company,
               score: match.score,
+              globalScore: match.global_score || 0,
+              localScore: match.local_score || 0,
+              skillsOnlyScore: match.skills_only_score || 0,
               details: match.details,
               candidate: candidate,
               match: {
                 match_score: match.score,
+                global_score: match.global_score || 0,
+                local_score: match.local_score || 0,
+                skills_only_score: match.skills_only_score || 0,
                 skills_match_score: match.details?.skills?.matchPercentage || 0,
                 experience_match_score: match.details?.experienceLevel?.score || 0,
                 education_match_score: match.details?.educationLevel?.score || 0,
@@ -186,9 +197,15 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
               position: match.position,
               company: match.company,
               score: match.score,
+              globalScore: match.global_score || 0,
+              localScore: match.local_score || 0,
+              skillsOnlyScore: match.skills_only_score || 0,
               details: match.details,
               match: {
                 match_score: match.score,
+                global_score: match.global_score || 0,
+                local_score: match.local_score || 0,
+                skills_only_score: match.skills_only_score || 0,
                 skills_match_score: match.details?.skills?.matchPercentage || 0,
                 experience_match_score: match.details?.experienceLevel?.score || 0,
                 education_match_score: match.details?.educationLevel?.score || 0,
@@ -207,10 +224,10 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
         description: `${enhancedMatches.length} correspondances ont été recalculées avec succès`,
       });
       
-      // Log des résultats
+      // Log des résultats avec les nouveaux scores
       const topMatches = enhancedMatches.slice(0, 5);
-      console.log('[Job Offer Details] Top 5 matches after recalculation:', 
-        topMatches.map(m => `${m.firstName} ${m.lastName}: ${m.score}%`));
+      console.log('[Job Offer Details] Top 5 matches after recalculation (Local/Global/Skills):', 
+        topMatches.map(m => `${m.firstName} ${m.lastName}: ${m.score}%/${m.globalScore}%/${m.skillsOnlyScore}%`));
       
     } catch (error: any) {
       console.error('[Job Offer Details] Error recalculating matches:', error);

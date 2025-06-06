@@ -9,6 +9,9 @@ export interface ExtendedCandidateMatch {
   position?: string;
   company?: string;
   score: number;
+  globalScore?: number;      // Score sans localisation
+  localScore?: number;       // Score avec localisation
+  skillsOnlyScore?: number;  // Score compétences pures
   details?: MatchDetails;
   candidate?: {
     id: string;
@@ -22,6 +25,9 @@ export interface ExtendedCandidateMatch {
   };
   match?: {
     match_score: number;
+    global_score?: number;
+    local_score?: number;
+    skills_only_score?: number;
     skills_match_score: number;
     experience_match_score: number;
     education_match_score: number;

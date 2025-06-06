@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateMatch } from './types';
 import { processCandidateData, processJobOfferData } from '@/utils/candidateUtils';
@@ -61,7 +62,7 @@ export const matchDbService = {
         // Toujours recalculer le score pour avoir les dernières données
         try {
           const newMatch = await calculateCandidateJobMatch(candidate as CandidateData, jobOffer as JobOffer);
-          console.log(`[Match DB Service] New match score for ${candidate.first_name} ${candidate.last_name}: ${newMatch.score}%`);
+          console.log(`[Match DB Service] New match scores for ${candidate.first_name} ${candidate.last_name}: Global=${newMatch.globalScore}%, Local=${newMatch.localScore}%, Skills=${newMatch.skillsOnlyScore}%`);
           
           // Sauvegarder le nouveau score dans la base de données
           const matchDetailsData = matchDetailsToJson(newMatch.details);
@@ -92,6 +93,9 @@ export const matchDbService = {
             candidate_id: candidate.id,
             job_offer_id: jobOfferId,
             match_score: newMatch.score,
+            global_score: newMatch.globalScore,
+            local_score: newMatch.localScore,
+            skills_only_score: newMatch.skillsOnlyScore,
             first_name: candidate.first_name,
             last_name: candidate.last_name,
             position: candidate.position,
@@ -114,6 +118,9 @@ export const matchDbService = {
             candidate_id: candidate.id,
             job_offer_id: jobOfferId,
             match_score: existingMatch.match_score || 0,
+            global_score: 0,
+            local_score: 0,
+            skills_only_score: 0,
             first_name: candidate.first_name,
             last_name: candidate.last_name,
             position: candidate.position,
@@ -138,7 +145,7 @@ export const matchDbService = {
       // Trier par score (décroissant)
       matches.sort((a, b) => (b.match_score || 0) - (a.match_score || 0));
       
-      console.log(`[Match DB Service] Generated ${matches.length} matches for job offer. Top scores: ${matches.slice(0, 3).map(m => `${m.firstName} ${m.lastName}: ${m.score}%`).join(', ')}`);
+      console.log(`[Match DB Service] Generated ${matches.length} matches for job offer. Top scores: ${matches.slice(0, 3).map(m => `${m.firstName} ${m.lastName}: Local=${m.local_score}%, Global=${m.global_score}%`).join(', ')}`);
       return matches;
       
     } catch (error) {
