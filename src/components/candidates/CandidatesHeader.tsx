@@ -1,84 +1,55 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Upload, Search, FileText, UserPlus, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
+import ReprocessDataButton from './ReprocessDataButton';
 
 interface CandidatesHeaderProps {
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
-  onToggleFilters: () => void;
-  showFilters: boolean;
+  onStatusChange: (status: string | null) => void;
+  selectedStatus: string | null;
+  candidateCount: number;
 }
 
-const CandidatesHeader: React.FC<CandidatesHeaderProps> = ({ 
-  searchQuery, 
-  onSearchChange,
-  onToggleFilters,
-  showFilters
+const CandidatesHeader: React.FC<CandidatesHeaderProps> = ({
+  onStatusChange,
+  selectedStatus,
+  candidateCount
 }) => {
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-      <div className="mb-4 md:mb-0">
-        <h1 className="text-2xl font-bold text-navy-dark dark:text-sand mb-1 bg-gradient-to-r from-purple-700 to-indigo-600 dark:from-purple-400 dark:to-indigo-300 bg-clip-text text-transparent">Candidats</h1>
-        <p className="text-muted-foreground">
-          Gérez les profils des candidats issus de vos CV
-        </p>
+    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800 mb-1">Filtrer par statut</h2>
+          <p className="text-sm text-gray-500">
+            {candidateCount} candidat{candidateCount !== 1 ? 's' : ''} au total
+          </p>
+        </div>
+        <div className="mt-4 md:mt-0">
+          <ReprocessDataButton />
+        </div>
       </div>
       
-      <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-        <div className="relative w-full md:w-72 mb-4 md:mb-0">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
-          <Input
-            placeholder="Rechercher un candidat..."
-            className="pl-10 border-purple-200/50 dark:border-purple-800/30 focus-visible:ring-purple-500"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
-        </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant={selectedStatus === null ? "default" : "outline"}
+          size="sm"
+          onClick={() => onStatusChange(null)}
+          className="whitespace-nowrap"
+        >
+          Tous
+        </Button>
         
-        <div className="flex gap-2">
-          <Button 
-            variant={showFilters ? "default" : "outline"} 
-            className={`gap-2 ${showFilters ? 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800' : 'border-purple-200/50 dark:border-purple-800/30 hover:bg-purple-50 dark:hover:bg-purple-900/20'}`}
-            onClick={onToggleFilters}
+        {Object.keys(CANDIDATE_STATUS_LABELS).map((status) => (
+          <Button
+            key={status}
+            variant={selectedStatus === status ? "default" : "outline"}
+            size="sm"
+            onClick={() => onStatusChange(status)}
+            className="whitespace-nowrap"
           >
-            <Filter size={16} />
-            <span className="hidden sm:inline">Filtres</span>
+            {CANDIDATE_STATUS_LABELS[status as keyof typeof CANDIDATE_STATUS_LABELS]}
           </Button>
-          
-          <Link to="/resumes/upload">
-            <Button 
-              variant="outline" 
-              className="gap-2 border-purple-200/50 dark:border-purple-800/30 hover:bg-purple-50 dark:hover:bg-purple-900/20"
-            >
-              <Upload size={16} />
-              <span className="hidden sm:inline">Importer</span>
-            </Button>
-          </Link>
-          
-          <Link to="/resumes">
-            <Button 
-              variant="outline" 
-              className="gap-2 border-purple-200/50 dark:border-purple-800/30 hover:bg-purple-50 dark:hover:bg-purple-900/20"
-            >
-              <FileText size={16} />
-              <span className="hidden sm:inline">CV</span>
-            </Button>
-          </Link>
-          
-          <Button 
-            className="gap-2 bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800"
-            onClick={() => {
-              // TODO: Add new candidate functionality
-              alert("Fonction à venir: Ajouter un candidat manuellement");
-            }}
-          >
-            <UserPlus size={16} />
-            <span className="hidden sm:inline">Ajouter</span>
-          </Button>
-        </div>
+        ))}
       </div>
     </div>
   );

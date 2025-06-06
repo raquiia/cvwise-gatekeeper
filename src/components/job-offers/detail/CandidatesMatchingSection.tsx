@@ -1,25 +1,28 @@
 
-import React from 'react';
-import { User, FileText, Briefcase } from 'lucide-react';
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Users, ArrowRight, RefreshCw } from 'lucide-react';
+import { CandidateMatch } from '@/services/data/candidate-matching/types';
+import { JobOffer } from '@/services/data/job-offers/types';
+import CandidateMatchItem from './CandidateMatchItem';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import CandidateCard from './CandidateCard';
-import SkillsMatchCandidateCard from './SkillsMatchCandidateCard';
-import ExperienceMatchCandidateCard from './ExperienceMatchCandidateCard';
-import EmptyMatchesPlaceholder from './EmptyMatchesPlaceholder';
-import type { ExtendedCandidateMatch } from '@/pages/types/candidateTypes';
-import type { JobOffer } from '@/services/data/job-offers/types';
+import { useActiveJob } from '@/context/ActiveJobContext';
+import { useEffect } from 'react';
+import { toast } from '@/hooks/use-toast';
 
 interface CandidatesMatchingSectionProps {
-  candidateMatches: ExtendedCandidateMatch[];
+  candidateMatches: CandidateMatch[];
   jobOffer: JobOffer;
   onViewCandidate: (candidateId: string) => void;
   onRecalculateMatches: () => void;
   matchLoading: boolean;
-  renderMatchedSkills: (item: ExtendedCandidateMatch) => React.ReactNode;
-  renderMissingSkills: (item: ExtendedCandidateMatch) => React.ReactNode;
+  renderMatchedSkills: (candidateId: string, jobOfferId: string) => React.ReactNode;
+  renderMissingSkills: (candidateId: string, jobOfferId: string) => React.ReactNode;
 }
 
-const CandidatesMatchingSection = ({
+const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
   candidateMatches,
   jobOffer,
   onViewCandidate,
@@ -27,141 +30,124 @@ const CandidatesMatchingSection = ({
   matchLoading,
   renderMatchedSkills,
   renderMissingSkills
-}: CandidatesMatchingSectionProps) => {
+}) => {
+  const [tab, setTab] = useState<'all' | 'top' | 'recent'>('all');
+  const { activeJobOfferId, setActiveJobOffer } = useActiveJob();
+  
+  useEffect(() => {
+    if (!activeJobOfferId && jobOffer?.id) {
+      console.log('Setting active job offer to:', jobOffer.id);
+      setActiveJobOffer(jobOffer.id, jobOffer.title || '')
+        .catch(err => {
+          console.error('Error setting active job offer:', err);
+          toast({
+            title: 'Erreur',
+            description: 'Impossible de définir cette offre comme offre active',
+            variant: 'destructive'
+          });
+        });
+    }
+  }, [activeJobOfferId, jobOffer, setActiveJobOffer]);
+  
+  // Sort and filter candidates based on the selected tab
+  const sortedMatches = [...candidateMatches];
+  
+  // Sort by score (highest first)
+  sortedMatches.sort((a, b) => (b.score || 0) - (a.score || 0));
+  
+  const topMatches = sortedMatches.slice(0, 5);
+  const recentMatches = [...sortedMatches].sort((a, b) => {
+    const dateA = new Date(a.last_updated || a.updated_at || '').getTime();
+    const dateB = new Date(b.last_updated || b.updated_at || '').getTime();
+    return dateB - dateA;
+  }).slice(0, 5);
+  
+  const displayedMatches = tab === 'top' ? topMatches : 
+                          tab === 'recent' ? recentMatches : 
+                          sortedMatches;
+
   return (
-    <div className="mb-4">
-      <h2 className="text-xl font-bold text-navy mb-4">Candidats correspondants</h2>
-      
-      <Tabs defaultValue="ranked">
-        <TabsList className="mb-4">
-          <TabsTrigger value="ranked">
-            <User className="h-4 w-4 mr-2" />
-            Par score global
-          </TabsTrigger>
-          <TabsTrigger value="skills">
-            <FileText className="h-4 w-4 mr-2" />
-            Par compétences
-          </TabsTrigger>
-          <TabsTrigger value="experience">
-            <Briefcase className="h-4 w-4 mr-2" />
-            Par expérience
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="ranked">
-          {candidateMatches.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4">
-              {candidateMatches
-                .sort((a, b) => {
-                  // Sort by overall match score first
-                  const scoreA = (b.match?.match_score || b.score) - (a.match?.match_score || a.score);
-                  
-                  // If scores are equal, use name as tiebreaker
-                  if (scoreA === 0) {
-                    return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
-                  }
-                  
-                  return scoreA;
-                })
-                .map((item) => (
-                  <CandidateCard 
-                    key={item.candidateId}
-                    candidate={item} 
-                    onViewCandidate={onViewCandidate}
-                    renderMatchedSkills={renderMatchedSkills}
-                  />
-                ))}
-            </div>
-          ) : (
-            <EmptyMatchesPlaceholder 
-              onRecalculateMatches={onRecalculateMatches}
-              matchLoading={matchLoading}
-            />
-          )}
-        </TabsContent>
-        
-        <TabsContent value="skills">
-          {candidateMatches.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4">
-              {candidateMatches
-                .sort((a, b) => {
-                  // Sort by skills match score
-                  const skillScoreA = (b.match?.skills_match_score || (b.details?.skills.matchPercentage || 0));
-                  const skillScoreB = (a.match?.skills_match_score || (a.details?.skills.matchPercentage || 0));
-                  
-                  const scoreDiff = skillScoreA - skillScoreB;
-                  
-                  // If scores are equal, use name as tiebreaker
-                  if (scoreDiff === 0) {
-                    return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
-                  }
-                  
-                  return scoreDiff;
-                })
-                .map((item) => (
-                  <SkillsMatchCandidateCard 
-                    key={item.candidateId}
-                    candidate={item} 
-                    onViewCandidate={onViewCandidate}
-                    renderMatchedSkills={renderMatchedSkills}
-                    renderMissingSkills={renderMissingSkills}
-                  />
-                ))}
-            </div>
-          ) : (
-            <EmptyMatchesPlaceholder 
-              onRecalculateMatches={onRecalculateMatches}
-              matchLoading={matchLoading}
-            />
-          )}
-        </TabsContent>
-        
-        <TabsContent value="experience">
-          {candidateMatches.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4">
-              {candidateMatches
-                .sort((a, b) => {
-                  // Sort by experience match score
-                  const expScoreA = b.match?.experience_match_score || 
-                      (b.details?.experienceLevel.score || 
-                      (b.details?.experienceLevel.match ? 100 : 
-                      Math.min(100, ((b.details?.experienceLevel.candidate || 0) / 
-                      Math.max(1, (b.details?.experienceLevel.required || 1))) * 100)));
-                  
-                  const expScoreB = a.match?.experience_match_score || 
-                      (a.details?.experienceLevel.score || 
-                      (a.details?.experienceLevel.match ? 100 : 
-                      Math.min(100, ((a.details?.experienceLevel.candidate || 0) / 
-                      Math.max(1, (a.details?.experienceLevel.required || 1))) * 100)));
-                  
-                  const scoreDiff = expScoreA - expScoreB;
-                  
-                  // If scores are equal, use name as tiebreaker
-                  if (scoreDiff === 0) {
-                    return `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`);
-                  }
-                  
-                  return scoreDiff;
-                })
-                .map((item) => (
-                  <ExperienceMatchCandidateCard 
-                    key={item.candidateId}
-                    candidate={item} 
-                    onViewCandidate={onViewCandidate}
-                    jobOfferExperienceMin={jobOffer.experience_years_min || 0}
-                    jobOfferExperienceMax={jobOffer.experience_years_max}
-                  />
-                ))}
-            </div>
-          ) : (
-            <EmptyMatchesPlaceholder 
-              onRecalculateMatches={onRecalculateMatches}
-              matchLoading={matchLoading}
-            />
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-xl font-bold flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Candidats correspondants
+            </CardTitle>
+            <CardDescription>
+              {candidateMatches.length} candidat{candidateMatches.length !== 1 ? 's' : ''} évalué{candidateMatches.length !== 1 ? 's' : ''}
+            </CardDescription>
+          </div>
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={onRecalculateMatches}
+            disabled={matchLoading}
+          >
+            {matchLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Calcul en cours...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Recalculer
+              </>
+            )}
+          </Button>
+        </div>
+
+        <Tabs defaultValue="all" value={tab} onValueChange={(value) => setTab(value as any)} className="mt-2">
+          <TabsList className="grid grid-cols-3 w-[300px]">
+            <TabsTrigger value="all">Tous</TabsTrigger>
+            <TabsTrigger value="top">Top 5</TabsTrigger>
+            <TabsTrigger value="recent">Récents</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </CardHeader>
+
+      <CardContent>
+        {displayedMatches.length > 0 ? (
+          <div className="space-y-4">
+            {displayedMatches.map((match) => (
+              <CandidateMatchItem
+                key={match.id || match.candidateId}
+                match={match}
+                onViewCandidate={onViewCandidate}
+                jobId={jobOffer.id!}
+                renderMatchedSkills={renderMatchedSkills}
+                renderMissingSkills={renderMissingSkills}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">Aucun candidat correspondant trouvé</p>
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={onRecalculateMatches}
+              disabled={matchLoading}
+            >
+              Calculer les correspondances
+            </Button>
+          </div>
+        )}
+
+        {candidateMatches.length > 5 && tab !== 'all' && (
+          <Button
+            variant="link"
+            className="mt-4 mx-auto block"
+            onClick={() => setTab('all')}
+          >
+            Voir tous les candidats
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

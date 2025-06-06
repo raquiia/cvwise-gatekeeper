@@ -279,8 +279,6 @@ const CandidatesContent = () => {
           </div>
           
           <div className="flex gap-2">
-            <ReprocessDataButton />
-            
             <Button 
               variant={showFilters ? "default" : "outline"} 
               className="gap-2"
@@ -317,6 +315,13 @@ const CandidatesContent = () => {
           newThisWeek={newThisWeek}
           inProgress={inProgress}
           topCandidates={topCandidates}
+        />
+
+        {/* Status Filter Header */}
+        <CandidatesHeader
+          onStatusChange={handleStatusChange}
+          selectedStatus={selectedStatus}
+          candidateCount={totalCandidates}
         />
 
         {/* View Selector */}

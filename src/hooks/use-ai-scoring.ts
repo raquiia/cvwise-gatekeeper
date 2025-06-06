@@ -1,250 +1,287 @@
 
-import { useState, useCallback, useEffect } from 'react';
-import { aiScoringService, AIScoringResult } from '@/services/scoring/aiScoringService';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useActiveJob } from '@/context/ActiveJobContext';
 import { toast } from '@/hooks/use-toast';
 
 interface AIScoringState {
   [candidateId: string]: {
     score: number | null;
-    explanation: string;
-    breakdown: any;
     isLoading: boolean;
     error: string | null;
+    explanation: string;
+    source: string | null;
+    breakdown: {
+      skills: number;
+      experience: number;
+      education: number;
+      cvStructure: number;
+      profileSummary: number;
+      [key: string]: number;
+    } | null;
     isJobSpecific: boolean;
     lastUpdated: number;
-    source?: string;
   };
 }
 
 export const useAIScoring = () => {
-  const [scoringState, setScoringState] = useState<AIScoringState>({});
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [preloadedCandidates, setPreloadedCandidates] = useState<Set<string>>(new Set());
+  const [state, setState] = useState<AIScoringState>({});
+  const [isGlobalRecalculating, setIsGlobalRecalculating] = useState(false);
   const { activeJobOfferId } = useActiveJob();
-  
-  /**
-   * Calculer le score avec l'IA pour un candidat (cache permanent basé sur hash)
-   */
-  const calculateAIScore = useCallback(async (candidateId: string, forceRecalculate = false) => {
-    const currentKey = `${candidateId}_${activeJobOfferId || 'general'}`;
-    
-    // Si on ne force pas le recalcul, vérifier si on a déjà un score en mémoire
-    const existing = scoringState[currentKey];
-    if (!forceRecalculate && existing && !existing.isLoading && existing.score !== null) {
-      console.log('Using existing in-memory AI score for candidate:', candidateId);
-      return existing;
-    }
-    
-    // Marquer comme en cours de calcul
-    setScoringState(prev => ({
-      ...prev,
-      [currentKey]: {
-        score: null,
-        explanation: '',
-        breakdown: {},
-        isLoading: true,
-        error: null,
-        isJobSpecific: Boolean(activeJobOfferId),
-        lastUpdated: Date.now()
-      }
-    }));
-    
+
+  // Vérifie si on est en mode job-spécifique
+  const isJobSpecific = Boolean(activeJobOfferId);
+
+  // Préchargement des scores depuis la base de données
+  const preloadScoresFromDatabase = useCallback(async (candidateIds: string[]) => {
+    if (!candidateIds.length) return;
+
     try {
-      console.log('Calculating AI score with permanent cache for candidate:', candidateId, 'job:', activeJobOfferId);
+      console.log(`Preloading AI scores for ${candidateIds.length} candidates...`);
       
-      let result;
-      
-      if (forceRecalculate) {
-        // Forcer le recalcul (ignorer complètement le cache permanent)
-        result = await aiScoringService.forceRecalculate(candidateId, activeJobOfferId);
-      } else {
-        // Utiliser le système de cache permanent basé sur hash
-        result = await aiScoringService.getScoreWithExplanation(candidateId, activeJobOfferId);
-      }
-      
-      if (!result) {
-        throw new Error('Impossible de calculer le score avec l\'IA');
-      }
-      
-      const newState = {
-        score: result.score,
-        explanation: result.explanation,
-        breakdown: result.breakdown,
-        isLoading: false,
-        error: null,
-        isJobSpecific: result.isJobSpecific,
-        lastUpdated: Date.now(),
-        source: result.source
-      };
-      
-      setScoringState(prev => ({
-        ...prev,
-        [currentKey]: newState
-      }));
-      
-      console.log('AI score calculated successfully:', result.score, 'Source:', result.source);
-      
-      // Toast informatif uniquement pour les nouveaux calculs ou recalculs forcés
-      if (result.source === 'fresh_calculation' || result.source === 'forced_recalculation') {
-        toast({
-          title: "Score calculé",
-          description: `${result.score}% - ${result.source === 'forced_recalculation' ? 'Score recalculé' : 'Nouveau score calculé'} avec l'IA`,
-        });
-      }
-      
-      return newState;
-      
-    } catch (error: any) {
-      console.error('Error calculating AI score:', error);
-      
-      const errorState = {
-        score: null,
-        explanation: '',
-        breakdown: {},
-        isLoading: false,
-        error: error.message || 'Erreur lors du calcul du score IA',
-        isJobSpecific: Boolean(activeJobOfferId),
-        lastUpdated: Date.now()
-      };
-      
-      setScoringState(prev => ({
-        ...prev,
-        [currentKey]: errorState
-      }));
-      
-      toast({
-        title: "Erreur de calcul",
-        description: "Impossible de calculer le score avec l'IA",
-        variant: "destructive",
-      });
-      
-      return errorState;
-    }
-  }, [activeJobOfferId, scoringState]);
-  
-  /**
-   * Obtenir le score d'un candidat
-   */
-  const getAIScore = useCallback((candidateId: string) => {
-    const key = `${candidateId}_${activeJobOfferId || 'general'}`;
-    return scoringState[key] || {
-      score: null,
-      explanation: '',
-      breakdown: {},
-      isLoading: false,
-      error: null,
-      isJobSpecific: Boolean(activeJobOfferId),
-      lastUpdated: 0
-    };
-  }, [scoringState, activeJobOfferId]);
-  
-  /**
-   * Invalider les scores (changement d'offre active)
-   */
-  const invalidateScores = useCallback(() => {
-    console.log('Invalidating AI scores due to context change');
-    setScoringState({});
-    setPreloadedCandidates(new Set());
-  }, []);
-  
-  /**
-   * Précharger les scores depuis la base de données et retourner le résultat directement
-   */
-  const preloadScoresFromDatabase = useCallback(async (candidateIds: string[]): Promise<{ [candidateId: string]: any }> => {
-    const contextKey = activeJobOfferId || 'general';
-    const loadedScores: { [candidateId: string]: any } = {};
-    
-    // Filtrer les candidats déjà préchargés pour ce contexte
-    const newCandidateIds = candidateIds.filter(candidateId => {
-      const fullKey = `${candidateId}_${contextKey}`;
-      return !preloadedCandidates.has(fullKey);
-    });
-    
-    if (newCandidateIds.length === 0) {
-      console.log('All candidates already preloaded for current context');
-      // Retourner les scores déjà en mémoire
-      candidateIds.forEach(candidateId => {
-        const key = `${candidateId}_${contextKey}`;
-        if (scoringState[key]) {
-          loadedScores[candidateId] = scoringState[key];
-        }
-      });
-      return loadedScores;
-    }
-    
-    console.log('Preloading AI scores from permanent database cache for', newCandidateIds.length, 'new candidates');
-    
-    // Marquer comme préchargés
-    setPreloadedCandidates(prev => {
-      const newSet = new Set(prev);
-      newCandidateIds.forEach(candidateId => {
-        newSet.add(`${candidateId}_${contextKey}`);
-      });
-      return newSet;
-    });
-    
-    // Précharger de manière séquentielle pour éviter la surcharge
-    for (const candidateId of newCandidateIds) {
-      try {
-        console.log('Preloading score for candidate:', candidateId);
-        const result = await aiScoringService.getScoreWithExplanation(candidateId, activeJobOfferId);
+      for (const candidateId of candidateIds) {
+        // Marquer comme en chargement
+        setState(prev => ({
+          ...prev,
+          [candidateId]: {
+            ...prev[candidateId],
+            isLoading: true
+          }
+        }));
         
-        if (result && result.source === 'database') {
-          const key = `${candidateId}_${contextKey}`;
-          console.log('Successfully preloaded score from database for candidate:', candidateId, 'Score:', result.score);
-          
-          const scoreData = {
-            score: result.score,
-            explanation: result.explanation,
-            breakdown: result.breakdown,
+        // Récupérer le score spécifique à l'offre d'emploi active si disponible
+        const { data: scoreData, error } = await supabase.rpc(
+          'get_ai_candidate_score',
+          { 
+            p_candidate_id: candidateId,
+            p_job_offer_id: activeJobOfferId || null
+          }
+        );
+        
+        if (error) {
+          console.error('Error fetching AI score:', error);
+          setState(prev => ({
+            ...prev,
+            [candidateId]: {
+              score: null,
+              isLoading: false,
+              error: error.message,
+              explanation: '',
+              source: null,
+              breakdown: null,
+              isJobSpecific: isJobSpecific,
+              lastUpdated: Date.now()
+            }
+          }));
+          continue;
+        }
+        
+        if (scoreData) {
+          console.log(`Found cached AI score for candidate ${candidateId}:`, scoreData);
+          setState(prev => ({
+            ...prev,
+            [candidateId]: {
+              score: scoreData.score,
+              isLoading: false,
+              error: null,
+              explanation: scoreData.explanation || '',
+              source: 'database',
+              breakdown: scoreData.breakdown || null,
+              isJobSpecific: Boolean(scoreData.job_offer_id),
+              lastUpdated: Date.now()
+            }
+          }));
+        } else {
+          console.log(`No cached AI score found for candidate ${candidateId}, setting null state`);
+          setState(prev => ({
+            ...prev,
+            [candidateId]: {
+              score: null,
+              isLoading: false,
+              error: null,
+              explanation: '',
+              source: null,
+              breakdown: null,
+              isJobSpecific: isJobSpecific,
+              lastUpdated: Date.now()
+            }
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Error in preloadScoresFromDatabase:', err);
+    }
+  }, [activeJobOfferId, isJobSpecific]);
+
+  // Calculer le score AI pour un candidat
+  const calculateAIScore = useCallback(async (candidateId: string) => {
+    try {
+      // Vérifier si un calcul est déjà en cours pour ce candidat
+      if (state[candidateId]?.isLoading) {
+        console.log(`Calculation already in progress for candidate ${candidateId}`);
+        return;
+      }
+      
+      // Mettre à jour l'état pour indiquer le chargement
+      setState(prev => ({
+        ...prev,
+        [candidateId]: {
+          ...prev[candidateId],
+          isLoading: true,
+          error: null
+        }
+      }));
+      
+      console.log(`Requesting AI score calculation for candidate ${candidateId}${activeJobOfferId ? ` and job offer ${activeJobOfferId}` : ''}`);
+      
+      // Appeler la fonction Edge pour le calcul AI
+      const scoringType = activeJobOfferId ? 'job_matching' : 'completeness';
+      
+      const res = await fetch('/api/ai-scoring', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidateId,
+          jobOfferId: activeJobOfferId,
+          scoringType
+        })
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Failed to calculate AI score: ${errorText}`);
+      }
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        console.log(`AI score calculation successful for ${candidateId}:`, data.score);
+        setState(prev => ({
+          ...prev,
+          [candidateId]: {
+            score: data.score,
             isLoading: false,
             error: null,
-            isJobSpecific: result.isJobSpecific,
-            lastUpdated: Date.now(),
-            source: result.source
-          };
-          
-          // Charger immédiatement dans l'état
-          setScoringState(prev => ({
-            ...prev,
-            [key]: scoreData
-          }));
-          
-          // Ajouter au résultat retourné
-          loadedScores[candidateId] = scoreData;
-        } else {
-          console.log('No cached score found in database for candidate:', candidateId);
-        }
-      } catch (error) {
-        console.warn('Failed to preload score for candidate:', candidateId, error);
+            explanation: data.explanation || '',
+            source: 'fresh_calculation',
+            breakdown: data.breakdown || null,
+            isJobSpecific: Boolean(activeJobOfferId),
+            lastUpdated: Date.now()
+          }
+        }));
+      } else {
+        throw new Error(data.error || 'Unknown error in AI scoring');
       }
+    } catch (err: any) {
+      console.error(`Error calculating AI score for candidate ${candidateId}:`, err);
+      setState(prev => ({
+        ...prev,
+        [candidateId]: {
+          ...prev[candidateId],
+          isLoading: false,
+          error: err.message,
+          source: null
+        }
+      }));
+      
+      // Afficher une notification d'erreur
+      toast({
+        title: "Erreur de calcul du score",
+        description: `Impossible de calculer le score pour ce candidat: ${err.message}`,
+        variant: "destructive"
+      });
     }
+  }, [activeJobOfferId, state, toast]);
+
+  // Obtenir le score AI d'un candidat
+  const getAIScore = useCallback((candidateId: string) => {
+    return (
+      state[candidateId] || {
+        score: null,
+        isLoading: false,
+        error: null,
+        explanation: '',
+        source: null,
+        breakdown: null,
+        isJobSpecific: isJobSpecific,
+        lastUpdated: 0
+      }
+    );
+  }, [state, isJobSpecific]);
+
+  // Recalculer tous les scores pour une liste de candidats
+  const recalculateAllScores = useCallback(async (candidateIds: string[], onlyNew: boolean = true) => {
+    if (!candidateIds.length) return;
     
-    console.log('Preloading completed for', newCandidateIds.length, 'candidates');
-    return loadedScores;
-  }, [activeJobOfferId, preloadedCandidates, scoringState]);
-  
-  /**
-   * Forcer la réanalyse d'un candidat (ignorer le cache permanent)
-   */
-  const forceReanalyzeCandidate = useCallback(async (candidateId: string) => {
-    console.log('Force reanalyzing candidate:', candidateId);
-    return await calculateAIScore(candidateId, true);
-  }, [calculateAIScore]);
-  
-  // Invalider les scores quand l'offre active change
+    setIsGlobalRecalculating(true);
+    console.log(`Recalculating scores for ${candidateIds.length} candidates, onlyNew=${onlyNew}`);
+    
+    try {
+      // Filtrer les candidats selon le besoin (tous ou uniquement ceux sans score)
+      let candidatesToProcess = [...candidateIds];
+      
+      if (onlyNew) {
+        candidatesToProcess = candidateIds.filter(id => {
+          const currentScore = state[id];
+          // Traiter seulement si: pas de score, pas de score pour l'offre actuelle, ou erreur précédente
+          return !currentScore || 
+                 !currentScore.score || 
+                 currentScore.error || 
+                 (isJobSpecific && !currentScore.isJobSpecific);
+        });
+        
+        console.log(`Filtered to ${candidatesToProcess.length} candidates needing scores`);
+      }
+      
+      // Traiter les candidats par lots pour éviter la surcharge
+      const batchSize = 3;
+      for (let i = 0; i < candidatesToProcess.length; i += batchSize) {
+        const batch = candidatesToProcess.slice(i, i + batchSize);
+        
+        // Traiter chaque lot en parallèle
+        await Promise.all(batch.map(candidateId => calculateAIScore(candidateId)));
+        
+        // Pause entre les lots pour éviter la surcharge de l'API
+        if (i + batchSize < candidatesToProcess.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      toast({
+        title: "Calcul des scores terminé",
+        description: `${candidatesToProcess.length} scores de candidats ont été ${onlyNew ? 'calculés ou mis à jour' : 'recalculés'}`,
+      });
+    } catch (error) {
+      console.error('Error during batch recalculation:', error);
+      toast({
+        title: "Erreur lors du recalcul",
+        description: "Une erreur est survenue lors du recalcul des scores",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGlobalRecalculating(false);
+    }
+  }, [calculateAIScore, isJobSpecific, state]);
+
+  // Invalider tous les scores en cache
+  const invalidateAllScores = useCallback(() => {
+    console.log('Invalidating all cached AI scores');
+    setState({});
+  }, []);
+
+  // Effet d'écoute de changement d'offre d'emploi active
   useEffect(() => {
-    invalidateScores();
-  }, [activeJobOfferId]);
-  
+    // Si on change d'offre d'emploi active, réinitialiser les scores
+    invalidateAllScores();
+  }, [activeJobOfferId, invalidateAllScores]);
+
   return {
-    calculateAIScore,
     getAIScore,
-    invalidateScores,
+    calculateAIScore,
+    recalculateAllScores,
+    invalidateAllScores,
     preloadScoresFromDatabase,
-    forceReanalyzeCandidate,
-    isCalculating,
-    isJobSpecific: Boolean(activeJobOfferId)
+    isGlobalRecalculating,
+    isJobSpecific
   };
 };
