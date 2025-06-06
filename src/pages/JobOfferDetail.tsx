@@ -39,8 +39,8 @@ const JobOfferDetail = () => {
     navigate(`/job-offers/${jobOfferId}/edit`);
   };
   
-  // Convert ExtendedCandidateMatch[] to CandidateMatch[] for compatibility
-  const convertedMatches: CandidateMatch[] = candidateMatches.map(match => ({
+  // Convert ExtendedCandidateMatch[] to CandidateMatch[] for MatchingStats component compatibility
+  const convertedMatchesForStats: CandidateMatch[] = candidateMatches.map(match => ({
     id: match.candidateId,
     candidate_id: match.candidateId,
     job_offer_id: jobOfferId || '',
@@ -106,7 +106,7 @@ const JobOfferDetail = () => {
           matchLoading={matchLoading}
         />
         
-        {convertedMatches.length === 0 && <NoMatchesAlert />}
+        {candidateMatches.length === 0 && <NoMatchesAlert />}
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="md:col-span-2">
@@ -114,12 +114,12 @@ const JobOfferDetail = () => {
           </div>
           
           <div>
-            <MatchingStats candidateMatches={convertedMatches} />
+            <MatchingStats candidateMatches={convertedMatchesForStats} />
           </div>
         </div>
         
         <CandidatesMatchingSection 
-          candidateMatches={convertedMatches}
+          candidateMatches={candidateMatches}
           jobOffer={jobOffer}
           onViewCandidate={handleViewCandidate}
           onRecalculateMatches={handleRecalculateMatches}
