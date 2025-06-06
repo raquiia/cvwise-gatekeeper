@@ -1,10 +1,38 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { AICandidateScore, AIScoringResult, AIScoringError, AIScoreFetchOptions } from './types';
+import { AICandidateScore, AIScoringResult, AIScoringError, AIScoreFetchOptions, AIScoringBreakdown } from './types';
 
 /**
  * Service pour gérer les scores AI des candidats
  */
 export class AIScoringService {
+  
+  /**
+   * Convertit un objet Json en AIScoringBreakdown
+   */
+  private parseBreakdown(breakdown: any): AIScoringBreakdown {
+    if (!breakdown || typeof breakdown !== 'object') {
+      return {
+        skills: 0,
+        experience: 0,
+        education: 0,
+        cvStructure: 0,
+        profileSummary: 0
+      };
+    }
+    
+    return {
+      skills: breakdown.skills || 0,
+      experience: breakdown.experience || 0,
+      education: breakdown.education || 0,
+      cvStructure: breakdown.cvStructure || 0,
+      profileSummary: breakdown.profileSummary || 0,
+      location: breakdown.location,
+      cultural: breakdown.cultural,
+      languages: breakdown.languages,
+      ...breakdown
+    };
+  }
   
   /**
    * Récupère le score AI d'un candidat
@@ -51,13 +79,7 @@ export class AIScoringService {
       return {
         score: scoreData.score,
         explanation: scoreData.explanation,
-        breakdown: scoreData.breakdown || {
-          skills: 0,
-          experience: 0,
-          education: 0,
-          cvStructure: 0,
-          profileSummary: 0
-        },
+        breakdown: this.parseBreakdown(scoreData.breakdown),
         source: 'database',
         isJobSpecific: !!scoreData.job_offer_id
       };

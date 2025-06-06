@@ -25,6 +25,31 @@ export const useAIScoring = () => {
   // Vérifie si on est en mode job-spécifique
   const isJobSpecific = Boolean(activeJobOfferId);
 
+  // Convertit un objet Json en AIScoringBreakdown
+  const parseBreakdown = useCallback((breakdown: any): AIScoringBreakdown => {
+    if (!breakdown || typeof breakdown !== 'object') {
+      return {
+        skills: 0,
+        experience: 0,
+        education: 0,
+        cvStructure: 0,
+        profileSummary: 0
+      };
+    }
+    
+    return {
+      skills: breakdown.skills || 0,
+      experience: breakdown.experience || 0,
+      education: breakdown.education || 0,
+      cvStructure: breakdown.cvStructure || 0,
+      profileSummary: breakdown.profileSummary || 0,
+      location: breakdown.location,
+      cultural: breakdown.cultural,
+      languages: breakdown.languages,
+      ...breakdown
+    };
+  }, []);
+
   // Préchargement des scores depuis la base de données
   const preloadScoresFromDatabase = useCallback(async (candidateIds: string[]) => {
     if (!candidateIds.length) return {};
@@ -39,7 +64,14 @@ export const useAIScoring = () => {
           ...prev,
           [candidateId]: {
             ...prev[candidateId],
-            isLoading: true
+            score: null,
+            isLoading: true,
+            error: null,
+            explanation: '',
+            source: null,
+            breakdown: null,
+            isJobSpecific: isJobSpecific,
+            lastUpdated: Date.now()
           }
         }));
         
@@ -54,20 +86,7 @@ export const useAIScoring = () => {
         
         if (error) {
           console.error('Error fetching AI score:', error);
-          setState(prev => ({
-            ...prev,
-            [candidateId]: {
-              score: null,
-              isLoading: false,
-              error: error.message,
-              explanation: '',
-              source: null,
-              breakdown: null,
-              isJobSpecific: isJobSpecific,
-              lastUpdated: Date.now()
-            }
-          }));
-          results[candidateId] = {
+          const errorState = {
             score: null,
             isLoading: false,
             error: error.message,
@@ -77,6 +96,11 @@ export const useAIScoring = () => {
             isJobSpecific: isJobSpecific,
             lastUpdated: Date.now()
           };
+          setState(prev => ({
+            ...prev,
+            [candidateId]: errorState
+          }));
+          results[candidateId] = errorState;
           continue;
         }
         
@@ -91,7 +115,7 @@ export const useAIScoring = () => {
             error: null,
             explanation: scoreRecord.explanation || '',
             source: 'database',
-            breakdown: scoreRecord.breakdown || null,
+            breakdown: parseBreakdown(scoreRecord.breakdown),
             isJobSpecific: Boolean(scoreRecord.job_offer_id),
             lastUpdated: Date.now()
           };
@@ -124,7 +148,7 @@ export const useAIScoring = () => {
       console.error('Error in preloadScoresFromDatabase:', err);
       return {};
     }
-  }, [activeJobOfferId, isJobSpecific]);
+  }, [activeJobOfferId, isJobSpecific, parseBreakdown]);
 
   // Calculer le score AI pour un candidat
   const calculateAIScore = useCallback(async (candidateId: string) => {
