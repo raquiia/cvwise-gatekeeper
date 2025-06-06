@@ -18,15 +18,95 @@ export const matchDbService = {
     try {
       console.log(`[Match DB Service] Starting intelligent score calculation for job offer: ${jobOfferId} (Global mode: ${globalMode})`);
       
-      // Utiliser la fonction RPC appropriée selon le mode
-      const rpcFunction = globalMode ? 'get_all_matches_for_job_offer' : 'get_matches_for_job_offer';
-      
-      const { data: matchData, error: matchError } = await supabase
-        .rpc(rpcFunction, { p_job_offer_id: jobOfferId });
+      // Try the RPC function first
+      let matchData;
+      try {
+        const rpcFunction = globalMode ? 'get_all_matches_for_job_offer' : 'get_matches_for_job_offer';
         
-      if (matchError) {
-        console.error(`[Match DB Service] Error fetching candidates via RPC (${rpcFunction}):`, matchError);
-        throw matchError;
+        const { data: rpcData, error: rpcError } = await supabase
+          .rpc(rpcFunction, { p_job_offer_id: jobOfferId });
+          
+        if (rpcError) {
+          console.warn(`[Match DB Service] RPC function ${rpcFunction} failed:`, rpcError);
+          throw rpcError;
+        }
+        
+        matchData = rpcData;
+        console.log(`[Match DB Service] RPC function ${rpcFunction} succeeded with ${matchData?.length || 0} results`);
+      } catch (rpcError) {
+        console.warn(`[Match DB Service] RPC approach failed, trying direct query:`, rpcError);
+        
+        // Fallback to direct query
+        try {
+          if (globalMode) {
+            // For global mode, get all candidates with owner info
+            const { data: allCandidates, error: candidatesError } = await supabase
+              .from('candidates')
+              .select(`
+                *,
+                profiles!candidates_user_id_fkey (
+                  first_name,
+                  last_name
+                )
+              `);
+              
+            if (candidatesError) throw candidatesError;
+            
+            // Get existing matches for this job offer
+            const { data: existingMatches, error: matchesError } = await supabase
+              .from('candidate_job_matches')
+              .select('*')
+              .eq('job_offer_id', jobOfferId);
+              
+            if (matchesError) throw matchesError;
+            
+            // Combine data
+            matchData = allCandidates?.map(candidate => {
+              const match = existingMatches?.find(m => m.candidate_id === candidate.id);
+              const profile = Array.isArray(candidate.profiles) ? candidate.profiles[0] : candidate.profiles;
+              
+              return {
+                candidate: {
+                  ...candidate,
+                  owner_first_name: profile?.first_name,
+                  owner_last_name: profile?.last_name,
+                  is_own_candidate: candidate.user_id === (globalMode ? undefined : candidate.user_id) // Will be set properly below
+                },
+                match: match || {}
+              };
+            }) || [];
+          } else {
+            // For private mode, get only user's candidates
+            const { data: userCandidates, error: candidatesError } = await supabase
+              .from('candidates')
+              .select('*')
+              .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+              
+            if (candidatesError) throw candidatesError;
+            
+            // Get existing matches for this job offer
+            const { data: existingMatches, error: matchesError } = await supabase
+              .from('candidate_job_matches')
+              .select('*')
+              .eq('job_offer_id', jobOfferId);
+              
+            if (matchesError) throw matchesError;
+            
+            // Combine data
+            matchData = userCandidates?.map(candidate => ({
+              candidate: {
+                ...candidate,
+                is_own_candidate: true
+              },
+              match: existingMatches?.find(m => m.candidate_id === candidate.id) || {}
+            })) || [];
+          }
+          
+          console.log(`[Match DB Service] Direct query succeeded with ${matchData?.length || 0} candidates`);
+        } catch (directError) {
+          console.error(`[Match DB Service] Direct query also failed:`, directError);
+          return [];
+        }
       }
       
       if (!matchData || matchData.length === 0) {
@@ -37,7 +117,7 @@ export const matchDbService = {
       console.log(`[Match DB Service] Found ${matchData.length} candidates to process (${globalMode ? 'global' : 'private'} mode)`);
       console.log(`[Match DB Service] Raw data sample:`, matchData.slice(0, 2));
       
-      // Récupérer les détails de l'offre d'emploi avec timestamp
+      // Get job offer details with timestamp
       const { data: rawJobOffer, error: jobOfferError } = await supabase
         .from('job_offers')
         .select('*')
@@ -54,34 +134,31 @@ export const matchDbService = {
       
       console.log(`[Match DB Service] Processing matches against job: ${jobOffer.title} (updated: ${jobOfferUpdatedAt.toISOString()})`);
       
-      // Identifier les candidats qui ont besoin d'un recalcul
+      // Identify candidates that need recalculation
       const candidatesNeedingRecalculation = [];
       const candidatesUsingCache = [];
       
       for (const item of matchData) {
-        // Type assertion pour corriger les types de Supabase avec vérification null
         const itemData = item as any;
         const candidateData = itemData?.candidate;
         
-        // Log pour déboguer la structure des données
         console.log(`[Match DB Service] Processing item:`, {
           hasCandidate: !!candidateData,
           candidateId: candidateData?.id,
           candidateName: candidateData ? `${candidateData.first_name || ''} ${candidateData.last_name || ''}` : 'N/A'
         });
         
-        // Vérification plus souple pour les candidats
-        if (!candidateData?.id) {
-          console.warn('[Match DB Service] Missing candidate ID, skipping:', itemData);
+        if (!candidateData || !candidateData.id) {
+          console.warn('[Match DB Service] Missing candidate data, skipping:', itemData);
           continue;
         }
         
         const candidate = processCandidateData(candidateData);
         const existingMatch = itemData?.match || {};
-        const candidateUpdatedAt = new Date(candidate?.updated_at || candidate?.created_at || new Date());
+        const candidateUpdatedAt = new Date(candidate.updated_at || candidate.created_at || new Date());
         
-        // Vérifier si on peut utiliser le cache
-        const canUseCache = this.canUseCachedScore(
+        // Check if we can use the cache
+        const canUseCache = matchDbService.canUseCachedScore(
           existingMatch,
           candidateUpdatedAt,
           jobOfferUpdatedAt
@@ -89,16 +166,16 @@ export const matchDbService = {
         
         if (canUseCache) {
           candidatesUsingCache.push({ candidate, existingMatch, item: itemData });
-          console.log(`[Match DB Service] Using cached score for ${candidate?.first_name || 'Unknown'} ${candidate?.last_name || 'Unknown'}: ${existingMatch.match_score}%`);
+          console.log(`[Match DB Service] Using cached score for ${candidate.first_name || 'Unknown'} ${candidate.last_name || 'Unknown'}: ${existingMatch.match_score}%`);
         } else {
           candidatesNeedingRecalculation.push({ candidate, existingMatch, item: itemData });
-          console.log(`[Match DB Service] Needs recalculation: ${candidate?.first_name || 'Unknown'} ${candidate?.last_name || 'Unknown'} (${canUseCache ? 'cached' : 'stale/missing score'})`);
+          console.log(`[Match DB Service] Needs recalculation: ${candidate.first_name || 'Unknown'} ${candidate.last_name || 'Unknown'} (${canUseCache ? 'cached' : 'stale/missing score'})`);
         }
       }
       
       console.log(`[Match DB Service] Cache efficiency: ${candidatesUsingCache.length} cached, ${candidatesNeedingRecalculation.length} to recalculate`);
       
-      // Traiter les candidats en cache
+      // Process cached candidates
       const matches: CandidateMatch[] = [];
       
       for (const { candidate, existingMatch, item } of candidatesUsingCache) {
@@ -109,7 +186,7 @@ export const matchDbService = {
           is_own_candidate: candidateInfo.is_own_candidate
         } : {};
         
-        matches.push(this.createCandidateMatch(
+        matches.push(matchDbService.createCandidateMatch(
           candidate,
           jobOfferId,
           existingMatch,
@@ -118,7 +195,7 @@ export const matchDbService = {
         ));
       }
       
-      // Recalculer uniquement les candidats qui en ont besoin
+      // Recalculate only candidates that need it
       for (const { candidate, existingMatch, item } of candidatesNeedingRecalculation) {
         const candidateInfo = item?.candidate;
         const ownerInfo = globalMode && candidateInfo ? {
@@ -129,12 +206,12 @@ export const matchDbService = {
         
         try {
           const newMatch = await calculateCandidateJobMatch(candidate as CandidateData, jobOffer as JobOffer);
-          console.log(`[Match DB Service] Recalculated scores for ${candidate?.first_name || 'Unknown'} ${candidate?.last_name || 'Unknown'}: Global=${newMatch.globalScore}%, Local=${newMatch.localScore}%, Skills=${newMatch.skillsOnlyScore}%`);
+          console.log(`[Match DB Service] Recalculated scores for ${candidate.first_name || 'Unknown'} ${candidate.last_name || 'Unknown'}: Global=${newMatch.globalScore}%, Local=${newMatch.localScore}%, Skills=${newMatch.skillsOnlyScore}%`);
           
-          // Sauvegarder le nouveau score avec les timestamps (seulement pour ses propres candidats)
+          // Save the new score with timestamps (only for own candidates)
           const shouldSaveMatch = !globalMode || (candidateInfo && candidateInfo.is_own_candidate);
           
-          if (shouldSaveMatch && candidate?.id) {
+          if (shouldSaveMatch && candidate.id) {
             const candidateUpdatedAt = new Date(candidate.updated_at || candidate.created_at || new Date());
             const jobOfferUpdatedAt = new Date(rawJobOffer.updated_at);
             const matchDetailsData = matchDetailsToJson(newMatch.details);
@@ -163,11 +240,11 @@ export const matchDbService = {
             if (insertError) {
               console.error('[Match DB Service] Error saving match results:', insertError);
             } else {
-              console.log(`[Match DB Service] Successfully cached new score for candidate ${candidate.id || 'unknown'}`);
+              console.log(`[Match DB Service] Successfully cached new score for candidate ${candidate.id}`);
             }
           }
           
-          // Utiliser les nouvelles données pour créer le match
+          // Use the new data to create the match
           const updatedMatchData = {
             ...existingMatch,
             match_score: newMatch.score,
@@ -177,7 +254,7 @@ export const matchDbService = {
             match_details: matchDetailsToJson(newMatch.details)
           };
           
-          matches.push(this.createCandidateMatch(
+          matches.push(matchDbService.createCandidateMatch(
             candidate,
             jobOfferId,
             updatedMatchData,
@@ -187,10 +264,10 @@ export const matchDbService = {
           ));
           
         } catch (matchError) {
-          console.error(`[Match DB Service] Error calculating match for candidate ${candidate?.id || 'unknown'}:`, matchError);
+          console.error(`[Match DB Service] Error calculating match for candidate ${candidate.id}:`, matchError);
           
-          // Utiliser les données existantes en cas d'erreur
-          matches.push(this.createCandidateMatch(
+          // Use existing data in case of error
+          matches.push(matchDbService.createCandidateMatch(
             candidate,
             jobOfferId,
             existingMatch,
@@ -200,7 +277,7 @@ export const matchDbService = {
         }
       }
       
-      // Trier par score (décroissant) - utiliser le score local par défaut
+      // Sort by score (descending) - use local score by default
       matches.sort((a, b) => (b.local_score || b.match_score || 0) - (a.local_score || a.match_score || 0));
       
       console.log(`[Match DB Service] Completed intelligent scoring: ${matches.length} matches (${candidatesUsingCache.length} from cache, ${candidatesNeedingRecalculation.length} recalculated)`);
@@ -222,12 +299,12 @@ export const matchDbService = {
     candidateUpdatedAt: Date,
     jobOfferUpdatedAt: Date
   ): boolean => {
-    // Si pas de score existant, il faut calculer
+    // If no existing score, need to calculate
     if (!existingMatch?.match_score && existingMatch?.match_score !== 0) {
       return false;
     }
     
-    // Si pas de timestamps de cache, il faut recalculer
+    // If no cache timestamps, need to recalculate
     if (!existingMatch?.candidate_updated_at || !existingMatch?.job_offer_updated_at) {
       return false;
     }
@@ -235,11 +312,11 @@ export const matchDbService = {
     const cachedCandidateTime = new Date(existingMatch.candidate_updated_at);
     const cachedJobOfferTime = new Date(existingMatch.job_offer_updated_at);
     
-    // Vérifier si les données n'ont pas changé depuis le dernier calcul
+    // Check if data hasn't changed since last calculation
     const candidateUnchanged = candidateUpdatedAt <= cachedCandidateTime;
     const jobOfferUnchanged = jobOfferUpdatedAt <= cachedJobOfferTime;
     
-    // Vérifier la version de calcul (pour forcer le recalcul lors d'améliorations d'algorithme)
+    // Check calculation version (to force recalculation when algorithm improves)
     const currentVersion = 1;
     const cachedVersion = existingMatch.calculation_version || 0;
     const versionUpToDate = cachedVersion >= currentVersion;
@@ -275,7 +352,7 @@ export const matchDbService = {
       candidateId: candidate?.id || '',
       firstName: candidate?.first_name || '',
       lastName: candidate?.last_name || '',
-      score: matchData?.local_score || matchData?.match_score || 0, // Utiliser local_score comme score principal
+      score: matchData?.local_score || matchData?.match_score || 0, // Use local_score as main score
       details: calculatedDetails || matchData?.match_details || {
         skills: { matched: [], missing: [], additional: [], matchPercentage: 0 },
         experienceLevel: { required: 0, candidate: 0, match: false },
@@ -283,7 +360,7 @@ export const matchDbService = {
         educationLevel: { required: '', candidate: '', match: false },
         overall: 0
       },
-      // Propriétés pour le mode global
+      // Properties for global mode
       isOwnCandidate: globalMode ? (ownerInfo?.is_own_candidate ?? true) : true,
       ownerFirstName: globalMode ? ownerInfo?.owner_first_name : undefined,
       ownerLastName: globalMode ? ownerInfo?.owner_last_name : undefined
@@ -322,7 +399,7 @@ export const matchDbService = {
     try {
       console.log(`[Match DB Service] Force recalculating ALL scores for job offer: ${jobOfferId}`);
       
-      // Supprimer tous les scores en cache pour cette offre (seulement pour les candidats de l'utilisateur)
+      // Delete all cached scores for this offer (only for user's candidates)
       if (!globalMode) {
         const { error: deleteError } = await supabase
           .from('candidate_job_matches')
@@ -336,7 +413,7 @@ export const matchDbService = {
         }
       }
       
-      // Maintenant calculer avec le cache vide
+      // Now calculate with empty cache
       return await matchDbService.calculateMatchesForJobOffer(jobOfferId, globalMode);
     } catch (error) {
       console.error('[Match DB Service] Error in force recalculation:', error);
