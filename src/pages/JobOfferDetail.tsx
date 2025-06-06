@@ -14,6 +14,7 @@ import CandidatesMatchingSection from '@/components/job-offers/detail/Candidates
 import ErrorState from '@/components/job-offers/detail/ErrorState';
 import LoadingState from '@/components/job-offers/detail/LoadingState';
 import { CandidateMatch } from '@/services/data/candidate-matching/types';
+import type { ExtendedCandidateMatch } from '@/pages/types/candidateTypes';
 
 const JobOfferDetail = () => {
   const { jobOfferId } = useParams<{ jobOfferId: string }>();
@@ -38,13 +39,17 @@ const JobOfferDetail = () => {
     navigate(`/job-offers/${jobOfferId}/edit`);
   };
   
-  // Fix: Update skills renderer functions to match expected signature
+  // Create wrapper functions that find the ExtendedCandidateMatch by candidateId
   const renderMatchedSkillsForSection = (candidateId: string, jobOfferId: string) => {
-    return renderMatchedSkills(candidateId);
+    const match = candidateMatches.find(m => m.candidateId === candidateId);
+    if (!match) return <span className="text-xs text-gray-500 italic">Candidat non trouvé</span>;
+    return renderMatchedSkills(match);
   };
   
   const renderMissingSkillsForSection = (candidateId: string, jobOfferId: string) => {
-    return renderMissingSkills(candidateId);
+    const match = candidateMatches.find(m => m.candidateId === candidateId);
+    if (!match) return <span className="text-xs text-gray-500 italic">Candidat non trouvé</span>;
+    return renderMissingSkills(match);
   };
 
   // Convert ExtendedCandidateMatch[] to CandidateMatch[] for compatibility
@@ -66,6 +71,11 @@ const JobOfferDetail = () => {
     last_name: match.lastName,
     position: match.position,
     company: match.company,
+    candidateId: match.candidateId,
+    firstName: match.firstName,
+    lastName: match.lastName,
+    score: match.score,
+    details: match.details,
     candidate: match.candidate,
     match: match.match
   }));
