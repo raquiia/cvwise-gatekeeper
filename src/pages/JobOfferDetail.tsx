@@ -13,7 +13,6 @@ import NoMatchesAlert from '@/components/job-offers/detail/NoMatchesAlert';
 import CandidatesMatchingSection from '@/components/job-offers/detail/CandidatesMatchingSection';
 import ErrorState from '@/components/job-offers/detail/ErrorState';
 import LoadingState from '@/components/job-offers/detail/LoadingState';
-import { CandidateMatch } from '@/services/data/candidate-matching/types';
 import type { ExtendedCandidateMatch } from '@/pages/types/candidateTypes';
 
 const JobOfferDetail = () => {
@@ -38,34 +37,6 @@ const JobOfferDetail = () => {
     if (!jobOfferId) return;
     navigate(`/job-offers/${jobOfferId}/edit`);
   };
-  
-  // Convert ExtendedCandidateMatch[] to CandidateMatch[] for MatchingStats component compatibility
-  const convertedMatchesForStats: CandidateMatch[] = candidateMatches.map(match => ({
-    id: match.candidateId,
-    candidate_id: match.candidateId,
-    job_offer_id: jobOfferId || '',
-    match_score: match.score,
-    skills_match_score: match.match?.skills_match_score || 0,
-    experience_match_score: match.match?.experience_match_score || 0,
-    education_match_score: match.match?.education_match_score || 0,
-    location_match_score: match.match?.location_match_score || 0,
-    match_details: match.match?.match_details || match.details,
-    calculated_at: new Date().toISOString(),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    // Add additional fields from ExtendedCandidateMatch for backward compatibility
-    first_name: match.firstName,
-    last_name: match.lastName,
-    position: match.position,
-    company: match.company,
-    candidateId: match.candidateId,
-    firstName: match.firstName,
-    lastName: match.lastName,
-    score: match.score,
-    details: match.details,
-    candidate: match.candidate,
-    match: match.match
-  }));
   
   // Create wrapper functions that find the ExtendedCandidateMatch by candidateId
   const renderMatchedSkillsForSection = (candidateId: string, jobOfferId: string) => {
@@ -114,7 +85,7 @@ const JobOfferDetail = () => {
           </div>
           
           <div>
-            <MatchingStats candidateMatches={convertedMatchesForStats} />
+            <MatchingStats candidateMatches={candidateMatches} />
           </div>
         </div>
         

@@ -5,6 +5,7 @@ import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
 import { candidateMatchingService } from '@/services/data/candidate-matching';
 import { supabase } from '@/integrations/supabase/client';
 import { processCandidateData } from '@/utils/candidateUtils';
+import { useActiveJob } from '@/context/ActiveJobContext';
 import type { JobOffer } from '@/services/data/job-offers/types';
 import type { ExtendedCandidateMatch } from '@/pages/types/candidateTypes';
 
@@ -14,6 +15,7 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [matchLoading, setMatchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { setActiveJobOffer } = useActiveJob();
 
   const fetchJobOffer = async () => {
     if (!jobOfferId) {
@@ -36,6 +38,10 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
       
       setJobOffer(data);
       
+      // Définir cette offre comme active pour le contexte de scoring
+      console.log('Setting active job offer for scoring context:', jobOfferId, data.title);
+      await setActiveJobOffer(jobOfferId, data.title);
+      
       await fetchCandidateMatches();
       
       setLoading(false);
@@ -57,6 +63,7 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
     if (!jobOfferId) return;
     
     try {
+      console.log('Fetching candidate matches for job offer:', jobOfferId);
       let matches;
       
       try {
@@ -95,7 +102,7 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
                   skills: { matched: [], missing: [], additional: [], matchPercentage: 0 }
                 }
               }
-            };
+            } as ExtendedCandidateMatch;
           });
           
           setCandidateMatches(processedMatches);
@@ -120,9 +127,15 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
               
               if (!candidateData) {
                 return {
-                  ...match,
+                  candidateId: match.candidateId || match.candidate_id || '',
+                  firstName: match.firstName || match.first_name || '',
+                  lastName: match.lastName || match.last_name || '',
+                  position: match.position || '',
+                  company: match.company || '',
+                  score: match.score || match.match_score || 0,
+                  details: match.details,
                   match: {
-                    match_score: match.score,
+                    match_score: match.score || match.match_score || 0,
                     skills_match_score: match.details?.skills?.matchPercentage || 0,
                     experience_match_score: match.details?.experienceLevel?.match ? 100 : 
                       Math.min(100, ((match.details?.experienceLevel?.candidate || 0) / 
@@ -139,10 +152,16 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
               const candidate = processCandidateData(candidateData);
               
               return {
-                ...match,
+                candidateId: candidate.id,
+                firstName: candidate.first_name || '',
+                lastName: candidate.last_name || '',
+                position: candidate.position || '',
+                company: candidate.company || '',
+                score: match.score || match.match_score || 0,
+                details: match.details,
                 candidate: candidate,
                 match: {
-                  match_score: match.score,
+                  match_score: match.score || match.match_score || 0,
                   skills_match_score: match.details?.skills?.matchPercentage || 0,
                   experience_match_score: match.details?.experienceLevel?.match ? 100 : 
                     Math.min(100, ((match.details?.experienceLevel?.candidate || 0) / 
@@ -155,11 +174,17 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
                 }
               } as ExtendedCandidateMatch;
             } catch (error) {
-              console.error(`Error fetching candidate details for ${match.candidateId}:`, error);
+              console.error(`Error fetching candidate details for ${match.candidateId || match.candidate_id}:`, error);
               return {
-                ...match,
+                candidateId: match.candidateId || match.candidate_id || '',
+                firstName: match.firstName || match.first_name || '',
+                lastName: match.lastName || match.last_name || '',
+                position: match.position || '',
+                company: match.company || '',
+                score: match.score || match.match_score || 0,
+                details: match.details,
                 match: {
-                  match_score: match.score,
+                  match_score: match.score || match.match_score || 0,
                   skills_match_score: match.details?.skills?.matchPercentage || 0,
                   experience_match_score: match.details?.experienceLevel?.match ? 100 : 50,
                   education_match_score: match.details?.educationLevel?.match ? 100 : 0,
@@ -197,6 +222,7 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
     try {
       setMatchLoading(true);
       
+      console.log('Recalculating matches for job offer:', jobOfferId);
       await candidateMatchingService.calculateMatchesForJobOffer(jobOfferId);
       
       toast({
