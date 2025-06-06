@@ -749,6 +749,10 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_all_matches_for_job_offer: {
+        Args: { p_job_offer_id: string }
+        Returns: Json[]
+      }
       get_all_profiles_secure: {
         Args: Record<PropertyKey, never>
         Returns: {

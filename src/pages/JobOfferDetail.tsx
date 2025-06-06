@@ -73,7 +73,7 @@ const JobOfferDetail = () => {
         <JobOfferHeader 
           jobOffer={jobOffer}
           onEdit={handleEditJobOffer}
-          onRecalculateMatches={handleRecalculateMatches}
+          onRecalculateMatches={() => handleRecalculateMatches(false)}
           matchLoading={matchLoading}
         />
         

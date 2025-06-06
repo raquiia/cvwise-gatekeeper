@@ -8,13 +8,14 @@ import { useActiveJob } from '@/context/ActiveJobContext';
 import { toast } from '@/hooks/use-toast';
 import MatchingTabs from './MatchingTabs';
 import EnhancedCandidateMatchItem from './EnhancedCandidateMatchItem';
+import MatchingModeToggle from './MatchingModeToggle';
 import type { ExtendedCandidateMatch } from '@/pages/types/candidateTypes';
 
 interface CandidatesMatchingSectionProps {
   candidateMatches: ExtendedCandidateMatch[];
   jobOffer: JobOffer;
   onViewCandidate: (candidateId: string) => void;
-  onRecalculateMatches: () => void;
+  onRecalculateMatches: (globalMode?: boolean) => void;
   matchLoading: boolean;
   renderMatchedSkills: (candidateId: string, jobOfferId: string) => React.ReactNode;
   renderMissingSkills: (candidateId: string, jobOfferId: string) => React.ReactNode;
@@ -30,6 +31,7 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
   renderMissingSkills
 }) => {
   const { activeJobOfferId, setActiveJobOffer } = useActiveJob();
+  const [isGlobalMode, setIsGlobalMode] = useState(false);
   
   useEffect(() => {
     if (!activeJobOfferId && jobOffer?.id) {
@@ -46,15 +48,31 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
     }
   }, [activeJobOfferId, jobOffer, setActiveJobOffer]);
 
+  const handleModeChange = (globalMode: boolean) => {
+    setIsGlobalMode(globalMode);
+    // Recalculer automatiquement avec le nouveau mode
+    onRecalculateMatches(globalMode);
+  };
+
+  // Filtrer les candidats selon le mode
+  const filteredMatches = isGlobalMode ? candidateMatches : candidateMatches.filter(match => match.isOwnCandidate !== false);
+  const ownCandidatesCount = candidateMatches.filter(match => match.isOwnCandidate !== false).length;
+  const totalCandidatesCount = candidateMatches.length;
+
   const renderCandidateList = (matches: ExtendedCandidateMatch[], sortKey: 'local' | 'global' | 'skills') => {
     if (matches.length === 0) {
       return (
         <div className="text-center py-8">
-          <p className="text-muted-foreground">Aucun candidat correspondant trouvé</p>
+          <p className="text-muted-foreground">
+            {isGlobalMode 
+              ? "Aucun candidat trouvé dans la base de données globale" 
+              : "Aucun candidat correspondant trouvé parmi vos candidats"
+            }
+          </p>
           <Button
             variant="outline"
             className="mt-4"
-            onClick={onRecalculateMatches}
+            onClick={() => onRecalculateMatches(isGlobalMode)}
             disabled={matchLoading}
           >
             Calculer les correspondances
@@ -74,6 +92,7 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
             renderMatchedSkills={renderMatchedSkills}
             renderMissingSkills={renderMissingSkills}
             jobId={jobOffer.id!}
+            showOwner={isGlobalMode}
           />
         ))}
       </div>
@@ -90,13 +109,16 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
               Candidats correspondants
             </CardTitle>
             <CardDescription>
-              {candidateMatches.length} candidat{candidateMatches.length !== 1 ? 's' : ''} évalué{candidateMatches.length !== 1 ? 's' : ''}
+              {isGlobalMode 
+                ? `${totalCandidatesCount} candidat${totalCandidatesCount !== 1 ? 's' : ''} évalué${totalCandidatesCount !== 1 ? 's' : ''} (${ownCandidatesCount} vôtre${ownCandidatesCount !== 1 ? 's' : ''})`
+                : `${ownCandidatesCount} candidat${ownCandidatesCount !== 1 ? 's' : ''} évalué${ownCandidatesCount !== 1 ? 's' : ''}`
+              }
             </CardDescription>
           </div>
           <Button 
             variant="outline"
             size="sm"
-            onClick={onRecalculateMatches}
+            onClick={() => onRecalculateMatches(isGlobalMode)}
             disabled={matchLoading}
           >
             {matchLoading ? (
@@ -115,19 +137,33 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
       </CardHeader>
 
       <CardContent>
-        {candidateMatches.length > 0 ? (
-          <MatchingTabs 
-            candidateMatches={candidateMatches}
-          >
-            {renderCandidateList}
-          </MatchingTabs>
+        <MatchingModeToggle
+          isGlobalMode={isGlobalMode}
+          onModeChange={handleModeChange}
+          totalCandidates={totalCandidatesCount}
+          ownCandidates={ownCandidatesCount}
+        />
+
+        {filteredMatches.length > 0 ? (
+          <div className="mt-4">
+            <MatchingTabs 
+              candidateMatches={filteredMatches}
+            >
+              {renderCandidateList}
+            </MatchingTabs>
+          </div>
         ) : (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">Aucun candidat correspondant trouvé</p>
+          <div className="text-center py-8 mt-4">
+            <p className="text-muted-foreground">
+              {isGlobalMode 
+                ? "Aucun candidat trouvé dans la base de données globale" 
+                : "Aucun candidat correspondant trouvé parmi vos candidats"
+              }
+            </p>
             <Button
               variant="outline"
               className="mt-4"
-              onClick={onRecalculateMatches}
+              onClick={() => onRecalculateMatches(isGlobalMode)}
               disabled={matchLoading}
             >
               Calculer les correspondances

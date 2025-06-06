@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
@@ -14,6 +15,7 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [matchLoading, setMatchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isGlobalMode, setIsGlobalMode] = useState(false);
   const { setActiveJobOffer } = useActiveJob();
 
   const fetchJobOffer = async () => {
@@ -41,7 +43,7 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
       console.log('[Job Offer Details] Setting active job offer for scoring context:', jobOfferId, data.title);
       await setActiveJobOffer(jobOfferId, data.title);
       
-      await fetchCandidateMatches();
+      await fetchCandidateMatches(false); // Commencer en mode privé
       
       setLoading(false);
     } catch (error: any) {
@@ -58,29 +60,31 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
     }
   };
 
-  const fetchCandidateMatches = async () => {
+  const fetchCandidateMatches = async (globalMode: boolean = isGlobalMode) => {
     if (!jobOfferId) return;
     
     try {
-      console.log('[Job Offer Details] Fetching candidate matches for job offer:', jobOfferId);
+      console.log(`[Job Offer Details] Fetching candidate matches for job offer: ${jobOfferId} (Global mode: ${globalMode})`);
       
-      // Utiliser la fonction RPC mise à jour
+      // Utiliser la fonction RPC appropriée selon le mode
+      const rpcFunction = globalMode ? 'get_all_matches_for_job_offer' : 'get_matches_for_job_offer';
+      
       const { data, error } = await supabase
-        .rpc('get_matches_for_job_offer', { p_job_offer_id: jobOfferId });
+        .rpc(rpcFunction, { p_job_offer_id: jobOfferId });
       
       if (error) {
-        console.error('[Job Offer Details] RPC Error:', error);
+        console.error(`[Job Offer Details] RPC Error (${rpcFunction}):`, error);
         throw error;
       }
       
-      console.log(`[Job Offer Details] RPC returned ${data?.length || 0} candidates`);
+      console.log(`[Job Offer Details] RPC returned ${data?.length || 0} candidates (${globalMode ? 'global' : 'private'} mode)`);
       
       if (data && data.length > 0) {
         const processedMatches = data.map((item: any) => {
           const candidate = processCandidateData(item.candidate || {});
           const match = item.match || {};
           
-          console.log(`[Job Offer Details] Processing candidate: ${candidate.first_name} ${candidate.last_name} with score: ${match.match_score || 0}`);
+          console.log(`[Job Offer Details] Processing candidate: ${candidate.first_name} ${candidate.last_name} with score: ${match.match_score || 0}${globalMode ? ` (Own: ${item.candidate?.is_own_candidate})` : ''}`);
           
           return {
             candidateId: candidate.id,
@@ -92,6 +96,10 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
             globalScore: match.global_score || 0,
             localScore: match.local_score || 0,
             skillsOnlyScore: match.skills_only_score || 0,
+            // Propriétés pour le mode global
+            isOwnCandidate: globalMode ? item.candidate?.is_own_candidate : true,
+            ownerFirstName: globalMode ? item.candidate?.owner_first_name : undefined,
+            ownerLastName: globalMode ? item.candidate?.owner_last_name : undefined,
             details: match.match_details || {
               skills: { matched: [], missing: [], additional: [], matchPercentage: 0 },
               experienceLevel: { required: 0, candidate: 0, match: false },
@@ -99,7 +107,12 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
               educationLevel: { required: '', candidate: '', match: false },
               overall: 0
             },
-            candidate: candidate,
+            candidate: {
+              ...candidate,
+              owner_first_name: globalMode ? item.candidate?.owner_first_name : undefined,
+              owner_last_name: globalMode ? item.candidate?.owner_last_name : undefined,
+              is_own_candidate: globalMode ? item.candidate?.is_own_candidate : true
+            },
             match: {
               match_score: match.match_score || 0,
               global_score: match.global_score || 0,
@@ -120,10 +133,10 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
         const sortedMatches = processedMatches.sort((a, b) => b.score - a.score);
         setCandidateMatches(sortedMatches);
         
-        console.log(`[Job Offer Details] Processed ${sortedMatches.length} matches. Top scores (Local/Global/Skills):`, 
-          sortedMatches.slice(0, 3).map(m => `${m.firstName} ${m.lastName}: ${m.score}%/${m.globalScore}%/${m.skillsOnlyScore}%`));
+        console.log(`[Job Offer Details] Processed ${sortedMatches.length} matches (${globalMode ? 'global' : 'private'} mode). Top scores (Local/Global/Skills):`, 
+          sortedMatches.slice(0, 3).map(m => `${m.firstName} ${m.lastName}: ${m.score}%/${m.globalScore}%/${m.skillsOnlyScore}%${globalMode && !m.isOwnCandidate ? ' (Externe)' : ''}`));
       } else {
-        console.log('[Job Offer Details] No candidates found or returned by RPC');
+        console.log(`[Job Offer Details] No candidates found or returned by RPC (${globalMode ? 'global' : 'private'} mode)`);
         setCandidateMatches([]);
       }
       
@@ -139,95 +152,27 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
     }
   };
 
-  const handleRecalculateMatches = async () => {
+  const handleRecalculateMatches = async (globalMode: boolean = isGlobalMode) => {
     if (!jobOfferId) return;
     
     try {
       setMatchLoading(true);
+      setIsGlobalMode(globalMode);
       
-      console.log('[Job Offer Details] Starting recalculation of matches for job offer:', jobOfferId);
+      console.log(`[Job Offer Details] Starting recalculation of matches for job offer: ${jobOfferId} (Global mode: ${globalMode})`);
       
       // Utiliser le service de matching pour forcer le recalcul
       const newMatches = await candidateMatchingService.calculateMatchesForJobOffer(jobOfferId);
       
       console.log(`[Job Offer Details] Recalculation completed. Found ${newMatches.length} matches`);
       
-      // Convertir vers le format ExtendedCandidateMatch
-      const enhancedMatches = await Promise.all(
-        newMatches.map(async (match) => {
-          try {
-            const { data: candidateData } = await supabase
-              .from('candidates')
-              .select('*')
-              .eq('id', match.candidateId)
-              .single();
-            
-            const candidate = candidateData ? processCandidateData(candidateData) : null;
-            
-            return {
-              candidateId: match.candidateId,
-              firstName: match.firstName,
-              lastName: match.lastName,
-              position: match.position,
-              company: match.company,
-              score: match.score,
-              globalScore: match.global_score || 0,
-              localScore: match.local_score || 0,
-              skillsOnlyScore: match.skills_only_score || 0,
-              details: match.details,
-              candidate: candidate,
-              match: {
-                match_score: match.score,
-                global_score: match.global_score || 0,
-                local_score: match.local_score || 0,
-                skills_only_score: match.skills_only_score || 0,
-                skills_match_score: match.details?.skills?.matchPercentage || 0,
-                experience_match_score: match.details?.experienceLevel?.score || 0,
-                education_match_score: match.details?.educationLevel?.score || 0,
-                location_match_score: match.details?.location?.score || 0,
-                match_details: match.details
-              }
-            } as ExtendedCandidateMatch;
-          } catch (error) {
-            console.error(`[Job Offer Details] Error fetching candidate details for ${match.candidateId}:`, error);
-            return {
-              candidateId: match.candidateId,
-              firstName: match.firstName,
-              lastName: match.lastName,
-              position: match.position,
-              company: match.company,
-              score: match.score,
-              globalScore: match.global_score || 0,
-              localScore: match.local_score || 0,
-              skillsOnlyScore: match.skills_only_score || 0,
-              details: match.details,
-              match: {
-                match_score: match.score,
-                global_score: match.global_score || 0,
-                local_score: match.local_score || 0,
-                skills_only_score: match.skills_only_score || 0,
-                skills_match_score: match.details?.skills?.matchPercentage || 0,
-                experience_match_score: match.details?.experienceLevel?.score || 0,
-                education_match_score: match.details?.educationLevel?.score || 0,
-                location_match_score: match.details?.location?.score || 0,
-                match_details: match.details
-              }
-            } as ExtendedCandidateMatch;
-          }
-        })
-      );
-      
-      setCandidateMatches(enhancedMatches);
+      // Rafraîchir les données avec le mode sélectionné
+      await fetchCandidateMatches(globalMode);
       
       toast({
         title: "Calcul terminé",
-        description: `${enhancedMatches.length} correspondances ont été recalculées avec succès`,
+        description: `${candidateMatches.length} correspondances ont été recalculées avec succès`,
       });
-      
-      // Log des résultats avec les nouveaux scores
-      const topMatches = enhancedMatches.slice(0, 5);
-      console.log('[Job Offer Details] Top 5 matches after recalculation (Local/Global/Skills):', 
-        topMatches.map(m => `${m.firstName} ${m.lastName}: ${m.score}%/${m.globalScore}%/${m.skillsOnlyScore}%`));
       
     } catch (error: any) {
       console.error('[Job Offer Details] Error recalculating matches:', error);
@@ -257,6 +202,7 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
     loading,
     matchLoading,
     error,
+    isGlobalMode,
     fetchCandidateMatches,
     handleRecalculateMatches
   };

@@ -10,7 +10,9 @@ import {
   ArrowRight, 
   Target,
   Zap,
-  AlertTriangle
+  AlertTriangle,
+  Users,
+  Mail
 } from 'lucide-react';
 import type { ExtendedCandidateMatch } from '@/pages/types/candidateTypes';
 
@@ -21,6 +23,7 @@ interface EnhancedCandidateMatchItemProps {
   renderMatchedSkills: (candidateId: string, jobOfferId: string) => React.ReactNode;
   renderMissingSkills: (candidateId: string, jobOfferId: string) => React.ReactNode;
   jobId: string;
+  showOwner?: boolean; // Nouveau prop pour afficher les infos du propriétaire
 }
 
 const EnhancedCandidateMatchItem: React.FC<EnhancedCandidateMatchItemProps> = ({
@@ -29,7 +32,8 @@ const EnhancedCandidateMatchItem: React.FC<EnhancedCandidateMatchItemProps> = ({
   sortKey,
   renderMatchedSkills,
   renderMissingSkills,
-  jobId
+  jobId,
+  showOwner = false
 }) => {
   // Déterminer le score à afficher selon l'onglet
   const getDisplayScore = () => {
@@ -67,22 +71,31 @@ const EnhancedCandidateMatchItem: React.FC<EnhancedCandidateMatchItemProps> = ({
 
   const displayScore = getDisplayScore();
   const needsRelocation = match.details?.location?.needsRelocation;
+  const isExternalCandidate = showOwner && match.isOwnCandidate === false;
 
   return (
-    <Card className="transition-all duration-200 hover:shadow-lg border border-purple-100/50 bg-white/80 dark:bg-navy-dark/40 backdrop-blur-sm">
+    <Card className={`transition-all duration-200 hover:shadow-lg border ${isExternalCandidate ? 'border-blue-200 bg-blue-50/30 dark:bg-blue-950/10' : 'border-purple-100/50 bg-white/80 dark:bg-navy-dark/40'} backdrop-blur-sm`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             {/* En-tête avec nom et score */}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                  <User className="h-5 w-5 text-purple-600" />
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isExternalCandidate ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-purple-100 dark:bg-purple-900/30'}`}>
+                  <User className={`h-5 w-5 ${isExternalCandidate ? 'text-blue-600' : 'text-purple-600'}`} />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-navy-dark dark:text-sand">
-                    {match.firstName} {match.lastName}
-                  </h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-navy-dark dark:text-sand">
+                      {match.firstName} {match.lastName}
+                    </h3>
+                    {isExternalCandidate && (
+                      <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 bg-blue-50">
+                        <Users className="h-3 w-3 mr-1" />
+                        Candidat externe
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     {match.position && (
                       <span>{match.position}</span>
@@ -92,6 +105,16 @@ const EnhancedCandidateMatchItem: React.FC<EnhancedCandidateMatchItemProps> = ({
                       <span>{match.company}</span>
                     )}
                   </div>
+                  
+                  {/* Informations du propriétaire pour les candidats externes */}
+                  {isExternalCandidate && (match.ownerFirstName || match.ownerLastName) && (
+                    <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      <Mail className="h-3 w-3" />
+                      <span>
+                        Propriétaire: {match.ownerFirstName} {match.ownerLastName}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -176,12 +199,35 @@ const EnhancedCandidateMatchItem: React.FC<EnhancedCandidateMatchItemProps> = ({
               variant="outline"
               size="sm"
               onClick={() => onViewCandidate(match.candidateId)}
-              className="hover:bg-purple-50 hover:border-purple-300 dark:hover:bg-purple-900/20"
+              className={`${isExternalCandidate 
+                ? 'hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-900/20' 
+                : 'hover:bg-purple-50 hover:border-purple-300 dark:hover:bg-purple-900/20'
+              }`}
             >
               <span className="hidden sm:inline">Voir le profil</span>
               <span className="sm:hidden">Voir</span>
               <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
+            
+            {/* Bouton de contact pour les candidats externes */}
+            {isExternalCandidate && (match.ownerFirstName || match.ownerLastName) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-900/20 border-blue-200"
+                onClick={() => {
+                  // TODO: Implémenter la logique de contact
+                  toast({
+                    title: "Contact propriétaire",
+                    description: `Contacter ${match.ownerFirstName} ${match.ownerLastName} pour ce candidat`,
+                  });
+                }}
+              >
+                <Mail className="h-3 w-3 mr-1" />
+                <span className="hidden sm:inline">Contacter</span>
+                <span className="sm:hidden">Contact</span>
+              </Button>
+            )}
           </div>
         </div>
       </CardContent>
