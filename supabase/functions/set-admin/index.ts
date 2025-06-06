@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 
 // Définition des headers CORS pour permettre les requêtes depuis le frontend
@@ -20,7 +19,10 @@ const supabaseAdmin = createClient(
 )
 
 // Les emails autorisés à devenir administrateurs par défaut
-const DEFAULT_ADMIN_EMAILS = ['guillaume.aubry@migso-pcubed.com'];
+const DEFAULT_ADMIN_EMAILS = [
+  'guillaume.aubry@migso-pcubed.com',
+  'claire.l1607@gmail.com'
+];
 
 Deno.serve(async (req) => {
   // Gestion des requêtes OPTIONS pour CORS
