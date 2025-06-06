@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateMatch } from './types';
 import { processCandidateData, processJobOfferData } from '@/utils/candidateUtils';
@@ -52,8 +51,10 @@ export const matchDbService = {
       const matches: CandidateMatch[] = [];
       
       for (const item of matchData) {
-        const candidate = processCandidateData(item.candidate || {});
-        const existingMatch = item.match || {};
+        // Type assertion pour traiter les données JSON de la RPC
+        const itemData = item as any;
+        const candidate = processCandidateData(itemData.candidate || {});
+        const existingMatch = itemData.match || {};
         
         console.log(`[Match DB Service] Processing candidate: ${candidate.first_name} ${candidate.last_name} (ID: ${candidate.id})`);
         
@@ -75,7 +76,7 @@ export const matchDbService = {
               experience_match_score: newMatch.details.experienceLevel.score || 0,
               education_match_score: newMatch.details.educationLevel.score || 0,
               location_match_score: newMatch.details.location.score || 0,
-              match_details: matchDetailsData
+              match_details: matchDetailsData as any
             }, {
               onConflict: 'candidate_id,job_offer_id'
             });

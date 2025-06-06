@@ -118,11 +118,6 @@ export const calculateCandidateJobMatch = async (
   };
   
   return {
-    candidateId: candidate.id!,
-    firstName: candidate.first_name || '',
-    lastName: candidate.last_name || '',
-    position: candidate.position || '',
-    company: candidate.company || '',
     score: overallScore,
     details
   };
@@ -130,11 +125,6 @@ export const calculateCandidateJobMatch = async (
 
 export const createDefaultMatchDetails = (candidate: CandidateData): CandidateJobMatch => {
   return {
-    candidateId: candidate.id!,
-    firstName: candidate.first_name || '',
-    lastName: candidate.last_name || '',
-    position: candidate.position || '',
-    company: candidate.company || '',
     score: 0,
     details: {
       skills: { matched: [], missing: [], additional: [], matchPercentage: 0 },
