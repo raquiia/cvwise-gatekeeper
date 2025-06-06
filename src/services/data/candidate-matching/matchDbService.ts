@@ -61,8 +61,14 @@ export const matchDbService = {
       for (const item of matchData) {
         // Type assertion pour corriger les types de Supabase
         const itemData = item as any;
-        const candidate = processCandidateData(itemData.candidate || {});
-        const existingMatch = itemData.match || {};
+        const candidateData = itemData?.candidate;
+        if (!candidateData) {
+          console.warn('[Match DB Service] Missing candidate data, skipping');
+          continue;
+        }
+        
+        const candidate = processCandidateData(candidateData);
+        const existingMatch = itemData?.match || {};
         const candidateUpdatedAt = new Date(candidate.updated_at || candidate.created_at);
         
         // Vérifier si on peut utiliser le cache
@@ -87,10 +93,11 @@ export const matchDbService = {
       const matches: CandidateMatch[] = [];
       
       for (const { candidate, existingMatch, item } of candidatesUsingCache) {
-        const ownerInfo = globalMode ? {
-          owner_first_name: item.candidate?.owner_first_name,
-          owner_last_name: item.candidate?.owner_last_name,
-          is_own_candidate: item.candidate?.is_own_candidate
+        const candidateInfo = item?.candidate;
+        const ownerInfo = globalMode && candidateInfo ? {
+          owner_first_name: candidateInfo.owner_first_name,
+          owner_last_name: candidateInfo.owner_last_name,
+          is_own_candidate: candidateInfo.is_own_candidate
         } : {};
         
         matches.push(this.createCandidateMatch(
@@ -104,10 +111,11 @@ export const matchDbService = {
       
       // Recalculer uniquement les candidats qui en ont besoin
       for (const { candidate, existingMatch, item } of candidatesNeedingRecalculation) {
-        const ownerInfo = globalMode ? {
-          owner_first_name: item.candidate?.owner_first_name,
-          owner_last_name: item.candidate?.owner_last_name,
-          is_own_candidate: item.candidate?.is_own_candidate
+        const candidateInfo = item?.candidate;
+        const ownerInfo = globalMode && candidateInfo ? {
+          owner_first_name: candidateInfo.owner_first_name,
+          owner_last_name: candidateInfo.owner_last_name,
+          is_own_candidate: candidateInfo.is_own_candidate
         } : {};
         
         try {
@@ -115,7 +123,7 @@ export const matchDbService = {
           console.log(`[Match DB Service] Recalculated scores for ${candidate.first_name} ${candidate.last_name}: Global=${newMatch.globalScore}%, Local=${newMatch.localScore}%, Skills=${newMatch.skillsOnlyScore}%`);
           
           // Sauvegarder le nouveau score avec les timestamps (seulement pour ses propres candidats)
-          const shouldSaveMatch = !globalMode || item.candidate?.is_own_candidate;
+          const shouldSaveMatch = !globalMode || (candidateInfo && candidateInfo.is_own_candidate);
           
           if (shouldSaveMatch) {
             const candidateUpdatedAt = new Date(candidate.updated_at || candidate.created_at);
@@ -267,9 +275,9 @@ export const matchDbService = {
         overall: 0
       },
       // Propriétés pour le mode global
-      isOwnCandidate: globalMode ? ownerInfo.is_own_candidate : true,
-      ownerFirstName: globalMode ? ownerInfo.owner_first_name : undefined,
-      ownerLastName: globalMode ? ownerInfo.owner_last_name : undefined
+      isOwnCandidate: globalMode ? (ownerInfo?.is_own_candidate ?? true) : true,
+      ownerFirstName: globalMode ? ownerInfo?.owner_first_name : undefined,
+      ownerLastName: globalMode ? ownerInfo?.owner_last_name : undefined
     };
   },
   
