@@ -39,19 +39,6 @@ const JobOfferDetail = () => {
     navigate(`/job-offers/${jobOfferId}/edit`);
   };
   
-  // Create wrapper functions that find the ExtendedCandidateMatch by candidateId
-  const renderMatchedSkillsForSection = (candidateId: string, jobOfferId: string) => {
-    const match = candidateMatches.find(m => m.candidateId === candidateId);
-    if (!match) return <span className="text-xs text-gray-500 italic">Candidat non trouvé</span>;
-    return renderMatchedSkills(match);
-  };
-  
-  const renderMissingSkillsForSection = (candidateId: string, jobOfferId: string) => {
-    const match = candidateMatches.find(m => m.candidateId === candidateId);
-    if (!match) return <span className="text-xs text-gray-500 italic">Candidat non trouvé</span>;
-    return renderMissingSkills(match);
-  };
-
   // Convert ExtendedCandidateMatch[] to CandidateMatch[] for compatibility
   const convertedMatches: CandidateMatch[] = candidateMatches.map(match => ({
     id: match.candidateId,
@@ -79,6 +66,19 @@ const JobOfferDetail = () => {
     candidate: match.candidate,
     match: match.match
   }));
+  
+  // Create wrapper functions that find the ExtendedCandidateMatch by candidateId
+  const renderMatchedSkillsForSection = (candidateId: string, jobOfferId: string) => {
+    const match = candidateMatches.find(m => m.candidateId === candidateId);
+    if (!match) return <span className="text-xs text-gray-500 italic">Candidat non trouvé</span>;
+    return renderMatchedSkills(match);
+  };
+  
+  const renderMissingSkillsForSection = (candidateId: string, jobOfferId: string) => {
+    const match = candidateMatches.find(m => m.candidateId === candidateId);
+    if (!match) return <span className="text-xs text-gray-500 italic">Candidat non trouvé</span>;
+    return renderMissingSkills(match);
+  };
   
   if (loading) {
     return (
