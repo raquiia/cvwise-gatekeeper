@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveJob } from '@/context/ActiveJobContext';
@@ -329,7 +330,7 @@ export const useAIScoring = () => {
     if (!candidateIds.length) return;
     
     setIsGlobalRecalculating(true);
-    console.log(`Recalculating scores for ${candidateIds.length} candidates, onlyNew=${onlyNew}`);
+    console.log(`[AI Scoring] Recalculating scores for ${candidateIds.length} candidates, onlyNew=${onlyNew}`);
     
     try {
       // Filtrer les candidats selon le besoin (tous ou uniquement ceux sans score)
@@ -345,7 +346,7 @@ export const useAIScoring = () => {
                  (isJobSpecific && !currentScore.isJobSpecific);
         });
         
-        console.log(`Filtered to ${candidatesToProcess.length} candidates needing scores`);
+        console.log(`[AI Scoring] Filtered to ${candidatesToProcess.length} candidates needing scores`);
       }
       
       // Traiter les candidats par lots pour éviter la surcharge
@@ -367,7 +368,7 @@ export const useAIScoring = () => {
         description: `${candidatesToProcess.length} scores de candidats ont été ${onlyNew ? 'calculés ou mis à jour' : 'recalculés'}`,
       });
     } catch (error) {
-      console.error('Error during batch recalculation:', error);
+      console.error('[AI Scoring] Error during batch recalculation:', error);
       toast({
         title: "Erreur lors du recalcul",
         description: "Une erreur est survenue lors du recalcul des scores",
@@ -380,7 +381,7 @@ export const useAIScoring = () => {
 
   // Invalider tous les scores en cache
   const invalidateAllScores = useCallback(() => {
-    console.log('Invalidating all cached AI scores');
+    console.log('[AI Scoring] Invalidating all cached AI scores');
     setState({});
   }, []);
 
@@ -393,8 +394,8 @@ export const useAIScoring = () => {
   return {
     getAIScore,
     calculateAIScore,
-    recalculateAllScores: async () => {}, // Simplified for now
-    invalidateAllScores: () => setState({}),
+    recalculateAllScores,
+    invalidateAllScores,
     preloadScoresFromDatabase,
     isGlobalRecalculating,
     isJobSpecific,
