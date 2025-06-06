@@ -1,4 +1,3 @@
-
 /**
  * Types for matching and AI suggestion functionality
  */
@@ -47,6 +46,11 @@ export interface CandidateMatch {
   company?: string;
   score?: number;
   details?: MatchDetails;
+  
+  // Nouvelles propriétés pour le mode global
+  isOwnCandidate?: boolean;  // True si le candidat appartient à l'utilisateur connecté
+  ownerFirstName?: string;   // Prénom du propriétaire du candidat
+  ownerLastName?: string;    // Nom du propriétaire du candidat
 }
 
 // Candidate match with job (individual candidate-job pairing)
