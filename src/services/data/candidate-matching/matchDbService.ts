@@ -59,7 +59,7 @@ export const matchDbService = {
       const candidatesUsingCache = [];
       
       for (const item of matchData) {
-        // Type assertion pour corriger les types de Supabase
+        // Type assertion pour corriger les types de Supabase avec vérification null
         const itemData = item as any;
         const candidateData = itemData?.candidate;
         
@@ -70,8 +70,9 @@ export const matchDbService = {
           candidateName: candidateData ? `${candidateData.first_name} ${candidateData.last_name}` : 'N/A'
         });
         
-        if (!candidateData || !candidateData.id) {
-          console.warn('[Match DB Service] Missing or invalid candidate data, skipping:', itemData);
+        // Vérification plus souple pour les candidats
+        if (!candidateData?.id) {
+          console.warn('[Match DB Service] Missing candidate ID, skipping:', itemData);
           continue;
         }
         
@@ -162,7 +163,7 @@ export const matchDbService = {
             if (insertError) {
               console.error('[Match DB Service] Error saving match results:', insertError);
             } else {
-              console.log(`[Match DB Service] Successfully cached new score for candidate ${candidate.id}`);
+              console.log(`[Match DB Service] Successfully cached new score for candidate ${candidate?.id}`);
             }
           }
           
