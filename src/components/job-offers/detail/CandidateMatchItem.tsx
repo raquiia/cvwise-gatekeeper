@@ -32,21 +32,22 @@ const CandidateMatchItem: React.FC<CandidateMatchItemProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   
   const formatName = () => {
-    const firstName = match.candidate?.first_name || match.firstName || '';
-    const lastName = match.candidate?.last_name || match.lastName || '';
+    // Try multiple possible name fields from the CandidateMatch structure
+    const firstName = match.first_name || match.firstName || '';
+    const lastName = match.last_name || match.lastName || '';
     return `${firstName} ${lastName}`.trim() || 'Candidat sans nom';
   };
   
   const getPosition = () => {
-    return match.candidate?.position || match.position || 'Poste non spécifié';
+    return match.position || 'Poste non spécifié';
   };
   
   const getCompany = () => {
-    return match.candidate?.company || match.company || '';
+    return match.company || '';
   };
 
   const getScore = () => {
-    return match.match?.match_score || match.score || 0;
+    return match.match_score || match.score || 0;
   };
   
   const getScoreClass = () => {
@@ -57,7 +58,7 @@ const CandidateMatchItem: React.FC<CandidateMatchItemProps> = ({
   };
 
   const getCandidateId = () => {
-    return match.candidate?.id || match.candidateId || '';
+    return match.candidate_id || match.candidateId || '';
   };
 
   return (

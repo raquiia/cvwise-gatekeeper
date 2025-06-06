@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveJob } from '@/context/ActiveJobContext';
@@ -81,16 +80,19 @@ export const useAIScoring = () => {
           continue;
         }
         
-        if (scoreData) {
-          console.log(`Found cached AI score for candidate ${candidateId}:`, scoreData);
+        // Fix: Handle array response from RPC function
+        const scoreRecord = Array.isArray(scoreData) ? scoreData[0] : scoreData;
+        
+        if (scoreRecord) {
+          console.log(`Found cached AI score for candidate ${candidateId}:`, scoreRecord);
           const stateUpdate = {
-            score: scoreData.score,
+            score: scoreRecord.score,
             isLoading: false,
             error: null,
-            explanation: scoreData.explanation || '',
+            explanation: scoreRecord.explanation || '',
             source: 'database',
-            breakdown: scoreData.breakdown || null,
-            isJobSpecific: Boolean(scoreData.job_offer_id),
+            breakdown: scoreRecord.breakdown || null,
+            isJobSpecific: Boolean(scoreRecord.job_offer_id),
             lastUpdated: Date.now()
           };
           setState(prev => ({

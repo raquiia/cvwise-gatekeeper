@@ -37,13 +37,13 @@ const JobOfferDetail = () => {
     navigate(`/job-offers/${jobOfferId}/edit`);
   };
   
-  // Create wrapper functions to adapt the renderSkills functions to what CandidatesMatchingSection expects
+  // Fix: Update skills renderer functions to match expected signature
   const renderMatchedSkillsForSection = (candidateId: string, jobOfferId: string) => {
-    return renderMatchedSkills(candidateId, jobOfferId);
+    return renderMatchedSkills(candidateId);
   };
   
   const renderMissingSkillsForSection = (candidateId: string, jobOfferId: string) => {
-    return renderMissingSkills(candidateId, jobOfferId);
+    return renderMissingSkills(candidateId);
   };
   
   if (loading) {

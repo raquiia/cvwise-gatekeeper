@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { AICandidateScore, AIScoringResult, AIScoringError, AIScoreFetchOptions } from './types';
 
@@ -20,7 +19,6 @@ export class AIScoringService {
     options: AIScoreFetchOptions = {}
   ): Promise<AIScoringResult | null> {
     try {
-      // Bypass du cache si demandé
       if (options.bypassCache) {
         console.log(`Bypassing cache for candidate ${candidateId}`);
         return await this.calculateScore(candidateId, jobOfferId);
@@ -28,7 +26,6 @@ export class AIScoringService {
       
       console.log(`Getting AI score for candidate ${candidateId}${jobOfferId ? ` and job ${jobOfferId}` : ''}`);
       
-      // Récupérer le score depuis la base de données
       const { data, error } = await supabase.rpc(
         'get_ai_candidate_score',
         { 
@@ -42,18 +39,19 @@ export class AIScoringService {
         return null;
       }
       
-      // Si pas de score en cache, calculer un nouveau score
-      if (!data) {
+      // Fix: Handle array response from RPC function
+      const scoreData = Array.isArray(data) ? data[0] : data;
+      
+      if (!scoreData) {
         console.log('No cached score found, calculating new score');
         return await this.calculateScore(candidateId, jobOfferId);
       }
       
-      // Convertir et retourner le score
-      console.log('Found cached AI score in database:', data);
+      console.log('Found cached AI score in database:', scoreData);
       return {
-        score: data.score,
-        explanation: data.explanation,
-        breakdown: data.breakdown || {
+        score: scoreData.score,
+        explanation: scoreData.explanation,
+        breakdown: scoreData.breakdown || {
           skills: 0,
           experience: 0,
           education: 0,
@@ -61,7 +59,7 @@ export class AIScoringService {
           profileSummary: 0
         },
         source: 'database',
-        isJobSpecific: !!data.job_offer_id
+        isJobSpecific: !!scoreData.job_offer_id
       };
     } catch (error: any) {
       console.error('Error in getScore:', error);
@@ -79,7 +77,6 @@ export class AIScoringService {
     try {
       console.log(`Calculating AI score for candidate ${candidateId}${jobOfferId ? ` and job ${jobOfferId}` : ''}`);
       
-      // Appeler le service de calcul (Edge Function)
       const scoringType = jobOfferId ? 'job_matching' : 'completeness';
       
       const res = await fetch('/api/ai-scoring', {
