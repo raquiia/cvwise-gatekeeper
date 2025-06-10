@@ -29,13 +29,14 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     // Handle both array and direct object responses
     const candidateData = Array.isArray(data) ? data[0] : data;
     
-    // Log spécifiquement les champs d'adresse pour debugging - use safe access
+    // Log spécifiquement les champs d'adresse pour debugging - use type assertion for logging
+    const candidateWithAddress = candidateData as any;
     console.log('📍 Address fields in retrieved data:', {
-      address: candidateData?.address || 'UNDEFINED',
-      postal_code: candidateData?.postal_code || 'UNDEFINED',
-      city: candidateData?.city || 'UNDEFINED',
-      country: candidateData?.country || 'UNDEFINED',
-      location: candidateData?.location || 'UNDEFINED'
+      address: candidateWithAddress?.address || 'UNDEFINED',
+      postal_code: candidateWithAddress?.postal_code || 'UNDEFINED', 
+      city: candidateWithAddress?.city || 'UNDEFINED',
+      country: candidateWithAddress?.country || 'UNDEFINED',
+      location: candidateWithAddress?.location || 'UNDEFINED'
     });
     
     console.log('✅ Successfully retrieved complete candidate data:', candidateData);
