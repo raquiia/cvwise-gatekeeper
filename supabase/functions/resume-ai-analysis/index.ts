@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
@@ -31,29 +32,36 @@ const cleanAndDecodeText = (text: string): string => {
 };
 
 /**
- * NOUVELLE FONCTION: Validation intelligente des données d'adresse
+ * NOUVELLE FONCTION: Validation intelligente des données d'adresse améliorée
  */
 const validateAndCorrectAddressData = (extractedData: any): any => {
-  console.log('🔍 Validating and correcting address data...');
+  console.log('🔍 Advanced address validation and correction...');
   
   if (!extractedData.candidate_data) return extractedData;
   
   const candidateData = extractedData.candidate_data;
   
-  // Patterns d'erreurs courantes à détecter
+  // Patterns d'erreurs courantes à détecter (améliorés)
   const agePatterns = [
     /^\d{1,2}\s*ans?$/i,
-    /^\d{1,2}$/, // Juste un nombre seul (probablement un âge)
-    /age\s*:\s*\d{1,2}/i
+    /^\d{1,2}$/, 
+    /age\s*:\s*\d{1,2}/i,
+    /\b\d{1,2}\s*years?\s*old\b/i
   ];
   
   const phonePatterns = [
-    /^\+?\d{1,4}[\s\-\(\)]*\d{1,4}[\s\-\(\)]*\d{1,4}[\s\-\(\)]*\d{1,4}/,
-    /^0\d{9,10}$/
+    /^\+?\d{1,4}[\s\-\(\)]*\d{1,4}[\s\-\(\)]*\d{1,4}[\s\-\(\)]*\d{1,4}[\s\-\(\)]*\d{0,4}$/,
+    /^0\d{9,10}$/,
+    /^\d{2}\s\d{2}\s\d{2}\s\d{2}\s\d{2}$/,
+    /mobile\s*:\s*\+?\d/i,
+    /tel\s*:\s*\+?\d/i,
+    /phone\s*:\s*\+?\d/i
   ];
   
   const emailPatterns = [
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    /email\s*:\s*[^\s@]+@/i,
+    /mail\s*:\s*[^\s@]+@/i
   ];
   
   // Vérification et correction du champ address
@@ -70,26 +78,30 @@ const validateAndCorrectAddressData = (extractedData: any): any => {
     }
     
     // Vérifier si l'adresse contient un téléphone par erreur
-    for (const pattern of phonePatterns) {
-      if (pattern.test(address)) {
-        console.log(`⚠️ Detected phone "${address}" in address field, moving to phone`);
-        if (!candidateData.phone) {
-          candidateData.phone = address;
+    if (candidateData.address) {
+      for (const pattern of phonePatterns) {
+        if (pattern.test(address)) {
+          console.log(`⚠️ Detected phone "${address}" in address field, moving to phone`);
+          if (!candidateData.phone) {
+            candidateData.phone = address;
+          }
+          candidateData.address = '';
+          break;
         }
-        candidateData.address = '';
-        break;
       }
     }
     
     // Vérifier si l'adresse contient un email par erreur
-    for (const pattern of emailPatterns) {
-      if (pattern.test(address)) {
-        console.log(`⚠️ Detected email "${address}" in address field, moving to email`);
-        if (!candidateData.email) {
-          candidateData.email = address;
+    if (candidateData.address) {
+      for (const pattern of emailPatterns) {
+        if (pattern.test(address)) {
+          console.log(`⚠️ Detected email "${address}" in address field, moving to email`);
+          if (!candidateData.email) {
+            candidateData.email = address;
+          }
+          candidateData.address = '';
+          break;
         }
-        candidateData.address = '';
-        break;
       }
     }
   }
@@ -99,94 +111,199 @@ const validateAndCorrectAddressData = (extractedData: any): any => {
     const location = String(candidateData.location);
     console.log(`🏠 Trying to extract address from location: "${location}"`);
     
-    // Pattern pour extraire adresse complète: "Code postal Ville, Pays"
-    const addressMatch = location.match(/(\d{5})\s+([A-Za-zÀ-ÿ\s-]+?)(?:\s*,?\s*(France|Suisse|Switzerland|Belgique|Belgium|Luxembourg))?/i);
-    if (addressMatch) {
-      candidateData.postal_code = addressMatch[1];
-      candidateData.city = addressMatch[2].trim();
-      candidateData.country = addressMatch[3] || 'France';
-      console.log(`✅ Extracted from location - postal: ${candidateData.postal_code}, city: ${candidateData.city}, country: ${candidateData.country}`);
+    // Patterns améliorés pour extraire adresse complète
+    const addressPatterns = [
+      // Pattern 1: Code postal + ville + pays
+      /(\d{5})\s+([A-Za-zÀ-ÿ\s\-']+?)(?:\s*,?\s*(France|Suisse|Switzerland|Belgique|Belgium|Luxembourg))?/i,
+      // Pattern 2: Ville, Pays  
+      /([A-Za-zÀ-ÿ\s\-']+?)\s*,\s*(France|Suisse|Switzerland|Belgique|Belgium|Luxembourg)/i,
+      // Pattern 3: Juste une ville connue
+      /(Geneva|Genève|Lausanne|Zurich|Bern|Berne|Basel|Bâle|Paris|Lyon|Marseille|Toulouse|Nice)/i
+    ];
+    
+    for (const pattern of addressPatterns) {
+      const match = location.match(pattern);
+      if (match) {
+        if (pattern.source.includes('\\d{5}')) {
+          // Pattern avec code postal
+          candidateData.postal_code = match[1];
+          candidateData.city = match[2]?.trim();
+          candidateData.country = match[3] || 'France';
+        } else if (pattern.source.includes(',')) {
+          // Pattern ville, pays
+          candidateData.city = match[1]?.trim();
+          candidateData.country = match[2];
+        } else {
+          // Pattern ville seule
+          candidateData.city = match[1]?.trim();
+          // Auto-détection du pays basé sur la ville
+          const cityLower = match[1]?.toLowerCase();
+          if (['geneva', 'genève', 'lausanne', 'zurich', 'bern', 'berne', 'basel', 'bâle'].includes(cityLower)) {
+            candidateData.country = 'Switzerland';
+          } else {
+            candidateData.country = candidateData.country || 'France';
+          }
+        }
+        console.log(`✅ Extracted from location - postal: ${candidateData.postal_code}, city: ${candidateData.city}, country: ${candidateData.country}`);
+        break;
+      }
     }
   }
   
-  console.log('✅ Address validation completed');
+  console.log('✅ Advanced address validation completed');
   return extractedData;
 };
 
 /**
- * Extraction d'adresse améliorée à partir du texte brut
+ * NOUVELLE FONCTION: Extraction d'adresse et de données manquantes améliorée
  */
-const extractAddressFromText = (text: string): { address: string; postal_code: string; city: string; country: string; location: string } => {
-  console.log('🏠 Advanced address extraction from text...');
+const extractMissingDataFromText = (text: string, currentData: any): any => {
+  console.log('🔍 Advanced missing data extraction from text...');
   
-  // Patterns améliorés pour l'extraction d'adresse
-  const addressPatterns = [
-    // Pattern 1: Adresse complète avec rue, code postal, ville
-    /(?:^|\n)\s*(.+?)\s*(\d{5})\s+([A-Za-zÀ-ÿ\s-]+?)(?:\s*,?\s*(France|Suisse|Switzerland|Belgique|Belgium|Luxembourg))?/gim,
-    // Pattern 2: Code postal + ville
-    /(\d{5})\s+([A-Za-zÀ-ÿ\s-]+?)(?:\s*,?\s*(France|Suisse|Switzerland|Belgique|Belgium))/gi,
-    // Pattern 3: Ville, Pays
-    /([A-Za-zÀ-ÿ\s-]+?)\s*,\s*(France|Suisse|Switzerland|Belgique|Belgium|Luxembourg)/gi
-  ];
+  const missingData = { ...currentData };
   
-  for (const pattern of addressPatterns) {
-    const matches = Array.from(text.matchAll(pattern));
-    for (const match of matches) {
-      // Vérifier que ce n'est pas un âge ou un téléphone
-      const potentialAddress = match[1] || '';
-      
-      // Ignorer si c'est clairement un âge
-      if (/^\d{1,2}\s*ans?$/i.test(potentialAddress)) {
-        continue;
+  // Patterns améliorés pour l'extraction de données manquantes
+  const patterns = {
+    email: [
+      /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
+      /e-?mail\s*:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi
+    ],
+    phone: [
+      /(?:tel|phone|mobile|portable)\s*:?\s*(\+?[\d\s\-\(\)\.]{8,20})/gi,
+      /(\+?33\s?[1-9](?:[\s\-\.]?\d{2}){4})/g,
+      /(\+?41\s?\d{2}\s?\d{3}\s?\d{2}\s?\d{2})/g,
+      /(0[1-9](?:[\s\-\.]?\d{2}){4})/g,
+      /(\d{2}\s\d{2}\s\d{2}\s\d{2}\s\d{2})/g
+    ],
+    address: [
+      // Adresses avec numéro + rue + ville
+      /(?:^|\n)\s*(\d+[\w\s]*(?:rue|avenue|boulevard|place|chemin|allée|impasse|passage)[^,\n]*?)[\s,]*(\d{5})?\s*([A-Za-zÀ-ÿ\s\-']+?)(?:\s*,?\s*(France|Suisse|Switzerland|Belgique|Belgium))?/gim,
+      // Adresses sans numéro mais avec indication de rue
+      /(?:^|\n)\s*((?:rue|avenue|boulevard|place|chemin|allée|impasse|passage)\s+[^,\n]+?)[\s,]*(\d{5})?\s*([A-Za-zÀ-ÿ\s\-']+?)(?:\s*,?\s*(France|Suisse|Switzerland|Belgique|Belgium))?/gim
+    ],
+    postalCode: [
+      /\b(\d{5})\s+([A-Za-zÀ-ÿ\s\-']+?)(?:\s*,?\s*(France|Suisse|Switzerland|Belgique|Belgium))?/gi
+    ]
+  };
+  
+  // Extraction des emails manquants
+  if (!missingData.email) {
+    for (const pattern of patterns.email) {
+      const matches = text.matchAll(pattern);
+      for (const match of matches) {
+        const email = match[1] || match[0];
+        if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          missingData.email = email;
+          console.log(`📧 Found missing email: ${email}`);
+          break;
+        }
       }
-      
-      // Ignorer si c'est clairement un téléphone
-      if (/^\+?\d{1,4}[\s\-\(\)]*\d/.test(potentialAddress)) {
-        continue;
-      }
-      
-      return {
-        address: potentialAddress || '',
-        postal_code: match[2] || '',
-        city: match[3] || '',
-        country: match[4] || 'France',
-        location: match[0]
-      };
+      if (missingData.email) break;
     }
   }
   
-  return { address: '', postal_code: '', city: '', country: '', location: '' };
+  // Extraction des téléphones manquants
+  if (!missingData.phone) {
+    for (const pattern of patterns.phone) {
+      const matches = text.matchAll(pattern);
+      for (const match of matches) {
+        const phone = match[1] || match[0];
+        if (phone && phone.replace(/\D/g, '').length >= 8) {
+          missingData.phone = phone.trim();
+          console.log(`📱 Found missing phone: ${phone}`);
+          break;
+        }
+      }
+      if (missingData.phone) break;
+    }
+  }
+  
+  // Extraction des adresses manquantes
+  if (!missingData.address) {
+    for (const pattern of patterns.address) {
+      const matches = text.matchAll(pattern);
+      for (const match of matches) {
+        const potentialAddress = match[1];
+        if (potentialAddress && potentialAddress.length > 5) {
+          // Vérifier que ce n'est pas un âge ou autre donnée
+          if (!/^\d{1,2}\s*ans?$/i.test(potentialAddress) && 
+              !/^[a-zA-Z0-9._%+-]+@/.test(potentialAddress)) {
+            missingData.address = potentialAddress.trim();
+            if (match[2]) missingData.postal_code = match[2];
+            if (match[3]) missingData.city = match[3].trim();
+            if (match[4]) missingData.country = match[4];
+            console.log(`🏠 Found missing address: ${potentialAddress}`);
+            break;
+          }
+        }
+      }
+      if (missingData.address) break;
+    }
+  }
+  
+  // Extraction des codes postaux et villes manquants
+  if (!missingData.postal_code || !missingData.city) {
+    for (const pattern of patterns.postalCode) {
+      const matches = text.matchAll(pattern);
+      for (const match of matches) {
+        if (!missingData.postal_code && match[1]) {
+          missingData.postal_code = match[1];
+          console.log(`📮 Found missing postal code: ${match[1]}`);
+        }
+        if (!missingData.city && match[2]) {
+          missingData.city = match[2].trim();
+          console.log(`🏙️ Found missing city: ${match[2]}`);
+        }
+        if (!missingData.country && match[3]) {
+          missingData.country = match[3];
+          console.log(`🌍 Found missing country: ${match[3]}`);
+        }
+        if (missingData.postal_code && missingData.city) break;
+      }
+      if (missingData.postal_code && missingData.city) break;
+    }
+  }
+  
+  console.log('✅ Missing data extraction completed');
+  return missingData;
 };
 
 /**
- * NOUVEAU PROMPT: Prompt optimisé et précis pour éviter les confusions
+ * PROMPT AMÉLIORÉ: Prompt optimisé pour capturer TOUTES les données disponibles
  */
-const createOptimizedPrompt = (resumeText: string): string => {
-  return `Extraire les informations du CV suivant et retourner un JSON valide.
+const createEnhancedPrompt = (resumeText: string): string => {
+  return `IMPORTANT: Extraire TOUTES les informations disponibles du CV suivant. Ne laisser aucune donnée importante de côté.
 
-IMPORTANT - RÈGLES D'EXTRACTION STRICTES:
-1. L'ÂGE N'EST JAMAIS UNE ADRESSE - ne jamais mettre l'âge dans le champ "address"
-2. Le TÉLÉPHONE n'est jamais une adresse - le mettre dans "phone"
-3. L'EMAIL n'est jamais une adresse - le mettre dans "email"
-4. L'adresse doit contenir une RUE et un NUMÉRO, pas juste une ville
-5. Si pas d'adresse de rue trouvée, laisser "address" vide
+RÈGLES D'EXTRACTION STRICTES ET AMÉLIORÉES:
+1. OBLIGATOIRE: Extraire EMAIL et TÉLÉPHONE s'ils sont présents dans le CV
+2. Pour l'ADRESSE: Capturer la rue ET le numéro si disponibles, sinon extraire ce qui est disponible
+3. VILLE et CODE POSTAL: Toujours les extraire s'ils sont mentionnés
+4. PAYS: Déduire du contexte si non explicite (ex: codes postaux français = France)
+5. Si une information semble manquer, relire le CV entièrement
 
-Format JSON requis:
+EXEMPLES CONCRETS D'EXTRACTION CORRECTE:
+- "clement.beauclair@gmail.com" → email: "clement.beauclair@gmail.com"
+- "06 68 49 07 38" → phone: "06 68 49 07 38"  
+- "Rue Philippe-Plantamour 17, 1201 Genève" → address: "Rue Philippe-Plantamour 17", postal_code: "1201", city: "Genève", country: "Switzerland"
+- "74150 RUMILLY" → postal_code: "74150", city: "RUMILLY", country: "France"
+- "Lausanne, Suisse" → city: "Lausanne", country: "Switzerland"
+
+FORMAT JSON REQUIS (capturer TOUTES les données disponibles):
 {
   "candidate_data": {
-    "first_name": "prénom extrait",
-    "last_name": "nom extrait", 
-    "email": "email@exemple.com ou chaîne vide si non trouvé",
-    "phone": "numéro de téléphone ou chaîne vide",
+    "first_name": "prénom exact du CV",
+    "last_name": "nom exact du CV", 
+    "email": "OBLIGATOIRE: email exact trouvé dans le CV ou chaîne vide",
+    "phone": "OBLIGATOIRE: téléphone exact trouvé dans le CV ou chaîne vide",
     "position": "poste actuel ou recherché",
-    "location": "ville ou localisation générale",
-    "address": "UNIQUEMENT adresse de rue avec numéro (ex: '123 Rue de la Paix') ou chaîne vide",
-    "postal_code": "code postal (5 chiffres) ou chaîne vide",
-    "city": "nom de la ville ou chaîne vide",
-    "country": "nom du pays ou chaîne vide",
+    "location": "localisation générale mentionnée",
+    "address": "adresse de rue complète si disponible ou chaîne vide",
+    "postal_code": "code postal exact si trouvé ou chaîne vide",
+    "city": "ville exacte si trouvée ou chaîne vide",
+    "country": "pays exact ou déduit du contexte",
     "years_experience": nombre_années_expérience,
     "company": "entreprise actuelle/dernière",
-    "skills": ["compétence1", "compétence2"],
+    "skills": ["TOUTES les compétences mentionnées"],
     "experiences": [{"title": "poste", "company": "entreprise", "duration": "durée", "description": "description"}],
     "education": [{"degree": "diplôme", "school": "école", "year": "année"}],
     "languages": [{"language": "langue", "level": "niveau"}],
@@ -209,24 +326,20 @@ Format JSON requis:
   }
 }
 
-EXEMPLES DE DISTINCTIONS IMPORTANTES:
-- "42 ans" → c'est un ÂGE, ne PAS le mettre dans "address"
-- "74150 RUMILLY" → postal_code: "74150", city: "RUMILLY"
-- "Mobile: +33..." → c'est un TÉLÉPHONE, le mettre dans "phone"
-- "Rue Philippe-Plantamour 17" → c'est une ADRESSE valide pour "address"
+ATTENTION: Ne pas confondre âge et adresse. "42 ans" n'est PAS une adresse.
 
-Texte du CV à analyser:
+Texte du CV à analyser (extraire TOUTES les informations disponibles):
 ${resumeText.slice(0, 4000)}
 
-Répondre uniquement avec le JSON, sans texte explicatif.`;
+Répondre uniquement avec le JSON complet, sans texte explicatif.`;
 };
 
 /**
- * PARSING JSON amélioré avec meilleur logging
+ * PARSING JSON amélioré avec validation renforcée
  */
 const parseAIResponse = (content: string): any => {
   console.log('🧹 === DEBUT DU PARSING AI AMÉLIORÉ ===');
-  console.log('📝 Contenu brut reçu d\'OpenAI:', content);
+  console.log('📝 Contenu brut reçu d\'OpenAI:', content.substring(0, 500) + '...');
   console.log('📊 Longueur du contenu:', content.length);
   
   if (!content || content.trim() === '') {
@@ -247,7 +360,7 @@ const parseAIResponse = (content: string): any => {
     const match = jsonContent.match(pattern);
     if (match) {
       jsonContent = match[1] || match[0];
-      console.log('✅ Pattern JSON trouvé avec:', pattern.source);
+      console.log('✅ Pattern JSON trouvé avec:', pattern.source.substring(0, 50));
       break;
     }
   }
@@ -262,6 +375,17 @@ const parseAIResponse = (content: string): any => {
     if (parsed.candidate_data && typeof parsed.candidate_data === 'object') {
       console.log('✅ Structure candidate_data valide trouvée');
       console.log('👤 Données candidat:', Object.keys(parsed.candidate_data));
+      
+      // Validation des données critiques
+      const criticalFields = ['email', 'phone', 'first_name', 'last_name'];
+      const missingCritical = criticalFields.filter(field => 
+        !parsed.candidate_data[field] || parsed.candidate_data[field] === ''
+      );
+      
+      if (missingCritical.length > 0) {
+        console.warn('⚠️ Champs critiques manquants:', missingCritical);
+      }
+      
       return parsed;
     } else {
       console.warn('⚠️ Structure candidate_data manquante ou invalide');
@@ -296,7 +420,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 Starting IMPROVED resume-ai-analysis with address validation');
+    console.log('🚀 Starting ENHANCED resume-ai-analysis with comprehensive data extraction');
     
     const requestData = await req.json();
     const { resumeId, resumeText, overwriteExisting } = requestData;
@@ -357,20 +481,20 @@ serve(async (req) => {
     console.log('✅ Resume data fetched for user:', resumeDataResult.data.user_id);
 
     // Appel à OpenAI avec prompt amélioré
-    console.log('🤖 Calling OpenAI with IMPROVED prompt...');
+    console.log('🤖 Calling OpenAI with ENHANCED comprehensive prompt...');
     
-    const optimizedPrompt = createOptimizedPrompt(resumeText);
+    const enhancedPrompt = createEnhancedPrompt(resumeText);
     
     const openAIPayload = {
       model: 'gpt-4o',
       messages: [
         {
           role: 'system',
-          content: 'Tu es un assistant expert en extraction de données de CV. Tu dois faire attention à ne JAMAIS confondre l\'âge avec l\'adresse. Tu réponds toujours avec du JSON valide uniquement.'
+          content: 'Tu es un assistant expert en extraction de données de CV. Tu dois capturer TOUTES les informations disponibles sans exception. Jamais de données manquantes. Tu réponds toujours avec du JSON valide uniquement.'
         },
         {
           role: 'user',
-          content: optimizedPrompt
+          content: enhancedPrompt
         }
       ],
       temperature: 0.1,
@@ -416,21 +540,30 @@ serve(async (req) => {
       );
     }
 
-    console.log('📝 Processing AI response with improved parsing and validation...');
+    console.log('📝 Processing AI response with enhanced parsing and validation...');
     let extractedData;
     try {
       extractedData = parseAIResponse(content);
       console.log('✅ AI response parsed successfully');
       
-      // NOUVELLE ÉTAPE: Validation et correction des données
+      // ÉTAPE 1: Validation et correction des données
       extractedData = validateAndCorrectAddressData(extractedData);
       console.log('✅ Address data validated and corrected');
       
-      console.log('📊 Final extracted data keys:', Object.keys(extractedData));
+      // ÉTAPE 2: Extraction des données manquantes
+      if (extractedData.candidate_data) {
+        const enhancedData = extractMissingDataFromText(resumeText, extractedData.candidate_data);
+        extractedData.candidate_data = enhancedData;
+        console.log('✅ Missing data extraction completed');
+      }
+      
+      console.log('📊 Final enhanced data keys:', Object.keys(extractedData));
       
       if (extractedData.candidate_data) {
-        console.log('👤 Candidate data keys:', Object.keys(extractedData.candidate_data));
-        console.log('📝 Address validation result:', {
+        console.log('👤 Enhanced candidate data keys:', Object.keys(extractedData.candidate_data));
+        console.log('📝 Final validation result:', {
+          email: extractedData.candidate_data.email,
+          phone: extractedData.candidate_data.phone,
           address: extractedData.candidate_data.address,
           postal_code: extractedData.candidate_data.postal_code,
           city: extractedData.candidate_data.city,
@@ -439,7 +572,7 @@ serve(async (req) => {
         });
       }
     } catch (parseError) {
-      console.error('❌ JSON parse error even with improved parsing:', parseError);
+      console.error('❌ JSON parse error even with enhanced parsing:', parseError);
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -449,32 +582,10 @@ serve(async (req) => {
       );
     }
 
-    // Extraction d'adresse de fallback si nécessaire
-    const candidateData = extractedData.candidate_data || {};
-    if (!candidateData.address || !candidateData.city) {
-      console.log('🏠 Extracting address fallback with improved logic...');
-      const addressInfo = extractAddressFromText(resumeText);
-      
-      // Ne remplacer que les champs vides
-      if (!candidateData.address && addressInfo.address) {
-        candidateData.address = addressInfo.address;
-      }
-      if (!candidateData.postal_code && addressInfo.postal_code) {
-        candidateData.postal_code = addressInfo.postal_code;
-      }
-      if (!candidateData.city && addressInfo.city) {
-        candidateData.city = addressInfo.city;
-      }
-      if (!candidateData.country && addressInfo.country) {
-        candidateData.country = addressInfo.country;
-      }
-      if (!candidateData.location && addressInfo.location) {
-        candidateData.location = addressInfo.location;
-      }
-    }
-
     // Validation finale des données avant insertion
-    console.log('🔍 Final validation of extracted data...');
+    console.log('🔍 Final comprehensive validation of extracted data...');
+    const candidateData = extractedData.candidate_data || {};
+    
     const hasValidData = candidateData.first_name || candidateData.last_name || candidateData.position || candidateData.company;
     
     if (!hasValidData) {
@@ -488,17 +599,22 @@ serve(async (req) => {
       );
     }
 
-    // Log final des données d'adresse avant insertion
-    console.log('🏠 Final address data before insertion:', {
+    // Log final des données extraites
+    console.log('📋 Final comprehensive extraction results:', {
+      email: candidateData.email,
+      phone: candidateData.phone,
       address: candidateData.address,
       postal_code: candidateData.postal_code,
       city: candidateData.city,
       country: candidateData.country,
-      location: candidateData.location
+      location: candidateData.location,
+      hasEmail: !!candidateData.email,
+      hasPhone: !!candidateData.phone,
+      hasAddress: !!candidateData.address
     });
 
     // Préparation des données pour insertion avec validation stricte
-    console.log('📊 Preparing candidate data for insertion...');
+    console.log('📊 Preparing comprehensive candidate data for insertion...');
     const candidateInsertData = {
       resume_id: resumeId,
       user_id: resumeDataResult.data.user_id,
@@ -523,7 +639,7 @@ serve(async (req) => {
       career_objectives: candidateData.career_objectives || null
     };
 
-    console.log('💾 Inserting candidate with validated address data...');
+    console.log('💾 Inserting candidate with comprehensive extracted data...');
     const { data: candidate, error: insertError } = await supabase
       .from('candidates')
       .insert(candidateInsertData)
@@ -541,7 +657,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('✅ Candidate created successfully with validated address:', candidate.id);
+    console.log('✅ Candidate created successfully with comprehensive data:', candidate.id);
 
     // Sauvegarde du score AI
     const scoringData = extractedData.scoring || {};
@@ -568,7 +684,7 @@ serve(async (req) => {
       }
     }
 
-    console.log('🎉 Improved analysis with address validation completed successfully');
+    console.log('🎉 ENHANCED comprehensive analysis completed successfully');
 
     return new Response(
       JSON.stringify({ 
@@ -576,13 +692,13 @@ serve(async (req) => {
         candidate: candidate,
         candidateId: candidate.id,
         scoring: scoringData,
-        message: 'CV analyzed successfully with improved address validation'
+        message: 'CV analyzed successfully with enhanced comprehensive data extraction'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('💥 CRITICAL ERROR in improved analysis:', error);
+    console.error('💥 CRITICAL ERROR in enhanced comprehensive analysis:', error);
     console.error('Error stack:', error.stack);
     
     return new Response(

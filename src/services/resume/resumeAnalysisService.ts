@@ -1,15 +1,16 @@
+
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { checkResumeAlreadyAnalyzed } from './resumeValidationService';
-import { validateAndCorrectAddressData, suggestAddressCorrections } from './addressValidationService';
+import { validateAndCorrectAddressData, suggestAddressCorrections, extractMissingDataFromText, detectMissingCriticalData } from './addressValidationService';
 
 /**
  * Analyser un CV avec l'IA et créer automatiquement un candidat avec score de complétude
- * Version améliorée avec validation des adresses
+ * Version ULTRA améliorée avec extraction complète et validation intelligente
  */
 export const analyzeResume = async (resumeId: string, resumeText: string, overwriteExisting: boolean = false): Promise<{ success: boolean; message?: string; candidateId?: string }> => {
   try {
-    console.log('🚀 Starting IMPROVED resume analysis with address validation for:', resumeId);
+    console.log('🚀 Starting ULTRA ENHANCED resume analysis with comprehensive data extraction for:', resumeId);
     console.log('📊 Resume text length:', resumeText?.length || 0);
     console.log('🔄 Overwrite existing:', overwriteExisting);
     
@@ -37,9 +38,9 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
     console.log(`📝 Text length being sent to AI: ${resumeText.length} characters`);
     console.log('📋 Sample of the text being sent:', resumeText.substring(0, 500) + '...');
     
-    // Appel à l'edge function d'analyse de CV améliorée
+    // Appel à l'edge function d'analyse de CV ultra améliorée
     try {
-      console.log('🔗 Calling IMPROVED resume-ai-analysis edge function with address validation...');
+      console.log('🔗 Calling ULTRA ENHANCED resume-ai-analysis edge function...');
       
       const { data, error } = await supabase.functions.invoke('resume-ai-analysis', {
         body: { 
@@ -47,11 +48,13 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
           resumeText: resumeText,
           overwriteExisting: overwriteExisting,
           fullAnalysis: true,
-          validateAddress: true // Nouveau flag pour activer la validation d'adresse
+          validateAddress: true,
+          extractMissingData: true, // Nouveau flag pour extraction complète
+          comprehensiveValidation: true // Nouveau flag pour validation complète
         }
       });
       
-      console.log('📡 Edge function response:', { data, error });
+      console.log('📡 Ultra enhanced edge function response:', { data, error });
       
       if (error) {
         console.error('❌ Error invoking resume-ai-analysis function:', error);
@@ -64,27 +67,48 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
         throw new Error(data?.error || 'Analyse du CV échouée');
       }
       
-      console.log('✅ IMPROVED analysis successful, candidate created:', data.candidate?.id);
+      console.log('✅ ULTRA ENHANCED analysis successful, candidate created:', data.candidate?.id);
       console.log('🎯 AI score calculated:', data.scoring?.overall_score);
       
-      // Validation supplémentaire côté client des données d'adresse
+      // Validation supplémentaire côté client des données d'adresse et données manquantes
       if (data.candidate) {
-        console.log('🔍 Client-side address validation...');
+        console.log('🔍 Client-side comprehensive validation...');
         
+        // Validation et correction des données d'adresse
         const correctedCandidate = validateAndCorrectAddressData(data.candidate);
-        const suggestions = suggestAddressCorrections(correctedCandidate);
+        
+        // Extraction des données manquantes
+        const enhancedCandidate = extractMissingDataFromText(resumeText, correctedCandidate);
+        
+        // Détection des données critiques manquantes
+        const missingData = detectMissingCriticalData(enhancedCandidate, resumeText);
+        
+        // Suggestions de correction
+        const suggestions = suggestAddressCorrections(enhancedCandidate, resumeText);
+        
+        if (missingData.length > 0) {
+          console.warn('⚠️ Critical data potentially missing:', missingData);
+          // Vous pourriez afficher ces avertissements à l'utilisateur
+        }
         
         if (suggestions.length > 0) {
-          console.log('💡 Address suggestions found:', suggestions);
+          console.log('💡 Data correction suggestions found:', suggestions);
           // On pourrait afficher ces suggestions à l'utilisateur si nécessaire
         }
         
-        console.log('📊 Address validation completed on client side');
+        console.log('📊 Comprehensive validation completed on client side');
       }
       
       // Vérifier les structures de données retournées pour le débogage
       if (data.candidate) {
-        console.log('📊 Candidate data structure validation:');
+        console.log('📊 Enhanced candidate data structure validation:');
+        console.log('  - Email extracted:', !!data.candidate.email, data.candidate.email);
+        console.log('  - Phone extracted:', !!data.candidate.phone, data.candidate.phone);
+        console.log('  - Address extracted:', !!data.candidate.address, data.candidate.address);
+        console.log('  - Postal code extracted:', !!data.candidate.postal_code, data.candidate.postal_code);
+        console.log('  - City extracted:', !!data.candidate.city, data.candidate.city);
+        console.log('  - Country extracted:', !!data.candidate.country, data.candidate.country);
+        
         console.log('  - Experiences:', typeof data.candidate.experiences, 
           Array.isArray(data.candidate.experiences) ? 
           `Array with ${data.candidate.experiences.length} items` : 
@@ -105,12 +129,7 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
           `Array with ${data.candidate.skills.length} items` : 
           'Not an array or empty');
         
-        console.log('  - Certifications:', typeof data.candidate.certifications, 
-          Array.isArray(data.candidate.certifications) ? 
-          `Array with ${data.candidate.certifications.length} items` : 
-          'Not an array or empty');
-        
-        console.log('  - Address data:', {
+        console.log('  - Comprehensive address data:', {
           address: data.candidate.address,
           postal_code: data.candidate.postal_code,
           city: data.candidate.city,
@@ -129,8 +148,8 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
       }
       
       const successMessage = overwriteExisting 
-        ? "Le CV a été ré-analysé avec succès et les données du candidat ont été mises à jour avec validation d'adresse améliorée" 
-        : "Le CV a été analysé avec succès, un candidat a été créé avec validation d'adresse améliorée et son score de complétude a été calculé";
+        ? "Le CV a été ré-analysé avec succès et les données du candidat ont été mises à jour avec extraction complète et validation intelligente" 
+        : "Le CV a été analysé avec succès, un candidat a été créé avec extraction complète des données et validation intelligente";
       
       toast({
         title: "Analyse terminée",
@@ -188,7 +207,7 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
     }
     
   } catch (error: any) {
-    console.error('💥 Resume analysis error:', error);
+    console.error('💥 Ultra enhanced resume analysis error:', error);
     
     // Log détaillé de l'erreur pour le débogage
     console.error('📊 Error details:', {

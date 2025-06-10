@@ -1,6 +1,7 @@
 
 /**
  * Service de validation et correction des données d'adresse extraites par l'IA
+ * Version améliorée avec détection intelligente des données manquantes
  */
 
 export interface AddressData {
@@ -23,7 +24,7 @@ export interface CandidateDataWithAddress {
 }
 
 /**
- * Patterns pour détecter des erreurs courantes dans l'extraction d'adresse
+ * Patterns améliorés pour détecter des erreurs courantes dans l'extraction d'adresse
  */
 const VALIDATION_PATTERNS = {
   age: [
@@ -33,14 +34,43 @@ const VALIDATION_PATTERNS = {
     /\d{1,2}\s*years?\s*old/i
   ],
   phone: [
-    /^\+?\d{1,4}[\s\-\(\)]*\d{1,4}[\s\-\(\)]*\d{1,4}[\s\-\(\)]*\d{1,4}/,
+    /^\+?\d{1,4}[\s\-\(\)]*\d{1,4}[\s\-\(\)]*\d{1,4}[\s\-\(\)]*\d{1,4}[\s\-\(\)]*\d{0,4}$/,
     /^0\d{9,10}$/,
+    /^\d{2}\s\d{2}\s\d{2}\s\d{2}\s\d{2}$/,
     /mobile\s*:\s*\+?\d/i,
-    /tel\s*:\s*\+?\d/i
+    /tel\s*:\s*\+?\d/i,
+    /phone\s*:\s*\+?\d/i
   ],
   email: [
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-    /email\s*:\s*[^\s@]+@/i
+    /email\s*:\s*[^\s@]+@/i,
+    /mail\s*:\s*[^\s@]+@/i
+  ]
+};
+
+/**
+ * Patterns améliorés pour extraction de données manquantes
+ */
+const EXTRACTION_PATTERNS = {
+  email: [
+    /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g,
+    /e-?mail\s*:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi
+  ],
+  phone: [
+    /(?:tel|phone|mobile|portable)\s*:?\s*(\+?[\d\s\-\(\)\.]{8,20})/gi,
+    /(\+?33\s?[1-9](?:[\s\-\.]?\d{2}){4})/g,
+    /(\+?41\s?\d{2}\s?\d{3}\s?\d{2}\s?\d{2})/g,
+    /(0[1-9](?:[\s\-\.]?\d{2}){4})/g,
+    /(\d{2}\s\d{2}\s\d{2}\s\d{2}\s\d{2})/g
+  ],
+  address: [
+    // Adresses avec numéro + rue + ville
+    /(?:^|\n)\s*(\d+[\w\s]*(?:rue|avenue|boulevard|place|chemin|allée|impasse|passage)[^,\n]*?)[\s,]*(\d{5})?\s*([A-Za-zÀ-ÿ\s\-']+?)(?:\s*,?\s*(France|Suisse|Switzerland|Belgique|Belgium))?/gim,
+    // Adresses sans numéro mais avec indication de rue
+    /(?:^|\n)\s*((?:rue|avenue|boulevard|place|chemin|allée|impasse|passage)\s+[^,\n]+?)[\s,]*(\d{5})?\s*([A-Za-zÀ-ÿ\s\-']+?)(?:\s*,?\s*(France|Suisse|Switzerland|Belgique|Belgium))?/gim
+  ],
+  postalCode: [
+    /\b(\d{5})\s+([A-Za-zÀ-ÿ\s\-']+?)(?:\s*,?\s*(France|Suisse|Switzerland|Belgique|Belgium))?/gi
   ]
 };
 
@@ -48,13 +78,15 @@ const VALIDATION_PATTERNS = {
  * Valide et corrige les données d'adresse extraites par l'IA
  */
 export const validateAndCorrectAddressData = (candidateData: CandidateDataWithAddress): CandidateDataWithAddress => {
-  console.log('🔍 AddressValidationService: Starting validation...');
+  console.log('🔍 Enhanced AddressValidationService: Starting validation...');
   console.log('📊 Input data:', {
     address: candidateData.address,
     postal_code: candidateData.postal_code,
     city: candidateData.city,
     country: candidateData.country,
-    location: candidateData.location
+    location: candidateData.location,
+    email: candidateData.email,
+    phone: candidateData.phone
   });
   
   const correctedData = { ...candidateData };
@@ -107,38 +139,44 @@ export const validateAndCorrectAddressData = (candidateData: CandidateDataWithAd
     console.log(`🏠 Trying to extract address components from location: "${location}"`);
     
     const addressComponents = extractAddressComponents(location);
-    if (addressComponents.postal_code || addressComponents.city) {
+    if (addressComponents.postal_code || addressComponents.city || addressComponents.address) {
       Object.assign(correctedData, addressComponents);
       console.log(`✅ Extracted components:`, addressComponents);
     }
   }
   
-  console.log('✅ AddressValidationService: Validation completed');
+  console.log('✅ Enhanced AddressValidationService: Validation completed');
   console.log('📊 Output data:', {
     address: correctedData.address,
     postal_code: correctedData.postal_code,
     city: correctedData.city,
     country: correctedData.country,
-    location: correctedData.location
+    location: correctedData.location,
+    email: correctedData.email,
+    phone: correctedData.phone
   });
   
   return correctedData;
 };
 
 /**
- * Extrait les composants d'adresse à partir d'un texte
+ * Extrait les composants d'adresse à partir d'un texte (amélioré)
  */
 export const extractAddressComponents = (text: string): AddressData => {
   if (!text) return {};
   
-  console.log(`🔍 Extracting address components from: "${text}"`);
+  console.log(`🔍 Enhanced address component extraction from: "${text}"`);
   
-  // Patterns pour extraire les composants d'adresse
+  // Patterns améliorés pour extraire les composants d'adresse
   const patterns = [
-    // Pattern 1: Code postal + ville + pays
-    /(\d{5})\s+([A-Za-zÀ-ÿ\s-]+?)(?:\s*,?\s*(France|Suisse|Switzerland|Belgique|Belgium|Luxembourg))?/i,
-    // Pattern 2: Ville, Pays
-    /([A-Za-zÀ-ÿ\s-]+?)\s*,\s*(France|Suisse|Switzerland|Belgique|Belgium|Luxembourg)/i
+    // Pattern 1: Adresse complète avec rue + code postal + ville + pays
+    /(\d+[\w\s]*(?:rue|avenue|boulevard|place|chemin|allée|impasse|passage)[^,\n]*?)[\s,]*(\d{5})\s+([A-Za-zÀ-ÿ\s\-']+?)(?:\s*,?\s*(France|Suisse|Switzerland|Belgique|Belgium|Luxembourg))?/i,
+    // Pattern 2: Code postal + ville + pays
+    /(\d{5})\s+([A-Za-zÀ-ÿ\s\-']+?)(?:\s*,?\s*(France|Suisse|Switzerland|Belgique|Belgium|Luxembourg))?/i,
+    // Pattern 3: Ville, Pays
+    /([A-Za-zÀ-ÿ\s\-']+?)\s*,\s*(France|Suisse|Switzerland|Belgique|Belgium|Luxembourg)/i,
+    // Pattern 4: Ville reconnue
+    /(Geneva|Genève|Lausanne|Zurich|Bern|Berne|Basel|Bâle|Paris|Lyon|Marseille|Toulouse|Nice|Colomiers)/i
   ];
   
   for (const pattern of patterns) {
@@ -146,26 +184,132 @@ export const extractAddressComponents = (text: string): AddressData => {
     if (match) {
       const result: AddressData = {};
       
-      if (pattern.source.includes('\\d{5}')) {
+      if (pattern.source.includes('rue|avenue|boulevard')) {
+        // Pattern avec adresse complète
+        result.address = match[1]?.trim();
+        result.postal_code = match[2];
+        result.city = match[3]?.trim();
+        result.country = match[4] || 'France';
+      } else if (pattern.source.includes('\\d{5}')) {
         // Pattern avec code postal
         result.postal_code = match[1];
         result.city = match[2]?.trim();
         result.country = match[3] || 'France';
-      } else {
+      } else if (pattern.source.includes(',')) {
         // Pattern ville, pays
         result.city = match[1]?.trim();
         result.country = match[2];
+      } else {
+        // Pattern ville seule
+        result.city = match[1]?.trim();
+        // Auto-détection du pays basé sur la ville
+        const cityLower = match[1]?.toLowerCase();
+        if (['geneva', 'genève', 'lausanne', 'zurich', 'bern', 'berne', 'basel', 'bâle'].includes(cityLower)) {
+          result.country = 'Switzerland';
+        } else {
+          result.country = 'France';
+        }
       }
       
       result.location = match[0];
       
-      console.log('✅ Address components extracted:', result);
+      console.log('✅ Enhanced address components extracted:', result);
       return result;
     }
   }
   
   console.log('ℹ️ No address components found');
   return {};
+};
+
+/**
+ * Extrait les données manquantes à partir du texte brut
+ */
+export const extractMissingDataFromText = (text: string, currentData: CandidateDataWithAddress): CandidateDataWithAddress => {
+  console.log('🔍 Enhanced missing data extraction from text...');
+  
+  const enhancedData = { ...currentData };
+  
+  // Extraction des emails manquants
+  if (!enhancedData.email) {
+    for (const pattern of EXTRACTION_PATTERNS.email) {
+      const matches = text.matchAll(pattern);
+      for (const match of matches) {
+        const email = match[1] || match[0];
+        if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          enhancedData.email = email;
+          console.log(`📧 Found missing email: ${email}`);
+          break;
+        }
+      }
+      if (enhancedData.email) break;
+    }
+  }
+  
+  // Extraction des téléphones manquants
+  if (!enhancedData.phone) {
+    for (const pattern of EXTRACTION_PATTERNS.phone) {
+      const matches = text.matchAll(pattern);
+      for (const match of matches) {
+        const phone = match[1] || match[0];
+        if (phone && phone.replace(/\D/g, '').length >= 8) {
+          enhancedData.phone = phone.trim();
+          console.log(`📱 Found missing phone: ${phone}`);
+          break;
+        }
+      }
+      if (enhancedData.phone) break;
+    }
+  }
+  
+  // Extraction des adresses manquantes
+  if (!enhancedData.address) {
+    for (const pattern of EXTRACTION_PATTERNS.address) {
+      const matches = text.matchAll(pattern);
+      for (const match of matches) {
+        const potentialAddress = match[1];
+        if (potentialAddress && potentialAddress.length > 5) {
+          // Vérifier que ce n'est pas un âge ou autre donnée
+          if (!/^\d{1,2}\s*ans?$/i.test(potentialAddress) && 
+              !/^[a-zA-Z0-9._%+-]+@/.test(potentialAddress)) {
+            enhancedData.address = potentialAddress.trim();
+            if (match[2]) enhancedData.postal_code = match[2];
+            if (match[3]) enhancedData.city = match[3].trim();
+            if (match[4]) enhancedData.country = match[4];
+            console.log(`🏠 Found missing address: ${potentialAddress}`);
+            break;
+          }
+        }
+      }
+      if (enhancedData.address) break;
+    }
+  }
+  
+  // Extraction des codes postaux et villes manquants
+  if (!enhancedData.postal_code || !enhancedData.city) {
+    for (const pattern of EXTRACTION_PATTERNS.postalCode) {
+      const matches = text.matchAll(pattern);
+      for (const match of matches) {
+        if (!enhancedData.postal_code && match[1]) {
+          enhancedData.postal_code = match[1];
+          console.log(`📮 Found missing postal code: ${match[1]}`);
+        }
+        if (!enhancedData.city && match[2]) {
+          enhancedData.city = match[2].trim();
+          console.log(`🏙️ Found missing city: ${match[2]}`);
+        }
+        if (!enhancedData.country && match[3]) {
+          enhancedData.country = match[3];
+          console.log(`🌍 Found missing country: ${match[3]}`);
+        }
+        if (enhancedData.postal_code && enhancedData.city) break;
+      }
+      if (enhancedData.postal_code && enhancedData.city) break;
+    }
+  }
+  
+  console.log('✅ Enhanced missing data extraction completed');
+  return enhancedData;
 };
 
 /**
@@ -189,9 +333,42 @@ export const isValidStreetAddress = (address: string): boolean => {
 };
 
 /**
- * Suggère des corrections pour les données d'adresse
+ * Détecte les données critiques manquantes
  */
-export const suggestAddressCorrections = (candidateData: CandidateDataWithAddress): string[] => {
+export const detectMissingCriticalData = (candidateData: CandidateDataWithAddress, originalText: string): string[] => {
+  const missing: string[] = [];
+  
+  // Vérifier si email est présent dans le texte mais pas extrait
+  if (!candidateData.email) {
+    const emailFound = EXTRACTION_PATTERNS.email.some(pattern => pattern.test(originalText));
+    if (emailFound) {
+      missing.push('Email trouvé dans le CV mais non extrait');
+    }
+  }
+  
+  // Vérifier si téléphone est présent dans le texte mais pas extrait
+  if (!candidateData.phone) {
+    const phoneFound = EXTRACTION_PATTERNS.phone.some(pattern => pattern.test(originalText));
+    if (phoneFound) {
+      missing.push('Téléphone trouvé dans le CV mais non extrait');
+    }
+  }
+  
+  // Vérifier si adresse est présente dans le texte mais pas extraite
+  if (!candidateData.address) {
+    const addressFound = EXTRACTION_PATTERNS.address.some(pattern => pattern.test(originalText));
+    if (addressFound) {
+      missing.push('Adresse trouvée dans le CV mais non extraite');
+    }
+  }
+  
+  return missing;
+};
+
+/**
+ * Suggère des corrections pour les données d'adresse (amélioré)
+ */
+export const suggestAddressCorrections = (candidateData: CandidateDataWithAddress, originalText?: string): string[] => {
   const suggestions: string[] = [];
   
   if (candidateData.address && !isValidStreetAddress(candidateData.address)) {
@@ -210,6 +387,12 @@ export const suggestAddressCorrections = (candidateData: CandidateDataWithAddres
     if (components.city) {
       suggestions.push(`Ville "${components.city}" trouvée dans la localisation`);
     }
+  }
+  
+  // Suggestions basées sur les données manquantes détectées
+  if (originalText) {
+    const missingData = detectMissingCriticalData(candidateData, originalText);
+    suggestions.push(...missingData);
   }
   
   return suggestions;
