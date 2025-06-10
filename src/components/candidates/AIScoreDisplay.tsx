@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
@@ -33,15 +34,15 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
   
   if (error) {
     return (
-      <Card>
+      <Card className="border-destructive/20">
         <CardContent className="p-6">
           <div className="flex flex-col items-center text-center">
-            <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
-              <Brain className="w-8 h-8 text-red-600" />
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+              <Brain className="w-8 h-8 text-destructive" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Erreur de récupération</h3>
-            <p className="text-sm text-gray-500 mb-4">{error}</p>
-            <p className="text-xs text-gray-400 mb-4">Le score sera calculé lors de l'analyse du CV</p>
+            <h3 className="text-lg font-medium text-foreground mb-2">Erreur de récupération</h3>
+            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            <p className="text-xs text-muted-foreground mb-4">Le score sera calculé lors de l'analyse du CV</p>
             {onRefresh && (
               <Button 
                 onClick={onRefresh} 
@@ -66,15 +67,15 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
   
   if (isLoading) {
     return (
-      <Card>
+      <Card className="border-border">
         <CardContent className="p-6">
           <div className="flex flex-col items-center animate-pulse">
-            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-purple-200 to-blue-200 mb-4 flex items-center justify-center">
-              <Brain className="w-12 h-12 text-purple-600 animate-pulse" />
+            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary/20 to-navy/20 mb-4 flex items-center justify-center">
+              <Brain className="w-12 h-12 text-navy animate-pulse" />
             </div>
-            <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
-            <div className="h-3 bg-gray-200 rounded w-24"></div>
-            <div className="mt-4 text-sm text-purple-600 font-medium">
+            <div className="h-4 bg-muted rounded w-32 mb-2"></div>
+            <div className="h-3 bg-muted rounded w-24"></div>
+            <div className="mt-4 text-sm text-navy font-medium">
               ✨ Analyse IA en cours...
             </div>
           </div>
@@ -85,18 +86,18 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
   
   if (score === null || score === undefined) {
     return (
-      <Card>
+      <Card className="border-border">
         <CardContent className="p-6">
           <div className="flex flex-col items-center text-center">
-            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4">
-              <FileSearch className="w-8 h-8 text-blue-600" />
+            <div className="w-16 h-16 rounded-full bg-navy/10 flex items-center justify-center mb-4">
+              <FileSearch className="w-8 h-8 text-navy" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Score non disponible</h3>
-            <p className="text-sm text-gray-500 mb-4">
+            <h3 className="text-lg font-medium text-foreground mb-2">Score non disponible</h3>
+            <p className="text-sm text-muted-foreground mb-4">
               Le score IA sera calculé lors de l'analyse du CV
             </p>
-            <div className="bg-blue-50 p-3 rounded-lg mb-4">
-              <p className="text-xs text-blue-700">
+            <div className="bg-navy/5 p-3 rounded-lg mb-4 border border-navy/10">
+              <p className="text-xs text-navy">
                 💡 Astuce : Analysez le CV du candidat pour obtenir un score IA détaillé avec points forts et faibles
               </p>
             </div>
@@ -105,7 +106,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
                 onClick={onRefresh} 
                 variant="default" 
                 size="sm"
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-navy hover:bg-navy-dark text-sand"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -126,37 +127,47 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
     if (score >= 85) {
       return { 
         label: isJobSpecific ? 'Correspondance excellente' : 'Profil excellent', 
-        color: 'text-emerald-800', 
-        bgColor: 'bg-emerald-100',
-        borderColor: 'border-emerald-300'
+        color: 'text-green-800', 
+        bgColor: 'bg-green-100',
+        borderColor: 'border-green-300',
+        gradientFrom: 'from-green-500',
+        gradientTo: 'to-green-600'
       };
     } else if (score >= 70) {
       return { 
         label: isJobSpecific ? 'Très bonne correspondance' : 'Très bon profil', 
-        color: 'text-green-800', 
-        bgColor: 'bg-green-100',
-        borderColor: 'border-green-300'
+        color: 'text-green-700', 
+        bgColor: 'bg-green-50',
+        borderColor: 'border-green-200',
+        gradientFrom: 'from-green-400',
+        gradientTo: 'to-green-500'
       };
     } else if (score >= 55) {
       return { 
         label: isJobSpecific ? 'Correspondance correcte' : 'Bon profil', 
-        color: 'text-amber-800', 
-        bgColor: 'bg-amber-100',
-        borderColor: 'border-amber-300'
+        color: 'text-gold-dark', 
+        bgColor: 'bg-gold/10',
+        borderColor: 'border-gold/30',
+        gradientFrom: 'from-gold',
+        gradientTo: 'to-gold-dark'
       };
     } else if (score >= 40) {
       return { 
         label: isJobSpecific ? 'Correspondance partielle' : 'Profil à développer', 
         color: 'text-orange-800', 
         bgColor: 'bg-orange-100',
-        borderColor: 'border-orange-300'
+        borderColor: 'border-orange-300',
+        gradientFrom: 'from-orange-500',
+        gradientTo: 'to-orange-600'
       };
     } else {
       return { 
         label: isJobSpecific ? 'Correspondance faible' : 'Profil incomplet', 
-        color: 'text-red-800', 
-        bgColor: 'bg-red-100',
-        borderColor: 'border-red-300'
+        color: 'text-destructive', 
+        bgColor: 'bg-destructive/10',
+        borderColor: 'border-destructive/30',
+        gradientFrom: 'from-destructive',
+        gradientTo: 'to-red-600'
       };
     }
   };
@@ -164,10 +175,10 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
   const evaluation = getScoreEvaluation(score);
   
   const scoreComponents = isJobSpecific ? [
-    { label: 'Compétences requises', score: breakdown?.skills || 0, maxPoints: 25, color: 'text-blue-600' },
+    { label: 'Compétences requises', score: breakdown?.skills || 0, maxPoints: 25, color: 'text-navy' },
     { label: 'Expérience pertinente', score: breakdown?.experience || 0, maxPoints: 20, color: 'text-green-600' },
     { label: 'Niveau d\'études', score: breakdown?.education || 0, maxPoints: 20, color: 'text-purple-600' },
-    { label: 'Localisation', score: breakdown?.location || 0, maxPoints: 10, color: 'text-orange-600' },
+    { label: 'Localisation', score: breakdown?.location || 0, maxPoints: 10, color: 'text-gold-dark' },
     { label: 'Langues', score: breakdown?.languages || 0, maxPoints: 5, color: 'text-pink-600' },
     { label: 'Adéquation culturelle', score: breakdown?.culturalFit || 0, maxPoints: 10, color: 'text-indigo-600' },
     { label: 'Disponibilité', score: breakdown?.availability || 0, maxPoints: 5, color: 'text-teal-600' },
@@ -175,20 +186,20 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
   ] : [
     { label: 'Formations', score: breakdown?.education || 0, maxPoints: 20, color: 'text-purple-600' },
     { label: 'Expériences', score: breakdown?.experience || 0, maxPoints: 20, color: 'text-green-600' },
-    { label: 'Compétences', score: breakdown?.skills || 0, maxPoints: 20, color: 'text-blue-600' },
+    { label: 'Compétences', score: breakdown?.skills || 0, maxPoints: 20, color: 'text-navy' },
     { label: 'Langues', score: breakdown?.languages || 0, maxPoints: 10, color: 'text-pink-600' },
-    { label: 'Localisation/Mobilité', score: breakdown?.location || 0, maxPoints: 10, color: 'text-orange-600' },
+    { label: 'Localisation/Mobilité', score: breakdown?.location || 0, maxPoints: 10, color: 'text-gold-dark' },
     { label: 'Résumé professionnel', score: breakdown?.profileSummary || 0, maxPoints: 10, color: 'text-indigo-600' },
     { label: 'Structure du CV', score: breakdown?.cvStructure || 0, maxPoints: 10, color: 'text-teal-600' }
   ];
   
   return (
-    <Card className={`border-2 ${evaluation.borderColor}`}>
+    <Card className={`border-2 ${evaluation.borderColor} bg-card`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-purple-600" />
-            <CardTitle className="text-lg">Score IA</CardTitle>
+            <Brain className="w-5 h-5 text-navy" />
+            <CardTitle className="text-lg text-foreground">Score IA</CardTitle>
             <Badge variant={isJobSpecific ? "default" : "secondary"} className="text-xs">
               {isJobSpecific ? <Briefcase size={10} className="mr-1" /> : <Target size={10} className="mr-1" />}
               {isJobSpecific ? 'Correspondance' : 'Complétude'}
@@ -199,7 +210,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
               onClick={onRefresh} 
               variant="ghost" 
               size="sm"
-              className="flex items-center gap-1"
+              className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -216,19 +227,13 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
       <CardContent className="pt-0">
         <div className="flex flex-col items-center mb-6">
           <div className="relative">
-            <div className={`w-32 h-32 rounded-full flex items-center justify-center text-white text-2xl font-bold border-4 bg-gradient-to-br ${
-              score >= 85 ? 'from-emerald-500 to-emerald-600 border-emerald-300' : 
-              score >= 70 ? 'from-green-500 to-green-600 border-green-300' :
-              score >= 55 ? 'from-amber-500 to-amber-600 border-amber-300' :
-              score >= 40 ? 'from-orange-500 to-orange-600 border-orange-300' :
-              'from-red-500 to-red-600 border-red-300'
-            }`}>
+            <div className={`w-32 h-32 rounded-full flex items-center justify-center text-white text-2xl font-bold border-4 bg-gradient-to-br ${evaluation.gradientFrom} ${evaluation.gradientTo} ${evaluation.borderColor}`}>
               {score}
               <span className="text-sm ml-1">%</span>
             </div>
             <div className="absolute -bottom-2 -right-2">
-              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
+              <div className="w-8 h-8 bg-navy rounded-full flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-sand" />
               </div>
             </div>
           </div>
@@ -237,7 +242,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
             {evaluation.label}
           </div>
           
-          <div className="mt-2 text-xs text-purple-600 font-medium flex items-center gap-1">
+          <div className="mt-2 text-xs text-navy font-medium flex items-center gap-1">
             <Brain size={12} />
             Calculé par IA lors de l'analyse
           </div>
@@ -246,17 +251,17 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
         <Separator className="my-4" />
 
         <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-900 mb-3">
+          <h4 className="text-sm font-medium text-foreground mb-3">
             Détail de l'analyse IA
           </h4>
           
           {scoreComponents.map((component, index) => (
             <div key={index} className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{component.label}</span>
+                <span className="text-sm font-medium text-foreground">{component.label}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">{component.score}/{component.maxPoints}</span>
-                  <span className="text-sm font-bold">{Math.round((component.score / component.maxPoints) * 100)}%</span>
+                  <span className="text-xs text-muted-foreground">{component.score}/{component.maxPoints}</span>
+                  <span className="text-sm font-bold text-foreground">{Math.round((component.score / component.maxPoints) * 100)}%</span>
                 </div>
               </div>
               <Progress 
@@ -273,18 +278,18 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
             
             <Collapsible open={isExplanationOpen} onOpenChange={setIsExplanationOpen}>
               <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+                <Button variant="ghost" className="w-full justify-between p-0 h-auto text-foreground hover:text-foreground">
                   <span className="text-sm font-medium flex items-center gap-2">
                     <Info size={16} />
                     Analyse détaillée de l'IA
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">
                     {isExplanationOpen ? 'Masquer' : 'Voir'}
                   </span>
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-3">
-                <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">
+                <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg whitespace-pre-wrap">
                   {explanation}
                 </div>
               </CollapsibleContent>
@@ -295,12 +300,12 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
         <Separator className="my-4" />
 
         <div className="text-center">
-          <div className="text-xs text-gray-500 mb-2">
+          <div className="text-xs text-muted-foreground mb-2">
             {isJobSpecific 
               ? 'Score de correspondance calculé par IA'
               : 'Score de complétude calculé par IA'}
           </div>
-          <div className="text-xs text-purple-600 font-medium">
+          <div className="text-xs text-navy font-medium">
             ✨ Analyse complète avec points forts et faibles
           </div>
         </div>
