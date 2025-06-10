@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -54,13 +53,19 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
           <div className="w-8 h-8 rounded-full bg-navy/10 flex items-center justify-center mt-0.5">
             <MapPin className="w-4 h-4 text-navy" />
           </div>
-          <div className="text-navy-dark font-medium">
-            {candidate.address && <div className="mb-1">{candidate.address}</div>}
-            <div>
-              {candidate.postal_code && `${candidate.postal_code} `}
-              {candidate.city}
-              {candidate.country && `, ${candidate.country}`}
-            </div>
+          <div className="text-navy-dark font-medium space-y-1">
+            {candidate.address && (
+              <div className="font-semibold">{candidate.address}</div>
+            )}
+            {candidate.postal_code && (
+              <div className="text-sm">{candidate.postal_code}</div>
+            )}
+            {candidate.city && (
+              <div className="text-sm">{candidate.city}</div>
+            )}
+            {candidate.country && (
+              <div className="text-sm text-muted-foreground">{candidate.country}</div>
+            )}
           </div>
         </div>
       )}
