@@ -29,17 +29,30 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     // Handle both array and direct object responses
     const candidateData = Array.isArray(data) ? data[0] : data;
     
-    // Log spécifiquement les champs d'adresse pour debugging - use type assertion for logging
-    const candidateWithAddress = candidateData as any;
-    console.log('📍 Address fields in retrieved data:', {
-      address: candidateWithAddress?.address || 'UNDEFINED',
-      postal_code: candidateWithAddress?.postal_code || 'UNDEFINED', 
-      city: candidateWithAddress?.city || 'UNDEFINED',
-      country: candidateWithAddress?.country || 'UNDEFINED',
-      location: candidateWithAddress?.location || 'UNDEFINED'
+    // LOG DÉTAILLÉ des données brutes récupérées de la base
+    console.log('🗃️ RAW DATA FROM DATABASE:', {
+      id: candidateData?.id,
+      first_name: candidateData?.first_name,
+      last_name: candidateData?.last_name,
+      address: candidateData?.address,
+      postal_code: candidateData?.postal_code,
+      city: candidateData?.city,
+      country: candidateData?.country,
+      location: candidateData?.location
     });
     
-    console.log('✅ Successfully retrieved complete candidate data:', candidateData);
+    // Log spécifiquement pour Louis Le Potvin
+    if (candidateData?.first_name === 'Louis' && candidateData?.last_name === 'Le Potvin') {
+      console.log('🎯 LOUIS LE POTVIN - RAW DATABASE DATA:', {
+        address: candidateData?.address || 'UNDEFINED',
+        postal_code: candidateData?.postal_code || 'UNDEFINED', 
+        city: candidateData?.city || 'UNDEFINED',
+        country: candidateData?.country || 'UNDEFINED',
+        location: candidateData?.location || 'UNDEFINED'
+      });
+    }
+    
+    console.log('✅ Successfully retrieved complete candidate data from database');
     
     return candidateData as CandidateData;
   } catch (error: any) {

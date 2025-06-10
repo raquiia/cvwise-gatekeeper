@@ -1,3 +1,4 @@
+
 import { Json } from '@/integrations/supabase/types';
 
 /**
@@ -172,11 +173,20 @@ export const isUndefinedObject = (obj: any): boolean => {
   return Object.values(obj).every(value => value === undefined);
 };
 
-// SIMPLIFIED: Process candidate data - use direct values for simple fields
+// DEBUGGING VERSION: Process candidate data with detailed logs
 export const processCandidateData = (rawCandidate: any): any => {
   if (!rawCandidate) return null;
   
-  console.log('🔍 PROCESSING CANDIDATE DATA:', rawCandidate);
+  console.log('🔄 STARTING processCandidateData with RAW INPUT:', {
+    id: rawCandidate.id,
+    first_name: rawCandidate.first_name,
+    last_name: rawCandidate.last_name,
+    address: rawCandidate.address,
+    postal_code: rawCandidate.postal_code,
+    city: rawCandidate.city,
+    country: rawCandidate.country,
+    location: rawCandidate.location
+  });
   
   const processedCandidate = {
     ...rawCandidate,
@@ -209,8 +219,7 @@ export const processCandidateData = (rawCandidate: any): any => {
     projects: ensureArray(rawCandidate.projects)
   };
   
-  // Log spécial pour débogage
-  console.log('✅ PROCESSED CANDIDATE - Address data:', {
+  console.log('✅ PROCESSED CANDIDATE - Final output from processCandidateData:', {
     first_name: processedCandidate.first_name,
     last_name: processedCandidate.last_name,
     address: processedCandidate.address,
@@ -219,6 +228,16 @@ export const processCandidateData = (rawCandidate: any): any => {
     country: processedCandidate.country,
     location: processedCandidate.location
   });
+  
+  // Log spécial pour Louis Le Potvin
+  if (processedCandidate.first_name === 'Louis' && processedCandidate.last_name === 'Le Potvin') {
+    console.log('🎯 LOUIS LE POTVIN - FINAL PROCESSED DATA:', {
+      address: processedCandidate.address || 'EMPTY',
+      postal_code: processedCandidate.postal_code || 'EMPTY',
+      city: processedCandidate.city || 'EMPTY',
+      country: processedCandidate.country || 'EMPTY'
+    });
+  }
   
   return processedCandidate;
 };

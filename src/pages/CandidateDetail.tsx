@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -43,7 +42,7 @@ const CandidateDetail = () => {
 
     try {
       setLoading(true);
-      console.log("Fetching candidate with ID:", candidateId);
+      console.log("🔄 CandidateDetail: Starting data fetch for ID:", candidateId);
       
       // First try using the direct function to get complete candidate data
       let data = null;
@@ -51,7 +50,15 @@ const CandidateDetail = () => {
       try {
         console.log("Attempting to get complete data via bypassing_rls function");
         data = await getCompleteCandidateData(candidateId);
-        console.log("Received data from getCompleteCandidateData:", data ? "Success" : "No data");
+        console.log("📦 CandidateDetail: Raw data received from getCompleteCandidateData:", data ? {
+          id: data.id,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          address: data.address,
+          postal_code: data.postal_code,
+          city: data.city,
+          country: data.country
+        } : "No data");
       } catch (directError: any) {
         console.error("Error with direct function, falling back to standard service:", directError);
         data = await candidateService.getCandidateById(candidateId);
@@ -62,10 +69,19 @@ const CandidateDetail = () => {
         console.log("Candidate not found:", candidateId);
         setError("Candidat non trouvé");
       } else {
-        console.log("Candidate data retrieved successfully");
+        console.log("🔄 CandidateDetail: Processing candidate data...");
         
         // Process the data to ensure arrays and properties are correctly formatted
         const processedData = processCandidateData(data);
+        
+        console.log("📋 CandidateDetail: Data after processCandidateData:", {
+          first_name: processedData.first_name,
+          last_name: processedData.last_name,
+          address: processedData.address,
+          postal_code: processedData.postal_code,
+          city: processedData.city,
+          country: processedData.country
+        });
         
         // Check data completeness
         const hasEmptyExperiences = !processedData.experiences || 
@@ -85,7 +101,18 @@ const CandidateDetail = () => {
         });
         
         setDataIncompletenessDetected(hasIncompleteData);
+        
+        console.log("💾 CandidateDetail: Setting candidate state with processed data");
         setCandidate(processedData);
+        
+        console.log("🎯 CandidateDetail: Final candidate state set:", {
+          first_name: processedData.first_name,
+          last_name: processedData.last_name,
+          address: processedData.address,
+          postal_code: processedData.postal_code,
+          city: processedData.city,
+          country: processedData.country
+        });
       }
     } catch (err: any) {
       console.error("Error loading candidate:", err);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -44,7 +43,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
   useEffect(() => {
     if (!candidate) return;
     
-    console.log('🔍 ProfileTab: Loading candidate data:', {
+    console.log('📋 ProfileTab: Receiving candidate data:', {
       id: candidate.id,
       firstName: candidate.first_name,
       lastName: candidate.last_name,
@@ -55,13 +54,13 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
       country: candidate.country
     });
 
-    // Log spécial pour Dorian Fournier
-    if (candidate.first_name === 'Dorian' && candidate.last_name === 'Fournier') {
-      console.log('🎯 DORIAN FOURNIER - ProfileTab received data:', {
-        address: candidate.address,
-        postal_code: candidate.postal_code,
-        city: candidate.city,
-        country: candidate.country
+    // Log spécial pour Louis Le Potvin
+    if (candidate.first_name === 'Louis' && candidate.last_name === 'Le Potvin') {
+      console.log('🎯 LOUIS LE POTVIN - ProfileTab received data:', {
+        address: candidate.address || 'UNDEFINED',
+        postal_code: candidate.postal_code || 'UNDEFINED',
+        city: candidate.city || 'UNDEFINED',
+        country: candidate.country || 'UNDEFINED'
       });
     }
 
@@ -78,7 +77,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     setCity(candidate.city || '');
     setCountry(candidate.country || '');
 
-    console.log('📍 Address fields loaded in ProfileTab:', {
+    console.log('📍 ProfileTab: Address fields loaded in state:', {
       address: candidate.address || 'EMPTY',
       postal_code: candidate.postal_code || 'EMPTY',
       city: candidate.city || 'EMPTY',
@@ -180,7 +179,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             </CardContent>
           </Card>
 
-          {/* Section Adresse simplifiée */}
+          {/* Section Adresse avec DEBUG */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 border-b border-gray-200/50">
               <div className="flex items-center gap-3">
@@ -191,7 +190,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {/* Affichage direct des données d'adresse */}
+              {/* Affichage direct des données d'adresse avec DEBUG pour tous */}
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                 <div className="flex items-center gap-3">
                   <MapPin className="h-4 w-4 text-gray-500" />
@@ -227,18 +226,16 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                     </span>
                   </div>
 
-                  {/* Debug info pour Dorian Fournier */}
-                  {(candidate.first_name === 'Dorian' && candidate.last_name === 'Fournier') && (
-                    <div className="mt-4 pt-3 border-t border-yellow-200 bg-yellow-50 rounded p-2">
-                      <div className="text-xs text-yellow-700">
-                        <div><strong>DEBUG Dorian Fournier:</strong></div>
-                        <div>Address: "{candidate.address || 'VIDE'}"</div>
-                        <div>Postal: "{candidate.postal_code || 'VIDE'}"</div>
-                        <div>City: "{candidate.city || 'VIDE'}"</div>
-                        <div>Country: "{candidate.country || 'VIDE'}"</div>
-                      </div>
+                  {/* Debug info pour TOUS les candidats pour identifier le problème */}
+                  <div className="mt-4 pt-3 border-t border-blue-200 bg-blue-50 rounded p-2">
+                    <div className="text-xs text-blue-700">
+                      <div><strong>DEBUG - {candidate.first_name} {candidate.last_name}:</strong></div>
+                      <div>Address: "{candidate.address || 'VIDE'}"</div>
+                      <div>Postal: "{candidate.postal_code || 'VIDE'}"</div>
+                      <div>City: "{candidate.city || 'VIDE'}"</div>
+                      <div>Country: "{candidate.country || 'VIDE'}"</div>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
 
