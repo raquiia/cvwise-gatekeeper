@@ -1,4 +1,3 @@
-
 import { CandidateData } from '../candidateService';
 import { JobOffer } from '../job-offers/types';
 import type { CandidateJobMatch, MatchDetails } from './types';
@@ -16,17 +15,16 @@ export const calculateCandidateJobMatch = async (
   const jobRequiredSkills = ensureStringArray(jobOffer.required_skills);
   const jobPreferredSkills = ensureStringArray(jobOffer.preferred_skills);
   
-  // Combiner les compétences requises et préférées pour l'analyse
-  const allJobSkills = [...jobRequiredSkills, ...jobPreferredSkills];
-  
   console.log(`[Match Utils] Candidate skills: [${candidateSkills.join(', ')}]`);
   console.log(`[Match Utils] Job required skills: [${jobRequiredSkills.join(', ')}]`);
   console.log(`[Match Utils] Job preferred skills: [${jobPreferredSkills.join(', ')}]`);
   
-  const skillsMatch = findSkillMatches(candidateSkills, allJobSkills);
-  const skillsScore = calculateSkillsMatchScore(skillsMatch.matched, allJobSkills.length);
+  // Utiliser la nouvelle API avec compétences séparées
+  const skillsMatch = findSkillMatches(candidateSkills, jobRequiredSkills, jobPreferredSkills);
+  const skillsScoreData = calculateSkillsMatchScore(skillsMatch.matched, jobRequiredSkills.length, jobPreferredSkills.length);
+  const skillsScore = skillsScoreData.overall;
   
-  console.log(`[Match Utils] Skills match: ${skillsMatch.matched.length}/${allJobSkills.length} (${skillsScore}%)`);
+  console.log(`[Match Utils] Skills match: ${skillsMatch.matched.length}/${jobRequiredSkills.length + jobPreferredSkills.length} (${skillsScore}%)`);
   
   // 2. Correspondance d'expérience (25% du score global)
   let experienceScore = 30; // Score par défaut plus réaliste
@@ -138,7 +136,7 @@ export const calculateCandidateJobMatch = async (
   const details: MatchDetails = {
     skills: {
       matched: skillsMatch.matched.map(m => m.candidate),
-      missing: skillsMatch.missing,
+      missing: skillsMatch.missing.map(m => m.skill), // Extraire juste le nom de la compétence
       additional: skillsMatch.additional,
       matchPercentage: skillsScore
     },
