@@ -9,10 +9,12 @@ import { uploadResume, getUserResumes, checkDuplicateResume } from './resume/res
 import { downloadResume, deleteResume } from './resume/fileOperations';
 import { 
   analyzeResume, 
-  extractResumeText, 
   checkResumeAlreadyAnalyzed,
   analyzeBatchResumes 
 } from './resume/analysisOperations';
+
+// Import extractResumeText depuis resumeAnalysisService au lieu de analysisOperations
+import { extractResumeText } from './resume/resumeAnalysisService';
 
 // Re-export des interfaces depuis resumeAnalysisService
 import type { 
