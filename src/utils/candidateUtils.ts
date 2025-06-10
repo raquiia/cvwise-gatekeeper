@@ -1,3 +1,4 @@
+
 import { Json } from '@/integrations/supabase/types';
 
 /**
@@ -198,7 +199,7 @@ export const processCandidateData = (rawCandidate: any): any => {
     location: rawCandidate.location || '',
     company: rawCandidate.company || '',
     
-    // CRITICAL: Keep address fields EXACTLY as they are in the database - NO PROCESSING AT ALL
+    // CRITICAL: Ensure address fields are properly set exactly as they are in the database
     address: rawCandidate.address || '',
     postal_code: rawCandidate.postal_code || '',
     city: rawCandidate.city || '',

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -51,10 +50,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
       postal_code: candidate.postal_code,
       city: candidate.city,
       country: candidate.country,
-      addressValue: candidate.address,
-      postalCodeValue: candidate.postal_code,
-      cityValue: candidate.city,
-      countryValue: candidate.country
+      addressType: typeof candidate.address,
+      postalCodeType: typeof candidate.postal_code,
+      cityType: typeof candidate.city,
+      countryType: typeof candidate.country
     });
 
     setFirstName(candidate.first_name || '');
@@ -65,6 +64,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     setLocation(candidate.location || '');
     
     // Handle address fields - use the exact values from database
+    // If any field is undefined, consider it as an empty string
     const addressValue = candidate.address || '';
     const postalCodeValue = candidate.postal_code || '';
     const cityValue = candidate.city || '';
@@ -134,6 +134,8 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
         notes: notes
       };
       
+      console.log('📤 Sending update data to server:', updateData);
+      
       await candidateService.updateCandidate(updateData);
       
       toast({
@@ -142,6 +144,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
       });
       
       if (onRefresh) {
+        console.log('🔄 Refreshing candidate data after update');
         onRefresh();
       }
     } catch (error: any) {
@@ -158,9 +161,15 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
 
   const handleRefresh = () => {
     if (onRefresh) {
+      console.log('🔄 Manual refresh of candidate data requested');
       onRefresh();
     }
   };
+  
+  // Debug render
+  console.log('🖼️ ProfileTab rendering with address state:', { 
+    address, postalCode, city, country, hasAddressData 
+  });
 
   return (
     <div className="space-y-6 p-6">

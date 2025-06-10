@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -13,6 +14,7 @@ export interface CandidateData {
   phone?: string;
   position?: string;
   location?: string;
+  // Explicit address fields
   address?: string;
   postal_code?: string;
   city?: string;

@@ -29,6 +29,8 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     const candidateRawData = Array.isArray(data) ? data[0] : data;
     
     // Type safety: access address properties safely using bracket notation
+    // Log raw data to diagnose the issue
+    console.log('📋 RAW CANDIDATE DATA:', candidateRawData);
     console.log('📋 RAW ADDRESS DATA from database:', {
       address: candidateRawData['address'],
       postal_code: candidateRawData['postal_code'],
@@ -40,10 +42,26 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
       countryType: typeof candidateRawData['country']
     });
     
-    console.log('✅ Successfully retrieved complete candidate data from database');
+    // Ensure address fields are explicitly included in the returned object
+    const candidateData: CandidateData = {
+      ...candidateRawData as CandidateData,
+      address: candidateRawData['address'] || '',
+      postal_code: candidateRawData['postal_code'] || '',
+      city: candidateRawData['city'] || '',
+      country: candidateRawData['country'] || ''
+    };
     
-    // Cast to CandidateData since we know the RPC function returns all required fields
-    return candidateRawData as CandidateData;
+    console.log('✅ Successfully retrieved and prepared complete candidate data:', {
+      id: candidateData.id,
+      first_name: candidateData.first_name,
+      last_name: candidateData.last_name,
+      address: candidateData.address,
+      postal_code: candidateData.postal_code,
+      city: candidateData.city, 
+      country: candidateData.country
+    });
+    
+    return candidateData;
   } catch (error: any) {
     console.error('❌ Exception in getCompleteCandidateData:', error);
     toast({
