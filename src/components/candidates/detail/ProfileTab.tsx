@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -84,34 +83,42 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   const [showRawData, setShowRawData] = useState(false);
   const { user } = useAuth();
   
-  // Update local state when candidate prop changes
+  // Update local state when candidate prop changes - CORRECTION CRITIQUE ICI
   useEffect(() => {
-    console.log('🔍 ProfileTab: COMPLETE candidate data received:', {
-      id: candidate.id,
-      first_name: candidate.first_name,
-      last_name: candidate.last_name,
+    console.log('🔍 ProfileTab: Updating states with candidate data:', {
+      candidateId: candidate.id,
       address: candidate.address,
       postal_code: candidate.postal_code,
       city: candidate.city,
       country: candidate.country,
-      location: candidate.location,
-      allFields: Object.keys(candidate)
+      location: candidate.location
     });
     
+    // Mettre à jour TOUS les champs avec les nouvelles données
     setFirstName(candidate.first_name || '');
     setLastName(candidate.last_name || '');
     setEmail(candidate.email || '');
     setPhone(candidate.phone || '');
     setPosition(candidate.position || '');
     setLocation(candidate.location || '');
+    
+    // CORRECTION: Mise à jour explicite des champs d'adresse
     setAddress(candidate.address || '');
     setPostalCode(candidate.postal_code || '');
     setCity(candidate.city || '');
     setCountry(candidate.country || '');
+    
     setYearsExperience(candidate.years_experience || 0);
     setSalaryExpectation(candidate.salary_expectations || '');
     setAvailability(candidate.availability || '');
     setNotes(candidate.notes || '');
+    
+    console.log('✅ ProfileTab: States updated - address fields now:', {
+      address: candidate.address || '',
+      postal_code: candidate.postal_code || '',
+      city: candidate.city || '',
+      country: candidate.country || ''
+    });
   }, [candidate]);
   
   // Auto-complete country when city changes
@@ -129,12 +136,15 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   const completeFormattedAddress = formatCompleteAddress(address, postalCode, city, country);
   const hasAnyAddressData = Boolean(address || postalCode || city || country || location);
   
-  console.log('📍 Current address state:', {
-    address,
-    postal_code: postalCode,
-    city,
-    country,
-    location,
+  console.log('📍 Current form state vs candidate data:', {
+    formState: { address, postal_code: postalCode, city, country, location },
+    candidateData: { 
+      address: candidate.address, 
+      postal_code: candidate.postal_code, 
+      city: candidate.city, 
+      country: candidate.country, 
+      location: candidate.location 
+    },
     completeFormattedAddress,
     hasAnyAddressData
   });
@@ -267,7 +277,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardContent>
           </Card>
 
-          {/* Section Adresse complètement refaite */}
+          {/* Section Adresse avec correction */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-200/50">
               <div className="flex items-center justify-between">
@@ -367,7 +377,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                 </div>
               )}
               
-              {/* Champs d'édition */}
+              {/* Champs d'édition - CORRECTION: VALEURS PRÉ-REMPLIES */}
               <div className="space-y-4 border-t pt-4">
                 <Label className="text-base font-medium text-gray-800">Modifier l'adresse</Label>
                 
@@ -378,7 +388,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                     id="address"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Ex: Rue Philippe-Plantamour 17"
+                    placeholder={address ? '' : "Ex: Rue Philippe-Plantamour 17"}
                     className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                   />
                 </div>
@@ -391,7 +401,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                       id="postalCode"
                       value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value)}
-                      placeholder="Ex: 1201"
+                      placeholder={postalCode ? '' : "Ex: 1201"}
                       className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                     />
                   </div>
@@ -402,7 +412,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                       id="city"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      placeholder="Ex: Geneva"
+                      placeholder={city ? '' : "Ex: Geneva"}
                       className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                     />
                   </div>
@@ -413,7 +423,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                       id="country"
                       value={country}
                       onChange={(e) => setCountry(e.target.value)}
-                      placeholder="Ex: Switzerland"
+                      placeholder={country ? '' : "Ex: Switzerland"}
                       className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                     />
                   </div>
@@ -430,7 +440,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                     id="location"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    placeholder="Ex: Geneva, Switzerland"
+                    placeholder={location ? '' : "Ex: Geneva, Switzerland"}
                     className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                   />
                 </div>
