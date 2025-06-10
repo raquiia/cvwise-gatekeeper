@@ -49,23 +49,15 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
         </div>
       )}
       {(candidate.address || candidate.city || candidate.postal_code || candidate.country) && (
-        <div className="flex items-start gap-3 p-3 rounded-lg bg-sand/30 hover:bg-sand/50 transition-colors duration-200">
-          <div className="w-8 h-8 rounded-full bg-navy/10 flex items-center justify-center mt-0.5">
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-sand/30 hover:bg-sand/50 transition-colors duration-200">
+          <div className="w-8 h-8 rounded-full bg-navy/10 flex items-center justify-center">
             <MapPin className="w-4 h-4 text-navy" />
           </div>
-          <div className="text-navy-dark font-medium space-y-1">
-            {candidate.address && (
-              <div className="font-semibold">{candidate.address}</div>
-            )}
-            {candidate.postal_code && (
-              <div className="text-sm">{candidate.postal_code}</div>
-            )}
-            {candidate.city && (
-              <div className="text-sm">{candidate.city}</div>
-            )}
-            {candidate.country && (
-              <div className="text-sm text-muted-foreground">{candidate.country}</div>
-            )}
+          <div className="text-navy-dark font-medium">
+            {candidate.address && <span>{candidate.address}, </span>}
+            {candidate.postal_code && <span>{candidate.postal_code} </span>}
+            {candidate.city && <span>{candidate.city}</span>}
+            {candidate.country && <span>, {candidate.country}</span>}
           </div>
         </div>
       )}
