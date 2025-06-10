@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { 
   ColumnDef, 
@@ -13,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, ArrowUpDown, Brain, Sparkles, Briefcase, Target } from 'lucide-react';
+import { Search, ArrowUpDown, Brain, Sparkles, Briefcase, Target, FileSearch } from 'lucide-react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
@@ -33,7 +34,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   
-  const { calculateAIScore, getAIScore, isJobSpecific } = useAIScoring();
+  const { getAIScore, isJobSpecific } = useAIScoring();
   
   const columns: ColumnDef<CandidateData>[] = useMemo(() => [
     {
@@ -193,7 +194,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                 ) : aiScore.error ? (
                   '?'
                 ) : (
-                  aiScore.score !== null ? aiScore.score : '?'
+                  aiScore.score !== null ? aiScore.score : <FileSearch className="w-3 h-3" />
                 )}
               </div>
             </div>
@@ -214,18 +215,11 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
             </div>
             
             {aiScore.score === null && !aiScore.isLoading && !aiScore.error && (
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  calculateAIScore(candidate.id!);
-                }}
-                className="text-xs h-6 px-2"
-              >
-                <Sparkles size={10} className="mr-1" />
-                Calculer
-              </Button>
+              <div className="text-xs text-center text-gray-500">
+                <span>Score calculé</span>
+                <br />
+                <span>lors de l'analyse CV</span>
+              </div>
             )}
           </div>
         );
@@ -254,7 +248,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         );
       },
     }
-  ], [getAIScore, calculateAIScore, isJobSpecific]);
+  ], [getAIScore, isJobSpecific]);
   
   const table = useReactTable({
     data: candidates,

@@ -12,50 +12,29 @@ interface ScoreDisplayProps {
 }
 
 const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRefresh }) => {
-  const { calculateAIScore, getAIScore, forceReanalyzeCandidate, preloadScoresFromDatabase } = useAIScoring();
+  const { getAIScore, preloadScoresFromDatabase } = useAIScoring();
   const { score: candidateScore, explanation, isLoading: scoreLoading } = useCandidateScore(candidate);
   const aiScoreData = getAIScore(candidate.id!);
   
-  // Précharger intelligemment : vérifier d'abord la DB, puis calculer seulement si vraiment nécessaire
+  // Précharger les scores depuis la base de données
   useEffect(() => {
     if (candidate.id) {
-      console.log('ScoreDisplay: Starting intelligent score loading for candidate:', candidate.id);
-      
-      // Précharger depuis la base de données et obtenir le résultat directement
+      console.log('ScoreDisplay: Preloading AI score from database for candidate:', candidate.id);
       preloadScoresFromDatabase([candidate.id]).then((loadedScores) => {
-        console.log('ScoreDisplay: Preload completed, loaded scores:', loadedScores);
-        
-        // Vérifier si on a trouvé un score pour ce candidat
         const preloadedScore = loadedScores[candidate.id];
-        
         if (preloadedScore && preloadedScore.score !== null) {
-          console.log('ScoreDisplay: Score found in database cache, no calculation needed:', preloadedScore.score);
+          console.log('ScoreDisplay: Score found in database:', preloadedScore.score);
         } else {
-          // Vérifier une dernière fois l'état actuel (au cas où)
-          const currentScore = getAIScore(candidate.id!);
-          
-          if (!currentScore.score && !currentScore.isLoading && !currentScore.error) {
-            console.log('ScoreDisplay: No score found anywhere, calculating new AI score for candidate:', candidate.id);
-            calculateAIScore(candidate.id);
-          } else {
-            console.log('ScoreDisplay: Score already exists in current state, no calculation needed');
-          }
+          console.log('ScoreDisplay: No score found in database - will be calculated during CV analysis');
         }
       }).catch((error) => {
-        console.error('ScoreDisplay: Error during preload, attempting direct calculation:', error);
-        const currentScore = getAIScore(candidate.id!);
-        if (!currentScore.score && !currentScore.isLoading && !currentScore.error) {
-          calculateAIScore(candidate.id);
-        }
+        console.error('ScoreDisplay: Error preloading score:', error);
       });
     }
-  }, [candidate.id]); // Dépendances simplifiées pour éviter les re-exécutions
+  }, [candidate.id, preloadScoresFromDatabase]);
   
-  const handleRefresh = async () => {
-    if (candidate.id) {
-      console.log('Manual reanalysis of candidate with AI (force recalculate):', candidate.id);
-      await forceReanalyzeCandidate(candidate.id);
-    }
+  const handleRefresh = () => {
+    console.log('ScoreDisplay: Refresh requested - scores are calculated during CV analysis');
     if (onRefresh) {
       onRefresh();
     }
