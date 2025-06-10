@@ -1,11 +1,10 @@
-
 import React from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Target, Briefcase, Info, Brain, FileSearch } from 'lucide-react';
+import { Sparkles, Target, Briefcase, Info, Brain, FileSearch, RefreshCw } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
 
@@ -42,7 +41,18 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Erreur de récupération</h3>
             <p className="text-sm text-gray-500 mb-4">{error}</p>
-            <p className="text-xs text-gray-400">Le score sera calculé lors de l'analyse du CV</p>
+            <p className="text-xs text-gray-400 mb-4">Le score sera calculé lors de l'analyse du CV</p>
+            {onRefresh && (
+              <Button 
+                onClick={onRefresh} 
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Analyser le CV
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -68,7 +78,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
     );
   }
   
-  if (score === null) {
+  if (score === null || score === undefined) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -80,11 +90,22 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
             <p className="text-sm text-gray-500 mb-4">
               Le score IA sera calculé lors de l'analyse du CV
             </p>
-            <div className="bg-blue-50 p-3 rounded-lg">
+            <div className="bg-blue-50 p-3 rounded-lg mb-4">
               <p className="text-xs text-blue-700">
-                💡 Astuce : Analysez le CV du candidat pour obtenir un score IA détaillé
+                💡 Astuce : Analysez le CV du candidat pour obtenir un score IA détaillé avec points forts et faibles
               </p>
             </div>
+            {onRefresh && (
+              <Button 
+                onClick={onRefresh} 
+                variant="default" 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Brain className="w-4 h-4" />
+                Analyser le CV maintenant
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -133,22 +154,22 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
   const evaluation = getScoreEvaluation(score);
   
   const scoreComponents = isJobSpecific ? [
-    { label: 'Compétences requises', score: breakdown.skills || 0, maxPoints: 25, color: 'text-blue-600' },
-    { label: 'Expérience pertinente', score: breakdown.experience || 0, maxPoints: 20, color: 'text-green-600' },
-    { label: 'Niveau d\'études', score: breakdown.education || 0, maxPoints: 20, color: 'text-purple-600' },
-    { label: 'Localisation', score: breakdown.location || 0, maxPoints: 10, color: 'text-orange-600' },
-    { label: 'Langues', score: breakdown.languages || 0, maxPoints: 5, color: 'text-pink-600' },
-    { label: 'Adéquation culturelle', score: breakdown.culturalFit || 0, maxPoints: 10, color: 'text-indigo-600' },
-    { label: 'Disponibilité', score: breakdown.availability || 0, maxPoints: 5, color: 'text-teal-600' },
-    { label: 'Notes d\'entretien', score: breakdown.interviewBonus || 0, maxPoints: 5, color: 'text-yellow-600' }
+    { label: 'Compétences requises', score: breakdown?.skills || 0, maxPoints: 25, color: 'text-blue-600' },
+    { label: 'Expérience pertinente', score: breakdown?.experience || 0, maxPoints: 20, color: 'text-green-600' },
+    { label: 'Niveau d\'études', score: breakdown?.education || 0, maxPoints: 20, color: 'text-purple-600' },
+    { label: 'Localisation', score: breakdown?.location || 0, maxPoints: 10, color: 'text-orange-600' },
+    { label: 'Langues', score: breakdown?.languages || 0, maxPoints: 5, color: 'text-pink-600' },
+    { label: 'Adéquation culturelle', score: breakdown?.culturalFit || 0, maxPoints: 10, color: 'text-indigo-600' },
+    { label: 'Disponibilité', score: breakdown?.availability || 0, maxPoints: 5, color: 'text-teal-600' },
+    { label: 'Notes d\'entretien', score: breakdown?.interviewBonus || 0, maxPoints: 5, color: 'text-yellow-600' }
   ] : [
-    { label: 'Formations', score: breakdown.education || 0, maxPoints: 20, color: 'text-purple-600' },
-    { label: 'Expériences', score: breakdown.experience || 0, maxPoints: 20, color: 'text-green-600' },
-    { label: 'Compétences', score: breakdown.skills || 0, maxPoints: 20, color: 'text-blue-600' },
-    { label: 'Langues', score: breakdown.languages || 0, maxPoints: 10, color: 'text-pink-600' },
-    { label: 'Localisation/Mobilité', score: breakdown.location || 0, maxPoints: 10, color: 'text-orange-600' },
-    { label: 'Résumé professionnel', score: breakdown.profileSummary || 0, maxPoints: 10, color: 'text-indigo-600' },
-    { label: 'Structure du CV', score: breakdown.cvStructure || 0, maxPoints: 10, color: 'text-teal-600' }
+    { label: 'Formations', score: breakdown?.education || 0, maxPoints: 20, color: 'text-purple-600' },
+    { label: 'Expériences', score: breakdown?.experience || 0, maxPoints: 20, color: 'text-green-600' },
+    { label: 'Compétences', score: breakdown?.skills || 0, maxPoints: 20, color: 'text-blue-600' },
+    { label: 'Langues', score: breakdown?.languages || 0, maxPoints: 10, color: 'text-pink-600' },
+    { label: 'Localisation/Mobilité', score: breakdown?.location || 0, maxPoints: 10, color: 'text-orange-600' },
+    { label: 'Résumé professionnel', score: breakdown?.profileSummary || 0, maxPoints: 10, color: 'text-indigo-600' },
+    { label: 'Structure du CV', score: breakdown?.cvStructure || 0, maxPoints: 10, color: 'text-teal-600' }
   ];
   
   return (
@@ -163,6 +184,17 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
               {isJobSpecific ? 'Correspondance' : 'Complétude'}
             </Badge>
           </div>
+          {onRefresh && (
+            <Button 
+              onClick={onRefresh} 
+              variant="ghost" 
+              size="sm"
+              className="flex items-center gap-1"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Recalculer
+            </Button>
+          )}
         </div>
       </CardHeader>
       
@@ -192,7 +224,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
           
           <div className="mt-2 text-xs text-purple-600 font-medium flex items-center gap-1">
             <Brain size={12} />
-            Calculé lors de l'analyse du CV
+            Calculé par IA lors de l'analyse
           </div>
         </div>
 
@@ -254,7 +286,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
               : 'Score de complétude calculé par IA'}
           </div>
           <div className="text-xs text-purple-600 font-medium">
-            ✨ Score calculé automatiquement lors de l'analyse du CV
+            ✨ Analyse complète avec points forts et faibles
           </div>
         </div>
       </CardContent>

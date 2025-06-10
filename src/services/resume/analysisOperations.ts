@@ -1,8 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { candidateService, CandidateData } from '@/services/data/candidateService';
-import { analyzeResumeWithAI, AIAnalysisResult, extractResumeText } from './resumeAnalysisService';
+import { extractResumeText } from './resumeAnalysisService';
 
 export interface AnalysisProgress {
   current: number;
@@ -15,7 +14,7 @@ export interface AnalysisResult {
   success: boolean;
   candidateData?: CandidateData;
   error?: string;
-  analysis?: AIAnalysisResult;
+  analysis?: any;
 }
 
 /**
@@ -30,7 +29,7 @@ export const analyzeResume = async (
     
     onProgress?.({ current: 1, total: 4, status: 'extracting', currentFile: 'Extraction du texte...' });
 
-    // 1. Extraire le texte du CV en utilisant la fonction qui fonctionne déjà
+    // 1. Extraire le texte du CV
     const extractResult = await extractResumeText(resumeId);
     
     if (!extractResult.success || !extractResult.text) {
@@ -42,7 +41,7 @@ export const analyzeResume = async (
 
     onProgress?.({ current: 2, total: 4, status: 'analyzing', currentFile: 'Analyse IA du CV...' });
 
-    // 2. Analyser le CV avec l'IA pour extraire les informations du candidat
+    // 2. Analyser le CV avec l'IA pour extraire les informations du candidat ET le scoring
     const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-resume', {
       body: { 
         resumeText,
@@ -50,47 +49,74 @@ export const analyzeResume = async (
       }
     });
 
-    if (analysisError || !analysisData?.success) {
+    if (analysisError) {
+      console.error('❌ Edge function error:', analysisError);
+      throw new Error(`Erreur lors de l'analyse du CV: ${analysisError.message}`);
+    }
+
+    if (!analysisData?.success) {
+      console.error('❌ Analysis failed:', analysisData);
       throw new Error(analysisData?.error || 'Erreur lors de l\'analyse du CV');
     }
 
-    console.log('✅ Resume analyzed successfully:', analysisData.candidateData?.first_name, analysisData.candidateData?.last_name);
+    console.log('✅ Resume analyzed successfully:', {
+      candidateName: `${analysisData.candidateData?.first_name} ${analysisData.candidateData?.last_name}`,
+      hasAnalysis: !!analysisData.analysis,
+      hasAddress: !!(analysisData.candidateData?.address || analysisData.candidateData?.city)
+    });
 
-    onProgress?.({ current: 3, total: 4, status: 'analyzing', currentFile: 'Calcul du score IA...' });
+    onProgress?.({ current: 3, total: 4, status: 'saving', currentFile: 'Sauvegarde en base...' });
 
-    // 3. Analyser avec l'IA pour le scoring (optionnel)
-    let aiAnalysis = { success: true, analysis: undefined };
-    if (analysisData.candidateData) {
-      aiAnalysis = await analyzeResumeWithAI(analysisData.candidateData, resumeText);
-      
-      if (!aiAnalysis.success) {
-        console.warn('⚠️ AI scoring failed but continuing with candidate creation');
-      }
-    }
+    // 3. Créer ou mettre à jour le candidat en base
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Utilisateur non authentifié');
 
-    onProgress?.({ current: 4, total: 4, status: 'saving', currentFile: 'Sauvegarde en base...' });
+    const candidateToSave = {
+      ...analysisData.candidateData,
+      resume_id: resumeId,
+      user_id: user.id,
+      last_updated_at: new Date().toISOString()
+    };
 
-    // 4. Créer ou mettre à jour le candidat en base
     let finalCandidate: CandidateData;
     
-    if (analysisData.candidateData.id) {
+    // Vérifier si un candidat existe déjà pour ce CV
+    const { data: existingCandidates } = await supabase
+      .from('candidates')
+      .select('id')
+      .eq('resume_id', resumeId)
+      .limit(1);
+
+    if (existingCandidates && existingCandidates.length > 0) {
       // Mise à jour d'un candidat existant
       finalCandidate = await candidateService.updateCandidate({
-        ...analysisData.candidateData,
-        resume_id: resumeId,
-        last_updated_at: new Date().toISOString()
+        ...candidateToSave,
+        id: existingCandidates[0].id
       });
     } else {
       // Création d'un nouveau candidat
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Utilisateur non authentifié');
+      finalCandidate = await candidateService.createCandidate(candidateToSave);
+    }
 
-      finalCandidate = await candidateService.createCandidate({
-        ...analysisData.candidateData,
-        resume_id: resumeId,
-        user_id: user.id,
-        last_updated_at: new Date().toISOString()
-      });
+    // 4. Sauvegarder le score IA si disponible
+    if (analysisData.analysis && finalCandidate.id) {
+      try {
+        const { error: scoreError } = await supabase.rpc('save_ai_candidate_score', {
+          p_candidate_id: finalCandidate.id,
+          p_score: analysisData.analysis.score,
+          p_explanation: analysisData.analysis.explanation,
+          p_job_offer_id: null, // Score de complétude générale
+          p_breakdown: analysisData.analysis.breakdown || {}
+        });
+
+        if (scoreError) {
+          console.error('❌ Error saving AI score:', scoreError);
+        } else {
+          console.log('✅ AI score saved successfully');
+        }
+      } catch (scoreError) {
+        console.error('❌ Exception saving AI score:', scoreError);
+      }
     }
 
     onProgress?.({ current: 4, total: 4, status: 'completed' });
@@ -99,13 +125,13 @@ export const analyzeResume = async (
 
     toast({
       title: "Analyse terminée",
-      description: `Le CV de ${finalCandidate.first_name} ${finalCandidate.last_name} a été analysé avec succès${aiAnalysis.success && aiAnalysis.analysis ? ' avec scoring IA' : ''}`,
+      description: `Le CV de ${finalCandidate.first_name} ${finalCandidate.last_name} a été analysé avec succès${analysisData.analysis ? ' avec scoring IA' : ''}`,
     });
 
     return {
       success: true,
       candidateData: finalCandidate,
-      analysis: aiAnalysis.analysis
+      analysis: analysisData.analysis
     };
 
   } catch (error: any) {

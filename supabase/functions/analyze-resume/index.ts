@@ -31,7 +31,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           {
             role: 'system',
@@ -67,10 +67,10 @@ serve(async (req) => {
             Règles importantes :
             - Retourne UNIQUEMENT du JSON valide, pas de texte supplémentaire
             - Si une information n'est pas trouvée, utilise "" pour les strings et [] pour les arrays
-            - Extrait toutes les compétences techniques et soft skills dans le tableau skills
-            - Pour years_experience, estime le nombre d'années basé sur les expériences
-            - Sois précis pour l'adresse (sépare adresse, code postal, ville, pays)
-            - Pour les expériences, inclus toutes les expériences professionnelles significatives`
+            - Pour years_experience, estime le nombre d'années basé sur les expériences (0 si pas d'info)
+            - Sois précis pour l'adresse : extrait l'adresse complète si mentionnée
+            - Sépare bien adresse, code postal, ville, pays si possible
+            - Pour les compétences, inclus toutes les compétences techniques et soft skills trouvées`
           },
           {
             role: 'user',
@@ -83,7 +83,9 @@ serve(async (req) => {
     });
 
     if (!extractionResponse.ok) {
-      throw new Error(`OpenAI extraction API error: ${extractionResponse.statusText}`);
+      const errorText = await extractionResponse.text();
+      console.error('OpenAI extraction API error:', extractionResponse.status, errorText);
+      throw new Error(`OpenAI extraction API error: ${extractionResponse.status} - ${errorText}`);
     }
 
     const extractionData = await extractionResponse.json();
@@ -92,6 +94,8 @@ serve(async (req) => {
     if (!extractedContent) {
       throw new Error('No content received from OpenAI for extraction');
     }
+
+    console.log('Raw extraction response:', extractedContent);
 
     // Parse the extracted candidate information
     let candidateData;
@@ -106,6 +110,8 @@ serve(async (req) => {
       name: `${candidateData.first_name} ${candidateData.last_name}`,
       email: candidateData.email,
       position: candidateData.position,
+      address: candidateData.address,
+      city: candidateData.city,
       skillsCount: candidateData.skills?.length || 0,
       experienceYears: candidateData.years_experience
     });
@@ -118,7 +124,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4.1-2025-04-14',
         messages: [
           {
             role: 'system',
@@ -167,11 +173,6 @@ serve(async (req) => {
       }),
     });
 
-    if (!analysisResponse.ok) {
-      console.warn(`OpenAI analysis API error: ${analysisResponse.statusText}`);
-      // Continue without analysis if scoring fails
-    }
-
     let analysis = null;
     if (analysisResponse.ok) {
       const analysisData = await analysisResponse.json();
@@ -182,13 +183,20 @@ serve(async (req) => {
           analysis = JSON.parse(analysisContent);
           console.log('AI analysis completed successfully:', {
             score: analysis.score,
-            hasBreakdown: !!analysis.breakdown
+            hasExplanation: !!analysis.explanation,
+            hasBreakdown: !!analysis.breakdown,
+            strengthsCount: analysis.strengths?.length || 0,
+            weaknessesCount: analysis.weaknesses?.length || 0
           });
         } catch (parseError) {
           console.error('Failed to parse AI analysis response:', analysisContent);
           // Continue without analysis
         }
       }
+    } else {
+      const errorText = await analysisResponse.text();
+      console.warn(`OpenAI analysis API error: ${analysisResponse.status} - ${errorText}`);
+      // Continue without analysis if scoring fails
     }
 
     return new Response(
