@@ -39,73 +39,14 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const { user } = useAuth();
 
-  // Parse location string to extract structured address
-  const parseLocationAddress = (locationStr: string) => {
-    if (!locationStr) return null;
-    
-    console.log('🔍 Parsing location string:', locationStr);
-    
-    // Pour "Chemin des chaumets 17 1239 Collex, GE" format
-    const cleanLocation = locationStr.trim();
-    
-    // Extraire le code postal (4-5 chiffres)
-    const postalMatch = cleanLocation.match(/\b(\d{4,5})\b/);
-    const extractedPostalCode = postalMatch ? postalMatch[1] : '';
-    
-    // Diviser par virgule pour séparer l'adresse principale de la région/pays
-    const parts = cleanLocation.split(',').map(p => p.trim());
-    
-    let streetAddress = '';
-    let cityName = '';
-    let countryCode = '';
-    
-    if (parts.length >= 2) {
-      // La dernière partie est probablement le pays/région (comme "GE")
-      countryCode = parts[parts.length - 1];
-      
-      // La première partie contient rue + code postal + ville
-      const mainPart = parts[0];
-      
-      if (extractedPostalCode) {
-        // Diviser au niveau du code postal
-        const postalIndex = mainPart.indexOf(extractedPostalCode);
-        if (postalIndex > 0) {
-          streetAddress = mainPart.substring(0, postalIndex).trim();
-          // Après le code postal c'est la ville
-          const afterPostal = mainPart.substring(postalIndex + extractedPostalCode.length).trim();
-          cityName = afterPostal;
-        }
-      }
-    }
-    
-    // Convertir les codes pays
-    const countryMap: { [key: string]: string } = {
-      'GE': 'Suisse',
-      'CH': 'Suisse',
-      'FR': 'France',
-      'DE': 'Allemagne',
-      'IT': 'Italie'
-    };
-    
-    const fullCountry = countryMap[countryCode] || countryCode || '';
-    
-    const result = {
-      address: streetAddress,
-      postal_code: extractedPostalCode,
-      city: cityName,
-      country: fullCountry
-    };
-    
-    console.log('✅ Parsed address result:', result);
-    return result;
-  };
-
   // Load candidate data
   useEffect(() => {
     if (!candidate) return;
     
     console.log('🔍 ProfileTab: Loading candidate data:', {
       id: candidate.id,
+      firstName: candidate.first_name,
+      lastName: candidate.last_name,
       location: candidate.location,
       address: candidate.address,
       postal_code: candidate.postal_code,
@@ -120,29 +61,18 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     setPosition(candidate.position || '');
     setLocation(candidate.location || '');
 
-    // Pour l'adresse structurée, utiliser les champs de base de données s'ils sont disponibles, sinon analyser location
-    const hasStructuredData = candidate.address || candidate.postal_code || candidate.city || candidate.country;
-    
-    if (hasStructuredData) {
-      setAddress(candidate.address || '');
-      setPostalCode(candidate.postal_code || '');
-      setCity(candidate.city || '');
-      setCountry(candidate.country || '');
-    } else if (candidate.location) {
-      // Analyser la chaîne location pour extraire les données structurées
-      const parsed = parseLocationAddress(candidate.location);
-      if (parsed) {
-        setAddress(parsed.address);
-        setPostalCode(parsed.postal_code);
-        setCity(parsed.city);
-        setCountry(parsed.country);
-      }
-    } else {
-      setAddress('');
-      setPostalCode('');
-      setCity('');
-      setCountry('');
-    }
+    // Charger directement les champs d'adresse structurés
+    setAddress(candidate.address || '');
+    setPostalCode(candidate.postal_code || '');
+    setCity(candidate.city || '');
+    setCountry(candidate.country || '');
+
+    console.log('📍 Address fields loaded:', {
+      address: candidate.address || 'EMPTY',
+      postal_code: candidate.postal_code || 'EMPTY',
+      city: candidate.city || 'EMPTY',
+      country: candidate.country || 'EMPTY'
+    });
 
     setYearsExperience(candidate.years_experience || 0);
     setSalaryExpectation(candidate.salary_expectations || '');
@@ -197,36 +127,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     }
   };
 
-  // Obtenir les données d'adresse actuelles (depuis les champs BD ou analysées depuis location)
-  const getCurrentAddressData = () => {
-    const hasDbData = candidate.address || candidate.postal_code || candidate.city || candidate.country;
-    
-    if (hasDbData) {
-      return {
-        address: candidate.address || '',
-        postal_code: candidate.postal_code || '',
-        city: candidate.city || '',
-        country: candidate.country || ''
-      };
-    } else if (candidate.location) {
-      return parseLocationAddress(candidate.location) || {
-        address: '',
-        postal_code: '',
-        city: '',
-        country: ''
-      };
-    }
-    
-    return {
-      address: '',
-      postal_code: '',
-      city: '',
-      country: ''
-    };
-  };
-
-  const currentAddressData = getCurrentAddressData();
-
   return (
     <div className="space-y-6 p-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -269,60 +169,66 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             </CardContent>
           </Card>
 
-          {/* Section Adresse détaillée extraite du CV */}
+          {/* Section Adresse simplifiée */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 border-b border-gray-200/50">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-emerald-100 rounded-lg">
                   <Home className="h-5 w-5 text-emerald-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">Adresse détaillée extraite du CV</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Adresse</h3>
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {/* Affichage détaillé ligne par ligne des données actuelles */}
+              {/* Affichage direct des données d'adresse */}
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                 <div className="flex items-center gap-3">
                   <MapPin className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-600 font-medium">Adresse extraite du CV :</span>
+                  <span className="text-sm text-gray-600 font-medium">Adresse actuelle :</span>
                 </div>
                 
                 <div className="ml-7 space-y-2">
                   <div className="flex items-start gap-2">
                     <span className="text-xs text-gray-500 uppercase tracking-wide font-medium w-24">Adresse:</span>
                     <span className="text-sm text-gray-800 font-medium">
-                      {currentAddressData.address || 'Non spécifiée'}
+                      {candidate.address || 'Non spécifiée'}
                     </span>
                   </div>
                   
                   <div className="flex items-start gap-2">
                     <span className="text-xs text-gray-500 uppercase tracking-wide font-medium w-24">Code postal:</span>
                     <span className="text-sm text-gray-800 font-medium">
-                      {currentAddressData.postal_code || 'Non spécifié'}
+                      {candidate.postal_code || 'Non spécifié'}
                     </span>
                   </div>
                   
                   <div className="flex items-start gap-2">
                     <span className="text-xs text-gray-500 uppercase tracking-wide font-medium w-24">Ville:</span>
                     <span className="text-sm text-gray-800 font-medium">
-                      {currentAddressData.city || 'Non spécifiée'}
+                      {candidate.city || 'Non spécifiée'}
                     </span>
                   </div>
                   
                   <div className="flex items-start gap-2">
                     <span className="text-xs text-gray-500 uppercase tracking-wide font-medium w-24">Pays:</span>
                     <span className="text-sm text-gray-800 font-medium">
-                      {currentAddressData.country || 'Non spécifié'}
+                      {candidate.country || 'Non spécifié'}
                     </span>
                   </div>
 
-                  {/* Debug info */}
-                  <div className="mt-4 pt-3 border-t border-gray-200">
-                    <div className="text-xs text-gray-400">
-                      <div>Location original: {candidate.location || 'Vide'}</div>
-                      <div>Données BD: {candidate.address || candidate.postal_code || candidate.city || candidate.country ? 'Présentes' : 'Vides'}</div>
+                  {/* Debug info pour Dorian Fournier */}
+                  {(candidate.first_name === 'Dorian' && candidate.last_name === 'Fournier') && (
+                    <div className="mt-4 pt-3 border-t border-yellow-200 bg-yellow-50 rounded p-2">
+                      <div className="text-xs text-yellow-700">
+                        <div><strong>DEBUG Dorian Fournier:</strong></div>
+                        <div>Location original: "{candidate.location || 'VIDE'}"</div>
+                        <div>Address: "{candidate.address || 'VIDE'}"</div>
+                        <div>Postal: "{candidate.postal_code || 'VIDE'}"</div>
+                        <div>City: "{candidate.city || 'VIDE'}"</div>
+                        <div>Country: "{candidate.country || 'VIDE'}"</div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
