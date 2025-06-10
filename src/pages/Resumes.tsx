@@ -194,7 +194,7 @@ const Resumes = () => {
         description: "Veuillez patienter pendant l'extraction du texte..."
       });
       
-      const result: TextExtractionResult = await extractResumeText(resumeId);
+      const result: TextExtractionResult = await extractResumeText(resumeId, filePath);
       
       if (result.success && result.text) {
         setExtractedText(result.text);
@@ -356,7 +356,7 @@ const Resumes = () => {
         } else {
           try {
             console.log(`Extracting text for resume ${resumeId}, file path: ${resume.file_path}`);
-            const extractResult: TextExtractionResult = await extractResumeText(resumeId);
+            const extractResult: TextExtractionResult = await extractResumeText(resumeId, resume.file_path);
             
             if (extractResult.success && extractResult.text) {
               console.log(`Text extraction successful for resume ${resumeId}, text length: ${extractResult.text.length}`);
@@ -387,15 +387,15 @@ const Resumes = () => {
         throw new Error("Aucun texte n'a pu être extrait des CV sélectionnés");
       }
       
-      const result: BatchAnalysisResult = await analyzeBatchResumes(itemsToAnalyze, (current, total, currentResumeId, success) => {
-        console.log(`Batch progress: ${current}/${total}, resume ${currentResumeId}, success: ${success}`);
-        const percent = Math.round((current / total) * 100);
-        setBatchProgress({ current, total, percent });
+      const result: BatchAnalysisResult = await analyzeBatchResumes(itemsToAnalyze, (progress) => {
+        console.log(`Batch progress: ${progress.current}/${progress.total}, resume ${progress.currentResumeId}, success: ${progress.success}`);
+        const percent = Math.round((progress.current / progress.total) * 100);
+        setBatchProgress({ current: progress.current, total: progress.total, percent });
         
-        if (success) {
+        if (progress.success) {
           setResumes(prev => 
             prev.map(resume => 
-              resume.id === currentResumeId ? { ...resume, parsed: true } : resume
+              resume.id === progress.currentResumeId ? { ...resume, parsed: true } : resume
             )
           );
         }
