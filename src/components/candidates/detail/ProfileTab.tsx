@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -18,67 +17,30 @@ interface ProfileTabProps {
   onRefresh?: () => void;
 }
 
-// Geographic validation helper
-const getCountryForCity = (city: string): string => {
-  const cityCountryMap: Record<string, string> = {
-    'geneva': 'Switzerland',
-    'genève': 'Switzerland',
-    'lausanne': 'Switzerland',
-    'zurich': 'Switzerland',
-    'zürich': 'Switzerland',
-    'bern': 'Switzerland',
-    'berne': 'Switzerland',
-    'basel': 'Switzerland',
-    'bâle': 'Switzerland',
-    'paris': 'France',
-    'lyon': 'France',
-    'marseille': 'France',
-    'toulouse': 'France',
-    'nice': 'France',
-    'london': 'United Kingdom',
-    'manchester': 'United Kingdom',
-    'edinburgh': 'United Kingdom',
-    'berlin': 'Germany',
-    'munich': 'Germany',
-    'hamburg': 'Germany',
-    'milan': 'Italy',
-    'rome': 'Italy',
-    'turin': 'Italy'
-  };
-  
-  return cityCountryMap[city.toLowerCase()] || '';
-};
-
-// Format complete address helper - IMPROVED VERSION
-const formatCompleteAddress = (address: string, postalCode: string, city: string, country: string): string => {
+// Construire l'adresse complète formatée à partir des données extraites
+const buildCompleteAddress = (candidate: CandidateData): string => {
   const parts = [];
   
-  if (address) parts.push(address);
-  if (postalCode && city) {
-    parts.push(`${postalCode} ${city}`);
-  } else if (city) {
-    parts.push(city);
-  }
-  if (country) parts.push(country);
+  // Utiliser les données structurées en priorité
+  if (candidate.address) parts.push(candidate.address);
   
-  return parts.join(', ');
-};
-
-// NEW: Build comprehensive address from all available data
-const buildDisplayAddress = (candidate: CandidateData): string => {
-  const { address, postal_code, city, country, location } = candidate;
-  
-  // Priority 1: Use structured address data if available
-  if (address || postal_code || city || country) {
-    return formatCompleteAddress(address || '', postal_code || '', city || '', country || '');
+  // Code postal + ville
+  if (candidate.postal_code && candidate.city) {
+    parts.push(`${candidate.postal_code} ${candidate.city}`);
+  } else if (candidate.city) {
+    parts.push(candidate.city);
   }
   
-  // Priority 2: Fall back to generic location
-  if (location) {
-    return location;
+  // Pays
+  if (candidate.country) parts.push(candidate.country);
+  
+  // Si on a des données structurées, les utiliser
+  if (parts.length > 0) {
+    return parts.join(', ');
   }
   
-  return 'Adresse non spécifiée';
+  // Sinon utiliser location comme fallback
+  return candidate.location || 'Adresse non spécifiée';
 };
 
 const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh }) => {
@@ -101,19 +63,12 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   const [showRawData, setShowRawData] = useState(false);
   const { user } = useAuth();
   
-  // FIXED: Simplified useEffect that loads ALL data when candidate changes
+  // Charger TOUTES les données du candidat
   useEffect(() => {
-    if (!candidate) {
-      console.log('🔍 ProfileTab: No candidate data provided');
-      return;
-    }
+    if (!candidate) return;
     
-    console.log('🔍 ProfileTab: Loading candidate data:', {
-      candidateId: candidate.id,
-      firstName: candidate.first_name,
-      lastName: candidate.last_name,
-      email: candidate.email,
-      phone: candidate.phone,
+    console.log('🔍 ProfileTab: Chargement des données candidat:', {
+      id: candidate.id,
       address: candidate.address,
       postal_code: candidate.postal_code,
       city: candidate.city,
@@ -121,15 +76,15 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
       location: candidate.location
     });
     
-    // Load ALL fields unconditionally
+    // Charger tous les champs
     setFirstName(candidate.first_name || '');
     setLastName(candidate.last_name || '');
     setEmail(candidate.email || '');
-    setPhone(candidate.phone || ''); // FIXED: Always load phone
+    setPhone(candidate.phone || '');
     setPosition(candidate.position || '');
     setLocation(candidate.location || '');
     
-    // FIXED: Load structured address data
+    // Charger les données d'adresse structurées
     setAddress(candidate.address || '');
     setPostalCode(candidate.postal_code || '');
     setCity(candidate.city || '');
@@ -139,38 +94,21 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     setSalaryExpectation(candidate.salary_expectations || '');
     setAvailability(candidate.availability || '');
     setNotes(candidate.notes || '');
-    
-    console.log('✅ ProfileTab: All data loaded successfully');
-  }, [candidate]); // SIMPLIFIED: Only depend on candidate object
+  }, [candidate]);
   
-  // Auto-complete country when city changes
-  useEffect(() => {
-    if (city && !country) {
-      const suggestedCountry = getCountryForCity(city);
-      if (suggestedCountry) {
-        console.log(`🌍 Auto-completing country for ${city}: ${suggestedCountry}`);
-        setCountry(suggestedCountry);
-      }
-    }
-  }, [city, country]);
+  // Calculer l'adresse complète formatée
+  const completeFormattedAddress = buildCompleteAddress(candidate);
+  const hasStructuredAddress = Boolean(candidate.address || candidate.postal_code || candidate.city || candidate.country);
   
-  // IMPROVED: Calculate display values
-  const completeFormattedAddress = formatCompleteAddress(address, postalCode, city, country);
-  const displayAddress = buildDisplayAddress(candidate);
-  const hasStructuredAddress = Boolean(address || postalCode || city || country);
-  const hasAnyAddressData = Boolean(address || postalCode || city || country || location);
-  
-  console.log('📍 Current address display logic:', {
-    displayAddress,
-    hasStructuredAddress,
-    hasAnyAddressData,
+  console.log('📍 Adresse calculée:', {
     completeFormattedAddress,
-    candidateData: { 
-      address: candidate.address, 
-      postal_code: candidate.postal_code, 
-      city: candidate.city, 
-      country: candidate.country, 
-      location: candidate.location 
+    hasStructuredAddress,
+    candidateData: {
+      address: candidate.address,
+      postal_code: candidate.postal_code,
+      city: candidate.city,
+      country: candidate.country,
+      location: candidate.location
     }
   });
 
@@ -179,13 +117,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     
     try {
       setIsSaving(true);
-      console.log('💾 ProfileTab: Saving candidate with address data:', {
-        address,
-        postal_code: postalCode,
-        city,
-        country,
-        location
-      });
       
       const updateData = {
         id: candidate.id,
@@ -205,8 +136,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
         notes: notes
       };
       
-      console.log('📤 ProfileTab: Complete update data:', updateData);
-      
       await candidateService.updateCandidate(updateData);
       
       toast({
@@ -214,9 +143,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
         description: "Les informations du candidat ont été mises à jour avec succès.",
       });
       
-      // Refresh the data to ensure consistency
       if (onRefresh) {
-        console.log('🔄 ProfileTab: Calling onRefresh to reload data');
         onRefresh();
       }
     } catch (error: any) {
@@ -284,7 +211,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                   className="border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
-              {/* FIXED: Always show phone field */}
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                   <Phone className="h-4 w-4" />
@@ -302,7 +228,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardContent>
           </Card>
 
-          {/* IMPROVED: Section Adresse avec affichage prioritaire des données structurées */}
+          {/* Section Adresse CORRIGÉE */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-200/50">
               <div className="flex items-center justify-between">
@@ -313,10 +239,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                   <h3 className="text-lg font-semibold text-gray-900">Adresse complète</h3>
                 </div>
                 <div className="flex items-center gap-2">
-                  {hasAnyAddressData && (
+                  {hasStructuredAddress && (
                     <div className="flex items-center gap-2 text-emerald-600">
                       <CheckCircle className="h-4 w-4" />
-                      <span className="text-sm font-medium">Données extraites</span>
+                      <span className="text-sm font-medium">Extraite du CV</span>
                     </div>
                   )}
                   <Button
@@ -333,65 +259,55 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               
-              {/* IMPROVED: Affichage prioritaire de l'adresse complète structurée */}
-              <div className="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-4">
-                <Label className="text-sm font-medium text-emerald-800 flex items-center gap-2 mb-3">
+              {/* NOUVEAU: Affichage de l'adresse complète formatée */}
+              <div className="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-6">
+                <Label className="text-sm font-medium text-emerald-800 flex items-center gap-2 mb-4">
                   <MapPin className="h-4 w-4" />
-                  📍 Adresse actuelle
+                  📍 Adresse extraite du CV
                 </Label>
                 
-                {/* NEW: Adresse principale avec priorité aux données structurées */}
-                <div className="mb-4 p-4 bg-white rounded-lg border-2 border-emerald-300">
-                  <div className="text-xl font-bold text-emerald-800">
-                    🏠 {displayAddress}
+                <div className="bg-white rounded-lg border-2 border-emerald-300 p-4">
+                  <div className="text-2xl font-bold text-emerald-800 mb-2">
+                    🏠 {completeFormattedAddress}
                   </div>
-                  {hasStructuredAddress && (
-                    <div className="text-sm text-emerald-600 mt-2">
-                      ✅ Adresse structurée extraite du CV
+                  {hasStructuredAddress ? (
+                    <div className="text-sm text-emerald-600">
+                      ✅ Adresse complète extraite et structurée
                     </div>
-                  )}
-                  {!hasStructuredAddress && location && (
-                    <div className="text-sm text-amber-600 mt-2">
+                  ) : (
+                    <div className="text-sm text-amber-600">
                       ⚠️ Localisation générale uniquement
                     </div>
                   )}
                 </div>
                 
-                {/* Détails par champ si données structurées disponibles */}
+                {/* Détails structurés si disponibles */}
                 {hasStructuredAddress && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                    {address && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                    {candidate.address && (
                       <div className="bg-white p-3 rounded border border-emerald-200">
-                        <span className="text-emerald-600 font-medium">🏠 Rue:</span>
-                        <div className="text-emerald-800 font-medium">{address}</div>
+                        <div className="text-emerald-600 font-medium text-xs">🏠 RUE</div>
+                        <div className="text-emerald-800 font-bold">{candidate.address}</div>
                       </div>
                     )}
-                    {postalCode && (
+                    {candidate.postal_code && (
                       <div className="bg-white p-3 rounded border border-emerald-200">
-                        <span className="text-emerald-600 font-medium">📮 Code postal:</span>
-                        <div className="text-emerald-800 font-medium">{postalCode}</div>
+                        <div className="text-emerald-600 font-medium text-xs">📮 CODE</div>
+                        <div className="text-emerald-800 font-bold">{candidate.postal_code}</div>
                       </div>
                     )}
-                    {city && (
+                    {candidate.city && (
                       <div className="bg-white p-3 rounded border border-emerald-200">
-                        <span className="text-emerald-600 font-medium">🏙️ Ville:</span>
-                        <div className="text-emerald-800 font-medium">{city}</div>
+                        <div className="text-emerald-600 font-medium text-xs">🏙️ VILLE</div>
+                        <div className="text-emerald-800 font-bold">{candidate.city}</div>
                       </div>
                     )}
-                    {country && (
+                    {candidate.country && (
                       <div className="bg-white p-3 rounded border border-emerald-200">
-                        <span className="text-emerald-600 font-medium">🌍 Pays:</span>
-                        <div className="text-emerald-800 font-medium">{country}</div>
+                        <div className="text-emerald-600 font-medium text-xs">🌍 PAYS</div>
+                        <div className="text-emerald-800 font-bold">{candidate.country}</div>
                       </div>
                     )}
-                  </div>
-                )}
-                
-                {/* Localisation générale si pas de données structurées */}
-                {!hasStructuredAddress && location && (
-                  <div className="bg-white p-3 rounded border border-emerald-200">
-                    <span className="text-emerald-600 font-medium">📍 Localisation:</span>
-                    <div className="text-emerald-800 font-medium">{location}</div>
                   </div>
                 )}
               </div>
@@ -409,21 +325,11 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   location: candidate.location
 }, null, 2)}
                   </pre>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block mt-4">États locaux actuels</Label>
-                  <pre className="text-xs text-blue-600 whitespace-pre-wrap">
-{JSON.stringify({
-  address: address,
-  postal_code: postalCode,
-  city: city,
-  country: country,
-  location: location
-}, null, 2)}
-                  </pre>
                 </div>
               )}
               
               {/* Champs d'édition */}
-              <div className="space-y-4 border-t pt-4">
+              <div className="space-y-4 border-t pt-6">
                 <Label className="text-base font-medium text-gray-800">Modifier l'adresse</Label>
                 
                 <div className="space-y-2">
@@ -474,7 +380,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                   </div>
                 </div>
                 
-                {/* Champ location */}
                 <div className="space-y-2">
                   <Label htmlFor="location" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
@@ -493,7 +398,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardContent>
           </Card>
 
-          {/* Informations professionnelles */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200/50">
               <div className="flex items-center gap-3">
@@ -563,7 +467,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardContent>
           </Card>
 
-          {/* Notes */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50 border-b border-gray-200/50">
               <div className="flex items-center gap-3">
@@ -579,10 +482,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                 <Textarea
                   id="notes"
                   value={notes}
-                  onChange={(e) => {
-                    console.log('ProfileTab: Notes field changed to:', e.target.value);
-                    setNotes(e.target.value);
-                  }}
+                  onChange={(e) => setNotes(e.target.value)}
                   className="border-gray-300 focus:border-purple-500 focus:ring-purple-500 resize-none"
                   rows={5}
                   placeholder="Ajoutez vos notes personnelles sur ce candidat..."
@@ -594,7 +494,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
 
         {/* Sidebar avec actions et score */}
         <div className="space-y-6">
-          {/* Actions */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50 border-b border-gray-200/50">
               <h3 className="text-lg font-semibold text-gray-900">Actions</h3>
@@ -620,7 +519,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardContent>
           </Card>
 
-          {/* Score IA */}
           <ScoreDisplay 
             candidate={candidate}
             isLoading={isLoading}
