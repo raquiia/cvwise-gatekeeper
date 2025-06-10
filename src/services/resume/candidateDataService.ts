@@ -1,7 +1,7 @@
 
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { CandidateData } from '@/services/data/resumeDataService';
+import { CandidateData } from '@/services/data/candidateService';
 
 /**
  * Récupérer les données complètes d'un candidat par son ID
