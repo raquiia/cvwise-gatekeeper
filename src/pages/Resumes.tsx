@@ -194,7 +194,7 @@ const Resumes = () => {
         description: "Veuillez patienter pendant l'extraction du texte..."
       });
       
-      const result: TextExtractionResult = await extractResumeText(resumeId, filePath);
+      const result: TextExtractionResult = await extractResumeText(resumeId);
       
       if (result.success && result.text) {
         setExtractedText(result.text);
@@ -355,8 +355,8 @@ const Resumes = () => {
           });
         } else {
           try {
-            console.log(`Extracting text for resume ${resumeId}, file path: ${resume.file_path}`);
-            const extractResult: TextExtractionResult = await extractResumeText(resumeId, resume.file_path);
+            console.log(`Extracting text for resume ${resumeId}`);
+            const extractResult: TextExtractionResult = await extractResumeText(resumeId);
             
             if (extractResult.success && extractResult.text) {
               console.log(`Text extraction successful for resume ${resumeId}, text length: ${extractResult.text.length}`);
