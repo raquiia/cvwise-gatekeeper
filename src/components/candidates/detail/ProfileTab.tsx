@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -46,14 +45,14 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     
     console.log('🔍 Parsing location string:', locationStr);
     
-    // For "Chemin des chaumets 17 1239 Collex, GE" format
+    // Pour "Chemin des chaumets 17 1239 Collex, GE" format
     const cleanLocation = locationStr.trim();
     
-    // Try to extract postal code (4-5 digits)
+    // Extraire le code postal (4-5 chiffres)
     const postalMatch = cleanLocation.match(/\b(\d{4,5})\b/);
     const extractedPostalCode = postalMatch ? postalMatch[1] : '';
     
-    // Split by comma first to separate main address from region/country
+    // Diviser par virgule pour séparer l'adresse principale de la région/pays
     const parts = cleanLocation.split(',').map(p => p.trim());
     
     let streetAddress = '';
@@ -61,25 +60,25 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     let countryCode = '';
     
     if (parts.length >= 2) {
-      // Last part is likely country/region (like "GE")
+      // La dernière partie est probablement le pays/région (comme "GE")
       countryCode = parts[parts.length - 1];
       
-      // First part contains street + postal code + city
+      // La première partie contient rue + code postal + ville
       const mainPart = parts[0];
       
       if (extractedPostalCode) {
-        // Split at postal code
+        // Diviser au niveau du code postal
         const postalIndex = mainPart.indexOf(extractedPostalCode);
         if (postalIndex > 0) {
           streetAddress = mainPart.substring(0, postalIndex).trim();
-          // After postal code is the city
+          // Après le code postal c'est la ville
           const afterPostal = mainPart.substring(postalIndex + extractedPostalCode.length).trim();
           cityName = afterPostal;
         }
       }
     }
     
-    // Convert country codes
+    // Convertir les codes pays
     const countryMap: { [key: string]: string } = {
       'GE': 'Suisse',
       'CH': 'Suisse',
@@ -114,7 +113,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
       country: candidate.country
     });
 
-    // Load all fields
     setFirstName(candidate.first_name || '');
     setLastName(candidate.last_name || '');
     setEmail(candidate.email || '');
@@ -122,7 +120,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     setPosition(candidate.position || '');
     setLocation(candidate.location || '');
 
-    // For structured address, use database fields if available, otherwise parse location
+    // Pour l'adresse structurée, utiliser les champs de base de données s'ils sont disponibles, sinon analyser location
     const hasStructuredData = candidate.address || candidate.postal_code || candidate.city || candidate.country;
     
     if (hasStructuredData) {
@@ -131,7 +129,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
       setCity(candidate.city || '');
       setCountry(candidate.country || '');
     } else if (candidate.location) {
-      // Parse the location string to extract structured data
+      // Analyser la chaîne location pour extraire les données structurées
       const parsed = parseLocationAddress(candidate.location);
       if (parsed) {
         setAddress(parsed.address);
@@ -199,7 +197,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     }
   };
 
-  // Get current address data (from DB fields or parsed from location)
+  // Obtenir les données d'adresse actuelles (depuis les champs BD ou analysées depuis location)
   const getCurrentAddressData = () => {
     const hasDbData = candidate.address || candidate.postal_code || candidate.city || candidate.country;
     
@@ -357,7 +355,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             </CardContent>
           </Card>
 
-          {/* ... keep existing code (professional info card) */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200/50">
               <div className="flex items-center gap-3">
@@ -403,7 +400,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             </CardContent>
           </Card>
 
-          {/* ... keep existing code (notes card) */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50 border-b border-gray-200/50">
               <div className="flex items-center gap-3">
@@ -422,7 +418,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
           </Card>
         </div>
 
-        {/* ... keep existing code (sidebar with actions and score) */}
         <div className="space-y-6">
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50 border-b border-gray-200/50">
