@@ -17,32 +17,6 @@ interface ProfileTabProps {
   onRefresh?: () => void;
 }
 
-// Construire l'adresse complète formatée à partir des données extraites
-const buildCompleteAddress = (candidate: CandidateData): string => {
-  const parts = [];
-  
-  // Utiliser les données structurées en priorité
-  if (candidate.address) parts.push(candidate.address);
-  
-  // Code postal + ville
-  if (candidate.postal_code && candidate.city) {
-    parts.push(`${candidate.postal_code} ${candidate.city}`);
-  } else if (candidate.city) {
-    parts.push(candidate.city);
-  }
-  
-  // Pays
-  if (candidate.country) parts.push(candidate.country);
-  
-  // Si on a des données structurées, les utiliser
-  if (parts.length > 0) {
-    return parts.join(', ');
-  }
-  
-  // Sinon utiliser location comme fallback
-  return candidate.location || 'Adresse non spécifiée';
-};
-
 const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh }) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -84,7 +58,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     setPosition(candidate.position || '');
     setLocation(candidate.location || '');
     
-    // Charger les données d'adresse structurées
+    // Charger les données d'adresse structurées DIRECTEMENT depuis la base
     setAddress(candidate.address || '');
     setPostalCode(candidate.postal_code || '');
     setCity(candidate.city || '');
@@ -95,22 +69,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     setAvailability(candidate.availability || '');
     setNotes(candidate.notes || '');
   }, [candidate]);
-  
-  // Calculer l'adresse complète formatée
-  const completeFormattedAddress = buildCompleteAddress(candidate);
-  const hasStructuredAddress = Boolean(candidate.address || candidate.postal_code || candidate.city || candidate.country);
-  
-  console.log('📍 Adresse calculée:', {
-    completeFormattedAddress,
-    hasStructuredAddress,
-    candidateData: {
-      address: candidate.address,
-      postal_code: candidate.postal_code,
-      city: candidate.city,
-      country: candidate.country,
-      location: candidate.location
-    }
-  });
 
   const handleSave = async () => {
     if (!candidate.id || !user?.id) return;
@@ -163,6 +121,25 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
       onRefresh();
     }
   };
+
+  // Construire l'adresse complète DIRECTEMENT depuis les données de la base
+  const buildRealAddress = () => {
+    const addressParts = [];
+    
+    // Utiliser DIRECTEMENT les vraies valeurs depuis la base de données
+    if (candidate.address) addressParts.push(candidate.address);
+    if (candidate.postal_code && candidate.city) {
+      addressParts.push(`${candidate.postal_code} ${candidate.city}`);
+    } else if (candidate.city) {
+      addressParts.push(candidate.city);
+    }
+    if (candidate.country) addressParts.push(candidate.country);
+    
+    return addressParts.length > 0 ? addressParts.join(', ') : candidate.location || 'Adresse non spécifiée';
+  };
+
+  const realCompleteAddress = buildRealAddress();
+  const hasRealStructuredData = Boolean(candidate.address || candidate.postal_code || candidate.city || candidate.country);
   
   return (
     <div className="space-y-6 p-6">
@@ -228,7 +205,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardContent>
           </Card>
 
-          {/* Section Adresse CORRIGÉE */}
+          {/* Section Adresse COMPLÈTEMENT REFAITE */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-200/50">
               <div className="flex items-center justify-between">
@@ -239,7 +216,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                   <h3 className="text-lg font-semibold text-gray-900">Adresse complète</h3>
                 </div>
                 <div className="flex items-center gap-2">
-                  {hasStructuredAddress && (
+                  {hasRealStructuredData && (
                     <div className="flex items-center gap-2 text-emerald-600">
                       <CheckCircle className="h-4 w-4" />
                       <span className="text-sm font-medium">Extraite du CV</span>
@@ -259,7 +236,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               
-              {/* NOUVEAU: Affichage de l'adresse complète formatée */}
+              {/* Affichage de l'adresse complète RÉELLE */}
               <div className="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-6">
                 <Label className="text-sm font-medium text-emerald-800 flex items-center gap-2 mb-4">
                   <MapPin className="h-4 w-4" />
@@ -268,9 +245,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                 
                 <div className="bg-white rounded-lg border-2 border-emerald-300 p-4">
                   <div className="text-2xl font-bold text-emerald-800 mb-2">
-                    🏠 {completeFormattedAddress}
+                    🏠 {realCompleteAddress}
                   </div>
-                  {hasStructuredAddress ? (
+                  {hasRealStructuredData ? (
                     <div className="text-sm text-emerald-600">
                       ✅ Adresse complète extraite et structurée
                     </div>
@@ -281,8 +258,8 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                   )}
                 </div>
                 
-                {/* Détails structurés si disponibles */}
-                {hasStructuredAddress && (
+                {/* Affichage des données structurées RÉELLES */}
+                {hasRealStructuredData && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
                     {candidate.address && (
                       <div className="bg-white p-3 rounded border border-emerald-200">
@@ -312,23 +289,23 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                 )}
               </div>
               
-              {/* Debug des données brutes */}
+              {/* Debug des données brutes DIRECTES */}
               {showRawData && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">Données brutes (Debug)</Label>
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">Données brutes de la base</Label>
                   <pre className="text-xs text-gray-600 whitespace-pre-wrap">
 {JSON.stringify({
-  address: candidate.address,
-  postal_code: candidate.postal_code, 
-  city: candidate.city,
-  country: candidate.country,
-  location: candidate.location
+  'candidate.address': candidate.address,
+  'candidate.postal_code': candidate.postal_code, 
+  'candidate.city': candidate.city,
+  'candidate.country': candidate.country,
+  'candidate.location': candidate.location
 }, null, 2)}
                   </pre>
                 </div>
               )}
               
-              {/* Champs d'édition */}
+              {/* Champs d'édition avec vraies valeurs pré-remplies */}
               <div className="space-y-4 border-t pt-6">
                 <Label className="text-base font-medium text-gray-800">Modifier l'adresse</Label>
                 
@@ -398,6 +375,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardContent>
           </Card>
 
+          {/* ... keep existing code (professional info card) */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200/50">
               <div className="flex items-center gap-3">
@@ -467,6 +445,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardContent>
           </Card>
 
+          {/* ... keep existing code (notes card) */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50 border-b border-gray-200/50">
               <div className="flex items-center gap-3">
@@ -492,7 +471,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
           </Card>
         </div>
 
-        {/* Sidebar avec actions et score */}
+        {/* ... keep existing code (sidebar with actions and score) */}
         <div className="space-y-6">
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50 border-b border-gray-200/50">
