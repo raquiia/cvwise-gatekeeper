@@ -54,6 +54,16 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
       country: candidate.country
     });
 
+    // Log spécial pour Dorian Fournier
+    if (candidate.first_name === 'Dorian' && candidate.last_name === 'Fournier') {
+      console.log('🎯 DORIAN FOURNIER - ProfileTab received data:', {
+        address: candidate.address,
+        postal_code: candidate.postal_code,
+        city: candidate.city,
+        country: candidate.country
+      });
+    }
+
     setFirstName(candidate.first_name || '');
     setLastName(candidate.last_name || '');
     setEmail(candidate.email || '');
@@ -61,13 +71,13 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     setPosition(candidate.position || '');
     setLocation(candidate.location || '');
 
-    // Charger directement les champs d'adresse structurés
+    // Charger directement les champs d'adresse structurés SANS AUCUNE LOGIQUE DE PARSING
     setAddress(candidate.address || '');
     setPostalCode(candidate.postal_code || '');
     setCity(candidate.city || '');
     setCountry(candidate.country || '');
 
-    console.log('📍 Address fields loaded:', {
+    console.log('📍 Address fields loaded in ProfileTab:', {
       address: candidate.address || 'EMPTY',
       postal_code: candidate.postal_code || 'EMPTY',
       city: candidate.city || 'EMPTY',
@@ -221,7 +231,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                     <div className="mt-4 pt-3 border-t border-yellow-200 bg-yellow-50 rounded p-2">
                       <div className="text-xs text-yellow-700">
                         <div><strong>DEBUG Dorian Fournier:</strong></div>
-                        <div>Location original: "{candidate.location || 'VIDE'}"</div>
                         <div>Address: "{candidate.address || 'VIDE'}"</div>
                         <div>Postal: "{candidate.postal_code || 'VIDE'}"</div>
                         <div>City: "{candidate.city || 'VIDE'}"</div>
@@ -349,3 +358,5 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
 };
 
 export default ProfileTab;
+
+}

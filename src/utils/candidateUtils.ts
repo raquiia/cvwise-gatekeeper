@@ -281,9 +281,11 @@ export const isUndefinedObject = (obj: any): boolean => {
   return Object.values(obj).every(value => value === undefined);
 };
 
-// Process candidate data from database format to application format (amélioré)
+// Process candidate data from database format to application format (simplifié)
 export const processCandidateData = (rawCandidate: any): any => {
   if (!rawCandidate) return null;
+  
+  console.log('🔍 PROCESSING CANDIDATE DATA:', rawCandidate);
   
   const processedCandidate = {
     ...rawCandidate,
@@ -294,11 +296,14 @@ export const processCandidateData = (rawCandidate: any): any => {
     phone: safeString(rawCandidate.phone),
     position: safeString(rawCandidate.position),
     location: safeString(rawCandidate.location),
-    address: safeString(rawCandidate.address),
-    postal_code: safeString(rawCandidate.postal_code),
-    city: safeString(rawCandidate.city),
-    country: safeString(rawCandidate.country),
     company: safeString(rawCandidate.company),
+    
+    // Process address fields directly WITHOUT parsing location field
+    address: cleanAndDecodeText(safeString(rawCandidate.address)),
+    postal_code: cleanAndDecodeText(safeString(rawCandidate.postal_code)),
+    city: cleanAndDecodeText(safeString(rawCandidate.city)),
+    country: translateCountryToFrench(cleanAndDecodeText(safeCandidate.country))),
+    
     // Process arrays
     skills: ensureStringArray(rawCandidate.skills),
     education: ensureArray(rawCandidate.education),
@@ -313,25 +318,15 @@ export const processCandidateData = (rawCandidate: any): any => {
     projects: ensureArray(rawCandidate.projects)
   };
   
-  // Si les champs d'adresse structurés sont vides mais que location a des données, décomposer
-  const hasStructuredAddress = processedCandidate.address || processedCandidate.postal_code || 
-                               processedCandidate.city || processedCandidate.country;
-  
-  if (!hasStructuredAddress && processedCandidate.location) {
-    console.log('📍 Décomposition de l\'adresse complète:', processedCandidate.location);
-    const structuredAddress = parseLocationToStructuredAddress(processedCandidate.location);
-    
-    processedCandidate.address = structuredAddress.address;
-    processedCandidate.postal_code = structuredAddress.postal_code;
-    processedCandidate.city = structuredAddress.city;
-    processedCandidate.country = structuredAddress.country;
-    
-    console.log('✅ Adresse décomposée:', structuredAddress);
-  } else if (hasStructuredAddress) {
-    // Améliorer les données existantes
-    processedCandidate.address = cleanAndDecodeText(processedCandidate.address);
-    processedCandidate.city = cleanAndDecodeText(processedCandidate.city);
-    processedCandidate.country = translateCountryToFrench(processedCandidate.country);
+  // Log spécial pour Dorian Fournier pour débogage
+  if (processedCandidate.first_name === 'Dorian' && processedCandidate.last_name === 'Fournier') {
+    console.log('🎯 DORIAN FOURNIER - Processed address data:', {
+      address: processedCandidate.address,
+      postal_code: processedCandidate.postal_code,
+      city: processedCandidate.city,
+      country: processedCandidate.country,
+      location: processedCandidate.location
+    });
   }
   
   return processedCandidate;
