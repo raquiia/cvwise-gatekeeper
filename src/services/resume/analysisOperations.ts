@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { candidateService, CandidateData } from '@/services/data/candidateService';
@@ -139,26 +140,6 @@ export const checkResumeAlreadyAnalyzed = async (resumeId: string): Promise<bool
   } catch (error) {
     console.error('Error in checkResumeAlreadyAnalyzed:', error);
     return false;
-  }
-};
-
-/**
- * Extraire le texte d'un CV
- */
-export const extractResumeText = async (resumeId: string): Promise<string> => {
-  try {
-    const { data, error } = await supabase.functions.invoke('extract-cv-text', {
-      body: { resumeId }
-    });
-
-    if (error || !data?.success) {
-      throw new Error(data?.error || 'Erreur lors de l\'extraction du texte');
-    }
-
-    return data.text || '';
-  } catch (error: any) {
-    console.error('Error extracting resume text:', error);
-    throw error;
   }
 };
 
