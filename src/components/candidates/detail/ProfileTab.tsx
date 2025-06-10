@@ -10,13 +10,59 @@ import { candidateService } from '@/services/data/candidateService';
 import type { CandidateData } from '@/services/data/candidateService';
 import { useAuth } from '@/context/AuthContext';
 import ScoreDisplay from './ScoreDisplay';
-import { User, Briefcase, MapPin, Calendar, DollarSign, Clock, FileText, Save, RotateCcw, Phone, Home } from 'lucide-react';
+import { User, Briefcase, MapPin, Calendar, DollarSign, Clock, FileText, Save, RotateCcw, Phone, Home, CheckCircle } from 'lucide-react';
 
 interface ProfileTabProps {
   candidate: CandidateData;
   isLoading?: boolean;
   onRefresh?: () => void;
 }
+
+// Geographic validation helper
+const getCountryForCity = (city: string): string => {
+  const cityCountryMap: Record<string, string> = {
+    'geneva': 'Switzerland',
+    'genève': 'Switzerland',
+    'lausanne': 'Switzerland',
+    'zurich': 'Switzerland',
+    'zürich': 'Switzerland',
+    'bern': 'Switzerland',
+    'berne': 'Switzerland',
+    'basel': 'Switzerland',
+    'bâle': 'Switzerland',
+    'paris': 'France',
+    'lyon': 'France',
+    'marseille': 'France',
+    'toulouse': 'France',
+    'nice': 'France',
+    'london': 'United Kingdom',
+    'manchester': 'United Kingdom',
+    'edinburgh': 'United Kingdom',
+    'berlin': 'Germany',
+    'munich': 'Germany',
+    'hamburg': 'Germany',
+    'milan': 'Italy',
+    'rome': 'Italy',
+    'turin': 'Italy'
+  };
+  
+  return cityCountryMap[city.toLowerCase()] || '';
+};
+
+// Format complete address helper
+const formatCompleteAddress = (address: string, postalCode: string, city: string, country: string): string => {
+  const parts = [];
+  
+  if (address) parts.push(address);
+  if (postalCode && city) {
+    parts.push(`${postalCode} ${city}`);
+  } else if (city) {
+    parts.push(city);
+  }
+  if (country) parts.push(country);
+  
+  return parts.join(', ');
+};
 
 const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh }) => {
   const [firstName, setFirstName] = useState(candidate.first_name || '');
@@ -60,8 +106,20 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     setNotes(candidate.notes || '');
   }, [candidate]);
   
-  // Check if structured address fields have data
-  const hasStructuredAddress = address || postalCode || city || country;
+  // Auto-complete country when city changes
+  useEffect(() => {
+    if (city && !country) {
+      const suggestedCountry = getCountryForCity(city);
+      if (suggestedCountry) {
+        setCountry(suggestedCountry);
+      }
+    }
+  }, [city, country]);
+  
+  // Check if we have structured address data
+  const hasStructuredAddress = Boolean(address || postalCode || city || country);
+  const completeAddress = formatCompleteAddress(address, postalCode, city, country);
+  const isAddressComplete = Boolean(address && city && country);
   
   const handleSave = async () => {
     if (!candidate.id || !user?.id) return;
@@ -185,91 +243,119 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardContent>
           </Card>
 
-          {/* Adresse structurée */}
+          {/* Adresse avec résumé amélioré */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-200/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                  <Home className="h-5 w-5 text-emerald-600" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <Home className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">Adresse</h3>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">Adresse</h3>
+                {isAddressComplete && (
+                  <div className="flex items-center gap-2 text-emerald-600">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">Complète</span>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="address" className="text-sm font-medium text-gray-700">Adresse</Label>
-                <Input
-                  type="text"
-                  id="address"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Rue et numéro"
-                  className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="postalCode" className="text-sm font-medium text-gray-700">Code postal</Label>
-                  <Input
-                    type="text"
-                    id="postalCode"
-                    value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
-                    placeholder="Code postal"
-                    className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="city" className="text-sm font-medium text-gray-700">Ville</Label>
-                  <Input
-                    type="text"
-                    id="city"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="Ville"
-                    className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="country" className="text-sm font-medium text-gray-700">Pays</Label>
-                  <Input
-                    type="text"
-                    id="country"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    placeholder="Pays"
-                    className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-              {location && !hasStructuredAddress && (
-                <div className="space-y-2">
-                  <Label htmlFor="location" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              {/* Résumé de l'adresse complète */}
+              {completeAddress && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                  <Label className="text-sm font-medium text-emerald-800 flex items-center gap-2 mb-2">
                     <MapPin className="h-4 w-4" />
-                    Localisation (extraite automatiquement)
+                    Adresse complète
                   </Label>
+                  <p className="text-emerald-700 font-medium">{completeAddress}</p>
+                </div>
+              )}
+              
+              {/* Champs d'adresse structurés */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="address" className="text-sm font-medium text-gray-700">Rue et numéro</Label>
                   <Input
                     type="text"
-                    id="location"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
+                    id="address"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Ex: Avenue du Grey 62"
                     className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                   />
                 </div>
-              )}
-              {location && hasStructuredAddress && (
-                <div className="space-y-2">
-                  <Label htmlFor="location" className="text-sm font-medium text-gray-500">Localisation complète (héritée)</Label>
-                  <Input
-                    type="text"
-                    id="location"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    className="border-gray-200 bg-gray-50 text-gray-600"
-                    readOnly
-                  />
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="postalCode" className="text-sm font-medium text-gray-700">Code postal</Label>
+                    <Input
+                      type="text"
+                      id="postalCode"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      placeholder="Ex: 1018"
+                      className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city" className="text-sm font-medium text-gray-700">Ville</Label>
+                    <Input
+                      type="text"
+                      id="city"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="Ex: Lausanne"
+                      className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="country" className="text-sm font-medium text-gray-700">Pays</Label>
+                    <Input
+                      type="text"
+                      id="country"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      placeholder="Ex: Switzerland"
+                      className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                    />
+                  </div>
                 </div>
-              )}
+                
+                {/* Champ location en lecture seule si adresse structurée disponible */}
+                {location && hasStructuredAddress && (
+                  <div className="space-y-2">
+                    <Label htmlFor="location" className="text-sm font-medium text-gray-500">
+                      Localisation originale (remplacée par l'adresse structurée ci-dessus)
+                    </Label>
+                    <Input
+                      type="text"
+                      id="location"
+                      value={location}
+                      className="border-gray-200 bg-gray-50 text-gray-600"
+                      readOnly
+                    />
+                  </div>
+                )}
+                
+                {/* Champ location principal si pas d'adresse structurée */}
+                {location && !hasStructuredAddress && (
+                  <div className="space-y-2">
+                    <Label htmlFor="location" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Localisation
+                    </Label>
+                    <Input
+                      type="text"
+                      id="location"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                    />
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
