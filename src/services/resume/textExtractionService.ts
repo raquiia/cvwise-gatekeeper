@@ -2,10 +2,16 @@
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface TextExtractionResult {
+  success: boolean;
+  message?: string;
+  text?: string;
+}
+
 /**
  * Extraire le texte d'un CV à partir de son ID
  */
-export const extractResumeText = async (resumeId: string, filePath?: string): Promise<{ success: boolean; message?: string; text?: string }> => {
+export const extractResumeText = async (resumeId: string, filePath?: string): Promise<TextExtractionResult> => {
   try {
     console.log('Starting text extraction for resume:', resumeId);
     
@@ -123,11 +129,6 @@ export const extractResumeText = async (resumeId: string, filePath?: string): Pr
     };
   } catch (error: any) {
     console.error('Text extraction error:', error);
-    toast({
-      title: "Échec de l'extraction",
-      description: error.message || "Une erreur est survenue lors de l'extraction du texte",
-      variant: "destructive",
-    });
     return { 
       success: false, 
       message: error.message || "Échec de l'extraction du texte"
