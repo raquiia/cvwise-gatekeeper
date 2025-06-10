@@ -3,53 +3,6 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from '@/services/data/candidateService';
 
-// Interface for the RPC response that includes all fields returned by get_candidate_by_id_bypassing_rls
-interface RpcCandidateResponse {
-  id: string;
-  user_id: string;
-  resume_id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  position: string;
-  years_experience: number;
-  location: string;
-  address?: string;
-  postal_code?: string;
-  city?: string;
-  country?: string;
-  skills: any;
-  score: number;
-  status: string;
-  company: string;
-  created_at: string;
-  updated_at: string;
-  experiences: any;
-  education: any;
-  certifications: any;
-  languages: any;
-  publications: any;
-  interests: string;
-  professional_references: any;
-  availability: string;
-  salary_expectations: string;
-  mobility: string;
-  contract_type: string;
-  remote_preference: string;
-  travel_willingness: string;
-  professional_networks: any;
-  continuous_training: any;
-  career_objectives: string;
-  professional_values: string;
-  work_authorization: string;
-  special_permits: any;
-  industries: any;
-  projects: any;
-  profile_completeness: number;
-  last_updated_at: string;
-}
-
 /**
  * Récupérer les données complètes d'un candidat par son ID
  */
@@ -73,8 +26,8 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
       return null;
     }
     
-    // Handle both array and direct object responses, properly typed
-    const candidateRawData: RpcCandidateResponse = Array.isArray(data) ? data[0] : data;
+    // Handle both array and direct object responses
+    const candidateRawData = Array.isArray(data) ? data[0] : data;
     
     // LOG DÉTAILLÉ des données brutes récupérées de la base
     console.log('🗃️ RAW DATA FROM DATABASE:', {
@@ -101,6 +54,7 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     
     console.log('✅ Successfully retrieved complete candidate data from database');
     
+    // Cast to CandidateData since we know the RPC function returns all required fields
     return candidateRawData as CandidateData;
   } catch (error: any) {
     console.error('❌ Exception in getCompleteCandidateData:', error);
