@@ -15,10 +15,10 @@ interface RpcCandidateResponse {
   position: string;
   years_experience: number;
   location: string;
-  address: string;
-  postal_code: string;
-  city: string;
-  country: string;
+  address?: string;
+  postal_code?: string;
+  city?: string;
+  country?: string;
   skills: any;
   score: number;
   status: string;
