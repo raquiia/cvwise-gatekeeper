@@ -40,26 +40,32 @@ export const analyzeResume = async (
     const resumeText = extractResult.text;
     console.log('✅ Text extracted, length:', resumeText?.length);
 
-    onProgress?.({ current: 2, total: 4, status: 'analyzing', currentFile: 'Extraction des informations candidat...' });
+    onProgress?.({ current: 2, total: 4, status: 'analyzing', currentFile: 'Analyse IA du CV...' });
 
-    // 2. Extraire les informations du candidat
-    const { data: candidateData, error: candidateError } = await supabase.functions.invoke('extract-candidate-info', {
-      body: { resumeText, resumeId }
+    // 2. Analyser le CV avec l'IA pour extraire les informations du candidat
+    const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-resume', {
+      body: { 
+        resumeText,
+        resumeId 
+      }
     });
 
-    if (candidateError || !candidateData?.success) {
-      throw new Error(candidateData?.error || 'Erreur lors de l\'extraction des informations');
+    if (analysisError || !analysisData?.success) {
+      throw new Error(analysisData?.error || 'Erreur lors de l\'analyse du CV');
     }
 
-    console.log('✅ Candidate info extracted for:', candidateData.candidate?.first_name, candidateData.candidate?.last_name);
+    console.log('✅ Resume analyzed successfully:', analysisData.candidateData?.first_name, analysisData.candidateData?.last_name);
 
-    onProgress?.({ current: 3, total: 4, status: 'analyzing', currentFile: 'Analyse IA du profil...' });
+    onProgress?.({ current: 3, total: 4, status: 'analyzing', currentFile: 'Calcul du score IA...' });
 
-    // 3. Analyser avec l'IA et sauvegarder automatiquement le score
-    const aiAnalysis = await analyzeResumeWithAI(candidateData.candidate, resumeText);
-    
-    if (!aiAnalysis.success) {
-      console.warn('⚠️ AI analysis failed but continuing with candidate creation');
+    // 3. Analyser avec l'IA pour le scoring (optionnel)
+    let aiAnalysis = { success: true, analysis: undefined };
+    if (analysisData.candidateData) {
+      aiAnalysis = await analyzeResumeWithAI(analysisData.candidateData, resumeText);
+      
+      if (!aiAnalysis.success) {
+        console.warn('⚠️ AI scoring failed but continuing with candidate creation');
+      }
     }
 
     onProgress?.({ current: 4, total: 4, status: 'saving', currentFile: 'Sauvegarde en base...' });
@@ -67,10 +73,10 @@ export const analyzeResume = async (
     // 4. Créer ou mettre à jour le candidat en base
     let finalCandidate: CandidateData;
     
-    if (candidateData.candidate.id) {
+    if (analysisData.candidateData.id) {
       // Mise à jour d'un candidat existant
       finalCandidate = await candidateService.updateCandidate({
-        ...candidateData.candidate,
+        ...analysisData.candidateData,
         resume_id: resumeId,
         last_updated_at: new Date().toISOString()
       });
@@ -80,7 +86,7 @@ export const analyzeResume = async (
       if (!user) throw new Error('Utilisateur non authentifié');
 
       finalCandidate = await candidateService.createCandidate({
-        ...candidateData.candidate,
+        ...analysisData.candidateData,
         resume_id: resumeId,
         user_id: user.id,
         last_updated_at: new Date().toISOString()
@@ -93,7 +99,7 @@ export const analyzeResume = async (
 
     toast({
       title: "Analyse terminée",
-      description: `Le CV de ${finalCandidate.first_name} ${finalCandidate.last_name} a été analysé avec succès${aiAnalysis.success ? ' avec scoring IA' : ''}`,
+      description: `Le CV de ${finalCandidate.first_name} ${finalCandidate.last_name} a été analysé avec succès${aiAnalysis.success && aiAnalysis.analysis ? ' avec scoring IA' : ''}`,
     });
 
     return {
