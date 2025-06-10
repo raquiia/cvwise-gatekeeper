@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { useCandidateScore } from '@/hooks/use-candidate-score';
 import AIScoreDisplay from '../AIScoreDisplay';
@@ -12,26 +12,22 @@ interface ScoreDisplayProps {
 }
 
 const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRefresh }) => {
-  const { getAIScore, preloadScoresFromDatabase } = useAIScoring();
+  const { getAIScore } = useAIScoring();
   const { score: candidateScore, explanation, isLoading: scoreLoading } = useCandidateScore(candidate);
   const aiScoreData = getAIScore(candidate.id!);
   
-  // Précharger les scores depuis la base de données
+  // Éviter les rechargements inutiles avec useRef
+  const lastCandidateIdRef = useRef<string>();
+  const hasMountedRef = useRef(false);
+  
   useEffect(() => {
-    if (candidate.id) {
-      console.log('ScoreDisplay: Preloading AI score from database for candidate:', candidate.id);
-      preloadScoresFromDatabase([candidate.id]).then((loadedScores) => {
-        const preloadedScore = loadedScores[candidate.id];
-        if (preloadedScore && preloadedScore.score !== null) {
-          console.log('ScoreDisplay: Score found in database:', preloadedScore.score);
-        } else {
-          console.log('ScoreDisplay: No score found in database - will be calculated during CV analysis');
-        }
-      }).catch((error) => {
-        console.error('ScoreDisplay: Error preloading score:', error);
-      });
+    // Ne précharger qu'une seule fois par candidat
+    if (candidate.id && candidate.id !== lastCandidateIdRef.current && !hasMountedRef.current) {
+      console.log('ScoreDisplay: Initial load for candidate:', candidate.id);
+      lastCandidateIdRef.current = candidate.id;
+      hasMountedRef.current = true;
     }
-  }, [candidate.id, preloadScoresFromDatabase]);
+  }, [candidate.id]);
   
   const handleRefresh = () => {
     console.log('ScoreDisplay: Refresh requested - scores are calculated during CV analysis');
