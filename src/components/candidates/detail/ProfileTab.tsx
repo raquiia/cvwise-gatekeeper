@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -358,5 +359,3 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
 };
 
 export default ProfileTab;
-
-}

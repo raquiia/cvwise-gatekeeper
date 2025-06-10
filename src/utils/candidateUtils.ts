@@ -1,3 +1,4 @@
+
 import { Json } from '@/integrations/supabase/types';
 
 /**
@@ -78,120 +79,6 @@ const translateCountryToFrench = (country: string): string => {
   
   const cleanCountry = country.trim();
   return countryTranslations[cleanCountry] || cleanCountry;
-};
-
-/**
- * Fonction pour décomposer une adresse complète en champs structurés (améliorée)
- */
-const parseLocationToStructuredAddress = (location: string): {
-  address: string;
-  postal_code: string;
-  city: string;
-  country: string;
-} => {
-  if (!location) return { address: '', postal_code: '', city: '', country: '' };
-  
-  // Nettoyer d'abord l'adresse
-  const cleanLocation = cleanAndDecodeText(location);
-  
-  // Patterns pour identifier les différents éléments (améliorés)
-  const postalCodePattern = /\b\d{4,5}\b/; // Code postal (4-5 chiffres)
-  const countryPattern = /\b(Switzerland|SWITZERLAND|Suisse|SUISSE|France|FRANCE|Allemagne|ALLEMAGNE|Germany|GERMANY|Belgique|BELGIQUE|Belgium|BELGIUM|Suisse|SUISSE|Espagne|ESPAGNE|Spain|SPAIN|Italie|ITALIE|Italy|ITALY|Luxembourg|LUXEMBOURG|Pays-Bas|Netherlands|NETHERLANDS|Royaume-Uni|ROYAUME-UNI|United Kingdom|UNITED KINGDOM|UK|Autriche|Austria|AUSTRIA|Portugal|PORTUGAL|Canada|CANADA|États-Unis|United States|USA|US)\b/i;
-  
-  let address = '';
-  let postal_code = '';
-  let city = '';
-  let country = '';
-  
-  // Extraire le pays
-  const countryMatch = cleanLocation.match(countryPattern);
-  if (countryMatch) {
-    country = translateCountryToFrench(countryMatch[0]);
-  }
-  
-  // Extraire le code postal
-  const postalMatch = cleanLocation.match(postalCodePattern);
-  if (postalMatch) {
-    postal_code = postalMatch[0];
-  }
-  
-  // Diviser par virgules pour analyser les segments
-  const segments = cleanLocation.split(',').map(s => s.trim());
-  
-  if (segments.length >= 2) {
-    // Premier segment = adresse (rue + numéro)
-    address = segments[0];
-    
-    // Dernier segment contient souvent ville et/ou pays
-    let lastSegment = segments[segments.length - 1];
-    
-    // Retirer le pays du dernier segment s'il y est
-    if (country) {
-      lastSegment = lastSegment.replace(new RegExp(countryMatch![0], 'i'), '').trim();
-    }
-    
-    // Retirer le code postal du segment pour obtenir la ville
-    if (postal_code) {
-      lastSegment = lastSegment.replace(postal_code, '').trim();
-    }
-    
-    city = lastSegment;
-    
-    // Si on a plusieurs segments, le deuxième pourrait être la ville
-    if (segments.length >= 3 && !city) {
-      city = segments[1];
-      // Nettoyer la ville
-      if (country && countryMatch) {
-        city = city.replace(new RegExp(countryMatch[0], 'i'), '').trim();
-      }
-      if (postal_code) {
-        city = city.replace(postal_code, '').trim();
-      }
-    }
-  } else if (segments.length === 1) {
-    // Un seul segment, essayer de deviner la structure
-    let remaining = cleanLocation;
-    
-    // Retirer le pays
-    if (country && countryMatch) {
-      remaining = remaining.replace(new RegExp(countryMatch[0], 'i'), '').trim();
-    }
-    
-    // Retirer le code postal
-    if (postal_code) {
-      remaining = remaining.replace(postal_code, '').trim();
-    }
-    
-    // Ce qui reste pourrait être adresse + ville
-    const parts = remaining.split(/\s+/);
-    if (parts.length > 3) {
-      // Les premiers mots = adresse, les derniers = ville
-      address = parts.slice(0, Math.ceil(parts.length / 2)).join(' ');
-      city = parts.slice(Math.ceil(parts.length / 2)).join(' ');
-    } else {
-      city = remaining;
-    }
-  }
-  
-  // Nettoyer les champs finaux
-  address = address.replace(/[,;]/g, '').trim();
-  city = city.replace(/[,;]/g, '').trim();
-  
-  // S'assurer que la ville n'est pas un pays
-  if (city && countryPattern.test(city)) {
-    const cityCountryMatch = city.match(countryPattern);
-    if (cityCountryMatch && !country) {
-      country = translateCountryToFrench(cityCountryMatch[0]);
-      city = city.replace(new RegExp(cityCountryMatch[0], 'i'), '').trim();
-    }
-  }
-  
-  return {
-    address: address || '',
-    postal_code: postal_code || '',
-    city: city || '',
-    country: country || ''
-  };
 };
 
 export const ensureStringArray = (data: Json | undefined | null): string[] => {
@@ -302,7 +189,7 @@ export const processCandidateData = (rawCandidate: any): any => {
     address: cleanAndDecodeText(safeString(rawCandidate.address)),
     postal_code: cleanAndDecodeText(safeString(rawCandidate.postal_code)),
     city: cleanAndDecodeText(safeString(rawCandidate.city)),
-    country: translateCountryToFrench(cleanAndDecodeText(safeCandidate.country))),
+    country: translateCountryToFrench(cleanAndDecodeText(safeString(rawCandidate.country))),
     
     // Process arrays
     skills: ensureStringArray(rawCandidate.skills),
