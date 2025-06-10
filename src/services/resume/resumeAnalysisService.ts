@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -139,38 +138,51 @@ export const extractResumeText = async (resumeId: string): Promise<TextExtractio
     
     console.log('Public URL obtained:', urlData.publicUrl);
     
+    // Ensure the request body is properly formatted
+    const requestBody = { 
+      pdfUrl: urlData.publicUrl,
+      resumeId: resumeId
+    };
+    
+    console.log('Request body for edge function:', requestBody);
+    
     // Call the edge function with the PDF URL
     console.log('Invoking extract-cv-text edge function');
     const { data, error } = await supabase.functions.invoke('extract-cv-text', {
-      body: { 
-        pdfUrl: urlData.publicUrl,
-        resumeId: resumeId
-      }
+      body: requestBody
     });
+    
+    console.log('Edge function response:', { data, error });
     
     if (error) {
       console.error('Error invoking extract-cv-text function:', error);
       throw new Error(`Erreur lors de l'extraction du texte: ${error.message}`);
     }
     
-    if (!data || !data.success) {
-      console.error('Text extraction failed:', data?.error || 'Raison inconnue');
-      throw new Error(data?.error || 'Extraction du texte échouée');
+    if (!data) {
+      console.error('No data received from edge function');
+      throw new Error('Aucune réponse reçue de la fonction d\'extraction');
+    }
+    
+    if (!data.success) {
+      console.error('Text extraction failed:', data.error || 'Raison inconnue');
+      throw new Error(data.error || 'Extraction du texte échouée');
     }
     
     console.log('Text extraction successful, length:', data.data?.text?.length || 0);
-    console.log('Sample of extracted text:', data.data?.text?.substring(0, 500) + '...');
     
     // Check that extracted text is not empty
     if (!data.data?.text || data.data.text.trim() === '') {
       throw new Error('Le texte extrait est vide');
     }
     
+    console.log('Sample of extracted text:', data.data.text.substring(0, 200) + '...');
+    
     // Return the extracted text
     return { 
       success: true, 
       message: "Texte extrait avec succès",
-      text: data.data?.text || ''
+      text: data.data.text
     };
   } catch (error: any) {
     console.error('Text extraction error:', error);
