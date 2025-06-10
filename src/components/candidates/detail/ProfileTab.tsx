@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -9,7 +10,7 @@ import { candidateService } from '@/services/data/candidateService';
 import type { CandidateData } from '@/services/data/candidateService';
 import { useAuth } from '@/context/AuthContext';
 import ScoreDisplay from './ScoreDisplay';
-import { User, Briefcase, MapPin, Calendar, DollarSign, Clock, FileText, Save, RotateCcw, Phone, Home, Mail } from 'lucide-react';
+import { User, Briefcase, MapPin, Calendar, DollarSign, Clock, FileText, Save, RotateCcw, Phone, Home, Mail, AlertCircle } from 'lucide-react';
 
 interface ProfileTabProps {
   candidate: CandidateData;
@@ -37,11 +38,20 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
   const [availability, setAvailability] = useState('');
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [hasAddressData, setHasAddressData] = useState(false);
   const { user } = useAuth();
 
-  // Load candidate data
+  // Load candidate data with improved address handling
   useEffect(() => {
     if (!candidate) return;
+
+    console.log('📋 Loading candidate data:', {
+      name: `${candidate.first_name} ${candidate.last_name}`,
+      address: candidate.address || 'Empty',
+      postal_code: candidate.postal_code || 'Empty',
+      city: candidate.city || 'Empty',
+      country: candidate.country || 'Empty'
+    });
 
     setFirstName(candidate.first_name || '');
     setLastName(candidate.last_name || '');
@@ -49,10 +59,26 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     setPhone(candidate.phone || '');
     setPosition(candidate.position || '');
     setLocation(candidate.location || '');
-    setAddress(candidate.address || '');
-    setPostalCode(candidate.postal_code || '');
-    setCity(candidate.city || '');
-    setCountry(candidate.country || '');
+    
+    // Handle address fields with proper null/empty checking
+    const candidateAddress = candidate.address || '';
+    const candidatePostalCode = candidate.postal_code || '';
+    const candidateCity = candidate.city || '';
+    const candidateCountry = candidate.country || '';
+    
+    setAddress(candidateAddress);
+    setPostalCode(candidatePostalCode);
+    setCity(candidateCity);
+    setCountry(candidateCountry);
+    
+    // Check if we have any meaningful address data
+    const hasAnyAddressData = candidateAddress.trim() !== '' || 
+                             candidatePostalCode.trim() !== '' || 
+                             candidateCity.trim() !== '' || 
+                             candidateCountry.trim() !== '';
+    
+    setHasAddressData(hasAnyAddressData);
+    
     setYearsExperience(candidate.years_experience || 0);
     setSalaryExpectation(candidate.salary_expectations || '');
     setAvailability(candidate.availability || '');
@@ -61,8 +87,16 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
 
   const handleSave = async () => {
     if (!candidate.id || !user?.id) return;
+    
     try {
       setIsSaving(true);
+      console.log('💾 Saving candidate data with address:', {
+        address,
+        postal_code: postalCode,
+        city,
+        country
+      });
+      
       const updateData = {
         id: candidate.id,
         first_name: firstName,
@@ -71,20 +105,23 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
         phone: phone,
         position: position,
         location: location,
-        address: address,
-        postal_code: postalCode,
-        city: city,
-        country: country,
+        address: address.trim(),
+        postal_code: postalCode.trim(),
+        city: city.trim(),
+        country: country.trim(),
         years_experience: yearsExperience,
         salary_expectations: salaryExpectation,
         availability: availability,
         notes: notes
       };
+      
       await candidateService.updateCandidate(updateData);
+      
       toast({
         title: "Profil mis à jour",
         description: "Les informations du candidat ont été mises à jour avec succès."
       });
+      
       if (onRefresh) {
         onRefresh();
       }
@@ -148,7 +185,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             </CardContent>
           </Card>
 
-          {/* Section Adresse simplifiée */}
+          {/* Section Adresse avec indicateur de statut */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 border-b border-gray-200/50">
               <div className="flex items-center gap-3">
@@ -156,6 +193,12 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                   <Home className="h-5 w-5 text-emerald-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">Adresse</h3>
+                {!hasAddressData && (
+                  <div className="flex items-center gap-1 text-amber-600 text-sm">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>Données manquantes</span>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
@@ -167,8 +210,8 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                     id="address" 
                     value={address} 
                     onChange={e => setAddress(e.target.value)} 
-                    placeholder="Ex: Chemin des chaumets 17" 
-                    className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500" 
+                    placeholder="Ex: Rue des Exemples 123" 
+                    className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${!address ? 'bg-gray-50' : ''}`}
                   />
                 </div>
                 <div className="space-y-2">
@@ -178,8 +221,8 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                     id="postalCode" 
                     value={postalCode} 
                     onChange={e => setPostalCode(e.target.value)} 
-                    placeholder="Ex: 1239" 
-                    className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500" 
+                    placeholder="Ex: 1234" 
+                    className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${!postalCode ? 'bg-gray-50' : ''}`}
                   />
                 </div>
                 <div className="space-y-2">
@@ -189,8 +232,8 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                     id="city" 
                     value={city} 
                     onChange={e => setCity(e.target.value)} 
-                    placeholder="Ex: Collex" 
-                    className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500" 
+                    placeholder="Ex: Genève" 
+                    className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${!city ? 'bg-gray-50' : ''}`}
                   />
                 </div>
                 <div className="space-y-2">
@@ -201,7 +244,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                     value={country} 
                     onChange={e => setCountry(e.target.value)} 
                     placeholder="Ex: Suisse" 
-                    className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500" 
+                    className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${!country ? 'bg-gray-50' : ''}`}
                   />
                 </div>
               </div>
@@ -222,7 +265,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             </CardContent>
           </Card>
 
-          
+          {/* Informations professionnelles */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200/50">
               <div className="flex items-center gap-3">
@@ -268,7 +311,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             </CardContent>
           </Card>
 
-          
+          {/* Notes personnelles */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50 border-b border-gray-200/50">
               <div className="flex items-center gap-3">
@@ -287,7 +330,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
           </Card>
         </div>
 
-        
+        {/* Actions panel */}
         <div className="space-y-6">
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50 border-b border-gray-200/50">

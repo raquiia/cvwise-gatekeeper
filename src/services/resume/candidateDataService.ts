@@ -11,7 +11,6 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     console.log('🔍 Fetching complete candidate data for ID:', candidateId);
     
     // Utiliser la fonction RPC get_candidate_by_id_bypassing_rls pour obtenir des données complètes
-    // Cette fonction retourne toutes les colonnes y compris les champs JSON complexes ET les champs d'adresse
     const { data, error } = await supabase.rpc('get_candidate_by_id_bypassing_rls', {
       candidate_id_param: candidateId
     });
@@ -28,32 +27,6 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     
     // Handle both array and direct object responses
     const candidateRawData = Array.isArray(data) ? data[0] : data;
-    
-    // Cast to any for logging purposes to avoid TypeScript errors
-    const rawDataForLogging = candidateRawData as any;
-    
-    // LOG DÉTAILLÉ des données brutes récupérées de la base
-    console.log('🗃️ RAW DATA FROM DATABASE:', {
-      id: rawDataForLogging?.id,
-      first_name: rawDataForLogging?.first_name,
-      last_name: rawDataForLogging?.last_name,
-      address: rawDataForLogging?.address,
-      postal_code: rawDataForLogging?.postal_code,
-      city: rawDataForLogging?.city,
-      country: rawDataForLogging?.country,
-      location: rawDataForLogging?.location
-    });
-    
-    // Log spécifiquement pour Louis Le Potvin
-    if (rawDataForLogging?.first_name === 'Louis' && rawDataForLogging?.last_name === 'Le Potvin') {
-      console.log('🎯 LOUIS LE POTVIN - RAW DATABASE DATA:', {
-        address: rawDataForLogging?.address || 'UNDEFINED',
-        postal_code: rawDataForLogging?.postal_code || 'UNDEFINED', 
-        city: rawDataForLogging?.city || 'UNDEFINED',
-        country: rawDataForLogging?.country || 'UNDEFINED',
-        location: rawDataForLogging?.location || 'UNDEFINED'
-      });
-    }
     
     console.log('✅ Successfully retrieved complete candidate data from database');
     
