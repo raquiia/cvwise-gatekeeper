@@ -9,7 +9,7 @@ import { candidateService } from '@/services/data/candidateService';
 import type { CandidateData } from '@/services/data/candidateService';
 import { useAuth } from '@/context/AuthContext';
 import ScoreDisplay from './ScoreDisplay';
-import { User, Briefcase, MapPin, Calendar, DollarSign, Clock, FileText, Save, RotateCcw, Phone, Home, CheckCircle, Eye } from 'lucide-react';
+import { User, Briefcase, MapPin, Calendar, DollarSign, Clock, FileText, Save, RotateCcw, Phone, Home, CheckCircle, Eye, Mail } from 'lucide-react';
 interface ProfileTabProps {
   candidate: CandidateData;
   isLoading?: boolean;
@@ -157,7 +157,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  Email
+                </Label>
                 <Input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} className="border-gray-300 focus:border-blue-500 focus:ring-blue-500" />
               </div>
               <div className="space-y-2">
@@ -170,10 +173,82 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
             </CardContent>
           </Card>
 
-          {/* Section Adresse COMPLÈTEMENT REFAITE */}
+          {/* Section Adresse détaillée extraite du CV */}
           <Card className="shadow-sm border border-gray-200/80">
-            
-            
+            <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 border-b border-gray-200/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <Home className="h-5 w-5 text-emerald-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Adresse détaillée extraite du CV</h3>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              {/* Affichage détaillé ligne par ligne */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm text-gray-600 font-medium">Adresse complète extraite :</span>
+                </div>
+                
+                <div className="ml-7 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide font-medium w-20">Adresse:</span>
+                    <span className="text-sm text-gray-800 font-medium">
+                      {candidate.address || 'Non spécifiée'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide font-medium w-20">Code postal:</span>
+                    <span className="text-sm text-gray-800 font-medium">
+                      {candidate.postal_code || 'Non spécifié'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide font-medium w-20">Ville:</span>
+                    <span className="text-sm text-gray-800 font-medium">
+                      {candidate.city || 'Non spécifiée'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-start gap-2">
+                    <span className="text-xs text-gray-500 uppercase tracking-wide font-medium w-20">Pays:</span>
+                    <span className="text-sm text-gray-800 font-medium">
+                      {candidate.country || 'Non spécifié'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Champs d'édition */}
+              <div className="pt-4 border-t border-gray-200">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Modifier l'adresse</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="address" className="text-sm font-medium text-gray-700">Rue et numéro</Label>
+                    <Input type="text" id="address" value={address} onChange={e => setAddress(e.target.value)} placeholder="Ex: Chemin des chaumets 17" className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="postalCode" className="text-sm font-medium text-gray-700">Code postal</Label>
+                    <Input type="text" id="postalCode" value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="Ex: 1239" className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city" className="text-sm font-medium text-gray-700">Ville</Label>
+                    <Input type="text" id="city" value={city} onChange={e => setCity(e.target.value)} placeholder="Ex: Collex" className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="country" className="text-sm font-medium text-gray-700">Pays</Label>
+                    <Input type="text" id="country" value={country} onChange={e => setCountry(e.target.value)} placeholder="Ex: Suisse" className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500" />
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="location" className="text-sm font-medium text-gray-700">Localisation (format libre)</Label>
+                  <Input type="text" id="location" value={location} onChange={e => setLocation(e.target.value)} placeholder="Ex: Geneva, Switzerland" className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500" />
+                </div>
+              </div>
+            </CardContent>
           </Card>
 
           {/* ... keep existing code (professional info card) */}
