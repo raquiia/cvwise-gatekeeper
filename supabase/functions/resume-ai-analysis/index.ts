@@ -32,33 +32,42 @@ const cleanAndDecodeText = (text: string): string => {
 
 /**
  * Cache intelligent avec compression pour réduire les appels OpenAI
- * CORRIGÉ: Gestion des caractères non-ASCII
+ * CORRIGÉ: Gestion complète des caractères non-ASCII sans btoa()
  */
 const getCacheKey = (text: string): string => {
   try {
-    // Normaliser le texte en supprimant les accents et caractères spéciaux
+    // Normaliser le texte pour gérer tous les caractères spéciaux
     const normalized = text
       .toLowerCase()
       .normalize('NFD') // Décompose les caractères accentués
       .replace(/[\u0300-\u036f]/g, '') // Supprime les diacritiques
-      .replace(/[^a-zA-Z0-9\s]/g, '') // Garde seulement alphanumériques et espaces
+      .replace(/[^\w\s]/g, '') // Garde seulement les caractères de mot et espaces
       .replace(/\s+/g, ' ')
       .trim();
     
-    // Créer un hash simple sans btoa
-    const hashString = normalized.slice(0, 100) + normalized.slice(-50);
+    // Créer un hash numérique simple et sûr
+    const hashString = normalized.slice(0, 150) + '|' + normalized.slice(-50);
     let hash = 0;
-    for (let i = 0; i < hashString.length; i++) {
-      const char = hashString.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
+    
+    if (hashString.length === 0) {
+      return `empty_${Date.now()}`;
     }
     
-    return Math.abs(hash).toString(36).slice(0, 32);
+    // Utiliser l'algorithme djb2 pour le hash
+    for (let i = 0; i < hashString.length; i++) {
+      const char = hashString.charCodeAt(i);
+      hash = ((hash << 5) + hash) + char; // hash * 33 + char
+      hash = hash >>> 0; // Convertir en entier 32-bit non signé
+    }
+    
+    // Convertir en base36 et limiter la longueur
+    const hashStr = hash.toString(36);
+    return `cv_${hashStr}_${text.length}`.slice(0, 40);
+    
   } catch (error) {
     console.error('Error generating cache key:', error);
-    // Fallback: utiliser timestamp + longueur du texte
-    return `fallback_${Date.now()}_${text.length}`;
+    // Fallback sûr sans aucun caractère spécial
+    return `fallback_${Date.now()}_${text.length}_${Math.random().toString(36).slice(2, 8)}`;
   }
 };
 
@@ -195,8 +204,9 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Vérification du cache intelligent avec la nouvelle fonction corrigée
+    // Vérification du cache intelligent avec la fonction corrigée
     const cacheKey = getCacheKey(resumeText);
+    console.log('Generated cache key:', cacheKey);
     
     if (!overwriteExisting) {
       const { data: cachedResult } = await supabase
