@@ -38,34 +38,19 @@ const translateCountryToFrench = (country: string): string => {
   if (!country) return '';
   
   const countryTranslations: { [key: string]: string } = {
-    'Switzerland': 'Suisse',
-    'SWITZERLAND': 'Suisse',
-    'France': 'France',
-    'FRANCE': 'France',
-    'Germany': 'Allemagne',
-    'GERMANY': 'Allemagne',
-    'Belgium': 'Belgique',
-    'BELGIUM': 'Belgique',
-    'Spain': 'Espagne',
-    'SPAIN': 'Espagne',
-    'Italy': 'Italie',
-    'ITALY': 'Italie',
-    'Luxembourg': 'Luxembourg',
-    'LUXEMBOURG': 'Luxembourg',
-    'Netherlands': 'Pays-Bas',
-    'NETHERLANDS': 'Pays-Bas',
-    'United Kingdom': 'Royaume-Uni',
-    'UNITED KINGDOM': 'Royaume-Uni',
-    'UK': 'Royaume-Uni',
-    'Austria': 'Autriche',
-    'AUSTRIA': 'Autriche',
-    'Portugal': 'Portugal',
-    'PORTUGAL': 'Portugal',
-    'Canada': 'Canada',
-    'CANADA': 'Canada',
-    'United States': 'États-Unis',
-    'USA': 'États-Unis',
-    'US': 'États-Unis'
+    'Switzerland': 'Suisse', 'SWITZERLAND': 'Suisse',
+    'France': 'France', 'FRANCE': 'France',
+    'Germany': 'Allemagne', 'GERMANY': 'Allemagne',
+    'Belgium': 'Belgique', 'BELGIUM': 'Belgique',
+    'Spain': 'Espagne', 'SPAIN': 'Espagne',
+    'Italy': 'Italie', 'ITALY': 'Italie',
+    'Luxembourg': 'Luxembourg', 'LUXEMBOURG': 'Luxembourg',
+    'Netherlands': 'Pays-Bas', 'NETHERLANDS': 'Pays-Bas',
+    'United Kingdom': 'Royaume-Uni', 'UNITED KINGDOM': 'Royaume-Uni',
+    'UK': 'Royaume-Uni', 'Austria': 'Autriche', 'AUSTRIA': 'Autriche',
+    'Portugal': 'Portugal', 'PORTUGAL': 'Portugal',
+    'Canada': 'Canada', 'CANADA': 'Canada',
+    'United States': 'États-Unis', 'USA': 'États-Unis', 'US': 'États-Unis'
   };
   
   const cleanCountry = country.trim();
@@ -80,11 +65,8 @@ const extractAddressFromText = (text: string): { address: string; postal_code: s
   
   // Patterns pour reconnaître les adresses françaises/européennes
   const addressPatterns = [
-    // Format français: numéro rue, code postal ville
     /(\d+[\w\s,-]+?)\s*,?\s*(\d{5})\s+([A-Za-zÀ-ÿ\s-]+?)(?:\s*,\s*(France|Suisse|Belgique|Luxembourg))?/gi,
-    // Format avec rue sur une ligne, ville sur une autre
     /(\d+\s+[^\d\n]+?)\n.*?(\d{5})\s+([A-Za-zÀ-ÿ\s-]+)/gi,
-    // Format simple: ville, pays
     /([A-Za-zÀ-ÿ\s-]+?)\s*,\s*(France|Suisse|Belgique|Luxembourg|Allemagne|Italie|Espagne)/gi
   ];
   
@@ -102,7 +84,6 @@ const extractAddressFromText = (text: string): { address: string; postal_code: s
         const country = translateCountryToFrench(match[4] || 'France');
         const location = `${address}${address && ', '}${postal_code} ${city}${country && ', ' + country}`.trim();
         
-        // Si on a trouvé une adresse plus complète, on la garde
         if (address && postal_code && city) {
           bestMatch = { address, postal_code, city, country, location };
           console.log('✅ Adresse complète extraite:', bestMatch);
@@ -154,12 +135,11 @@ const processAIExtractedData = (data: any, originalText: string): any => {
     processedData.country = translateCountryToFrench(processedData.country);
   }
   
-  // NOUVEAU: Tentative d'extraction manuelle si l'adresse est manquante
+  // Tentative d'extraction manuelle si l'adresse est manquante
   if (!processedData.address || !processedData.postal_code || !processedData.city) {
     console.log('⚠️ Adresse incomplète détectée, tentative d\'extraction manuelle...');
     const extractedAddress = extractAddressFromText(originalText);
     
-    // Utiliser les données extraites manuellement si elles sont meilleures
     if (extractedAddress.address && !processedData.address) {
       processedData.address = extractedAddress.address;
       console.log('📍 Adresse extraite manuellement:', extractedAddress.address);
@@ -222,7 +202,7 @@ serve(async (req) => {
     }
 
     // Log d'un échantillon du texte pour debug
-    console.log('📋 Échantillon du texte CV (premiers 500 caractères):', resumeText.substring(0, 500));
+    console.log('📋 Échantillon du texte CV (premiers 300 caractères):', resumeText.substring(0, 300));
 
     console.log('🔑 Checking environment variables...');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -282,143 +262,74 @@ serve(async (req) => {
     const resumeData = resumeDataResult.data;
     console.log('✅ Resume data fetched for user:', resumeData.user_id);
 
-    console.log('🤖 Preparing OpenAI request with scoring...');
+    console.log('🤖 Preparing optimized OpenAI request...');
     
-    const openAIPayload = {
-      model: 'gpt-4.1-2025-04-14',
-      messages: [
-        {
-          role: 'system',
-          content: `Tu es un expert en analyse de CV et en évaluation de profils candidats. Analyse le CV fourni et extrais UNIQUEMENT les informations présentes dans le document, puis calcule un score de complétude du profil.
+    // Prompt optimisé et plus concis
+    const optimizedPrompt = `Analyse ce CV et extrais les données + calcule le score de complétude.
 
-RÈGLES STRICTES POUR L'EXTRACTION D'ADRESSE:
-1. Cherche l'adresse dans TOUTES les sections du CV (en-tête, contact, informations personnelles, etc.)
-2. L'adresse peut être sous différents formats :
-   - "45 rue de la Paix, 75001 Paris"
-   - "45 rue de la Paix\n75001 Paris"
-   - "Paris 75001"
-   - "Paris, France"
-3. Décompose TOUJOURS l'adresse trouvée en :
-   - address: numéro et nom de rue (ex: "45 rue de la Paix")
-   - postal_code: code postal uniquement (ex: "75001")
-   - city: ville uniquement (ex: "Paris")
-   - country: pays EN FRANÇAIS (ex: "France", "Suisse", "Belgique")
-   - location: adresse complète tel quel (ex: "45 rue de la Paix, 75001 Paris, France")
+EXTRACTION (JSON précis):
+- Informations personnelles: nom, prénom, email, téléphone, poste actuel
+- Localisation: adresse COMPLÈTE (numéro rue, code postal, ville, pays en français)
+- Expérience: années + postes détaillés
+- Compétences: liste claire des skills techniques
+- Formation: diplômes avec années
+- Langues: avec niveaux si mentionnés
+- Autres: disponibilité, mobilité, objectifs
 
-CALCUL DU SCORE DE COMPLÉTUDE (0-100):
-Évalue la qualité et complétude du profil selon ces critères:
+SCORE DE COMPLÉTUDE (0-100):
+1. Formations détaillées (20pts)
+2. Expériences avec dates/postes (20pts) 
+3. Compétences techniques listées (20pts)
+4. Langues mentionnées (10pts)
+5. Adresse + mobilité complètes (10pts)
+6. Objectifs/résumé professionnel (10pts)
+7. Structure générale du CV (10pts)
 
-1. FORMATIONS (0-20 points):
-   - Formations présentes et détaillées: 20 points
-   - Formations présentes mais peu détaillées: 10-15 points
-   - Formations manquantes ou très vagues: 0-5 points
+IMPORTANT:
+- Cherche l'adresse partout dans le CV
+- Décompose TOUJOURS: address, postal_code, city, country
+- Ne jamais inventer d'info
+- Retourne exactement cette structure JSON:
 
-2. EXPÉRIENCES (0-20 points):
-   - Expériences professionnelles détaillées avec dates, postes, entreprises: 20 points
-   - Expériences présentes mais peu détaillées: 10-15 points
-   - Expériences manquantes ou très vagues: 0-5 points
-
-3. COMPÉTENCES (0-20 points):
-   - Liste complète de compétences techniques et soft skills: 20 points
-   - Compétences présentes mais limitées: 10-15 points
-   - Compétences manquantes ou très vagues: 0-5 points
-
-4. LANGUES (0-10 points):
-   - Langues mentionnées avec niveaux: 10 points
-   - Langues mentionnées sans niveaux: 5 points
-   - Langues manquantes: 0 points
-
-5. LOCALISATION/MOBILITÉ (0-10 points):
-   - Adresse complète + informations de mobilité: 10 points
-   - Adresse complète OU informations de mobilité: 5-7 points
-   - Informations de localisation manquantes: 0-3 points
-
-6. RÉSUMÉ PROFESSIONNEL (0-10 points):
-   - Objectifs de carrière, valeurs professionnelles clairement définis: 10 points
-   - Partiellement définis: 5-7 points
-   - Manquants: 0-3 points
-
-7. STRUCTURE DU CV (0-10 points):
-   - CV bien structuré, informations de contact complètes: 10 points
-   - Structure correcte, quelques éléments manquants: 5-7 points
-   - Structure déficiente: 0-3 points
-
-EXPLICATION DU SCORE:
-Fournis une explication détaillée du score en français, mentionnant:
-- Les points forts du profil
-- Les éléments manquants ou à améliorer
-- Des suggestions pour augmenter le score
-
-AUTRES RÈGLES:
-1. Ne jamais inventer ou déduire d'informations non présentes
-2. Si une information n'est pas présente, retourner une chaîne vide ""
-3. Pour les tableaux, retourner un tableau vide [] si aucune information
-4. Extraire les compétences sous forme de tableau de chaînes simples
-5. Ne pas mettre de caractères encodés (comme %20) dans les résultats
-
-Retourne un JSON avec EXACTEMENT cette structure:
 {
   "candidate_data": {
-    "first_name": "",
-    "last_name": "",
-    "email": "",
-    "phone": "",
-    "position": "",
-    "location": "",
-    "address": "",
-    "postal_code": "",
-    "city": "",
-    "country": "",
-    "years_experience": 0,
-    "company": "",
-    "skills": [],
-    "experiences": [],
-    "education": [],
-    "certifications": [],
-    "languages": [],
-    "publications": [],
-    "professional_references": [],
-    "professional_networks": [],
-    "continuous_training": [],
-    "special_permits": [],
-    "industries": [],
-    "projects": [],
-    "availability": "",
-    "salary_expectations": "",
-    "mobility": "",
-    "contract_type": "",
-    "remote_preference": "",
-    "travel_willingness": "",
-    "career_objectives": "",
-    "professional_values": "",
-    "work_authorization": "",
-    "interests": ""
+    "first_name": "", "last_name": "", "email": "", "phone": "",
+    "position": "", "location": "", "address": "", "postal_code": "", 
+    "city": "", "country": "", "years_experience": 0, "company": "",
+    "skills": [], "experiences": [], "education": [], "certifications": [],
+    "languages": [], "publications": [], "professional_references": [],
+    "professional_networks": [], "continuous_training": [], "special_permits": [],
+    "industries": [], "projects": [], "availability": "", "salary_expectations": "",
+    "mobility": "", "contract_type": "", "remote_preference": "", "travel_willingness": "",
+    "career_objectives": "", "professional_values": "", "work_authorization": "", "interests": ""
   },
   "scoring": {
     "overall_score": 0,
-    "explanation": "",
+    "explanation": "Analyse du profil avec points forts/faibles et suggestions d'amélioration",
     "breakdown": {
-      "education": 0,
-      "experience": 0,
-      "skills": 0,
-      "languages": 0,
-      "location": 0,
-      "profileSummary": 0,
-      "cvStructure": 0
+      "education": 0, "experience": 0, "skills": 0, "languages": 0,
+      "location": 0, "profileSummary": 0, "cvStructure": 0
     }
   }
-}`
+}`;
+
+    const openAIPayload = {
+      model: 'gpt-4o-mini', // Modèle plus économique
+      messages: [
+        {
+          role: 'system',
+          content: optimizedPrompt
         },
         {
           role: 'user',
-          content: `Analyse ce CV et extrais les informations, en portant une attention particulière à l'adresse et calcule le score de complétude :\n\n${resumeText}`
+          content: `CV à analyser:\n\n${resumeText}`
         }
       ],
       temperature: 0.1,
-      max_tokens: 4000,
+      max_tokens: 3000, // Réduit de 4000 à 3000
     };
 
-    console.log('🚀 Calling OpenAI API...');
+    console.log('🚀 Calling OpenAI API with optimized prompt...');
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -493,7 +404,7 @@ Retourne un JSON avec EXACTEMENT cette structure:
       );
     }
 
-    console.log('🔧 Processing extracted data with original text for address fallback...');
+    console.log('🔧 Processing extracted data with fallback address extraction...');
     const processedCandidateData = processAIExtractedData(extractedData.candidate_data, resumeText);
     const scoringData = extractedData.scoring;
 
@@ -556,7 +467,7 @@ Retourne un JSON avec EXACTEMENT cette structure:
         candidateId: candidate.id,
         extractedData: processedCandidateData,
         scoring: scoringData,
-        message: 'CV analyzed, candidate created and score calculated successfully'
+        message: 'CV analyzed with optimized AI model, candidate created and score calculated successfully'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -10,6 +10,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string>('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   
   const { calculateContextualScore, getCachedScore, isScoreLoading, isJobSpecific } = useOptimizedScoring();
   const { calculateAIScore, getAIScore, preloadScoresFromDatabase } = useAIScoring();
@@ -45,6 +46,11 @@ export const useCandidateScore = (candidate: CandidateData) => {
       
       setScore(contextualScore);
       setExplanation(aiScore.explanation || '');
+      
+      // Générer des suggestions basées sur le score
+      const generatedSuggestions = generateScoreSuggestions(contextualScore, aiScore.explanation || '');
+      setSuggestions(generatedSuggestions);
+      
       setIsLoading(false);
       setError(null);
       return;
@@ -91,6 +97,11 @@ export const useCandidateScore = (candidate: CandidateData) => {
             
             setScore(contextualScore);
             setExplanation(preloadedScore.explanation || '');
+            
+            // Générer des suggestions
+            const generatedSuggestions = generateScoreSuggestions(contextualScore, preloadedScore.explanation || '');
+            setSuggestions(generatedSuggestions);
+            
             setError(null);
             return;
           }
@@ -103,7 +114,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
           setIsLoading(false);
         }
         
-        // Fallback 1: utiliser le système de scoring classique si disponible
+        // Fallback: utiliser le système de scoring classique si disponible
         const cachedScore = getCachedScore(candidateId);
         if (cachedScore) {
           console.log('📊 Using cached classic score as fallback');
@@ -137,11 +148,12 @@ export const useCandidateScore = (candidate: CandidateData) => {
           
           setScore(contextualScore);
           setExplanation('');
+          setSuggestions([]);
           setError(null);
           return;
         }
         
-        // Derniers fallback: l'ancien score du candidat s'il existe
+        // Dernier fallback: l'ancien score du candidat s'il existe
         if (candidate.score) {
           console.log('📊 Using legacy candidate score as final fallback');
           const legacyScore: ContextualScore = {
@@ -163,14 +175,16 @@ export const useCandidateScore = (candidate: CandidateData) => {
           
           setScore(legacyScore);
           setExplanation('');
+          setSuggestions([]);
           setError(null);
           return;
         }
         
-        // Aucun score disponible - ne pas calculer automatiquement pour éviter les coûts
+        // Aucun score disponible
         console.log('ℹ️ No score found anywhere for candidate:', candidateId);
         setScore(null);
         setExplanation('');
+        setSuggestions([]);
         setError(null);
       };
       
@@ -198,6 +212,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
       
       setScore(fallbackScore);
       setExplanation(aiScore.explanation || '');
+      setSuggestions([]);
       setError(aiScore.error);
       return;
     }
@@ -213,10 +228,47 @@ export const useCandidateScore = (candidate: CandidateData) => {
       default: return source;
     }
   };
+
+  // Fonction pour générer des suggestions basées sur le score et l'explication
+  const generateScoreSuggestions = (score: ContextualScore, explanation: string): string[] => {
+    const suggestions: string[] = [];
+    
+    // Suggestions basées sur les scores par catégorie
+    if (score.skills < 60) {
+      suggestions.push('Enrichissez votre profil avec des compétences techniques supplémentaires');
+    }
+    
+    if (score.experience < 50) {
+      suggestions.push('Détaillez davantage vos expériences professionnelles avec dates et réalisations');
+    }
+    
+    if (score.education < 40) {
+      suggestions.push('Ajoutez vos formations, diplômes et certifications');
+    }
+    
+    if (score.profileCompleteness < 70) {
+      suggestions.push('Complétez les informations manquantes de votre profil (contact, localisation, etc.)');
+    }
+    
+    // Suggestions générales basées sur le score global
+    if (score.overall < 50) {
+      suggestions.push('Votre profil a un potentiel d\'amélioration significatif');
+    } else if (score.overall > 85) {
+      suggestions.push('Excellent profil ! Maintenez-le à jour régulièrement');
+    }
+    
+    // Suggestions basées sur l'explication IA
+    if (explanation.toLowerCase().includes('manque')) {
+      suggestions.push('Identifiez les éléments manqués mentionnés dans l\'analyse et complétez-les');
+    }
+    
+    return suggestions.slice(0, 3); // Limiter à 3 suggestions max
+  };
   
   return {
     score,
     explanation,
+    suggestions,
     isLoading: isLoading || getAIScore(candidate.id!).isLoading,
     error: error || getAIScore(candidate.id!).error,
     isJobSpecific
