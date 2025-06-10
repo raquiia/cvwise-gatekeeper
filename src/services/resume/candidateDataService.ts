@@ -29,26 +29,29 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     // Handle both array and direct object responses
     const candidateRawData = Array.isArray(data) ? data[0] : data;
     
+    // Cast to any for logging purposes to avoid TypeScript errors
+    const rawDataForLogging = candidateRawData as any;
+    
     // LOG DÉTAILLÉ des données brutes récupérées de la base
     console.log('🗃️ RAW DATA FROM DATABASE:', {
-      id: candidateRawData?.id,
-      first_name: candidateRawData?.first_name,
-      last_name: candidateRawData?.last_name,
-      address: candidateRawData?.address,
-      postal_code: candidateRawData?.postal_code,
-      city: candidateRawData?.city,
-      country: candidateRawData?.country,
-      location: candidateRawData?.location
+      id: rawDataForLogging?.id,
+      first_name: rawDataForLogging?.first_name,
+      last_name: rawDataForLogging?.last_name,
+      address: rawDataForLogging?.address,
+      postal_code: rawDataForLogging?.postal_code,
+      city: rawDataForLogging?.city,
+      country: rawDataForLogging?.country,
+      location: rawDataForLogging?.location
     });
     
     // Log spécifiquement pour Louis Le Potvin
-    if (candidateRawData?.first_name === 'Louis' && candidateRawData?.last_name === 'Le Potvin') {
+    if (rawDataForLogging?.first_name === 'Louis' && rawDataForLogging?.last_name === 'Le Potvin') {
       console.log('🎯 LOUIS LE POTVIN - RAW DATABASE DATA:', {
-        address: candidateRawData?.address || 'UNDEFINED',
-        postal_code: candidateRawData?.postal_code || 'UNDEFINED', 
-        city: candidateRawData?.city || 'UNDEFINED',
-        country: candidateRawData?.country || 'UNDEFINED',
-        location: candidateRawData?.location || 'UNDEFINED'
+        address: rawDataForLogging?.address || 'UNDEFINED',
+        postal_code: rawDataForLogging?.postal_code || 'UNDEFINED', 
+        city: rawDataForLogging?.city || 'UNDEFINED',
+        country: rawDataForLogging?.country || 'UNDEFINED',
+        location: rawDataForLogging?.location || 'UNDEFINED'
       });
     }
     
