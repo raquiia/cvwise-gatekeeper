@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, FileText, Download, Loader2, MoreHorizontal, Calendar, Trash2, Brain, FileCheck, AlertTriangle } from 'lucide-react';
@@ -74,17 +73,17 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
   const [checkingAnalyzed, setCheckingAnalyzed] = useState<Record<string, boolean>>({});
   
   // Fonction d'aide pour vérifier si le texte a été extrait pour un CV spécifique
-  const hasExtractedText = (resumeId: string): boolean => {
+  function hasExtractedText(resumeId: string): boolean {
     return resumesWithExtractedText && typeof resumesWithExtractedText[resumeId] === 'string' && resumesWithExtractedText[resumeId].length > 0;
-  };
+  }
   
   // Fonction pour déterminer si un CV a été analysé (a un candidat associé)
-  const isResumeAnalyzed = (resume: ResumeData): boolean => {
+  function isResumeAnalyzed(resume: ResumeData): boolean {
     return resume.parsed || (resume.candidates && resume.candidates.length > 0);
-  };
+  }
   
   // Fonction pour obtenir la classe CSS de la carte en fonction de l'état d'analyse
-  const getCardClassName = (resume: ResumeData): string => {
+  function getCardClassName(resume: ResumeData): string {
     if (selectionMode) return 'card-hover-disabled glass flex flex-col h-full';
     
     if (isResumeAnalyzed(resume)) {
@@ -96,10 +95,10 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
     }
     
     return 'card-hover glass flex flex-col h-full shadow-md hover:shadow-lg transition-all duration-300';
-  };
+  }
   
   // Fonction pour obtenir l'étiquette d'état du CV
-  const getResumeStatusBadge = (resume: ResumeData) => {
+  function getResumeStatusBadge(resume: ResumeData) {
     if (isResumeAnalyzed(resume)) {
       return (
         <div className="mt-2 animate-scale">
@@ -123,7 +122,7 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
     }
     
     return null;
-  };
+  }
   
   // Fonction pour gérer le clic sur le bouton "Analyser avec IA"
   const handleAnalyzeClick = async (resumeId: string, resumeText: string) => {
@@ -131,9 +130,9 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
       setCheckingAnalyzed(prev => ({ ...prev, [resumeId]: true }));
       
       // Vérifier si le CV a déjà été analysé
-      const result = await checkResumeAlreadyAnalyzed(resumeId);
+      const alreadyAnalyzed = await checkResumeAlreadyAnalyzed(resumeId);
       
-      if (result.analyzed) {
+      if (alreadyAnalyzed) {
         // Si déjà analysé, demander confirmation pour écraser
         setResumeToAnalyze({ id: resumeId, text: resumeText });
         setIsOverwriteDialogOpen(true);
@@ -151,19 +150,19 @@ const ResumesGrid: React.FC<ResumesGridProps> = ({
   };
   
   // Fonction pour confirmer l'écrasement des données existantes
-  const confirmOverwrite = () => {
+  function confirmOverwrite() {
     if (resumeToAnalyze) {
       onAnalyzeResume(resumeToAnalyze.id, resumeToAnalyze.text, true);
       setIsOverwriteDialogOpen(false);
       setResumeToAnalyze(null);
     }
-  };
+  }
   
   // Fonction pour annuler l'écrasement
-  const cancelOverwrite = () => {
+  function cancelOverwrite() {
     setIsOverwriteDialogOpen(false);
     setResumeToAnalyze(null);
-  };
+  }
   
   return (
     <>

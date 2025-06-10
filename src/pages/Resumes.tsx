@@ -9,11 +9,15 @@ import {
   getUserResumes, 
   deleteResume, 
   downloadResume, 
-  extractResumeText,
-  analyzeResume,
-  analyzeBatchResumes,
   ResumeData 
 } from '@/services/resumeService';
+import { 
+  extractResumeText,
+  analyzeResume,
+  TextExtractionResult,
+  ResumeAnalysisResult
+} from '@/services/resume/resumeAnalysisService';
+import { analyzeBatchResumes, BatchAnalysisResult } from '@/services/resume/batchAnalysisService';
 import { ensureResumesBucketExists } from '@/integrations/supabase/createBucket';
 import {
   AlertDialog,
@@ -190,7 +194,7 @@ const Resumes = () => {
         description: "Veuillez patienter pendant l'extraction du texte..."
       });
       
-      const result = await extractResumeText(resumeId, filePath);
+      const result: TextExtractionResult = await extractResumeText(resumeId);
       
       if (result.success && result.text) {
         setExtractedText(result.text);
@@ -235,7 +239,7 @@ const Resumes = () => {
           : "Veuillez patienter pendant l'analyse du CV avec l'IA..."
       });
       
-      const result = await analyzeResume(resumeId, resumeText, overwriteExisting);
+      const result: ResumeAnalysisResult = await analyzeResume(resumeId, resumeText, overwriteExisting);
       
       if (result.success) {
         toast({
@@ -253,8 +257,8 @@ const Resumes = () => {
         
         await loadResumes();
         
-        if (result.candidateId) {
-          navigate(`/candidates/${result.candidateId}`);
+        if (result.candidateData?.id) {
+          navigate(`/candidates/${result.candidateData.id}`);
         }
       } else {
         throw new Error(result.message || "Erreur lors de l'analyse du CV");
@@ -352,7 +356,7 @@ const Resumes = () => {
         } else {
           try {
             console.log(`Extracting text for resume ${resumeId}, file path: ${resume.file_path}`);
-            const extractResult = await extractResumeText(resumeId, resume.file_path);
+            const extractResult: TextExtractionResult = await extractResumeText(resumeId);
             
             if (extractResult.success && extractResult.text) {
               console.log(`Text extraction successful for resume ${resumeId}, text length: ${extractResult.text.length}`);
@@ -383,15 +387,15 @@ const Resumes = () => {
         throw new Error("Aucun texte n'a pu être extrait des CV sélectionnés");
       }
       
-      const result = await analyzeBatchResumes(itemsToAnalyze, (current, total, resumeId, success) => {
-        console.log(`Batch progress: ${current}/${total}, resume ${resumeId}, success: ${success}`);
+      const result: BatchAnalysisResult = await analyzeBatchResumes(itemsToAnalyze, (current, total, currentResumeId, success) => {
+        console.log(`Batch progress: ${current}/${total}, resume ${currentResumeId}, success: ${success}`);
         const percent = Math.round((current / total) * 100);
         setBatchProgress({ current, total, percent });
         
         if (success) {
           setResumes(prev => 
             prev.map(resume => 
-              resume.id === resumeId ? { ...resume, parsed: true } : resume
+              resume.id === currentResumeId ? { ...resume, parsed: true } : resume
             )
           );
         }
