@@ -4,7 +4,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Target, Briefcase, Info, Brain, FileSearch, RefreshCw } from 'lucide-react';
+import { Sparkles, Target, Briefcase, Info, Brain, FileSearch, RefreshCw, Loader2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
 
@@ -48,9 +48,14 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
                 variant="outline" 
                 size="sm"
                 className="flex items-center gap-2"
+                disabled={isLoading}
               >
-                <RefreshCw className="w-4 h-4" />
-                Analyser le CV
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Brain className="w-4 h-4" />
+                )}
+                {isLoading ? 'Analyse en cours...' : 'Analyser le CV'}
               </Button>
             )}
           </div>
@@ -70,7 +75,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
             <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
             <div className="h-3 bg-gray-200 rounded w-24"></div>
             <div className="mt-4 text-sm text-purple-600 font-medium">
-              ✨ Chargement du score...
+              ✨ Analyse IA en cours...
             </div>
           </div>
         </CardContent>
@@ -101,9 +106,14 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
                 variant="default" 
                 size="sm"
                 className="flex items-center gap-2"
+                disabled={isLoading}
               >
-                <Brain className="w-4 h-4" />
-                Analyser le CV maintenant
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Brain className="w-4 h-4" />
+                )}
+                {isLoading ? 'Analyse en cours...' : 'Analyser le CV maintenant'}
               </Button>
             )}
           </div>
@@ -190,9 +200,14 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
               variant="ghost" 
               size="sm"
               className="flex items-center gap-1"
+              disabled={isLoading}
             >
-              <RefreshCw className="w-3 h-3" />
-              Recalculer
+              {isLoading ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3 h-3" />
+              )}
+              {isLoading ? 'Analyse...' : 'Recalculer'}
             </Button>
           )}
         </div>

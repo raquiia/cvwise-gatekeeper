@@ -1,8 +1,10 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { useCandidateScore } from '@/hooks/use-candidate-score';
 import AIScoreDisplay from '../AIScoreDisplay';
+import { analyzeResume } from '@/services/resumeService';
+import { toast } from '@/hooks/use-toast';
 import type { CandidateData } from '@/services/data/candidateService';
 
 interface ScoreDisplayProps {
@@ -15,6 +17,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRef
   const { getAIScore } = useAIScoring();
   const { score: candidateScore, explanation, isLoading: scoreLoading } = useCandidateScore(candidate);
   const aiScoreData = getAIScore(candidate.id!);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   
   // Éviter les rechargements inutiles avec useRef
   const lastCandidateIdRef = useRef<string>();
@@ -29,11 +32,56 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRef
     }
   }, [candidate.id]);
   
-  const handleRefresh = () => {
-    console.log('ScoreDisplay: Refresh requested - scores are calculated during CV analysis');
-    if (onRefresh) {
-      onRefresh();
+  const handleAnalyzeCV = async () => {
+    if (!candidate.resume_id) {
+      toast({
+        title: "CV non trouvé",
+        description: "Aucun CV associé à ce candidat. Veuillez d'abord uploader un CV.",
+        variant: "destructive",
+      });
+      return;
     }
+
+    try {
+      setIsAnalyzing(true);
+      console.log('🚀 Starting CV analysis for resume:', candidate.resume_id);
+      
+      toast({
+        title: "Analyse en cours",
+        description: "L'analyse IA du CV a commencé...",
+      });
+
+      const result = await analyzeResume(candidate.resume_id);
+      
+      if (result.success) {
+        toast({
+          title: "Analyse terminée",
+          description: "Le CV a été analysé avec succès. Le score IA et les informations ont été mis à jour.",
+        });
+        
+        // Rafraîchir les données du candidat
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        throw new Error(result.error || 'Échec de l\'analyse');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Error analyzing CV:', error);
+      toast({
+        title: "Erreur d'analyse",
+        description: error.message || "Impossible d'analyser le CV",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    console.log('ScoreDisplay: Manual refresh requested');
+    handleAnalyzeCV();
   };
   
   return (
@@ -42,7 +90,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRef
       score={aiScoreData.score}
       explanation={explanation || aiScoreData.explanation}
       breakdown={aiScoreData.breakdown}
-      isLoading={isLoading || aiScoreData.isLoading || scoreLoading}
+      isLoading={isLoading || aiScoreData.isLoading || scoreLoading || isAnalyzing}
       isJobSpecific={aiScoreData.isJobSpecific}
       error={aiScoreData.error}
       onRefresh={handleRefresh}
