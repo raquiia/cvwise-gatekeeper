@@ -27,6 +27,13 @@ export interface CandidateData {
   position?: string;
   years_experience?: number;
   location?: string;
+  
+  // Add the missing address fields
+  address?: string;
+  postal_code?: string;
+  city?: string;
+  country?: string;
+  
   skills?: string[] | Json; // Updated to accept both string[] and Json
   score?: number;
   status?: string;
