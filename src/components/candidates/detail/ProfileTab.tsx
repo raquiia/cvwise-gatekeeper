@@ -64,27 +64,32 @@ const formatCompleteAddress = (address: string, postalCode: string, city: string
 };
 
 const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh }) => {
-  const [firstName, setFirstName] = useState(candidate.first_name || '');
-  const [lastName, setLastName] = useState(candidate.last_name || '');
-  const [email, setEmail] = useState(candidate.email || '');
-  const [phone, setPhone] = useState(candidate.phone || '');
-  const [position, setPosition] = useState(candidate.position || '');
-  const [location, setLocation] = useState(candidate.location || '');
-  const [address, setAddress] = useState(candidate.address || '');
-  const [postalCode, setPostalCode] = useState(candidate.postal_code || '');
-  const [city, setCity] = useState(candidate.city || '');
-  const [country, setCountry] = useState(candidate.country || '');
-  const [yearsExperience, setYearsExperience] = useState(candidate.years_experience || 0);
-  const [salaryExpectation, setSalaryExpectation] = useState(candidate.salary_expectations || '');
-  const [availability, setAvailability] = useState(candidate.availability || '');
-  const [notes, setNotes] = useState(candidate.notes || '');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [position, setPosition] = useState('');
+  const [location, setLocation] = useState('');
+  const [address, setAddress] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [city, setCity] = useState('');
+  const [country, setCountry] = useState('');
+  const [yearsExperience, setYearsExperience] = useState(0);
+  const [salaryExpectation, setSalaryExpectation] = useState('');
+  const [availability, setAvailability] = useState('');
+  const [notes, setNotes] = useState('');
   
   const [isSaving, setIsSaving] = useState(false);
   const [showRawData, setShowRawData] = useState(false);
   const { user } = useAuth();
   
-  // Update local state when candidate prop changes - CORRECTION CRITIQUE ICI
+  // Update local state when candidate prop changes - CORRECTION CRITIQUE
   useEffect(() => {
+    if (!candidate) {
+      console.log('🔍 ProfileTab: No candidate data provided');
+      return;
+    }
+    
     console.log('🔍 ProfileTab: Updating states with candidate data:', {
       candidateId: candidate.id,
       address: candidate.address,
@@ -94,7 +99,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
       location: candidate.location
     });
     
-    // Mettre à jour TOUS les champs avec les nouvelles données
+    // CORRECTION: Mise à jour OBLIGATOIRE de TOUS les champs
     setFirstName(candidate.first_name || '');
     setLastName(candidate.last_name || '');
     setEmail(candidate.email || '');
@@ -102,24 +107,31 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     setPosition(candidate.position || '');
     setLocation(candidate.location || '');
     
-    // CORRECTION: Mise à jour explicite des champs d'adresse
-    setAddress(candidate.address || '');
-    setPostalCode(candidate.postal_code || '');
-    setCity(candidate.city || '');
-    setCountry(candidate.country || '');
+    // CORRECTION CRITIQUE: Mise à jour FORCÉE des champs d'adresse
+    const candidateAddress = candidate.address || '';
+    const candidatePostalCode = candidate.postal_code || '';
+    const candidateCity = candidate.city || '';
+    const candidateCountry = candidate.country || '';
+    
+    console.log('✅ ProfileTab: Setting address fields to:', {
+      address: candidateAddress,
+      postal_code: candidatePostalCode,
+      city: candidateCity,
+      country: candidateCountry
+    });
+    
+    setAddress(candidateAddress);
+    setPostalCode(candidatePostalCode);
+    setCity(candidateCity);
+    setCountry(candidateCountry);
     
     setYearsExperience(candidate.years_experience || 0);
     setSalaryExpectation(candidate.salary_expectations || '');
     setAvailability(candidate.availability || '');
     setNotes(candidate.notes || '');
     
-    console.log('✅ ProfileTab: States updated - address fields now:', {
-      address: candidate.address || '',
-      postal_code: candidate.postal_code || '',
-      city: candidate.city || '',
-      country: candidate.country || ''
-    });
-  }, [candidate]);
+    console.log('✅ ProfileTab: All states updated successfully');
+  }, [candidate.id, candidate.address, candidate.postal_code, candidate.city, candidate.country, candidate.location, candidate.first_name, candidate.last_name, candidate.email, candidate.phone, candidate.position, candidate.years_experience, candidate.salary_expectations, candidate.availability, candidate.notes]);
   
   // Auto-complete country when city changes
   useEffect(() => {
@@ -374,6 +386,16 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   location: candidate.location
 }, null, 2)}
                   </pre>
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block mt-4">États locaux actuels</Label>
+                  <pre className="text-xs text-blue-600 whitespace-pre-wrap">
+{JSON.stringify({
+  address: address,
+  postal_code: postalCode,
+  city: city,
+  country: country,
+  location: location
+}, null, 2)}
+                  </pre>
                 </div>
               )}
               
@@ -388,7 +410,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                     id="address"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder={address ? '' : "Ex: Rue Philippe-Plantamour 17"}
+                    placeholder={!address ? "Ex: Rue Philippe-Plantamour 17" : ''}
                     className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                   />
                 </div>
@@ -401,7 +423,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                       id="postalCode"
                       value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value)}
-                      placeholder={postalCode ? '' : "Ex: 1201"}
+                      placeholder={!postalCode ? "Ex: 1201" : ''}
                       className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                     />
                   </div>
@@ -412,7 +434,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                       id="city"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      placeholder={city ? '' : "Ex: Geneva"}
+                      placeholder={!city ? "Ex: Geneva" : ''}
                       className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                     />
                   </div>
@@ -423,7 +445,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                       id="country"
                       value={country}
                       onChange={(e) => setCountry(e.target.value)}
-                      placeholder={country ? '' : "Ex: Switzerland"}
+                      placeholder={!country ? "Ex: Switzerland" : ''}
                       className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                     />
                   </div>
@@ -440,7 +462,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                     id="location"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    placeholder={location ? '' : "Ex: Geneva, Switzerland"}
+                    placeholder={!location ? "Ex: Geneva, Switzerland" : ''}
                     className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                   />
                 </div>
