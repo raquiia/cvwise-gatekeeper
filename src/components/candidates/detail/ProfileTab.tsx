@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -277,10 +278,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                   <h3 className="text-lg font-semibold text-gray-900">Adresse complète</h3>
                 </div>
                 <div className="flex items-center gap-2">
-                  {completeFormattedAddress && (
+                  {hasAnyAddressData && (
                     <div className="flex items-center gap-2 text-emerald-600">
                       <CheckCircle className="h-4 w-4" />
-                      <span className="text-sm font-medium">Adresse extraite</span>
+                      <span className="text-sm font-medium">Données extraites</span>
                     </div>
                   )}
                   <Button
@@ -297,53 +298,53 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               
-              {/* TOUJOURS afficher les données extraites */}
+              {/* Affichage systématique des données extraites */}
               {hasAnyAddressData && (
                 <div className="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-4">
                   <Label className="text-sm font-medium text-emerald-800 flex items-center gap-2 mb-3">
                     <MapPin className="h-4 w-4" />
-                    Informations d'adresse extraites du CV
+                    📍 Informations d'adresse extraites
                   </Label>
                   
-                  {/* Adresse formatée complète */}
+                  {/* Adresse complète formatée si disponible */}
                   {completeFormattedAddress && (
-                    <div className="mb-3">
-                      <p className="text-emerald-700 font-semibold text-lg">
-                        📍 {completeFormattedAddress}
-                      </p>
+                    <div className="mb-4 p-3 bg-white rounded border border-emerald-300">
+                      <div className="text-lg font-bold text-emerald-800">
+                        🏠 {completeFormattedAddress}
+                      </div>
                     </div>
                   )}
                   
-                  {/* Détails séparés */}
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  {/* Détails par champ */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     {address && (
-                      <div>
-                        <span className="text-emerald-600 font-medium">Rue:</span>
-                        <span className="text-emerald-800 ml-2">{address}</span>
+                      <div className="bg-white p-2 rounded border border-emerald-200">
+                        <span className="text-emerald-600 font-medium">🏠 Rue:</span>
+                        <div className="text-emerald-800 font-medium">{address}</div>
                       </div>
                     )}
                     {postalCode && (
-                      <div>
-                        <span className="text-emerald-600 font-medium">Code postal:</span>
-                        <span className="text-emerald-800 ml-2">{postalCode}</span>
+                      <div className="bg-white p-2 rounded border border-emerald-200">
+                        <span className="text-emerald-600 font-medium">📮 Code postal:</span>
+                        <div className="text-emerald-800 font-medium">{postalCode}</div>
                       </div>
                     )}
                     {city && (
-                      <div>
-                        <span className="text-emerald-600 font-medium">Ville:</span>
-                        <span className="text-emerald-800 ml-2">{city}</span>
+                      <div className="bg-white p-2 rounded border border-emerald-200">
+                        <span className="text-emerald-600 font-medium">🏙️ Ville:</span>
+                        <div className="text-emerald-800 font-medium">{city}</div>
                       </div>
                     )}
                     {country && (
-                      <div>
-                        <span className="text-emerald-600 font-medium">Pays:</span>
-                        <span className="text-emerald-800 ml-2">{country}</span>
+                      <div className="bg-white p-2 rounded border border-emerald-200">
+                        <span className="text-emerald-600 font-medium">🌍 Pays:</span>
+                        <div className="text-emerald-800 font-medium">{country}</div>
                       </div>
                     )}
-                    {location && !completeFormattedAddress && (
-                      <div className="col-span-2">
-                        <span className="text-emerald-600 font-medium">Localisation (format libre):</span>
-                        <span className="text-emerald-800 ml-2">{location}</span>
+                    {location && (
+                      <div className="bg-white p-2 rounded border border-emerald-200 md:col-span-2">
+                        <span className="text-emerald-600 font-medium">📍 Localisation:</span>
+                        <div className="text-emerald-800 font-medium">{location}</div>
                       </div>
                     )}
                   </div>
@@ -418,7 +419,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                   </div>
                 </div>
                 
-                {/* Champ location seulement si pas d'adresse structurée */}
+                {/* Champ location */}
                 <div className="space-y-2">
                   <Label htmlFor="location" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
@@ -577,5 +578,3 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
 };
 
 export default ProfileTab;
-
-</edits_to_apply>
