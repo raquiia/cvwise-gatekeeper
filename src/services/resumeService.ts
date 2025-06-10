@@ -14,7 +14,11 @@ import {
   analyzeBatchResumes 
 } from './resume/analysisOperations';
 
-// Re-export des interfaces
+// Re-export des interfaces depuis resumeAnalysisService
+import type { 
+  TextExtractionResult, 
+  ResumeAnalysisResult 
+} from './resume/resumeAnalysisService';
 import type { ResumeData, CandidateData } from './data/resumeDataService';
 
 export {
@@ -35,5 +39,7 @@ export {
   
   // Types
   ResumeData,
-  CandidateData
+  CandidateData,
+  TextExtractionResult,
+  ResumeAnalysisResult
 };

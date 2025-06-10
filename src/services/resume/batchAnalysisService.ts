@@ -1,6 +1,7 @@
 
 import { checkResumeAlreadyAnalyzed } from './resumeValidationService';
 import { analyzeResume } from './analysisOperations';
+import { extractResumeText } from './resumeAnalysisService';
 
 export interface BatchAnalysisProgress {
   current: number;
