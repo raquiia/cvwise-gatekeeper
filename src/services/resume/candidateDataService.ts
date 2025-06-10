@@ -1,4 +1,5 @@
 
+
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from '@/services/data/candidateService';
@@ -29,26 +30,29 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     // Handle both array and direct object responses
     const candidateData = Array.isArray(data) ? data[0] : data;
     
+    // Type assertion to access address fields safely
+    const candidate = candidateData as any;
+    
     // LOG DÉTAILLÉ des données brutes récupérées de la base
     console.log('🗃️ RAW DATA FROM DATABASE:', {
-      id: candidateData?.id,
-      first_name: candidateData?.first_name,
-      last_name: candidateData?.last_name,
-      address: candidateData?.address,
-      postal_code: candidateData?.postal_code,
-      city: candidateData?.city,
-      country: candidateData?.country,
-      location: candidateData?.location
+      id: candidate?.id,
+      first_name: candidate?.first_name,
+      last_name: candidate?.last_name,
+      address: candidate?.address,
+      postal_code: candidate?.postal_code,
+      city: candidate?.city,
+      country: candidate?.country,
+      location: candidate?.location
     });
     
     // Log spécifiquement pour Louis Le Potvin
-    if (candidateData?.first_name === 'Louis' && candidateData?.last_name === 'Le Potvin') {
+    if (candidate?.first_name === 'Louis' && candidate?.last_name === 'Le Potvin') {
       console.log('🎯 LOUIS LE POTVIN - RAW DATABASE DATA:', {
-        address: candidateData?.address || 'UNDEFINED',
-        postal_code: candidateData?.postal_code || 'UNDEFINED', 
-        city: candidateData?.city || 'UNDEFINED',
-        country: candidateData?.country || 'UNDEFINED',
-        location: candidateData?.location || 'UNDEFINED'
+        address: candidate?.address || 'UNDEFINED',
+        postal_code: candidate?.postal_code || 'UNDEFINED', 
+        city: candidate?.city || 'UNDEFINED',
+        country: candidate?.country || 'UNDEFINED',
+        location: candidate?.location || 'UNDEFINED'
       });
     }
     
@@ -65,3 +69,4 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     throw error;
   }
 };
+
