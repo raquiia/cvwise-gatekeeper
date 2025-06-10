@@ -1,8 +1,7 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { candidateService, CandidateData } from '@/services/data/candidateService';
-import { analyzeResumeWithAI, AIAnalysisResult } from './resumeAnalysisService';
+import { analyzeResumeWithAI, AIAnalysisResult, extractResumeText } from './resumeAnalysisService';
 
 export interface AnalysisProgress {
   current: number;
@@ -30,16 +29,14 @@ export const analyzeResume = async (
     
     onProgress?.({ current: 1, total: 4, status: 'extracting', currentFile: 'Extraction du texte...' });
 
-    // 1. Extraire le texte du CV
-    const { data: extractData, error: extractError } = await supabase.functions.invoke('extract-cv-text', {
-      body: { resumeId }
-    });
-
-    if (extractError || !extractData?.success) {
-      throw new Error(extractData?.error || 'Erreur lors de l\'extraction du texte');
+    // 1. Extraire le texte du CV en utilisant la fonction qui fonctionne déjà
+    const extractResult = await extractResumeText(resumeId);
+    
+    if (!extractResult.success || !extractResult.text) {
+      throw new Error(extractResult.message || 'Erreur lors de l\'extraction du texte');
     }
 
-    const resumeText = extractData.text;
+    const resumeText = extractResult.text;
     console.log('✅ Text extracted, length:', resumeText?.length);
 
     onProgress?.({ current: 2, total: 4, status: 'analyzing', currentFile: 'Extraction des informations candidat...' });
