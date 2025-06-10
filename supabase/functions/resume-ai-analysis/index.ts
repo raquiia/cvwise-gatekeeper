@@ -60,51 +60,149 @@ const extractAddressFromText = (text: string): { address: string; postal_code: s
 };
 
 /**
- * Prompt simplifié pour l'analyse
+ * Nettoie et valide la réponse JSON de l'IA
  */
-const createSimplifiedPrompt = (resumeText: string): string => {
-  return `Analyse ce CV et retourne un JSON avec cette structure exacte :
+const cleanAndParseAIResponse = (content: string): any => {
+  console.log('🧹 Nettoyage de la réponse IA...');
+  console.log('📝 Contenu brut:', content.substring(0, 500) + '...');
+  
+  // Étape 1: Supprimer le texte explicatif avant/après le JSON
+  let cleanedContent = content.trim();
+  
+  // Rechercher des patterns JSON entre accolades
+  const jsonPatterns = [
+    /\{[\s\S]*\}/,  // Pattern principal pour JSON
+    /```json\s*(\{[\s\S]*?\})\s*```/,  // JSON dans des blocs markdown
+    /```\s*(\{[\s\S]*?\})\s*```/,  // JSON dans des blocs génériques
+  ];
+  
+  for (const pattern of jsonPatterns) {
+    const match = cleanedContent.match(pattern);
+    if (match) {
+      cleanedContent = match[1] || match[0];
+      console.log('✅ JSON extrait avec le pattern:', pattern.source);
+      break;
+    }
+  }
+  
+  // Étape 2: Nettoyer les caractères problématiques
+  cleanedContent = cleanedContent
+    .replace(/^\s*[^{]*/, '') // Supprimer tout ce qui précède la première accolade
+    .replace(/[^}]*$/, '}')   // Garder seulement jusqu'à la dernière accolade
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Supprimer caractères de contrôle
+    .replace(/\n\s*\n/g, '\n') // Supprimer lignes vides multiples
+    .trim();
+  
+  console.log('🧹 Contenu nettoyé:', cleanedContent.substring(0, 300) + '...');
+  
+  // Étape 3: Tentative de parsing avec gestion d'erreur
+  try {
+    const parsed = JSON.parse(cleanedContent);
+    console.log('✅ JSON parsé avec succès');
+    return parsed;
+  } catch (parseError) {
+    console.error('❌ Erreur de parsing JSON:', parseError);
+    console.error('📝 Contenu qui a échoué:', cleanedContent.substring(0, 500));
+    
+    // Tentative de récupération avec une approche plus agressive
+    try {
+      // Essayer de trouver juste la structure candidate_data
+      const candidateMatch = cleanedContent.match(/"candidate_data"\s*:\s*\{[^}]*\}/);
+      if (candidateMatch) {
+        const basicStructure = `{"candidate_data": ${candidateMatch[0].split(':')[1]}, "scoring": {"overall_score": 50, "explanation": "Analyse de base", "breakdown": {}}}`;
+        return JSON.parse(basicStructure);
+      }
+    } catch {
+      // Dernière option: structure minimale de fallback
+      console.warn('⚠️ Utilisation de la structure de fallback');
+      return {
+        candidate_data: {
+          first_name: "",
+          last_name: "",
+          email: "",
+          phone: "",
+          position: "",
+          location: "",
+          address: "",
+          postal_code: "",
+          city: "",
+          country: "",
+          years_experience: 0,
+          company: "",
+          skills: [],
+          experiences: [],
+          education: [],
+          languages: [],
+          availability: "",
+          mobility: "",
+          career_objectives: ""
+        },
+        scoring: {
+          overall_score: 0,
+          explanation: "Analyse échouée - extraction manuelle nécessaire",
+          breakdown: {}
+        }
+      };
+    }
+  }
+};
+
+/**
+ * Prompt optimisé pour forcer le format JSON strict
+ */
+const createStrictJSONPrompt = (resumeText: string): string => {
+  return `IMPORTANT: Tu DOIS répondre UNIQUEMENT avec un JSON valide, sans aucun texte explicatif avant ou après.
+
+<JSON_STRUCTURE>
 {
   "candidate_data": {
-    "first_name": "",
-    "last_name": "",
-    "email": "",
-    "phone": "",
-    "position": "",
-    "location": "",
-    "address": "",
-    "postal_code": "",
-    "city": "",
-    "country": "",
-    "years_experience": 0,
-    "company": "",
-    "skills": [],
-    "experiences": [],
-    "education": [],
-    "languages": [],
-    "availability": "",
-    "mobility": "",
-    "career_objectives": ""
+    "first_name": "string",
+    "last_name": "string", 
+    "email": "string",
+    "phone": "string",
+    "position": "string",
+    "location": "string",
+    "address": "string",
+    "postal_code": "string",
+    "city": "string",
+    "country": "string",
+    "years_experience": number,
+    "company": "string",
+    "skills": ["skill1", "skill2"],
+    "experiences": [{"title": "string", "company": "string", "duration": "string", "description": "string"}],
+    "education": [{"degree": "string", "school": "string", "year": "string"}],
+    "languages": [{"language": "string", "level": "string"}],
+    "availability": "string",
+    "mobility": "string", 
+    "career_objectives": "string"
   },
   "scoring": {
-    "overall_score": 0,
-    "explanation": "Brève analyse avec points forts et améliorations",
+    "overall_score": number_0_to_100,
+    "explanation": "string_max_200_chars",
     "breakdown": {
-      "education": 0,
-      "experience": 0,
-      "skills": 0,
-      "languages": 0,
-      "location": 0,
-      "profileSummary": 0,
-      "cvStructure": 0
+      "education": number_0_to_20,
+      "experience": number_0_to_20,
+      "skills": number_0_to_20,
+      "languages": number_0_to_10,
+      "location": number_0_to_10,
+      "profileSummary": number_0_to_10,
+      "cvStructure": number_0_to_10
     }
   }
 }
+</JSON_STRUCTURE>
 
-Score sur 100 : Education(20) + Expérience(20) + Compétences(20) + Langues(10) + Localisation(10) + Résumé(10) + Structure(10)
-Extraire l'adresse complète si disponible. Pays francophones privilégiés.
+RÈGLES STRICTES:
+- Réponse = JSON UNIQUEMENT
+- Pas de "Voici l'analyse" ou texte explicatif
+- Score total = somme des breakdown (max 100)
+- Si info manquante: chaîne vide "" ou tableau vide []
+- Langue française privilégiée pour les textes
 
-CV: ${resumeText.slice(0, 3000)}`;
+CV À ANALYSER:
+${resumeText.slice(0, 3000)}
+
+JSON:`;
 };
 
 serve(async (req) => {
@@ -113,7 +211,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 Starting SIMPLIFIED resume-ai-analysis');
+    console.log('🚀 Starting ENHANCED resume-ai-analysis');
     
     const requestData = await req.json();
     const { resumeId, resumeText, overwriteExisting } = requestData;
@@ -152,9 +250,6 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // CACHE TEMPORAIREMENT DÉSACTIVÉ POUR DÉBOGAGE
-    console.log('⚠️ Cache temporarily disabled for debugging');
-
     // Récupérer les données du CV
     console.log('📄 Fetching resume data...');
     const resumeDataResult = await supabase
@@ -176,21 +271,25 @@ serve(async (req) => {
 
     console.log('✅ Resume data fetched for user:', resumeDataResult.data.user_id);
 
-    // Appel à OpenAI avec prompt simplifié
-    console.log('🤖 Calling OpenAI with simplified prompt...');
+    // Appel à OpenAI avec prompt optimisé
+    console.log('🤖 Calling OpenAI with enhanced prompt...');
     
-    const simplifiedPrompt = createSimplifiedPrompt(resumeText);
+    const strictPrompt = createStrictJSONPrompt(resumeText);
     
     const openAIPayload = {
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o', // Modèle plus fiable pour le JSON
       messages: [
         {
+          role: 'system',
+          content: 'Tu es un assistant IA spécialisé dans l\'analyse de CV. Tu réponds TOUJOURS en JSON valide uniquement, sans aucun texte explicatif.'
+        },
+        {
           role: 'user',
-          content: simplifiedPrompt
+          content: strictPrompt
         }
       ],
-      temperature: 0.1,
-      max_tokens: 2000,
+      temperature: 0, // Déterminisme maximum
+      max_tokens: 2500,
     };
 
     console.log('📤 Sending request to OpenAI...');
@@ -231,17 +330,17 @@ serve(async (req) => {
       );
     }
 
-    console.log('📝 Parsing AI response...');
+    console.log('📝 Parsing AI response with enhanced cleaning...');
     let extractedData;
     try {
-      extractedData = JSON.parse(content);
+      extractedData = cleanAndParseAIResponse(content);
       console.log('✅ AI response parsed successfully');
     } catch (parseError) {
-      console.error('❌ JSON parse error:', parseError);
+      console.error('❌ JSON parse error after cleaning:', parseError);
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Invalid JSON response from AI'
+          error: 'Invalid JSON response from AI even after cleaning'
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -255,7 +354,7 @@ serve(async (req) => {
       Object.assign(candidateData, addressInfo);
     }
 
-    // Préparation des données pour insertion avec validation
+    // Préparation des données pour insertion avec validation stricte
     console.log('📊 Preparing candidate data for insertion...');
     const candidateInsertData = {
       resume_id: resumeId,
@@ -301,7 +400,7 @@ serve(async (req) => {
 
     console.log('✅ Candidate created successfully:', candidate.id);
 
-    // Sauvegarde du score AI (SIMPLIFIÉ)
+    // Sauvegarde du score AI
     const scoringData = extractedData.scoring;
     if (scoringData && scoringData.overall_score !== undefined) {
       console.log('💯 Saving AI score...');
@@ -321,13 +420,12 @@ serve(async (req) => {
 
       if (scoreError) {
         console.error('⚠️ Score insertion error (non-critical):', scoreError);
-        // Ne pas faire échouer toute l'opération pour une erreur de score
       } else {
         console.log('✅ AI score saved successfully');
       }
     }
 
-    console.log('🎉 Analysis completed successfully');
+    console.log('🎉 Enhanced analysis completed successfully');
 
     return new Response(
       JSON.stringify({ 
@@ -335,13 +433,13 @@ serve(async (req) => {
         candidate: candidate,
         candidateId: candidate.id,
         scoring: scoringData,
-        message: 'CV analyzed successfully with simplified pipeline'
+        message: 'CV analyzed successfully with enhanced JSON processing'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('💥 CRITICAL ERROR in simplified analysis:', error);
+    console.error('💥 CRITICAL ERROR in enhanced analysis:', error);
     console.error('Error stack:', error.stack);
     
     return new Response(
