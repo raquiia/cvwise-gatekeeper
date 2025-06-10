@@ -5,7 +5,6 @@ import { extractResumeText } from './textExtractionService';
 import { checkResumeAlreadyAnalyzed } from './resumeValidationService';
 import { analyzeBatchResumes } from './batchAnalysisService';
 import { getCompleteCandidateData } from './candidateDataService';
-import { optimizedScoringService } from '../scoring/optimizedScoringService';
 
 // Re-export all functions for backward compatibility
 export {
@@ -17,7 +16,8 @@ export {
 };
 
 /**
- * Analyser un CV et calculer automatiquement le score optimisé
+ * Analyser un CV avec l'IA consolidée (données + score en une seule requête)
+ * Cette fonction utilise maintenant l'analyse consolidée qui calcule tout en une fois
  */
 export const analyzeResumeWithOptimizedScoring = async (
   resumeId: string, 
@@ -25,32 +25,29 @@ export const analyzeResumeWithOptimizedScoring = async (
   overwriteExisting: boolean = false
 ): Promise<{ success: boolean; message?: string; candidateId?: string; score?: number }> => {
   try {
-    // Analyser le CV avec la méthode existante
+    console.log('🚀 Starting consolidated analysis (data + score) for resume:', resumeId);
+    
+    // Utiliser la nouvelle méthode d'analyse consolidée
     const analysisResult = await analyzeResume(resumeId, resumeText, overwriteExisting);
     
     if (!analysisResult.success || !analysisResult.candidateId) {
       return analysisResult;
     }
     
-    // Calculer le score de complétude avec le nouveau système
-    try {
-      const scoreBreakdown = await optimizedScoringService.calculateCompletenessScore(analysisResult.candidateId);
-      
-      return {
-        ...analysisResult,
-        score: scoreBreakdown?.general_score || 0
-      };
-    } catch (scoringError) {
-      console.warn('Error calculating score after CV analysis:', scoringError);
-      // Retourner le résultat de l'analyse même si le scoring échoue
-      return analysisResult;
-    }
+    console.log('✅ Consolidated analysis completed successfully for candidate:', analysisResult.candidateId);
+    
+    // Le score a déjà été calculé et sauvé lors de l'analyse consolidée
+    // Pas besoin de calcul supplémentaire
+    return {
+      ...analysisResult,
+      score: undefined // Le score sera récupéré depuis la base de données par les hooks
+    };
     
   } catch (error: any) {
     console.error('Error in analyzeResumeWithOptimizedScoring:', error);
     return {
       success: false,
-      message: error.message || 'Erreur lors de l\'analyse du CV'
+      message: error.message || 'Erreur lors de l\'analyse consolidée du CV'
     };
   }
 };

@@ -4,11 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { checkResumeAlreadyAnalyzed } from './resumeValidationService';
 
 /**
- * Analyser un CV avec l'IA et créer automatiquement un candidat
+ * Analyser un CV avec l'IA et créer automatiquement un candidat avec score de complétude
  */
 export const analyzeResume = async (resumeId: string, resumeText: string, overwriteExisting: boolean = false): Promise<{ success: boolean; message?: string; candidateId?: string }> => {
   try {
-    console.log('🚀 Starting AI analysis for resume:', resumeId);
+    console.log('🚀 Starting consolidated AI analysis for resume:', resumeId);
     console.log('📊 Resume text length:', resumeText?.length || 0);
     console.log('🔄 Overwrite existing:', overwriteExisting);
     
@@ -37,16 +37,16 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
     console.log(`📝 Text length being sent to AI: ${resumeText.length} characters`);
     console.log('📋 Sample of the text being sent:', resumeText.substring(0, 500) + '...');
     
-    // Appel à l'edge function d'analyse de CV avec gestion améliorée des erreurs
+    // Appel à l'edge function d'analyse de CV consolidée
     try {
-      console.log('🔗 Calling resume-ai-analysis edge function...');
+      console.log('🔗 Calling consolidated resume-ai-analysis edge function...');
       
       const { data, error } = await supabase.functions.invoke('resume-ai-analysis', {
         body: { 
           resumeId: resumeId,
-          resumeText: resumeText, // Using resumeText (the function now supports both)
+          resumeText: resumeText,
           overwriteExisting: overwriteExisting,
-          fullAnalysis: true // Indiquer qu'il faut analyser toutes les sections
+          fullAnalysis: true // Indiquer qu'il faut analyser toutes les sections + scoring
         }
       });
       
@@ -63,7 +63,8 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
         throw new Error(data?.error || 'Analyse du CV échouée');
       }
       
-      console.log('✅ AI analysis successful, candidate created:', data.candidate?.id);
+      console.log('✅ Consolidated AI analysis successful, candidate created:', data.candidate?.id);
+      console.log('🎯 AI score calculated:', data.scoring?.overall_score);
       
       // Vérifier les structures de données retournées pour le débogage
       if (data.candidate) {
@@ -95,11 +96,18 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
       } else {
         console.warn('⚠️ No candidate data returned from analysis');
       }
+
+      if (data.scoring) {
+        console.log('📊 Scoring data validation:');
+        console.log('  - Overall score:', data.scoring.overall_score);
+        console.log('  - Explanation length:', data.scoring.explanation?.length || 0);
+        console.log('  - Breakdown keys:', Object.keys(data.scoring.breakdown || {}));
+      }
       
       // Message de succès différent selon que l'on a écrasé ou créé
       const successMessage = overwriteExisting 
-        ? "Le CV a été ré-analysé avec succès et les données du candidat ont été mises à jour" 
-        : "Le CV a été analysé avec succès et un candidat a été créé";
+        ? "Le CV a été ré-analysé avec succès et les données du candidat ont été mises à jour avec le score de complétude" 
+        : "Le CV a été analysé avec succès, un candidat a été créé et son score de complétude a été calculé";
       
       toast({
         title: "Analyse terminée",

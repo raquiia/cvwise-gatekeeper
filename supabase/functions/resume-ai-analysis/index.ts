@@ -282,14 +282,14 @@ serve(async (req) => {
     const resumeData = resumeDataResult.data;
     console.log('✅ Resume data fetched for user:', resumeData.user_id);
 
-    console.log('🤖 Preparing OpenAI request...');
+    console.log('🤖 Preparing OpenAI request with scoring...');
     
     const openAIPayload = {
-      model: 'gpt-4o-mini',
+      model: 'gpt-4.1-2025-04-14',
       messages: [
         {
           role: 'system',
-          content: `Tu es un expert en analyse de CV. Analyse le CV fourni et extrais UNIQUEMENT les informations présentes dans le document.
+          content: `Tu es un expert en analyse de CV et en évaluation de profils candidats. Analyse le CV fourni et extrais UNIQUEMENT les informations présentes dans le document, puis calcule un score de complétude du profil.
 
 RÈGLES STRICTES POUR L'EXTRACTION D'ADRESSE:
 1. Cherche l'adresse dans TOUTES les sections du CV (en-tête, contact, informations personnelles, etc.)
@@ -305,11 +305,49 @@ RÈGLES STRICTES POUR L'EXTRACTION D'ADRESSE:
    - country: pays EN FRANÇAIS (ex: "France", "Suisse", "Belgique")
    - location: adresse complète tel quel (ex: "45 rue de la Paix, 75001 Paris, France")
 
-FORMATS D'ADRESSE À RECONNAÎTRE:
-- Adresses françaises: "numéro rue, code postal ville"
-- Adresses suisses: "rue numéro, code postal ville"
-- Adresses belges, luxembourgeoises, etc.
-- Même si une partie manque, extrais ce qui est disponible
+CALCUL DU SCORE DE COMPLÉTUDE (0-100):
+Évalue la qualité et complétude du profil selon ces critères:
+
+1. FORMATIONS (0-20 points):
+   - Formations présentes et détaillées: 20 points
+   - Formations présentes mais peu détaillées: 10-15 points
+   - Formations manquantes ou très vagues: 0-5 points
+
+2. EXPÉRIENCES (0-20 points):
+   - Expériences professionnelles détaillées avec dates, postes, entreprises: 20 points
+   - Expériences présentes mais peu détaillées: 10-15 points
+   - Expériences manquantes ou très vagues: 0-5 points
+
+3. COMPÉTENCES (0-20 points):
+   - Liste complète de compétences techniques et soft skills: 20 points
+   - Compétences présentes mais limitées: 10-15 points
+   - Compétences manquantes ou très vagues: 0-5 points
+
+4. LANGUES (0-10 points):
+   - Langues mentionnées avec niveaux: 10 points
+   - Langues mentionnées sans niveaux: 5 points
+   - Langues manquantes: 0 points
+
+5. LOCALISATION/MOBILITÉ (0-10 points):
+   - Adresse complète + informations de mobilité: 10 points
+   - Adresse complète OU informations de mobilité: 5-7 points
+   - Informations de localisation manquantes: 0-3 points
+
+6. RÉSUMÉ PROFESSIONNEL (0-10 points):
+   - Objectifs de carrière, valeurs professionnelles clairement définis: 10 points
+   - Partiellement définis: 5-7 points
+   - Manquants: 0-3 points
+
+7. STRUCTURE DU CV (0-10 points):
+   - CV bien structuré, informations de contact complètes: 10 points
+   - Structure correcte, quelques éléments manquants: 5-7 points
+   - Structure déficiente: 0-3 points
+
+EXPLICATION DU SCORE:
+Fournis une explication détaillée du score en français, mentionnant:
+- Les points forts du profil
+- Les éléments manquants ou à améliorer
+- Des suggestions pour augmenter le score
 
 AUTRES RÈGLES:
 1. Ne jamais inventer ou déduire d'informations non présentes
@@ -320,45 +358,60 @@ AUTRES RÈGLES:
 
 Retourne un JSON avec EXACTEMENT cette structure:
 {
-  "first_name": "",
-  "last_name": "",
-  "email": "",
-  "phone": "",
-  "position": "",
-  "location": "",
-  "address": "",
-  "postal_code": "",
-  "city": "",
-  "country": "",
-  "years_experience": 0,
-  "company": "",
-  "skills": [],
-  "experiences": [],
-  "education": [],
-  "certifications": [],
-  "languages": [],
-  "publications": [],
-  "professional_references": [],
-  "professional_networks": [],
-  "continuous_training": [],
-  "special_permits": [],
-  "industries": [],
-  "projects": [],
-  "availability": "",
-  "salary_expectations": "",
-  "mobility": "",
-  "contract_type": "",
-  "remote_preference": "",
-  "travel_willingness": "",
-  "career_objectives": "",
-  "professional_values": "",
-  "work_authorization": "",
-  "interests": ""
+  "candidate_data": {
+    "first_name": "",
+    "last_name": "",
+    "email": "",
+    "phone": "",
+    "position": "",
+    "location": "",
+    "address": "",
+    "postal_code": "",
+    "city": "",
+    "country": "",
+    "years_experience": 0,
+    "company": "",
+    "skills": [],
+    "experiences": [],
+    "education": [],
+    "certifications": [],
+    "languages": [],
+    "publications": [],
+    "professional_references": [],
+    "professional_networks": [],
+    "continuous_training": [],
+    "special_permits": [],
+    "industries": [],
+    "projects": [],
+    "availability": "",
+    "salary_expectations": "",
+    "mobility": "",
+    "contract_type": "",
+    "remote_preference": "",
+    "travel_willingness": "",
+    "career_objectives": "",
+    "professional_values": "",
+    "work_authorization": "",
+    "interests": ""
+  },
+  "scoring": {
+    "overall_score": 0,
+    "explanation": "",
+    "breakdown": {
+      "education": 0,
+      "experience": 0,
+      "skills": 0,
+      "languages": 0,
+      "location": 0,
+      "profileSummary": 0,
+      "cvStructure": 0
+    }
+  }
 }`
         },
         {
           role: 'user',
-          content: `Analyse ce CV et extrais les informations, en portant une attention particulière à l'adresse :\n\n${resumeText}`
+          content: `Analyse ce CV et extrais les informations, en portant une attention particulière à l'adresse et calcule le score de complétude :\n\n${resumeText}`
         }
       ],
       temperature: 0.1,
@@ -441,13 +494,14 @@ Retourne un JSON avec EXACTEMENT cette structure:
     }
 
     console.log('🔧 Processing extracted data with original text for address fallback...');
-    const processedData = processAIExtractedData(extractedData, resumeText);
+    const processedCandidateData = processAIExtractedData(extractedData.candidate_data, resumeText);
+    const scoringData = extractedData.scoring;
 
     console.log('💾 Inserting candidate into database...');
     const candidateInsertData = {
       resume_id: resumeId,
       user_id: resumeData.user_id,
-      ...processedData
+      ...processedCandidateData
     };
 
     const { data: candidate, error: insertError } = await supabase
@@ -470,13 +524,39 @@ Retourne un JSON avec EXACTEMENT cette structure:
 
     console.log('✅ Candidate created successfully:', candidate.id);
 
+    // Sauvegarder le score IA calculé
+    if (scoringData && scoringData.overall_score !== undefined) {
+      console.log('💾 Saving AI score to database...');
+      
+      const scoreInsertData = {
+        candidate_id: candidate.id,
+        user_id: resumeData.user_id,
+        score: scoringData.overall_score,
+        explanation: scoringData.explanation || '',
+        breakdown: scoringData.breakdown || {},
+        calculated_at: new Date().toISOString()
+      };
+
+      const { error: scoreError } = await supabase
+        .from('ai_candidate_scores')
+        .insert(scoreInsertData);
+
+      if (scoreError) {
+        console.error('⚠️ Error saving AI score:', scoreError);
+        // Ne pas échouer complètement si le score ne peut pas être sauvé
+      } else {
+        console.log('✅ AI score saved successfully');
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         candidate: candidate,
         candidateId: candidate.id,
-        extractedData: processedData,
-        message: 'CV analyzed and candidate created successfully'
+        extractedData: processedCandidateData,
+        scoring: scoringData,
+        message: 'CV analyzed, candidate created and score calculated successfully'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

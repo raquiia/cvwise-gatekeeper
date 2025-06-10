@@ -12,14 +12,14 @@ export const useCandidateScore = (candidate: CandidateData) => {
   const [explanation, setExplanation] = useState<string>('');
   
   const { calculateContextualScore, getCachedScore, isScoreLoading, isJobSpecific } = useOptimizedScoring();
-  const { calculateAIScore, getAIScore } = useAIScoring();
+  const { calculateAIScore, getAIScore, preloadScoresFromDatabase } = useAIScoring();
   
   useEffect(() => {
     if (!candidate.id) return;
     
     const candidateId = candidate.id;
     
-    // Priorité absolue : utiliser le score IA (système unifié)
+    // Priorité 1: vérifier si on a déjà un score IA dans le cache/state
     const aiScore = getAIScore(candidateId);
     
     if (aiScore.score !== null && !aiScore.isLoading && !aiScore.error) {
@@ -44,25 +44,144 @@ export const useCandidateScore = (candidate: CandidateData) => {
       };
       
       setScore(contextualScore);
-      // S'assurer que l'explication IA est toujours affichée
       setExplanation(aiScore.explanation || '');
       setIsLoading(false);
       setError(null);
       return;
     }
     
-    // Si le score IA est en cours de chargement, afficher l'état de chargement
+    // Priorité 2: Si le score IA est en cours de chargement, afficher l'état de chargement
     if (aiScore.isLoading) {
       setIsLoading(true);
       setError(null);
       return;
     }
     
+    // Priorité 3: Précharger depuis la base de données (pour les scores calculés lors de l'analyse)
+    if (!aiScore.score && !aiScore.isLoading && !aiScore.error) {
+      const loadFromDatabase = async () => {
+        try {
+          setIsLoading(true);
+          
+          console.log('🔍 Checking database for existing AI score for candidate:', candidateId);
+          const loadedScores = await preloadScoresFromDatabase([candidateId]);
+          const preloadedScore = loadedScores[candidateId];
+          
+          if (preloadedScore && preloadedScore.score !== null) {
+            console.log('✅ Found existing AI score in database:', preloadedScore.score);
+            
+            const contextualScore: ContextualScore = {
+              overall: preloadedScore.score,
+              skills: preloadedScore.breakdown?.skills || 0,
+              experience: preloadedScore.breakdown?.experience || 0,
+              education: preloadedScore.breakdown?.education || 0,
+              profileCompleteness: preloadedScore.breakdown?.cvStructure || preloadedScore.breakdown?.profileSummary || 50,
+              isJobSpecific: preloadedScore.isJobSpecific,
+              matchContext: preloadedScore.isJobSpecific ? 
+                'Score IA de correspondance (BDD)' : 
+                'Score IA de complétude (BDD)',
+              details: {
+                skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
+                experienceYears: candidate.years_experience || 0,
+                educationLevel: Array.isArray(candidate.education) && candidate.education.length > 0 ? 
+                  'Renseigné' : 'Non renseigné',
+                completenessPercentage: preloadedScore.score
+              }
+            };
+            
+            setScore(contextualScore);
+            setExplanation(preloadedScore.explanation || '');
+            setError(null);
+            return;
+          }
+          
+          console.log('⚠️ No AI score found in database, checking other options...');
+          
+        } catch (dbError) {
+          console.warn('⚠️ Error loading score from database:', dbError);
+        } finally {
+          setIsLoading(false);
+        }
+        
+        // Fallback 1: utiliser le système de scoring classique si disponible
+        const cachedScore = getCachedScore(candidateId);
+        if (cachedScore) {
+          console.log('📊 Using cached classic score as fallback');
+          const contextualScore: ContextualScore = {
+            overall: cachedScore.is_job_specific ? 
+              cachedScore.total_matching_score! : 
+              cachedScore.general_score,
+            skills: cachedScore.is_job_specific ? 
+              cachedScore.skills_tools_score! : 
+              cachedScore.skills_score,
+            experience: cachedScore.is_job_specific ? 
+              cachedScore.relevant_experience_score! : 
+              cachedScore.experience_score,
+            education: cachedScore.is_job_specific ? 
+              cachedScore.education_match_score! : 
+              cachedScore.education_score,
+            profileCompleteness: cachedScore.is_job_specific ? 
+              50 : cachedScore.cv_structure_score,
+            isJobSpecific: cachedScore.is_job_specific,
+            matchContext: cachedScore.job_offer_id ? 'Score de correspondance (classique)' : 'Score de complétude (classique)',
+            details: {
+              skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
+              experienceYears: candidate.years_experience || 0,
+              educationLevel: Array.isArray(candidate.education) && candidate.education.length > 0 ? 
+                'Renseigné' : 'Non renseigné',
+              completenessPercentage: cachedScore.is_job_specific ? 
+                cachedScore.total_matching_score! : 
+                cachedScore.general_score
+            }
+          };
+          
+          setScore(contextualScore);
+          setExplanation('');
+          setError(null);
+          return;
+        }
+        
+        // Derniers fallback: l'ancien score du candidat s'il existe
+        if (candidate.score) {
+          console.log('📊 Using legacy candidate score as final fallback');
+          const legacyScore: ContextualScore = {
+            overall: candidate.score,
+            skills: 0,
+            experience: 0,
+            education: 0,
+            profileCompleteness: candidate.profile_completeness || 50,
+            isJobSpecific: false,
+            matchContext: 'Score hérité',
+            details: {
+              skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
+              experienceYears: candidate.years_experience || 0,
+              educationLevel: Array.isArray(candidate.education) && candidate.education.length > 0 ? 
+                'Renseigné' : 'Non renseigné',
+              completenessPercentage: candidate.score
+            }
+          };
+          
+          setScore(legacyScore);
+          setExplanation('');
+          setError(null);
+          return;
+        }
+        
+        // Aucun score disponible - ne pas calculer automatiquement pour éviter les coûts
+        console.log('ℹ️ No score found anywhere for candidate:', candidateId);
+        setScore(null);
+        setExplanation('');
+        setError(null);
+      };
+      
+      loadFromDatabase();
+    }
+    
     // Si erreur dans l'AI mais on a un ancien score, l'utiliser temporairement
     if (aiScore.error && candidate.score) {
       const fallbackScore: ContextualScore = {
         overall: candidate.score,
-        skills: 0, // Pas de détail disponible avec l'ancien système
+        skills: 0,
         experience: 0,
         education: 0,
         profileCompleteness: candidate.profile_completeness || 50,
@@ -78,111 +197,13 @@ export const useCandidateScore = (candidate: CandidateData) => {
       };
       
       setScore(fallbackScore);
-      // Conserver l'explication IA même en cas d'erreur si elle existe
       setExplanation(aiScore.explanation || '');
-      setIsLoading(false);
       setError(aiScore.error);
       return;
     }
     
-    // Fallback 1: utiliser le système de scoring classique si disponible
-    const cachedScore = getCachedScore(candidateId);
-    if (cachedScore) {
-      const contextualScore: ContextualScore = {
-        overall: cachedScore.is_job_specific ? 
-          cachedScore.total_matching_score! : 
-          cachedScore.general_score,
-        skills: cachedScore.is_job_specific ? 
-          cachedScore.skills_tools_score! : 
-          cachedScore.skills_score,
-        experience: cachedScore.is_job_specific ? 
-          cachedScore.relevant_experience_score! : 
-          cachedScore.experience_score,
-        education: cachedScore.is_job_specific ? 
-          cachedScore.education_match_score! : 
-          cachedScore.education_score,
-        profileCompleteness: cachedScore.is_job_specific ? 
-          50 : cachedScore.cv_structure_score,
-        isJobSpecific: cachedScore.is_job_specific,
-        matchContext: cachedScore.job_offer_id ? 'Score de correspondance (classique)' : 'Score de complétude (classique)',
-        details: {
-          skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
-          experienceYears: candidate.years_experience || 0,
-          educationLevel: Array.isArray(candidate.education) && candidate.education.length > 0 ? 
-            'Renseigné' : 'Non renseigné',
-          completenessPercentage: cachedScore.is_job_specific ? 
-            cachedScore.total_matching_score! : 
-            cachedScore.general_score
-        }
-      };
-      
-      setScore(contextualScore);
-      setExplanation('');
-      setIsLoading(false);
-      setError(null);
-      return;
-    }
-    
-    // Derniers fallback: l'ancien score du candidat s'il existe
-    if (candidate.score) {
-      const legacyScore: ContextualScore = {
-        overall: candidate.score,
-        skills: 0,
-        experience: 0,
-        education: 0,
-        profileCompleteness: candidate.profile_completeness || 50,
-        isJobSpecific: false,
-        matchContext: 'Score hérité',
-        details: {
-          skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
-          experienceYears: candidate.years_experience || 0,
-          educationLevel: Array.isArray(candidate.education) && candidate.education.length > 0 ? 
-            'Renseigné' : 'Non renseigné',
-          completenessPercentage: candidate.score
-        }
-      };
-      
-      setScore(legacyScore);
-      setExplanation('');
-      setIsLoading(false);
-      setError(null);
-      return;
-    }
-    
-    // Aucun score disponible - essayer de calculer avec l'IA de manière asynchrone
-    if (!isScoreLoading(candidateId) && !aiScore.isLoading) {
-      const loadScore = async () => {
-        try {
-          setIsLoading(true);
-          setError(null);
-          
-          // Essayer de calculer avec l'IA
-          await calculateAIScore(candidateId);
-          
-          // Le useEffect se déclenchera à nouveau avec le nouveau score
-          
-        } catch (err: any) {
-          console.warn('IA scoring failed, falling back to classic scoring for candidate:', candidateId);
-          
-          try {
-            // Fallback sur le système classique
-            const contextualScore = await calculateContextualScore(candidate);
-            setScore(contextualScore);
-            setExplanation('');
-          } catch (classicErr: any) {
-            console.error('Classic scoring also failed:', classicErr);
-            setError('Impossible de calculer le score du candidat');
-            setExplanation('');
-          }
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      
-      loadScore();
-    }
   }, [candidate.id, candidate.skills, candidate.years_experience, candidate.education, candidate.score,
-      calculateContextualScore, getCachedScore, isScoreLoading, calculateAIScore, getAIScore]);
+      calculateContextualScore, getCachedScore, isScoreLoading, getAIScore, preloadScoresFromDatabase]);
 
   const getSourceLabel = (source: string) => {
     switch (source) {
