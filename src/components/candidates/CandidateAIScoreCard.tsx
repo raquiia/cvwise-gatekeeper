@@ -1,9 +1,8 @@
 
 import React, { useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Sparkles, Briefcase, Target, AlertCircle, RefreshCw } from 'lucide-react';
+import { Brain, Briefcase, Target, AlertCircle, FileSearch } from 'lucide-react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import type { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
@@ -19,16 +18,15 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
   onClick,
   isSelected = false
 }) => {
-  const { calculateAIScore, getAIScore } = useAIScoring();
+  const { getAIScore } = useAIScoring();
   const scoreData = getAIScore(candidate.id!);
   
-  // Calculer automatiquement le score si pas encore fait
+  // Charger automatiquement le score depuis la base de données
   useEffect(() => {
     if (candidate.id && scoreData.score === null && !scoreData.isLoading && !scoreData.error) {
-      console.log(`[CandidateAIScoreCard] Auto-calculating score for candidate ${candidate.id}`);
-      calculateAIScore(candidate.id);
+      console.log(`[CandidateAIScoreCard] Score will be loaded from database for candidate ${candidate.id}`);
     }
-  }, [candidate.id, scoreData.score, scoreData.isLoading, scoreData.error, calculateAIScore]);
+  }, [candidate.id, scoreData.score, scoreData.isLoading, scoreData.error]);
   
   const getScoreColor = (score: number | null) => {
     if (score === null) return 'bg-gray-100 text-gray-600';
@@ -94,11 +92,13 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
               <Brain className="w-4 h-4 text-purple-600" />
               <div className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold ${getScoreColor(scoreData.score)}`}>
                 {scoreData.isLoading ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <Brain className="w-4 h-4 animate-pulse" />
                 ) : scoreData.error ? (
                   <AlertCircle className="w-4 h-4" />
+                ) : scoreData.score !== null ? (
+                  scoreData.score
                 ) : (
-                  scoreData.score !== null ? scoreData.score : '?'
+                  <FileSearch className="w-4 h-4" />
                 )}
               </div>
             </div>
@@ -109,42 +109,23 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
           <div className="text-xs">
             {scoreData.error ? (
               <span className="text-red-600" title={scoreData.error}>
-                {scoreData.error.length > 30 ? `${scoreData.error.substring(0, 30)}...` : scoreData.error}
+                Erreur de chargement
               </span>
             ) : scoreData.isLoading ? (
-              <span className="text-purple-600">Analyse IA en cours...</span>
-            ) : (
+              <span className="text-purple-600">Chargement du score...</span>
+            ) : scoreData.score !== null ? (
               <span className={`font-medium ${
-                scoreData.score !== null && scoreData.score >= 70 ? 'text-green-700' : 
-                scoreData.score !== null && scoreData.score >= 40 ? 'text-amber-700' : 'text-gray-600'
+                scoreData.score >= 70 ? 'text-green-700' : 
+                scoreData.score >= 40 ? 'text-amber-700' : 'text-gray-600'
               }`}>
                 {getScoreLabel(scoreData.score, scoreData.isJobSpecific)}
               </span>
+            ) : (
+              <span className="text-gray-600">
+                Score calculé lors de l'analyse CV
+              </span>
             )}
           </div>
-          
-          {(scoreData.score === null && !scoreData.isLoading) || scoreData.error ? (
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={(e) => {
-                e.stopPropagation();
-                if (candidate.id) {
-                  console.log(`[CandidateAIScoreCard] Manual recalculation for candidate ${candidate.id}`);
-                  calculateAIScore(candidate.id);
-                }
-              }}
-              className="text-xs h-6 px-2"
-              disabled={scoreData.isLoading}
-            >
-              {scoreData.isLoading ? (
-                <RefreshCw size={12} className="mr-1 animate-spin" />
-              ) : (
-                <Sparkles size={12} className="mr-1" />
-              )}
-              {scoreData.error ? 'Retry' : 'Calculer'}
-            </Button>
-          ) : null}
         </div>
         
         {skills.length > 0 && (
@@ -167,7 +148,7 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
         <div className="mt-3 pt-3 border-t border-gray-100">
           <div className="flex items-center justify-between text-xs text-purple-600">
             <span className="flex items-center gap-1">
-              <Sparkles size={10} />
+              <Brain size={10} />
               Score IA
               {scoreData.source && (
                 <span className="text-gray-400">({scoreData.source})</span>

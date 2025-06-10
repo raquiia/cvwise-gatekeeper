@@ -5,7 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Target, Briefcase, RefreshCw, Info, Brain } from 'lucide-react';
+import { Sparkles, Target, Briefcase, Info, Brain, FileSearch } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
 
@@ -30,7 +30,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
   error,
   onRefresh
 }) => {
-  const [isExplanationOpen, setIsExplanationOpen] = useState(true); // Ouvert par défaut
+  const [isExplanationOpen, setIsExplanationOpen] = useState(true);
   
   if (error) {
     return (
@@ -40,14 +40,9 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
             <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
               <Brain className="w-8 h-8 text-red-600" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Erreur de calcul IA</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Erreur de récupération</h3>
             <p className="text-sm text-gray-500 mb-4">{error}</p>
-            {onRefresh && (
-              <Button onClick={onRefresh} variant="outline" size="sm">
-                <RefreshCw size={16} className="mr-2" />
-                Réessayer
-              </Button>
-            )}
+            <p className="text-xs text-gray-400">Le score sera calculé lors de l'analyse du CV</p>
           </div>
         </CardContent>
       </Card>
@@ -65,7 +60,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
             <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
             <div className="h-3 bg-gray-200 rounded w-24"></div>
             <div className="mt-4 text-sm text-purple-600 font-medium">
-              ✨ Analyse IA en cours...
+              ✨ Chargement du score...
             </div>
           </div>
         </CardContent>
@@ -78,17 +73,18 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col items-center text-center">
-            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-              <Brain className="w-8 h-8 text-gray-400" />
+            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-4">
+              <FileSearch className="w-8 h-8 text-blue-600" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Score IA non calculé</h3>
-            <p className="text-sm text-gray-500 mb-4">Cliquez pour calculer le score avec l'IA</p>
-            {onRefresh && (
-              <Button onClick={onRefresh} variant="default" size="sm">
-                <Sparkles size={16} className="mr-2" />
-                Calculer avec l'IA
-              </Button>
-            )}
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Score non disponible</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Le score IA sera calculé lors de l'analyse du CV
+            </p>
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-xs text-blue-700">
+                💡 Astuce : Analysez le CV du candidat pour obtenir un score IA détaillé
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -167,18 +163,6 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
               {isJobSpecific ? 'Correspondance' : 'Complétude'}
             </Badge>
           </div>
-          
-          {onRefresh && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onRefresh}
-              className="h-8 w-8 p-0"
-              title="Recalculer avec l'IA"
-            >
-              <RefreshCw size={14} />
-            </Button>
-          )}
         </div>
       </CardHeader>
       
@@ -208,7 +192,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
           
           <div className="mt-2 text-xs text-purple-600 font-medium flex items-center gap-1">
             <Brain size={12} />
-            Analysé par Intelligence Artificielle
+            Calculé lors de l'analyse du CV
           </div>
         </div>
 
@@ -236,7 +220,6 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
           ))}
         </div>
 
-        {/* Toujours afficher l'explication si elle existe */}
         {explanation && explanation.trim() && (
           <>
             <Separator className="my-4" />
@@ -271,7 +254,7 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
               : 'Score de complétude calculé par IA'}
           </div>
           <div className="text-xs text-purple-600 font-medium">
-            ✨ Système de scoring intelligent avec OpenAI
+            ✨ Score calculé automatiquement lors de l'analyse du CV
           </div>
         </div>
       </CardContent>

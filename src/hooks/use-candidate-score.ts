@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { optimizedScoringService } from '@/services/scoring/optimizedScoringService';
 import { useOptimizedScoring, ContextualScore } from './use-optimized-scoring';
 import { useAIScoring } from './use-ai-scoring';
 import { CandidateData } from '@/services/data/candidateService';
@@ -12,15 +11,15 @@ export const useCandidateScore = (candidate: CandidateData) => {
   const [explanation, setExplanation] = useState<string>('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   
-  const { calculateContextualScore, getCachedScore, isScoreLoading, isJobSpecific } = useOptimizedScoring();
-  const { calculateAIScore, getAIScore, preloadScoresFromDatabase } = useAIScoring();
+  const { getCachedScore, isJobSpecific } = useOptimizedScoring();
+  const { getAIScore, preloadScoresFromDatabase } = useAIScoring();
   
   useEffect(() => {
     if (!candidate.id) return;
     
     const candidateId = candidate.id;
     
-    // Priorité 1: vérifier si on a déjà un score IA dans le cache/state
+    // Priorité 1: vérifier si on a déjà un score IA dans le state
     const aiScore = getAIScore(candidateId);
     
     if (aiScore.score !== null && !aiScore.isLoading && !aiScore.error) {
@@ -33,8 +32,8 @@ export const useCandidateScore = (candidate: CandidateData) => {
         profileCompleteness: aiScore.breakdown?.cvStructure || aiScore.breakdown?.profileSummary || 50,
         isJobSpecific: aiScore.isJobSpecific,
         matchContext: aiScore.isJobSpecific ? 
-          `Score IA de correspondance${aiScore.source ? ` (${getSourceLabel(aiScore.source)})` : ''}` : 
-          `Score IA de complétude${aiScore.source ? ` (${getSourceLabel(aiScore.source)})` : ''}`,
+          'Score IA de correspondance (BDD)' : 
+          'Score IA de complétude (BDD)',
         details: {
           skillsCount: Array.isArray(candidate.skills) ? candidate.skills.length : 0,
           experienceYears: candidate.years_experience || 0,
@@ -46,35 +45,31 @@ export const useCandidateScore = (candidate: CandidateData) => {
       
       setScore(contextualScore);
       setExplanation(aiScore.explanation || '');
-      
-      // Générer des suggestions basées sur le score
-      const generatedSuggestions = generateScoreSuggestions(contextualScore, aiScore.explanation || '');
-      setSuggestions(generatedSuggestions);
-      
+      setSuggestions(generateScoreSuggestions(contextualScore, aiScore.explanation || ''));
       setIsLoading(false);
       setError(null);
       return;
     }
     
-    // Priorité 2: Si le score IA est en cours de chargement, afficher l'état de chargement
+    // Priorité 2: Si le score IA est en cours de chargement
     if (aiScore.isLoading) {
       setIsLoading(true);
       setError(null);
       return;
     }
     
-    // Priorité 3: Précharger depuis la base de données (pour les scores calculés lors de l'analyse)
+    // Priorité 3: Charger depuis la base de données
     if (!aiScore.score && !aiScore.isLoading && !aiScore.error) {
       const loadFromDatabase = async () => {
         try {
           setIsLoading(true);
           
-          console.log('🔍 Checking database for existing AI score for candidate:', candidateId);
+          console.log('🔍 Loading AI score from database for candidate:', candidateId);
           const loadedScores = await preloadScoresFromDatabase([candidateId]);
           const preloadedScore = loadedScores[candidateId];
           
           if (preloadedScore && preloadedScore.score !== null) {
-            console.log('✅ Found existing AI score in database:', preloadedScore.score);
+            console.log('✅ Found AI score in database:', preloadedScore.score);
             
             const contextualScore: ContextualScore = {
               overall: preloadedScore.score,
@@ -97,16 +92,12 @@ export const useCandidateScore = (candidate: CandidateData) => {
             
             setScore(contextualScore);
             setExplanation(preloadedScore.explanation || '');
-            
-            // Générer des suggestions
-            const generatedSuggestions = generateScoreSuggestions(contextualScore, preloadedScore.explanation || '');
-            setSuggestions(generatedSuggestions);
-            
+            setSuggestions(generateScoreSuggestions(contextualScore, preloadedScore.explanation || ''));
             setError(null);
             return;
           }
           
-          console.log('⚠️ No AI score found in database, checking other options...');
+          console.log('ℹ️ No AI score found in database - will be calculated during CV analysis');
           
         } catch (dbError) {
           console.warn('⚠️ Error loading score from database:', dbError);
@@ -183,8 +174,8 @@ export const useCandidateScore = (candidate: CandidateData) => {
         // Aucun score disponible
         console.log('ℹ️ No score found anywhere for candidate:', candidateId);
         setScore(null);
-        setExplanation('');
-        setSuggestions([]);
+        setExplanation('Score sera calculé lors de l\'analyse du CV');
+        setSuggestions(['Analysez le CV pour obtenir un score IA']);
         setError(null);
       };
       
@@ -218,16 +209,7 @@ export const useCandidateScore = (candidate: CandidateData) => {
     }
     
   }, [candidate.id, candidate.skills, candidate.years_experience, candidate.education, candidate.score,
-      calculateContextualScore, getCachedScore, isScoreLoading, getAIScore, preloadScoresFromDatabase]);
-
-  const getSourceLabel = (source: string) => {
-    switch (source) {
-      case 'database': return 'BDD';
-      case 'fresh_calculation': return 'Nouveau';
-      case 'cache': return 'Cache';
-      default: return source;
-    }
-  };
+      getCachedScore, getAIScore, preloadScoresFromDatabase]);
 
   // Fonction pour générer des suggestions basées sur le score et l'explication
   const generateScoreSuggestions = (score: ContextualScore, explanation: string): string[] => {

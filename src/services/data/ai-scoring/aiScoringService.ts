@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { AICandidateScore, AIScoringResult, AIScoringError, AIScoreFetchOptions, AIScoringBreakdown } from './types';
 
 /**
- * Service pour gérer les scores AI des candidats - Version simplifiée et corrigée
+ * Service pour récupérer les scores AI des candidats depuis la base de données
+ * Les scores sont calculés lors de l'analyse du CV, pas ici
  */
 export class AIScoringService {
   
@@ -35,7 +36,7 @@ export class AIScoringService {
   }
   
   /**
-   * Récupère le score AI d'un candidat
+   * Récupère le score AI d'un candidat depuis la base de données
    */
   async getScore(
     candidateId: string, 
@@ -43,12 +44,7 @@ export class AIScoringService {
     options: AIScoreFetchOptions = {}
   ): Promise<AIScoringResult | null> {
     try {
-      console.log(`[AI Scoring Service] Getting score for candidate ${candidateId}${jobOfferId ? ` and job ${jobOfferId}` : ''}`);
-      
-      if (options.bypassCache) {
-        console.log(`[AI Scoring Service] Bypassing cache, calculating fresh score`);
-        return await this.calculateScore(candidateId, jobOfferId);
-      }
+      console.log(`[AI Scoring Service] Getting score for candidate ${candidateId}${jobOfferId ? ` and job ${jobOfferId}` : ''} from database`);
       
       const { data, error } = await supabase.rpc(
         'get_ai_candidate_score',
@@ -59,19 +55,19 @@ export class AIScoringService {
       );
       
       if (error) {
-        console.error('[AI Scoring Service] RPC error:', error);
+        console.error('[AI Scoring Service] Database error:', error);
         return null;
       }
       
-      // Fix: Handle array response from RPC function
+      // Handle array response from RPC function
       const scoreData = Array.isArray(data) ? data[0] : data;
       
       if (!scoreData) {
-        console.log('[AI Scoring Service] No cached score found, calculating new score');
-        return await this.calculateScore(candidateId, jobOfferId);
+        console.log('[AI Scoring Service] No score found in database - will be calculated during CV analysis');
+        return null;
       }
       
-      console.log('[AI Scoring Service] Found cached score:', scoreData.score);
+      console.log('[AI Scoring Service] Found score in database:', scoreData.score);
       return {
         score: scoreData.score,
         explanation: scoreData.explanation,
@@ -81,65 +77,6 @@ export class AIScoringService {
       };
     } catch (error: any) {
       console.error('[AI Scoring Service] Error in getScore:', error);
-      return null;
-    }
-  }
-  
-  /**
-   * Calcule un nouveau score AI pour un candidat
-   */
-  async calculateScore(candidateId: string, jobOfferId?: string | null): Promise<AIScoringResult | null> {
-    try {
-      console.log(`[AI Scoring Service] Calculating new score for candidate ${candidateId}${jobOfferId ? ` and job ${jobOfferId}` : ''}`);
-      
-      const scoringType = jobOfferId ? 'job_matching' : 'completeness';
-      const requestBody = {
-        candidateId,
-        jobOfferId,
-        scoringType
-      };
-      
-      console.log(`[AI Scoring Service] Calling Edge Function with:`, requestBody);
-      
-      // Utiliser correctement la fonction Edge via Supabase
-      const { data, error } = await supabase.functions.invoke('ai-scoring', {
-        body: requestBody
-      });
-      
-      console.log(`[AI Scoring Service] Edge Function response:`, { data, error });
-      
-      if (error) {
-        console.error('[AI Scoring Service] Edge Function error:', error);
-        throw new Error(`Erreur Edge Function: ${error.message || 'Erreur inconnue'}`);
-      }
-      
-      if (!data) {
-        console.error('[AI Scoring Service] No data returned');
-        throw new Error('Aucune donnée retournée par la fonction de scoring');
-      }
-      
-      if (!data.success) {
-        console.error('[AI Scoring Service] Function returned failure:', data);
-        throw new Error(data.error || 'Erreur inconnue lors du calcul du score AI');
-      }
-      
-      console.log(`[AI Scoring Service] Score calculated successfully: ${data.score}`);
-      
-      return {
-        score: data.score,
-        explanation: data.explanation || '',
-        breakdown: data.breakdown || {
-          skills: 0,
-          experience: 0,
-          education: 0,
-          cvStructure: 0,
-          profileSummary: 0
-        },
-        source: 'fresh_calculation',
-        isJobSpecific: !!jobOfferId
-      };
-    } catch (error: any) {
-      console.error(`[AI Scoring Service] Error calculating score:`, error);
       return null;
     }
   }
