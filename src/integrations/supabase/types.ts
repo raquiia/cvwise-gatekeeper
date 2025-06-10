@@ -820,6 +820,10 @@ export type Database = {
           position: string
           years_experience: number
           location: string
+          address: string
+          postal_code: string
+          city: string
+          country: string
           skills: Json
           score: number
           status: string

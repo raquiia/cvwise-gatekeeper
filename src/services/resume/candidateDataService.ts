@@ -28,30 +28,29 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     // Handle both array and direct object responses
     const candidateRawData = Array.isArray(data) ? data[0] : data;
     
-    // Type safety: access address properties safely using bracket notation
-    // Log raw data to diagnose the issue
-    console.log('📋 RAW CANDIDATE DATA:', candidateRawData);
-    console.log('📋 RAW ADDRESS DATA from database:', {
-      address: candidateRawData['address'],
-      postal_code: candidateRawData['postal_code'],
-      city: candidateRawData['city'],
-      country: candidateRawData['country'],
-      addressType: typeof candidateRawData['address'],
-      postalCodeType: typeof candidateRawData['postal_code'],
-      cityType: typeof candidateRawData['city'],
-      countryType: typeof candidateRawData['country']
+    // Log the address data returned from the corrected RPC function
+    console.log('🏠 Address data from corrected RPC function:', {
+      address: candidateRawData.address,
+      postal_code: candidateRawData.postal_code,
+      city: candidateRawData.city,
+      country: candidateRawData.country,
+      addressType: typeof candidateRawData.address,
+      postalCodeType: typeof candidateRawData.postal_code,
+      cityType: typeof candidateRawData.city,
+      countryType: typeof candidateRawData.country
     });
     
-    // Ensure address fields are explicitly included in the returned object
+    // Create the candidate data object with explicit address field mapping
     const candidateData: CandidateData = {
-      ...candidateRawData as CandidateData,
-      address: candidateRawData['address'] || '',
-      postal_code: candidateRawData['postal_code'] || '',
-      city: candidateRawData['city'] || '',
-      country: candidateRawData['country'] || ''
+      ...candidateRawData,
+      // Explicitly map address fields to ensure they're not lost
+      address: candidateRawData.address || '',
+      postal_code: candidateRawData.postal_code || '',
+      city: candidateRawData.city || '',
+      country: candidateRawData.country || ''
     };
     
-    console.log('✅ Successfully retrieved and prepared complete candidate data:', {
+    console.log('✅ Successfully retrieved complete candidate data with address fields:', {
       id: candidateData.id,
       first_name: candidateData.first_name,
       last_name: candidateData.last_name,

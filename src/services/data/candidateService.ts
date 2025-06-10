@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -139,7 +138,13 @@ export const candidateService = {
 
   // Update an existing candidate
   updateCandidate: async (candidateData: Partial<CandidateData> & { id: string }): Promise<CandidateData> => {
-    console.log('candidateService.updateCandidate called with:', candidateData);
+    console.log('candidateService.updateCandidate called with address data:', {
+      id: candidateData.id,
+      address: candidateData.address,
+      postal_code: candidateData.postal_code,
+      city: candidateData.city,
+      country: candidateData.country
+    });
     
     try {
       const { data, error } = await supabase
@@ -151,6 +156,7 @@ export const candidateService = {
           phone: candidateData.phone,
           position: candidateData.position,
           location: candidateData.location,
+          // Explicitly include address fields in the update
           address: candidateData.address,
           postal_code: candidateData.postal_code,
           city: candidateData.city,
@@ -190,7 +196,13 @@ export const candidateService = {
         throw new Error(`Erreur lors de la mise à jour: ${error.message}`);
       }
 
-      console.log('candidateService.updateCandidate success:', data);
+      console.log('candidateService.updateCandidate success with address data:', {
+        id: data.id,
+        address: data.address,
+        postal_code: data.postal_code,
+        city: data.city,
+        country: data.country
+      });
       return data;
     } catch (error: any) {
       console.error('Error in updateCandidate:', error);
