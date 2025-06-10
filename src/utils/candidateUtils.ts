@@ -1,4 +1,3 @@
-
 import { Json } from '@/integrations/supabase/types';
 
 /**
@@ -131,11 +130,16 @@ export const ensureArray = <T = any>(data: Json | undefined | null): T[] => {
   return [];
 };
 
-// Safe string extraction from Json with URL decoding
+// CORRECTED: Safe string extraction from Json - preserve original values
 export const safeString = (data: Json | undefined | null): string => {
   if (!data) return '';
   
-  if (typeof data === 'string') return cleanAndDecodeText(data);
+  // If it's already a string, return it directly unless it's explicitly empty
+  if (typeof data === 'string') {
+    if (data === 'null' || data === 'undefined') return '';
+    return data; // Return the original string value
+  }
+  
   if (typeof data === 'number') return String(data);
   if (typeof data === 'boolean') return String(data);
   
@@ -168,7 +172,7 @@ export const isUndefinedObject = (obj: any): boolean => {
   return Object.values(obj).every(value => value === undefined);
 };
 
-// Process candidate data from database format to application format (simplifié)
+// SIMPLIFIED: Process candidate data - use direct values for simple fields
 export const processCandidateData = (rawCandidate: any): any => {
   if (!rawCandidate) return null;
   
@@ -176,22 +180,22 @@ export const processCandidateData = (rawCandidate: any): any => {
   
   const processedCandidate = {
     ...rawCandidate,
-    // Apply URL decoding and cleaning to text fields
-    first_name: safeString(rawCandidate.first_name),
-    last_name: safeString(rawCandidate.last_name),
-    email: safeString(rawCandidate.email),
-    phone: safeString(rawCandidate.phone),
-    position: safeString(rawCandidate.position),
-    location: safeString(rawCandidate.location),
-    company: safeString(rawCandidate.company),
+    // Keep original values for basic text fields - no processing needed
+    first_name: rawCandidate.first_name || '',
+    last_name: rawCandidate.last_name || '',
+    email: rawCandidate.email || '',
+    phone: rawCandidate.phone || '',
+    position: rawCandidate.position || '',
+    location: rawCandidate.location || '',
+    company: rawCandidate.company || '',
     
-    // Process address fields directly WITHOUT parsing location field
-    address: cleanAndDecodeText(safeString(rawCandidate.address)),
-    postal_code: cleanAndDecodeText(safeString(rawCandidate.postal_code)),
-    city: cleanAndDecodeText(safeString(rawCandidate.city)),
-    country: translateCountryToFrench(cleanAndDecodeText(safeString(rawCandidate.country))),
+    // Keep address fields exactly as they are in the database
+    address: rawCandidate.address || '',
+    postal_code: rawCandidate.postal_code || '',
+    city: rawCandidate.city || '',
+    country: rawCandidate.country ? translateCountryToFrench(rawCandidate.country) : '',
     
-    // Process arrays
+    // Process only complex arrays that actually need processing
     skills: ensureStringArray(rawCandidate.skills),
     education: ensureArray(rawCandidate.education),
     experiences: ensureArray(rawCandidate.experiences),
@@ -205,16 +209,16 @@ export const processCandidateData = (rawCandidate: any): any => {
     projects: ensureArray(rawCandidate.projects)
   };
   
-  // Log spécial pour Dorian Fournier pour débogage
-  if (processedCandidate.first_name === 'Dorian' && processedCandidate.last_name === 'Fournier') {
-    console.log('🎯 DORIAN FOURNIER - Processed address data:', {
-      address: processedCandidate.address,
-      postal_code: processedCandidate.postal_code,
-      city: processedCandidate.city,
-      country: processedCandidate.country,
-      location: processedCandidate.location
-    });
-  }
+  // Log spécial pour débogage
+  console.log('✅ PROCESSED CANDIDATE - Address data:', {
+    first_name: processedCandidate.first_name,
+    last_name: processedCandidate.last_name,
+    address: processedCandidate.address,
+    postal_code: processedCandidate.postal_code,
+    city: processedCandidate.city,
+    country: processedCandidate.country,
+    location: processedCandidate.location
+  });
   
   return processedCandidate;
 };
