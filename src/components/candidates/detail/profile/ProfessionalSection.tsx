@@ -11,7 +11,7 @@ interface ProfessionalSectionProps {
 const ProfessionalSection: React.FC<ProfessionalSectionProps> = ({ candidate }) => {
   return (
     <Card className="border-navy/10 shadow-sm">
-      <CardHeader className="pb-4">
+      <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-3 text-navy-dark">
           <div className="p-2 rounded-lg bg-navy/10 text-navy">
             <Briefcase className="w-5 h-5" />
@@ -19,112 +19,103 @@ const ProfessionalSection: React.FC<ProfessionalSectionProps> = ({ candidate }) 
           Informations Professionnelles
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Poste actuel */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <CardContent className="space-y-4">
+        {/* Poste actuel - Layout compact */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {candidate.position && (
-            <div className="space-y-1">
-              <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Briefcase className="w-4 h-4" />
-                Poste actuel
-              </div>
+            <div>
+              <div className="text-xs font-medium text-muted-foreground mb-1">Poste</div>
               <div className="text-navy-dark font-medium">{candidate.position}</div>
             </div>
           )}
           {candidate.company && (
-            <div className="space-y-1">
-              <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Building className="w-4 h-4" />
-                Entreprise
-              </div>
+            <div>
+              <div className="text-xs font-medium text-muted-foreground mb-1">Entreprise</div>
               <div className="text-navy-dark font-medium">{candidate.company}</div>
             </div>
           )}
         </div>
 
-        {/* Expérience et salaire */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {candidate.years_experience !== undefined && candidate.years_experience !== null && (
-            <div className="space-y-1">
-              <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                Années d'expérience
+        {/* Statut et informations clés */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+          {candidate.detailed_status && (
+            <div>
+              <div className="text-xs text-muted-foreground">Statut</div>
+              <div className="bg-navy/10 px-2 py-1 rounded text-navy text-xs font-medium">
+                {candidate.detailed_status}
               </div>
+            </div>
+          )}
+          {candidate.years_experience !== undefined && candidate.years_experience !== null && (
+            <div>
+              <div className="text-xs text-muted-foreground">Expérience</div>
               <div className="text-navy-dark font-medium">{candidate.years_experience} ans</div>
             </div>
           )}
-          {candidate.salary_expectations && (
-            <div className="space-y-1">
-              <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <DollarSign className="w-4 h-4" />
-                Salaire souhaité
-              </div>
-              <div className="text-navy-dark font-medium">{candidate.salary_expectations}</div>
+          {candidate.availability && (
+            <div>
+              <div className="text-xs text-muted-foreground">Disponibilité</div>
+              <div className="text-navy-dark font-medium text-xs">{candidate.availability}</div>
+            </div>
+          )}
+          {candidate.contract_type && (
+            <div>
+              <div className="text-xs text-muted-foreground">Contrat</div>
+              <div className="text-navy-dark font-medium text-xs">{candidate.contract_type}</div>
             </div>
           )}
         </div>
 
-        {/* Préférences de travail */}
-        <div className="space-y-4">
-          <h4 className="font-semibold text-navy-dark border-b border-navy/10 pb-2">Préférences de travail</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {candidate.availability && (
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Disponibilité
-                </div>
-                <div className="text-navy-dark font-medium">{candidate.availability}</div>
-              </div>
-            )}
-            {candidate.contract_type && (
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-muted-foreground">Type de contrat</div>
-                <div className="text-navy-dark font-medium">{candidate.contract_type}</div>
-              </div>
-            )}
+        {/* Salaire et mobilité */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          {candidate.salary_expectations && (
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Salaire souhaité</div>
+              <div className="text-navy-dark font-medium">{candidate.salary_expectations}</div>
+            </div>
+          )}
+          {candidate.mobility && (
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Mobilité</div>
+              <div className="text-navy-dark font-medium">{candidate.mobility}</div>
+            </div>
+          )}
+        </div>
+
+        {/* Préférences de travail condensées */}
+        {(candidate.remote_preference || candidate.travel_willingness) && (
+          <div className="flex flex-wrap gap-2 text-xs">
             {candidate.remote_preference && (
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-muted-foreground">Télétravail</div>
-                <div className="text-navy-dark font-medium">{candidate.remote_preference}</div>
-              </div>
-            )}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {candidate.mobility && (
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Car className="w-4 h-4" />
-                  Mobilité
-                </div>
-                <div className="text-navy-dark font-medium">{candidate.mobility}</div>
-              </div>
+              <span className="bg-muted/50 px-2 py-1 rounded">
+                Télétravail: {candidate.remote_preference}
+              </span>
             )}
             {candidate.travel_willingness && (
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  Volonté de déplacement
-                </div>
-                <div className="text-navy-dark font-medium">{candidate.travel_willingness}</div>
-              </div>
+              <span className="bg-muted/50 px-2 py-1 rounded">
+                Déplacements: {candidate.travel_willingness}
+              </span>
             )}
           </div>
-        </div>
+        )}
 
         {/* Secteurs d'activité */}
         {candidate.industries && Array.isArray(candidate.industries) && candidate.industries.length > 0 && (
-          <div className="space-y-4">
-            <h4 className="font-semibold text-navy-dark border-b border-navy/10 pb-2">Secteurs d'activité</h4>
-            <div className="flex flex-wrap gap-2">
-              {candidate.industries.map((industry: any, index: number) => (
+          <div>
+            <div className="text-xs font-medium text-muted-foreground mb-2">Secteurs d'activité</div>
+            <div className="flex flex-wrap gap-1">
+              {candidate.industries.slice(0, 3).map((industry: any, index: number) => (
                 <span 
                   key={index} 
-                  className="px-3 py-1.5 text-sm bg-gradient-to-r from-navy/10 to-navy/20 text-navy-dark border border-navy/20 rounded-full"
+                  className="px-2 py-1 text-xs bg-navy/10 text-navy-dark border border-navy/20 rounded"
                 >
                   {typeof industry === 'string' ? industry : industry.name || industry.industry || 'Secteur'}
                 </span>
               ))}
+              {candidate.industries.length > 3 && (
+                <span className="px-2 py-1 text-xs text-muted-foreground">
+                  +{candidate.industries.length - 3} autres
+                </span>
+              )}
             </div>
           </div>
         )}

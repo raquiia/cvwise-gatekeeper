@@ -11,7 +11,7 @@ interface IdentityContactSectionProps {
 const IdentityContactSection: React.FC<IdentityContactSectionProps> = ({ candidate }) => {
   return (
     <Card className="border-navy/10 shadow-sm">
-      <CardHeader className="pb-4">
+      <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-3 text-navy-dark">
           <div className="p-2 rounded-lg bg-navy/10 text-navy">
             <User className="w-5 h-5" />
@@ -19,87 +19,53 @@ const IdentityContactSection: React.FC<IdentityContactSectionProps> = ({ candida
           Identité & Contact
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Informations personnelles */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <div className="text-sm font-medium text-muted-foreground">Prénom</div>
-            <div className="text-navy-dark font-medium">{candidate.first_name || 'Non renseigné'}</div>
-          </div>
-          <div className="space-y-1">
-            <div className="text-sm font-medium text-muted-foreground">Nom</div>
-            <div className="text-navy-dark font-medium">{candidate.last_name || 'Non renseigné'}</div>
+      <CardContent className="space-y-4">
+        {/* Nom complet */}
+        <div>
+          <div className="text-xl font-semibold text-navy-dark">
+            {candidate.first_name} {candidate.last_name}
           </div>
         </div>
 
-        {/* Contact */}
-        <div className="space-y-4">
-          <h4 className="font-semibold text-navy-dark border-b border-navy/10 pb-2">Contact</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {candidate.email && (
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  Email
-                </div>
-                <div className="text-navy-dark font-medium">{candidate.email}</div>
-              </div>
-            )}
-            {candidate.phone && (
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  Téléphone
-                </div>
-                <div className="text-navy-dark font-medium">{candidate.phone}</div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Adresse */}
-        <div className="space-y-4">
-          <h4 className="font-semibold text-navy-dark border-b border-navy/10 pb-2">Adresse</h4>
-          <div className="space-y-3">
-            {candidate.address && (
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  Adresse
-                </div>
-                <div className="text-navy-dark font-medium">{candidate.address}</div>
-              </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {candidate.postal_code && (
-                <div className="space-y-1">
-                  <div className="text-sm font-medium text-muted-foreground">Code postal</div>
-                  <div className="bg-navy/10 px-2 py-1 rounded text-navy font-medium text-center">
-                    {candidate.postal_code}
-                  </div>
-                </div>
-              )}
-              {candidate.city && (
-                <div className="space-y-1">
-                  <div className="text-sm font-medium text-muted-foreground">Ville</div>
-                  <div className="text-navy-dark font-medium">{candidate.city}</div>
-                </div>
-              )}
-              {candidate.country && (
-                <div className="space-y-1">
-                  <div className="text-sm font-medium text-muted-foreground">Pays</div>
-                  <div className="text-navy-dark font-medium">{candidate.country}</div>
-                </div>
-              )}
+        {/* Contact - Layout compact */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          {candidate.email && (
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4 text-navy" />
+              <span className="text-navy-dark">{candidate.email}</span>
             </div>
-            {candidate.location && candidate.location !== `${candidate.city || ''}${candidate.country ? `, ${candidate.country}` : ''}` && (
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-muted-foreground">Localisation (héritée)</div>
-                <div className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">{candidate.location}</div>
-              </div>
-            )}
-          </div>
+          )}
+          {candidate.phone && (
+            <div className="flex items-center gap-2">
+              <Phone className="w-4 h-4 text-navy" />
+              <span className="text-navy-dark">{candidate.phone}</span>
+            </div>
+          )}
         </div>
+
+        {/* Adresse compacte */}
+        {(candidate.address || candidate.city || candidate.postal_code || candidate.country) && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin className="w-4 h-4 text-navy" />
+              <span className="font-medium text-muted-foreground">Adresse</span>
+            </div>
+            <div className="text-sm text-navy-dark ml-6">
+              {candidate.address && <div>{candidate.address}</div>}
+              <div>
+                {candidate.postal_code && <span className="bg-navy/10 px-2 py-0.5 rounded mr-2">{candidate.postal_code}</span>}
+                {candidate.city} {candidate.country && `(${candidate.country})`}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Localisation héritée si différente */}
+        {candidate.location && candidate.location !== `${candidate.city || ''}${candidate.country ? `, ${candidate.country}` : ''}` && (
+          <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+            <strong>Localisation héritée :</strong> {candidate.location}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
