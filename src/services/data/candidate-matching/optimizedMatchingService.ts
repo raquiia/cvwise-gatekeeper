@@ -27,6 +27,17 @@ interface MatchingMetrics {
   optimizationsApplied: string[];
 }
 
+/**
+ * Utilitaire pour s'assurer qu'une valeur Json est un tableau de chaînes
+ */
+const ensureStringArray = (value: any): string[] => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.filter(item => typeof item === 'string');
+  }
+  return [];
+};
+
 export class OptimizedMatchingService {
   private metrics: MatchingMetrics = {
     totalCandidates: 0,
@@ -302,10 +313,14 @@ export class OptimizedMatchingService {
         .limit(10);
 
       if (frequentSkills) {
-        const allSkills = frequentSkills.flatMap(job => [
-          ...(job.required_skills || []),
-          ...(job.preferred_skills || [])
-        ]);
+        // Utiliser la fonction utilitaire pour s'assurer du bon type
+        const allSkills: string[] = [];
+        
+        frequentSkills.forEach(job => {
+          const requiredSkills = ensureStringArray(job.required_skills);
+          const preferredSkills = ensureStringArray(job.preferred_skills);
+          allSkills.push(...requiredSkills, ...preferredSkills);
+        });
 
         // Pré-calculer les correspondances de compétences populaires
         const skillFrequency = new Map<string, number>();
