@@ -19,10 +19,30 @@ export const checkDuplicateResume = async (fileName: string, userId: string): Pr
     
     if (error) {
       console.error('Error checking duplicate:', error.message);
-      return false; // En cas d'erreur, permettre l'upload
+      // En cas d'erreur de la fonction RPC, essayer une requête directe comme fallback
+      try {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('resumes')
+          .select('id')
+          .eq('file_name', fileName)
+          .eq('user_id', userId)
+          .single();
+        
+        if (fallbackError && fallbackError.code !== 'PGRST116') { // PGRST116 = no rows found
+          console.error('Fallback duplicate check also failed:', fallbackError);
+          return false; // En cas d'erreur totale, permettre l'upload
+        }
+        
+        return !!fallbackData; // true si un fichier existe, false sinon
+      } catch (fallbackException) {
+        console.error('Exception in fallback duplicate check:', fallbackException);
+        return false; // En cas d'erreur, permettre l'upload
+      }
     }
     
-    return data === true;
+    const isDuplicate = data === true;
+    console.log(`Duplicate check result for ${fileName}: ${isDuplicate}`);
+    return isDuplicate;
   } catch (error) {
     console.error('Exception checking duplicate:', error);
     return false; // En cas d'erreur, permettre l'upload
@@ -36,8 +56,11 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
   try {
     console.log(`Starting upload for ${file.name} (${file.size} bytes)`);
     
-    // Vérifier si le fichier est un doublon
+    // Vérifier si le fichier est un doublon avec un logging détaillé
+    console.log(`Checking for duplicate: file "${file.name}" for user ${userId}`);
     const isDuplicate = await checkDuplicateResume(file.name, userId);
+    console.log(`Duplicate check complete: ${isDuplicate} for file "${file.name}"`);
+    
     if (isDuplicate) {
       console.log(`File ${file.name} is a duplicate for user ${userId}`);
       throw new Error(`Le fichier "${file.name}" existe déjà dans votre bibliothèque`);
@@ -68,7 +91,6 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
       if (error) {
         console.error('Database error:', error.message);
         // Nettoyer le fichier si l'insertion dans la base de données échoue
-        // Mais ne pas bloquer en cas d'erreur lors de la suppression
         try {
           await resumeStorageService.deleteFile(filePath);
         } catch (cleanupError) {
@@ -77,8 +99,9 @@ export const uploadResume = async (file: File, userId: string): Promise<ResumeDa
         return null;
       }
       
-      // Au lieu d'essayer de récupérer immédiatement depuis la base de données,
-      // construisons simplement l'objet manuellement pour éviter l'erreur de récursion
+      console.log(`Resume record created successfully with ID: ${resumeId}`);
+      
+      // Construire l'objet résumé manuellement pour éviter l'erreur de récursion
       const resumeData: ResumeData = {
         id: resumeId as string,
         user_id: userId,
