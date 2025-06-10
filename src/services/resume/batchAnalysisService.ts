@@ -20,7 +20,7 @@ export interface BatchAnalysisResult {
  */
 export const analyzeBatchResumes = async (
   resumeItems: Array<{ resumeId: string, text: string }>,
-  onProgress?: (current: number, total: number, currentResumeId: string, success: boolean) => void
+  onProgress?: (progress: BatchAnalysisProgress) => void
 ): Promise<BatchAnalysisResult> => {
   try {
     console.log(`Starting batch analysis of ${resumeItems.length} resumes`);
@@ -46,7 +46,12 @@ export const analyzeBatchResumes = async (
             
             // Notifier de la progression, même en cas d'erreur
             if (onProgress) {
-              onProgress(i + 1, resumeItems.length, resumeId, false);
+              onProgress({
+                current: i + 1,
+                total: resumeItems.length,
+                currentResumeId: resumeId,
+                success: false
+              });
             }
             continue;
           }
@@ -73,7 +78,12 @@ export const analyzeBatchResumes = async (
       
       // Appeler la fonction de progression si fournie
       if (onProgress) {
-        onProgress(i + 1, resumeItems.length, resumeId, !failedResumes.includes(resumeId));
+        onProgress({
+          current: i + 1,
+          total: resumeItems.length,
+          currentResumeId: resumeId,
+          success: !failedResumes.includes(resumeId)
+        });
       }
     }
     
