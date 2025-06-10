@@ -1,14 +1,27 @@
 
 import { checkResumeAlreadyAnalyzed } from './resumeValidationService';
-import { analyzeResume } from './resumeAnalysisService';
+import { analyzeResume } from './analysisOperations';
+
+export interface BatchAnalysisProgress {
+  current: number;
+  total: number;
+  currentResumeId: string;
+  success: boolean;
+}
+
+export interface BatchAnalysisResult {
+  successCount: number;
+  totalCount: number;
+  failedResumes: string[];
+}
 
 /**
  * Exécuter l'analyse en lot de plusieurs CV
  */
 export const analyzeBatchResumes = async (
   resumeItems: Array<{ resumeId: string, text: string }>,
-  onProgress?: (index: number, total: number, currentResumeId: string, success: boolean) => void
-): Promise<{ successCount: number; totalCount: number; failedResumes: string[] }> => {
+  onProgress?: (current: number, total: number, currentResumeId: string, success: boolean) => void
+): Promise<BatchAnalysisResult> => {
   try {
     console.log(`Starting batch analysis of ${resumeItems.length} resumes`);
     
@@ -23,10 +36,10 @@ export const analyzeBatchResumes = async (
       
       try {
         // Vérifier si le CV a déjà été analysé
-        const { analyzed } = await checkResumeAlreadyAnalyzed(resumeId);
+        const alreadyAnalyzed = await checkResumeAlreadyAnalyzed(resumeId);
         
         // Analyser le CV (si pas déjà analysé)
-        if (!analyzed) {
+        if (!alreadyAnalyzed) {
           if (!text || text.trim() === '') {
             console.error(`Empty text for resume ${resumeId}, skipping`);
             failedResumes.push(resumeId);
@@ -38,15 +51,15 @@ export const analyzeBatchResumes = async (
             continue;
           }
           
-          console.log(`Sending resume ${resumeId} to OpenAI for analysis, text length: ${text.length}`);
-          const result = await analyzeResume(resumeId, text);
+          console.log(`Sending resume ${resumeId} to analysis, text length: ${text.length}`);
+          const result = await analyzeResume(resumeId);
           
           if (result.success) {
             successCount++;
             console.log(`Successfully analyzed resume ${resumeId}`);
           } else {
             failedResumes.push(resumeId);
-            console.error(`Failed to analyze resume ${resumeId}: ${result.message}`);
+            console.error(`Failed to analyze resume ${resumeId}: ${result.error}`);
           }
         } else {
           // Compter comme réussi si déjà analysé

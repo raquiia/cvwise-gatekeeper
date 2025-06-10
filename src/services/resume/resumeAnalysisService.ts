@@ -26,6 +26,20 @@ export interface CVAnalysisResult {
   error?: string;
 }
 
+export interface TextExtractionResult {
+  success: boolean;
+  text?: string;
+  message?: string;
+}
+
+export interface ResumeAnalysisResult {
+  success: boolean;
+  candidateId?: string;
+  candidateData?: any;
+  message?: string;
+  analysis?: AIAnalysisResult;
+}
+
 /**
  * Analyser un CV avec l'IA et sauvegarder le score automatiquement
  */
@@ -81,6 +95,82 @@ export const analyzeResumeWithAI = async (
     return {
       success: false,
       error: error.message
+    };
+  }
+};
+
+/**
+ * Extraire le texte d'un CV
+ */
+export const extractResumeText = async (resumeId: string): Promise<TextExtractionResult> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('extract-cv-text', {
+      body: { resumeId }
+    });
+
+    if (error || !data?.success) {
+      throw new Error(data?.error || 'Erreur lors de l\'extraction du texte');
+    }
+
+    return {
+      success: true,
+      text: data.text || ''
+    };
+  } catch (error: any) {
+    console.error('Error extracting resume text:', error);
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
+/**
+ * Analyser un CV complet (extraction + analyse IA + sauvegarde)
+ */
+export const analyzeResume = async (
+  resumeId: string,
+  resumeText?: string,
+  overwriteExisting: boolean = false
+): Promise<ResumeAnalysisResult> => {
+  try {
+    let text = resumeText;
+    
+    // Si le texte n'est pas fourni, l'extraire
+    if (!text) {
+      const extractResult = await extractResumeText(resumeId);
+      if (!extractResult.success || !extractResult.text) {
+        return {
+          success: false,
+          message: extractResult.message || 'Impossible d\'extraire le texte du CV'
+        };
+      }
+      text = extractResult.text;
+    }
+
+    // Appeler l'analyse complète via l'analysisOperations
+    const { analyzeResume: analyzeResumeOperation } = await import('./analysisOperations');
+    const result = await analyzeResumeOperation(resumeId);
+    
+    if (result.success && result.candidateData) {
+      return {
+        success: true,
+        candidateId: result.candidateData.id,
+        candidateData: result.candidateData,
+        analysis: result.analysis
+      };
+    }
+
+    return {
+      success: false,
+      message: result.error || 'Échec de l\'analyse'
+    };
+
+  } catch (error: any) {
+    console.error('Error in analyzeResume:', error);
+    return {
+      success: false,
+      message: error.message
     };
   }
 };

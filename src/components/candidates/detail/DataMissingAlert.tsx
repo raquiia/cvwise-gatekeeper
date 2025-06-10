@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { analyzeResume, extractResumeText } from '@/services/resume/analysisOperations';
+import { analyzeResume, extractResumeText } from '@/services/resume/resumeAnalysisService';
 import { toast } from '@/hooks/use-toast';
 
 interface DataMissingAlertProps {
