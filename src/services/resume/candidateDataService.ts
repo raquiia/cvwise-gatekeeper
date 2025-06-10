@@ -28,6 +28,17 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     // Handle both array and direct object responses
     const candidateRawData = Array.isArray(data) ? data[0] : data;
     
+    console.log('📋 RAW ADDRESS DATA from database:', {
+      address: candidateRawData.address,
+      postal_code: candidateRawData.postal_code,
+      city: candidateRawData.city,
+      country: candidateRawData.country,
+      addressType: typeof candidateRawData.address,
+      postalCodeType: typeof candidateRawData.postal_code,
+      cityType: typeof candidateRawData.city,
+      countryType: typeof candidateRawData.country
+    });
+    
     console.log('✅ Successfully retrieved complete candidate data from database');
     
     // Cast to CandidateData since we know the RPC function returns all required fields

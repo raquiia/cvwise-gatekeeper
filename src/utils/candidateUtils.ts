@@ -1,4 +1,3 @@
-
 import { Json } from '@/integrations/supabase/types';
 
 /**
@@ -131,14 +130,14 @@ export const ensureArray = <T = any>(data: Json | undefined | null): T[] => {
   return [];
 };
 
-// CORRECTED: Safe string extraction from Json - preserve original values
+// Safe string extraction from Json - NO PROCESSING for simple text fields
 export const safeString = (data: Json | undefined | null): string => {
   if (!data) return '';
   
-  // If it's already a string, return it directly unless it's explicitly empty
+  // If it's already a string, return it directly
   if (typeof data === 'string') {
     if (data === 'null' || data === 'undefined') return '';
-    return data; // Return the original string value
+    return data; // Return the original string value without any processing
   }
   
   if (typeof data === 'number') return String(data);
@@ -147,13 +146,13 @@ export const safeString = (data: Json | undefined | null): string => {
   // For objects, try to extract a meaningful string
   if (typeof data === 'object' && data !== null) {
     if ('value' in data && typeof data.value === 'string') {
-      return cleanAndDecodeText(data.value);
+      return data.value;
     }
     if ('name' in data && typeof data.name === 'string') {
-      return cleanAndDecodeText(data.name);
+      return data.name;
     }
     if ('text' in data && typeof data.text === 'string') {
-      return cleanAndDecodeText(data.text);
+      return data.text;
     }
   }
   
@@ -173,11 +172,11 @@ export const isUndefinedObject = (obj: any): boolean => {
   return Object.values(obj).every(value => value === undefined);
 };
 
-// DEBUGGING VERSION: Process candidate data with detailed logs
+// Process candidate data with detailed logs for address fields
 export const processCandidateData = (rawCandidate: any): any => {
   if (!rawCandidate) return null;
   
-  console.log('🔄 STARTING processCandidateData with RAW INPUT:', {
+  console.log('🔄 STARTING processCandidateData with address fields:', {
     id: rawCandidate.id,
     first_name: rawCandidate.first_name,
     last_name: rawCandidate.last_name,
@@ -190,7 +189,7 @@ export const processCandidateData = (rawCandidate: any): any => {
   
   const processedCandidate = {
     ...rawCandidate,
-    // Keep original values for basic text fields - no processing needed
+    // Keep original values for basic text fields - ABSOLUTELY NO processing for address
     first_name: rawCandidate.first_name || '',
     last_name: rawCandidate.last_name || '',
     email: rawCandidate.email || '',
@@ -199,7 +198,7 @@ export const processCandidateData = (rawCandidate: any): any => {
     location: rawCandidate.location || '',
     company: rawCandidate.company || '',
     
-    // Keep address fields exactly as they are in the database
+    // CRITICAL: Keep address fields EXACTLY as they are in the database - NO PROCESSING AT ALL
     address: rawCandidate.address || '',
     postal_code: rawCandidate.postal_code || '',
     city: rawCandidate.city || '',
@@ -219,25 +218,13 @@ export const processCandidateData = (rawCandidate: any): any => {
     projects: ensureArray(rawCandidate.projects)
   };
   
-  console.log('✅ PROCESSED CANDIDATE - Final output from processCandidateData:', {
-    first_name: processedCandidate.first_name,
-    last_name: processedCandidate.last_name,
+  console.log('✅ PROCESSED CANDIDATE - Address fields after processing:', {
     address: processedCandidate.address,
     postal_code: processedCandidate.postal_code,
     city: processedCandidate.city,
     country: processedCandidate.country,
     location: processedCandidate.location
   });
-  
-  // Log spécial pour Louis Le Potvin
-  if (processedCandidate.first_name === 'Louis' && processedCandidate.last_name === 'Le Potvin') {
-    console.log('🎯 LOUIS LE POTVIN - FINAL PROCESSED DATA:', {
-      address: processedCandidate.address || 'EMPTY',
-      postal_code: processedCandidate.postal_code || 'EMPTY',
-      city: processedCandidate.city || 'EMPTY',
-      country: processedCandidate.country || 'EMPTY'
-    });
-  }
   
   return processedCandidate;
 };

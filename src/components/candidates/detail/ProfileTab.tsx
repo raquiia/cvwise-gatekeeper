@@ -45,12 +45,16 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
   useEffect(() => {
     if (!candidate) return;
 
-    console.log('📋 Loading candidate data:', {
+    console.log('📋 ProfileTab: Loading candidate data with address fields:', {
       name: `${candidate.first_name} ${candidate.last_name}`,
-      address: candidate.address || 'Empty',
-      postal_code: candidate.postal_code || 'Empty',
-      city: candidate.city || 'Empty',
-      country: candidate.country || 'Empty'
+      address: candidate.address,
+      postal_code: candidate.postal_code,
+      city: candidate.city,
+      country: candidate.country,
+      addressValue: candidate.address,
+      postalCodeValue: candidate.postal_code,
+      cityValue: candidate.city,
+      countryValue: candidate.country
     });
 
     setFirstName(candidate.first_name || '');
@@ -60,24 +64,39 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
     setPosition(candidate.position || '');
     setLocation(candidate.location || '');
     
-    // Handle address fields with proper null/empty checking
-    const candidateAddress = candidate.address || '';
-    const candidatePostalCode = candidate.postal_code || '';
-    const candidateCity = candidate.city || '';
-    const candidateCountry = candidate.country || '';
+    // Handle address fields - use the exact values from database
+    const addressValue = candidate.address || '';
+    const postalCodeValue = candidate.postal_code || '';
+    const cityValue = candidate.city || '';
+    const countryValue = candidate.country || '';
     
-    setAddress(candidateAddress);
-    setPostalCode(candidatePostalCode);
-    setCity(candidateCity);
-    setCountry(candidateCountry);
+    console.log('🏠 Setting address field values:', {
+      address: addressValue,
+      postal_code: postalCodeValue,
+      city: cityValue,
+      country: countryValue
+    });
+    
+    setAddress(addressValue);
+    setPostalCode(postalCodeValue);
+    setCity(cityValue);
+    setCountry(countryValue);
     
     // Check if we have any meaningful address data
-    const hasAnyAddressData = candidateAddress.trim() !== '' || 
-                             candidatePostalCode.trim() !== '' || 
-                             candidateCity.trim() !== '' || 
-                             candidateCountry.trim() !== '';
+    const hasAnyAddressData = addressValue.trim() !== '' || 
+                             postalCodeValue.trim() !== '' || 
+                             cityValue.trim() !== '' || 
+                             countryValue.trim() !== '';
     
     setHasAddressData(hasAnyAddressData);
+    
+    console.log('📊 Address data status:', {
+      hasAnyAddressData,
+      addressEmpty: addressValue.trim() === '',
+      postalCodeEmpty: postalCodeValue.trim() === '',
+      cityEmpty: cityValue.trim() === '',
+      countryEmpty: countryValue.trim() === ''
+    });
     
     setYearsExperience(candidate.years_experience || 0);
     setSalaryExpectation(candidate.salary_expectations || '');
@@ -213,6 +232,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                     placeholder="Ex: Rue des Exemples 123" 
                     className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${!address ? 'bg-gray-50' : ''}`}
                   />
+                  {!address && (
+                    <p className="text-xs text-gray-500">Champ vide - veuillez saisir l'adresse</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="postalCode" className="text-sm font-medium text-gray-700">Code postal</Label>
@@ -224,6 +246,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                     placeholder="Ex: 1234" 
                     className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${!postalCode ? 'bg-gray-50' : ''}`}
                   />
+                  {!postalCode && (
+                    <p className="text-xs text-gray-500">Champ vide - veuillez saisir le code postal</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="city" className="text-sm font-medium text-gray-700">Ville</Label>
@@ -235,6 +260,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                     placeholder="Ex: Genève" 
                     className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${!city ? 'bg-gray-50' : ''}`}
                   />
+                  {!city && (
+                    <p className="text-xs text-gray-500">Champ vide - veuillez saisir la ville</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="country" className="text-sm font-medium text-gray-700">Pays</Label>
@@ -246,6 +274,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({
                     placeholder="Ex: Suisse" 
                     className={`border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 ${!country ? 'bg-gray-50' : ''}`}
                   />
+                  {!country && (
+                    <p className="text-xs text-gray-500">Champ vide - veuillez saisir le pays</p>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
