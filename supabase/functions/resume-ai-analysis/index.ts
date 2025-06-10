@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
@@ -33,11 +32,34 @@ const cleanAndDecodeText = (text: string): string => {
 
 /**
  * Cache intelligent avec compression pour réduire les appels OpenAI
+ * CORRIGÉ: Gestion des caractères non-ASCII
  */
 const getCacheKey = (text: string): string => {
-  // Créer une clé de cache basée sur un hash simplifié du contenu
-  const normalized = text.toLowerCase().replace(/\s+/g, ' ').trim();
-  return btoa(normalized.slice(0, 100) + normalized.slice(-50)).replace(/[^a-zA-Z0-9]/g, '');
+  try {
+    // Normaliser le texte en supprimant les accents et caractères spéciaux
+    const normalized = text
+      .toLowerCase()
+      .normalize('NFD') // Décompose les caractères accentués
+      .replace(/[\u0300-\u036f]/g, '') // Supprime les diacritiques
+      .replace(/[^a-zA-Z0-9\s]/g, '') // Garde seulement alphanumériques et espaces
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Créer un hash simple sans btoa
+    const hashString = normalized.slice(0, 100) + normalized.slice(-50);
+    let hash = 0;
+    for (let i = 0; i < hashString.length; i++) {
+      const char = hashString.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    return Math.abs(hash).toString(36).slice(0, 32);
+  } catch (error) {
+    console.error('Error generating cache key:', error);
+    // Fallback: utiliser timestamp + longueur du texte
+    return `fallback_${Date.now()}_${text.length}`;
+  }
 };
 
 /**
@@ -173,7 +195,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Vérification du cache intelligent
+    // Vérification du cache intelligent avec la nouvelle fonction corrigée
     const cacheKey = getCacheKey(resumeText);
     
     if (!overwriteExisting) {
