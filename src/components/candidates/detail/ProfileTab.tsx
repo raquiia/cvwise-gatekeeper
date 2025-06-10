@@ -9,7 +9,7 @@ import { candidateService } from '@/services/data/candidateService';
 import type { CandidateData } from '@/services/data/candidateService';
 import { useAuth } from '@/context/AuthContext';
 import ScoreDisplay from './ScoreDisplay';
-import { User, Briefcase, MapPin, Calendar, DollarSign, Clock, FileText, Save, RotateCcw, Phone, Home, CheckCircle } from 'lucide-react';
+import { User, Briefcase, MapPin, Calendar, DollarSign, Clock, FileText, Save, RotateCcw, Phone, Home, CheckCircle, Eye } from 'lucide-react';
 
 interface ProfileTabProps {
   candidate: CandidateData;
@@ -80,15 +80,21 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   const [notes, setNotes] = useState(candidate.notes || '');
   
   const [isSaving, setIsSaving] = useState(false);
+  const [showRawData, setShowRawData] = useState(false);
   const { user } = useAuth();
   
   // Update local state when candidate prop changes
   useEffect(() => {
-    console.log('ProfileTab: Updating state from candidate prop', {
-      candidateAddress: candidate.address,
-      candidateCity: candidate.city,
-      candidateCountry: candidate.country,
-      candidatePostalCode: candidate.postal_code
+    console.log('🔍 ProfileTab: COMPLETE candidate data received:', {
+      id: candidate.id,
+      first_name: candidate.first_name,
+      last_name: candidate.last_name,
+      address: candidate.address,
+      postal_code: candidate.postal_code,
+      city: candidate.city,
+      country: candidate.country,
+      location: candidate.location,
+      allFields: Object.keys(candidate)
     });
     
     setFirstName(candidate.first_name || '');
@@ -112,25 +118,24 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     if (city && !country) {
       const suggestedCountry = getCountryForCity(city);
       if (suggestedCountry) {
+        console.log(`🌍 Auto-completing country for ${city}: ${suggestedCountry}`);
         setCountry(suggestedCountry);
       }
     }
   }, [city, country]);
   
-  // Determine address display logic
-  const structuredAddressExists = Boolean(address || postalCode || city || country);
+  // Debug current address state
   const completeFormattedAddress = formatCompleteAddress(address, postalCode, city, country);
-  const isAddressComplete = Boolean(city && country);
+  const hasAnyAddressData = Boolean(address || postalCode || city || country || location);
   
-  console.log('ProfileTab: Address display logic', {
-    structuredAddressExists,
-    completeFormattedAddress,
-    isAddressComplete,
+  console.log('📍 Current address state:', {
     address,
-    postalCode,
+    postal_code: postalCode,
     city,
     country,
-    location
+    location,
+    completeFormattedAddress,
+    hasAnyAddressData
   });
 
   const handleSave = async () => {
@@ -138,7 +143,13 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     
     try {
       setIsSaving(true);
-      console.log('ProfileTab: Saving candidate with notes:', notes);
+      console.log('💾 ProfileTab: Saving candidate with address data:', {
+        address,
+        postal_code: postalCode,
+        city,
+        country,
+        location
+      });
       
       const updateData = {
         id: candidate.id,
@@ -158,7 +169,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
         notes: notes
       };
       
-      console.log('ProfileTab: Update data being sent:', updateData);
+      console.log('📤 ProfileTab: Complete update data:', updateData);
       
       await candidateService.updateCandidate(updateData);
       
@@ -169,11 +180,11 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
       
       // Refresh the data to ensure consistency
       if (onRefresh) {
-        console.log('ProfileTab: Calling onRefresh to reload data');
+        console.log('🔄 ProfileTab: Calling onRefresh to reload data');
         onRefresh();
       }
     } catch (error: any) {
-      console.error("Error updating candidate:", error);
+      console.error("❌ Error updating candidate:", error);
       toast({
         title: "Erreur de mise à jour",
         description: error.message || "Une erreur s'est produite lors de la mise à jour du profil.",
@@ -255,7 +266,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardContent>
           </Card>
 
-          {/* Adresse - Section améliorée */}
+          {/* Section Adresse complètement refaite */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-200/50">
               <div className="flex items-center justify-between">
@@ -263,37 +274,102 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                   <div className="p-2 bg-emerald-100 rounded-lg">
                     <Home className="h-5 w-5 text-emerald-600" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900">Adresse</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Adresse complète</h3>
                 </div>
-                {isAddressComplete && (
-                  <div className="flex items-center gap-2 text-emerald-600">
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="text-sm font-medium">Complète</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {completeFormattedAddress && (
+                    <div className="flex items-center gap-2 text-emerald-600">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Adresse extraite</span>
+                    </div>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowRawData(!showRawData)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    Debug
+                  </Button>
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              {/* TOUJOURS afficher un résumé de l'adresse si nous avons des données */}
-              {(completeFormattedAddress || location) && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                  <Label className="text-sm font-medium text-emerald-800 flex items-center gap-2 mb-2">
+            <CardContent className="p-6 space-y-6">
+              
+              {/* TOUJOURS afficher les données extraites */}
+              {hasAnyAddressData && (
+                <div className="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-4">
+                  <Label className="text-sm font-medium text-emerald-800 flex items-center gap-2 mb-3">
                     <MapPin className="h-4 w-4" />
-                    Adresse extraite du CV
+                    Informations d'adresse extraites du CV
                   </Label>
-                  <p className="text-emerald-700 font-medium">
-                    {completeFormattedAddress || location}
-                  </p>
-                  {!completeFormattedAddress && location && (
-                    <p className="text-sm text-emerald-600 mt-1">
-                      (Format non structuré - vous pouvez séparer ci-dessous)
-                    </p>
+                  
+                  {/* Adresse formatée complète */}
+                  {completeFormattedAddress && (
+                    <div className="mb-3">
+                      <p className="text-emerald-700 font-semibold text-lg">
+                        📍 {completeFormattedAddress}
+                      </p>
+                    </div>
                   )}
+                  
+                  {/* Détails séparés */}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    {address && (
+                      <div>
+                        <span className="text-emerald-600 font-medium">Rue:</span>
+                        <span className="text-emerald-800 ml-2">{address}</span>
+                      </div>
+                    )}
+                    {postalCode && (
+                      <div>
+                        <span className="text-emerald-600 font-medium">Code postal:</span>
+                        <span className="text-emerald-800 ml-2">{postalCode}</span>
+                      </div>
+                    )}
+                    {city && (
+                      <div>
+                        <span className="text-emerald-600 font-medium">Ville:</span>
+                        <span className="text-emerald-800 ml-2">{city}</span>
+                      </div>
+                    )}
+                    {country && (
+                      <div>
+                        <span className="text-emerald-600 font-medium">Pays:</span>
+                        <span className="text-emerald-800 ml-2">{country}</span>
+                      </div>
+                    )}
+                    {location && !completeFormattedAddress && (
+                      <div className="col-span-2">
+                        <span className="text-emerald-600 font-medium">Localisation (format libre):</span>
+                        <span className="text-emerald-800 ml-2">{location}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               
-              {/* Champs d'adresse détaillés - TOUJOURS visibles */}
-              <div className="space-y-4">
+              {/* Debug des données brutes */}
+              {showRawData && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">Données brutes (Debug)</Label>
+                  <pre className="text-xs text-gray-600 whitespace-pre-wrap">
+{JSON.stringify({
+  address: candidate.address,
+  postal_code: candidate.postal_code, 
+  city: candidate.city,
+  country: candidate.country,
+  location: candidate.location
+}, null, 2)}
+                  </pre>
+                </div>
+              )}
+              
+              {/* Champs d'édition */}
+              <div className="space-y-4 border-t pt-4">
+                <Label className="text-base font-medium text-gray-800">Modifier l'adresse</Label>
+                
                 <div className="space-y-2">
                   <Label htmlFor="address" className="text-sm font-medium text-gray-700">Rue et numéro</Label>
                   <Input
@@ -342,22 +418,21 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                   </div>
                 </div>
                 
-                {/* Champ location pour compatibilité - seulement si pas d'adresse structurée */}
-                {location && !structuredAddressExists && (
-                  <div className="space-y-2">
-                    <Label htmlFor="location" className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Localisation (format libre)
-                    </Label>
-                    <Input
-                      type="text"
-                      id="location"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
-                    />
-                  </div>
-                )}
+                {/* Champ location seulement si pas d'adresse structurée */}
+                <div className="space-y-2">
+                  <Label htmlFor="location" className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Localisation (format libre)
+                  </Label>
+                  <Input
+                    type="text"
+                    id="location"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Ex: Geneva, Switzerland"
+                    className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -502,3 +577,5 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
 };
 
 export default ProfileTab;
+
+</edits_to_apply>
