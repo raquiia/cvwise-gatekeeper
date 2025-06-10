@@ -10,19 +10,108 @@ serve(async (req) => {
   }
 
   try {
-    const { candidateData, resumeText } = await req.json();
+    const { resumeText, resumeId } = await req.json();
     
-    if (!candidateData || !resumeText) {
-      throw new Error('Missing candidateData or resumeText');
+    if (!resumeText || !resumeId) {
+      throw new Error('Missing resumeText or resumeId');
     }
 
     if (!openAIApiKey) {
       throw new Error('OpenAI API key not configured');
     }
 
-    console.log('Analyzing resume for candidate:', candidateData.id);
+    console.log('Starting resume analysis for resume ID:', resumeId);
+    console.log('Resume text length:', resumeText.length);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Step 1: Extract candidate information from resume text using AI
+    const extractionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `Tu es un expert en extraction d'informations de CV. Analyse ce CV et extrais les informations du candidat au format JSON strictement structuré.
+
+            Tu dois retourner UNIQUEMENT un objet JSON avec cette structure exacte :
+            {
+              "first_name": "string",
+              "last_name": "string", 
+              "email": "string",
+              "phone": "string",
+              "position": "string",
+              "years_experience": number,
+              "location": "string",
+              "address": "string",
+              "postal_code": "string", 
+              "city": "string",
+              "country": "string",
+              "company": "string",
+              "skills": ["skill1", "skill2", ...],
+              "education": [{"degree": "string", "school": "string", "year": "string"}],
+              "experiences": [{"position": "string", "company": "string", "duration": "string", "description": "string"}],
+              "languages": [{"language": "string", "level": "string"}],
+              "availability": "string",
+              "salary_expectations": "string",
+              "contract_type": "string",
+              "remote_preference": "string",
+              "mobility": "string",
+              "career_objectives": "string",
+              "interests": "string"
+            }
+
+            Règles importantes :
+            - Retourne UNIQUEMENT du JSON valide, pas de texte supplémentaire
+            - Si une information n'est pas trouvée, utilise "" pour les strings et [] pour les arrays
+            - Extrait toutes les compétences techniques et soft skills dans le tableau skills
+            - Pour years_experience, estime le nombre d'années basé sur les expériences
+            - Sois précis pour l'adresse (sépare adresse, code postal, ville, pays)
+            - Pour les expériences, inclus toutes les expériences professionnelles significatives`
+          },
+          {
+            role: 'user',
+            content: `Analyse ce CV et extrais les informations du candidat :\n\n${resumeText}`
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 3000
+      }),
+    });
+
+    if (!extractionResponse.ok) {
+      throw new Error(`OpenAI extraction API error: ${extractionResponse.statusText}`);
+    }
+
+    const extractionData = await extractionResponse.json();
+    const extractedContent = extractionData.choices[0]?.message?.content;
+    
+    if (!extractedContent) {
+      throw new Error('No content received from OpenAI for extraction');
+    }
+
+    // Parse the extracted candidate information
+    let candidateData;
+    try {
+      candidateData = JSON.parse(extractedContent);
+    } catch (parseError) {
+      console.error('Failed to parse candidate extraction response:', extractedContent);
+      throw new Error('Invalid JSON response from AI extraction');
+    }
+
+    console.log('Candidate information extracted successfully:', {
+      name: `${candidateData.first_name} ${candidateData.last_name}`,
+      email: candidateData.email,
+      position: candidateData.position,
+      skillsCount: candidateData.skills?.length || 0,
+      experienceYears: candidateData.years_experience
+    });
+
+    // Step 2: Generate AI analysis and scoring
+    const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
@@ -66,7 +155,7 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `Analyse ce CV :
+            content: `Analyse ce profil candidat et son CV :
             
             Données candidat : ${JSON.stringify(candidateData)}
             
@@ -78,42 +167,35 @@ serve(async (req) => {
       }),
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
+    if (!analysisResponse.ok) {
+      console.warn(`OpenAI analysis API error: ${analysisResponse.statusText}`);
+      // Continue without analysis if scoring fails
     }
 
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
-    
-    if (!content) {
-      throw new Error('No content received from OpenAI');
+    let analysis = null;
+    if (analysisResponse.ok) {
+      const analysisData = await analysisResponse.json();
+      const analysisContent = analysisData.choices[0]?.message?.content;
+      
+      if (analysisContent) {
+        try {
+          analysis = JSON.parse(analysisContent);
+          console.log('AI analysis completed successfully:', {
+            score: analysis.score,
+            hasBreakdown: !!analysis.breakdown
+          });
+        } catch (parseError) {
+          console.error('Failed to parse AI analysis response:', analysisContent);
+          // Continue without analysis
+        }
+      }
     }
-
-    // Parse the JSON response
-    let analysisResult;
-    try {
-      analysisResult = JSON.parse(content);
-    } catch (parseError) {
-      console.error('Failed to parse OpenAI response:', content);
-      throw new Error('Invalid JSON response from AI analysis');
-    }
-
-    // Validate the response structure
-    if (!analysisResult.score || !analysisResult.explanation || !analysisResult.breakdown) {
-      throw new Error('Invalid analysis result structure');
-    }
-
-    console.log('AI Analysis completed:', {
-      candidateId: candidateData.id,
-      score: analysisResult.score,
-      hasExplanation: !!analysisResult.explanation,
-      hasBreakdown: !!analysisResult.breakdown
-    });
 
     return new Response(
       JSON.stringify({
         success: true,
-        analysis: analysisResult
+        candidateData: candidateData,
+        analysis: analysis
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
