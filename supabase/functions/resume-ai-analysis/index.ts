@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
@@ -31,50 +32,11 @@ const cleanAndDecodeText = (text: string): string => {
 };
 
 /**
- * Cache intelligent avec compression pour réduire les appels OpenAI
- * CORRIGÉ: Gestion complète des caractères non-ASCII sans btoa()
- */
-const getCacheKey = (text: string): string => {
-  try {
-    // Normaliser le texte pour gérer tous les caractères spéciaux
-    const normalized = text
-      .toLowerCase()
-      .normalize('NFD') // Décompose les caractères accentués
-      .replace(/[\u0300-\u036f]/g, '') // Supprime les diacritiques
-      .replace(/[^\w\s]/g, '') // Garde seulement les caractères de mot et espaces
-      .replace(/\s+/g, ' ')
-      .trim();
-    
-    // Créer un hash numérique simple et sûr
-    const hashString = normalized.slice(0, 150) + '|' + normalized.slice(-50);
-    let hash = 0;
-    
-    if (hashString.length === 0) {
-      return `empty_${Date.now()}`;
-    }
-    
-    // Utiliser l'algorithme djb2 pour le hash
-    for (let i = 0; i < hashString.length; i++) {
-      const char = hashString.charCodeAt(i);
-      hash = ((hash << 5) + hash) + char; // hash * 33 + char
-      hash = hash >>> 0; // Convertir en entier 32-bit non signé
-    }
-    
-    // Convertir en base36 et limiter la longueur
-    const hashStr = hash.toString(36);
-    return `cv_${hashStr}_${text.length}`.slice(0, 40);
-    
-  } catch (error) {
-    console.error('Error generating cache key:', error);
-    // Fallback sûr sans aucun caractère spécial
-    return `fallback_${Date.now()}_${text.length}_${Math.random().toString(36).slice(2, 8)}`;
-  }
-};
-
-/**
- * Extraction d'adresse optimisée avec patterns plus précis
+ * Extraction d'adresse simplifiée
  */
 const extractAddressFromText = (text: string): { address: string; postal_code: string; city: string; country: string; location: string } => {
+  console.log('🏠 Extracting address from text...');
+  
   const addressPatterns = [
     /(\d+[\w\s,-]+?)\s*,?\s*(\d{5})\s+([A-Za-zÀ-ÿ\s-]+?)(?:\s*,\s*(France|Suisse|Belgique))?/gi,
     /([A-Za-zÀ-ÿ\s-]+?)\s*,\s*(France|Suisse|Belgique|Luxembourg)/gi
@@ -98,73 +60,51 @@ const extractAddressFromText = (text: string): { address: string; postal_code: s
 };
 
 /**
- * Prompt ultra-optimisé pour réduire les tokens de 60%
+ * Prompt simplifié pour l'analyse
  */
-const createOptimizedPrompt = (resumeText: string): string => {
-  return `Extract & score CV (JSON only):
+const createSimplifiedPrompt = (resumeText: string): string => {
+  return `Analyse ce CV et retourne un JSON avec cette structure exacte :
 {
   "candidate_data": {
-    "first_name": "", "last_name": "", "email": "", "phone": "",
-    "position": "", "location": "", "address": "", "postal_code": "", 
-    "city": "", "country": "", "years_experience": 0, "company": "",
-    "skills": [], "experiences": [], "education": [], "languages": [],
-    "availability": "", "mobility": "", "career_objectives": ""
+    "first_name": "",
+    "last_name": "",
+    "email": "",
+    "phone": "",
+    "position": "",
+    "location": "",
+    "address": "",
+    "postal_code": "",
+    "city": "",
+    "country": "",
+    "years_experience": 0,
+    "company": "",
+    "skills": [],
+    "experiences": [],
+    "education": [],
+    "languages": [],
+    "availability": "",
+    "mobility": "",
+    "career_objectives": ""
   },
   "scoring": {
     "overall_score": 0,
-    "explanation": "Brief analysis with strengths/improvements",
+    "explanation": "Brève analyse avec points forts et améliorations",
     "breakdown": {
-      "education": 0, "experience": 0, "skills": 0, "languages": 0,
-      "location": 0, "profileSummary": 0, "cvStructure": 0
+      "education": 0,
+      "experience": 0,
+      "skills": 0,
+      "languages": 0,
+      "location": 0,
+      "profileSummary": 0,
+      "cvStructure": 0
     }
   }
 }
 
-Score (0-100): Education(20)+Experience(20)+Skills(20)+Languages(10)+Location(10)+Summary(10)+Structure(10)
-Extract complete address. French countries. No invention.
+Score sur 100 : Education(20) + Expérience(20) + Compétences(20) + Langues(10) + Localisation(10) + Résumé(10) + Structure(10)
+Extraire l'adresse complète si disponible. Pays francophones privilégiés.
 
-CV: ${resumeText.slice(0, 2000)}`; // Limitation du texte pour économiser les tokens
-};
-
-/**
- * Système de scoring adaptatif selon le type de candidat
- */
-const calculateAdaptiveScore = (extractedData: any): any => {
-  const data = extractedData.candidate_data;
-  const breakdown = extractedData.scoring?.breakdown || {};
-  
-  // Détection du niveau de séniorité pour adaptation du scoring
-  const experience = data.years_experience || 0;
-  const isJunior = experience <= 2;
-  const isSenior = experience >= 8;
-  
-  // Scoring adaptatif selon le profil
-  let adaptedScore = extractedData.scoring?.overall_score || 0;
-  
-  // Bonus pour profils juniors avec formation solide
-  if (isJunior && breakdown.education >= 15) {
-    adaptedScore += 5;
-  }
-  
-  // Bonus pour profils seniors avec compétences diverses
-  if (isSenior && (data.skills?.length || 0) >= 8) {
-    adaptedScore += 8;
-  }
-  
-  // Bonus pour mobilité déclarée
-  if (data.mobility && data.mobility.toLowerCase().includes('oui')) {
-    adaptedScore += 3;
-  }
-  
-  return {
-    ...extractedData,
-    scoring: {
-      ...extractedData.scoring,
-      overall_score: Math.min(100, adaptedScore),
-      adaptation_applied: true,
-      profile_type: isJunior ? 'junior' : isSenior ? 'senior' : 'intermediaire'
-    }
-  };
+CV: ${resumeText.slice(0, 3000)}`;
 };
 
 serve(async (req) => {
@@ -173,12 +113,19 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 Starting optimized resume-ai-analysis');
+    console.log('🚀 Starting SIMPLIFIED resume-ai-analysis');
     
     const requestData = await req.json();
-    const { resumeId, resumeText, overwriteExisting, fullAnalysis } = requestData;
+    const { resumeId, resumeText, overwriteExisting } = requestData;
+    
+    console.log('📋 Request data:', {
+      resumeId,
+      textLength: resumeText?.length || 0,
+      overwriteExisting
+    });
     
     if (!resumeId || !resumeText) {
+      console.error('❌ Missing required data');
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -193,6 +140,7 @@ serve(async (req) => {
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
     if (!openaiApiKey || !supabaseUrl || !supabaseServiceKey) {
+      console.error('❌ Missing environment variables');
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -204,31 +152,11 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Vérification du cache intelligent avec la fonction corrigée
-    const cacheKey = getCacheKey(resumeText);
-    console.log('Generated cache key:', cacheKey);
-    
-    if (!overwriteExisting) {
-      const { data: cachedResult } = await supabase
-        .from('ai_candidate_scores')
-        .select('*')
-        .eq('cache_key', cacheKey)
-        .single();
-        
-      if (cachedResult) {
-        console.log('✅ Using cached AI analysis');
-        return new Response(
-          JSON.stringify({ 
-            success: true,
-            cached: true,
-            score: cachedResult.score,
-            explanation: cachedResult.explanation
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
+    // CACHE TEMPORAIREMENT DÉSACTIVÉ POUR DÉBOGAGE
+    console.log('⚠️ Cache temporarily disabled for debugging');
 
+    // Récupérer les données du CV
+    console.log('📄 Fetching resume data...');
     const resumeDataResult = await supabase
       .from('resumes')
       .select('user_id')
@@ -236,6 +164,7 @@ serve(async (req) => {
       .single();
 
     if (resumeDataResult.error) {
+      console.error('❌ Failed to fetch resume:', resumeDataResult.error);
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -245,22 +174,26 @@ serve(async (req) => {
       );
     }
 
-    console.log('🤖 Calling OpenAI with ultra-optimized prompt...');
+    console.log('✅ Resume data fetched for user:', resumeDataResult.data.user_id);
+
+    // Appel à OpenAI avec prompt simplifié
+    console.log('🤖 Calling OpenAI with simplified prompt...');
     
-    const optimizedPrompt = createOptimizedPrompt(resumeText);
+    const simplifiedPrompt = createSimplifiedPrompt(resumeText);
     
     const openAIPayload = {
-      model: 'gpt-4o-mini', // Modèle le plus économique
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'user',
-          content: optimizedPrompt
+          content: simplifiedPrompt
         }
       ],
       temperature: 0.1,
-      max_tokens: 1500, // Réduit significativement
+      max_tokens: 2000,
     };
 
+    console.log('📤 Sending request to OpenAI...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -272,6 +205,7 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorData = await response.json();
+      console.error('❌ OpenAI API error:', errorData);
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -282,9 +216,12 @@ serve(async (req) => {
     }
 
     const aiResponse = await response.json();
+    console.log('✅ OpenAI response received');
+    
     const content = aiResponse.choices[0]?.message?.content;
     
     if (!content) {
+      console.error('❌ No content from AI');
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -294,10 +231,13 @@ serve(async (req) => {
       );
     }
 
+    console.log('📝 Parsing AI response...');
     let extractedData;
     try {
       extractedData = JSON.parse(content);
+      console.log('✅ AI response parsed successfully');
     } catch (parseError) {
+      console.error('❌ JSON parse error:', parseError);
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -307,24 +247,41 @@ serve(async (req) => {
       );
     }
 
-    // Application du scoring adaptatif
-    const adaptedData = calculateAdaptiveScore(extractedData);
-    
-    // Traitement optimisé des données
-    const processedCandidateData = {
-      ...adaptedData.candidate_data,
-      // Extraction d'adresse de fallback si nécessaire
-      ...((!adaptedData.candidate_data.address || !adaptedData.candidate_data.city) ? 
-        extractAddressFromText(resumeText) : {})
-    };
+    // Extraction d'adresse de fallback si nécessaire
+    const candidateData = extractedData.candidate_data;
+    if (!candidateData.address || !candidateData.city) {
+      console.log('🏠 Extracting address fallback...');
+      const addressInfo = extractAddressFromText(resumeText);
+      Object.assign(candidateData, addressInfo);
+    }
 
-    // Insertion du candidat avec gestion d'erreur simplifiée
+    // Préparation des données pour insertion avec validation
+    console.log('📊 Preparing candidate data for insertion...');
     const candidateInsertData = {
       resume_id: resumeId,
       user_id: resumeDataResult.data.user_id,
-      ...processedCandidateData
+      first_name: candidateData.first_name || '',
+      last_name: candidateData.last_name || '',
+      email: candidateData.email || null,
+      phone: candidateData.phone || null,
+      position: candidateData.position || null,
+      location: candidateData.location || null,
+      address: candidateData.address || null,
+      postal_code: candidateData.postal_code || null,
+      city: candidateData.city || null,
+      country: candidateData.country || null,
+      years_experience: candidateData.years_experience || 0,
+      company: candidateData.company || null,
+      skills: Array.isArray(candidateData.skills) ? candidateData.skills : [],
+      experiences: Array.isArray(candidateData.experiences) ? candidateData.experiences : [],
+      education: Array.isArray(candidateData.education) ? candidateData.education : [],
+      languages: Array.isArray(candidateData.languages) ? candidateData.languages : [],
+      availability: candidateData.availability || null,
+      mobility: candidateData.mobility || null,
+      career_objectives: candidateData.career_objectives || null
     };
 
+    console.log('💾 Inserting candidate into database...');
     const { data: candidate, error: insertError } = await supabase
       .from('candidates')
       .insert(candidateInsertData)
@@ -332,32 +289,45 @@ serve(async (req) => {
       .single();
 
     if (insertError) {
+      console.error('❌ Candidate insertion error:', insertError);
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Failed to create candidate'
+          error: `Failed to create candidate: ${insertError.message}`
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Sauvegarde du score avec cache key pour optimisation future
-    const scoringData = adaptedData.scoring;
+    console.log('✅ Candidate created successfully:', candidate.id);
+
+    // Sauvegarde du score AI (SIMPLIFIÉ)
+    const scoringData = extractedData.scoring;
     if (scoringData && scoringData.overall_score !== undefined) {
+      console.log('💯 Saving AI score...');
+      
       const scoreInsertData = {
         candidate_id: candidate.id,
         user_id: resumeDataResult.data.user_id,
         score: scoringData.overall_score,
         explanation: scoringData.explanation || '',
         breakdown: scoringData.breakdown || {},
-        cache_key: cacheKey,
         calculated_at: new Date().toISOString()
       };
 
-      await supabase
+      const { error: scoreError } = await supabase
         .from('ai_candidate_scores')
         .insert(scoreInsertData);
+
+      if (scoreError) {
+        console.error('⚠️ Score insertion error (non-critical):', scoreError);
+        // Ne pas faire échouer toute l'opération pour une erreur de score
+      } else {
+        console.log('✅ AI score saved successfully');
+      }
     }
+
+    console.log('🎉 Analysis completed successfully');
 
     return new Response(
       JSON.stringify({ 
@@ -365,19 +335,20 @@ serve(async (req) => {
         candidate: candidate,
         candidateId: candidate.id,
         scoring: scoringData,
-        optimizations_applied: ['ultra_compact_prompt', 'adaptive_scoring', 'intelligent_cache'],
-        message: 'CV analyzed with optimized AI pipeline'
+        message: 'CV analyzed successfully with simplified pipeline'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('💥 Optimized analysis error:', error);
+    console.error('💥 CRITICAL ERROR in simplified analysis:', error);
+    console.error('Error stack:', error.stack);
     
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: 'Unexpected error during optimized analysis'
+        error: `Unexpected error: ${error.message}`,
+        details: error.stack?.substring(0, 500)
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
