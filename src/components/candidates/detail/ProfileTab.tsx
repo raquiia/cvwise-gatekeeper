@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -86,8 +85,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   // Update local state when candidate prop changes
   useEffect(() => {
     console.log('ProfileTab: Updating state from candidate prop', {
-      candidateNotes: candidate.notes,
-      currentNotesState: notes
+      candidateAddress: candidate.address,
+      candidateCity: candidate.city,
+      candidateCountry: candidate.country,
+      candidatePostalCode: candidate.postal_code
     });
     
     setFirstName(candidate.first_name || '');
@@ -116,11 +117,22 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
     }
   }, [city, country]);
   
-  // Check if we have structured address data
-  const hasStructuredAddress = Boolean(address || postalCode || city || country);
-  const completeAddress = formatCompleteAddress(address, postalCode, city, country);
-  const isAddressComplete = Boolean(address && city && country);
+  // Determine address display logic
+  const structuredAddressExists = Boolean(address || postalCode || city || country);
+  const completeFormattedAddress = formatCompleteAddress(address, postalCode, city, country);
+  const isAddressComplete = Boolean(city && country);
   
+  console.log('ProfileTab: Address display logic', {
+    structuredAddressExists,
+    completeFormattedAddress,
+    isAddressComplete,
+    address,
+    postalCode,
+    city,
+    country,
+    location
+  });
+
   const handleSave = async () => {
     if (!candidate.id || !user?.id) return;
     
@@ -243,7 +255,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
             </CardContent>
           </Card>
 
-          {/* Adresse avec résumé amélioré */}
+          {/* Adresse - Section améliorée */}
           <Card className="shadow-sm border border-gray-200/80">
             <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-200/50">
               <div className="flex items-center justify-between">
@@ -262,18 +274,25 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {/* Résumé de l'adresse complète */}
-              {completeAddress && (
+              {/* TOUJOURS afficher un résumé de l'adresse si nous avons des données */}
+              {(completeFormattedAddress || location) && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
                   <Label className="text-sm font-medium text-emerald-800 flex items-center gap-2 mb-2">
                     <MapPin className="h-4 w-4" />
-                    Adresse complète
+                    Adresse extraite du CV
                   </Label>
-                  <p className="text-emerald-700 font-medium">{completeAddress}</p>
+                  <p className="text-emerald-700 font-medium">
+                    {completeFormattedAddress || location}
+                  </p>
+                  {!completeFormattedAddress && location && (
+                    <p className="text-sm text-emerald-600 mt-1">
+                      (Format non structuré - vous pouvez séparer ci-dessous)
+                    </p>
+                  )}
                 </div>
               )}
               
-              {/* Champs d'adresse structurés */}
+              {/* Champs d'adresse détaillés - TOUJOURS visibles */}
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="address" className="text-sm font-medium text-gray-700">Rue et numéro</Label>
@@ -282,7 +301,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                     id="address"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Ex: Avenue du Grey 62"
+                    placeholder="Ex: Rue Philippe-Plantamour 17"
                     className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                   />
                 </div>
@@ -295,7 +314,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                       id="postalCode"
                       value={postalCode}
                       onChange={(e) => setPostalCode(e.target.value)}
-                      placeholder="Ex: 1018"
+                      placeholder="Ex: 1201"
                       className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                     />
                   </div>
@@ -306,7 +325,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                       id="city"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      placeholder="Ex: Lausanne"
+                      placeholder="Ex: Geneva"
                       className="border-gray-300 focus:border-emerald-500 focus:ring-emerald-500"
                     />
                   </div>
@@ -323,28 +342,12 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
                   </div>
                 </div>
                 
-                {/* Champ location en lecture seule si adresse structurée disponible */}
-                {location && hasStructuredAddress && (
-                  <div className="space-y-2">
-                    <Label htmlFor="location" className="text-sm font-medium text-gray-500">
-                      Localisation originale (remplacée par l'adresse structurée ci-dessus)
-                    </Label>
-                    <Input
-                      type="text"
-                      id="location"
-                      value={location}
-                      className="border-gray-200 bg-gray-50 text-gray-600"
-                      readOnly
-                    />
-                  </div>
-                )}
-                
-                {/* Champ location principal si pas d'adresse structurée */}
-                {location && !hasStructuredAddress && (
+                {/* Champ location pour compatibilité - seulement si pas d'adresse structurée */}
+                {location && !structuredAddressExists && (
                   <div className="space-y-2">
                     <Label htmlFor="location" className="text-sm font-medium text-gray-700 flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
-                      Localisation
+                      Localisation (format libre)
                     </Label>
                     <Input
                       type="text"
