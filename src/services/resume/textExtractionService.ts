@@ -11,81 +11,35 @@ export interface TextExtractionResult {
 /**
  * Extraire le texte d'un CV à partir de son ID
  */
-export const extractResumeText = async (resumeId: string, filePath?: string): Promise<TextExtractionResult> => {
+export const extractResumeText = async (resumeId: string): Promise<TextExtractionResult> => {
   try {
     console.log('Starting text extraction for resume:', resumeId);
     
-    // If filePath is not provided, try to get it from the database
-    let path = filePath;
-    
-    if (!path) {
-      try {
-        console.log('File path not provided, fetching from database');
-        
-        // Try to get the resume data using the RPC function first
-        const { data: rpcData, error: rpcError } = await supabase
-          .rpc('get_resume_by_id', { p_resume_id: resumeId });
-          
-        if (rpcError) {
-          console.error('Failed to get resume data via RPC:', rpcError);
-          throw new Error('Impossible de récupérer les informations du CV via RPC');
-        }
-        
-        if (!rpcData) {
-          throw new Error('Aucune donnée de CV trouvée');
-        }
-        
-        // Handle the response which could be an array or a single object
-        if (Array.isArray(rpcData)) {
-          if (rpcData.length === 0) {
-            throw new Error('Aucune donnée de CV trouvée');
-          }
-          path = rpcData[0].file_path;
-          console.log('Got file path from RPC array response:', path);
-        } else {
-          // Type assertion to help TypeScript understand the object structure
-          const resumeObj = rpcData as unknown as { file_path: string };
-          path = resumeObj.file_path;
-          console.log('Got file path from RPC object response:', path);
-        }
-      } catch (rpcError) {
-        console.error('RPC error, trying direct query as fallback:', rpcError);
-        
-        // Fallback to direct query if RPC fails
-        try {
-          const { data: resumeData, error: queryError } = await supabase
-            .from("resumes")
-            .select("file_path")
-            .eq("id", resumeId)
-            .single();
-            
-          if (queryError) {
-            console.error('Failed to get resume data via direct query:', queryError);
-            throw queryError;
-          }
-          
-          if (!resumeData) {
-            throw new Error('CV non trouvé');
-          }
-          
-          path = resumeData.file_path;
-          console.log('Got file path from direct query:', path);
-        } catch (queryError) {
-          console.error('All attempts to get file path failed:', queryError);
-          throw new Error('Impossible de trouver le chemin du fichier pour ce CV');
-        }
-      }
+    // Get the file path from the database
+    console.log('Fetching resume data from database');
+    const { data: resumeData, error: fetchError } = await supabase
+      .from("resumes")
+      .select("file_path")
+      .eq("id", resumeId)
+      .single();
       
-      if (!path) {
-        throw new Error('Chemin du fichier non trouvé pour ce CV');
-      }
+    if (fetchError) {
+      console.error('Failed to get resume data:', fetchError);
+      throw new Error('Impossible de récupérer les informations du CV');
     }
     
-    // Obtenir l'URL publique du fichier
-    console.log('Getting public URL for file path:', path);
+    if (!resumeData || !resumeData.file_path) {
+      throw new Error('Chemin du fichier non trouvé pour ce CV');
+    }
+    
+    const filePath = resumeData.file_path;
+    console.log('Got file path from database:', filePath);
+    
+    // Get the public URL for the file
+    console.log('Getting public URL for file path:', filePath);
     const { data: urlData } = supabase.storage
       .from('resumes')
-      .getPublicUrl(path);
+      .getPublicUrl(filePath);
       
     if (!urlData || !urlData.publicUrl) {
       console.error('Failed to get public URL for file');
@@ -94,7 +48,7 @@ export const extractResumeText = async (resumeId: string, filePath?: string): Pr
     
     console.log('Public URL obtained:', urlData.publicUrl);
     
-    // Appel à l'edge function d'extraction de texte
+    // Call the edge function with the PDF URL
     console.log('Invoking extract-cv-text edge function');
     const { data, error } = await supabase.functions.invoke('extract-cv-text', {
       body: { 
@@ -116,12 +70,12 @@ export const extractResumeText = async (resumeId: string, filePath?: string): Pr
     console.log('Text extraction successful, length:', data.data?.text?.length || 0);
     console.log('Sample of extracted text:', data.data?.text?.substring(0, 500) + '...');
     
-    // Vérifier que le texte extrait n'est pas vide
+    // Check that extracted text is not empty
     if (!data.data?.text || data.data.text.trim() === '') {
       throw new Error('Le texte extrait est vide');
     }
     
-    // Retourner le texte extrait
+    // Return the extracted text
     return { 
       success: true, 
       message: "Texte extrait avec succès",
