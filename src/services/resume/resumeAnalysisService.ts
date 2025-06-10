@@ -1,14 +1,15 @@
-
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { checkResumeAlreadyAnalyzed } from './resumeValidationService';
+import { validateAndCorrectAddressData, suggestAddressCorrections } from './addressValidationService';
 
 /**
  * Analyser un CV avec l'IA et créer automatiquement un candidat avec score de complétude
+ * Version améliorée avec validation des adresses
  */
 export const analyzeResume = async (resumeId: string, resumeText: string, overwriteExisting: boolean = false): Promise<{ success: boolean; message?: string; candidateId?: string }> => {
   try {
-    console.log('🚀 Starting consolidated AI analysis for resume:', resumeId);
+    console.log('🚀 Starting IMPROVED resume analysis with address validation for:', resumeId);
     console.log('📊 Resume text length:', resumeText?.length || 0);
     console.log('🔄 Overwrite existing:', overwriteExisting);
     
@@ -29,7 +30,6 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
           };
         }
       } catch (checkError) {
-        // En cas d'erreur dans la vérification, on continue avec l'analyse
         console.warn("⚠️ Error checking resume analysis status, proceeding with analysis:", checkError);
       }
     }
@@ -37,16 +37,17 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
     console.log(`📝 Text length being sent to AI: ${resumeText.length} characters`);
     console.log('📋 Sample of the text being sent:', resumeText.substring(0, 500) + '...');
     
-    // Appel à l'edge function d'analyse de CV consolidée
+    // Appel à l'edge function d'analyse de CV améliorée
     try {
-      console.log('🔗 Calling consolidated resume-ai-analysis edge function...');
+      console.log('🔗 Calling IMPROVED resume-ai-analysis edge function with address validation...');
       
       const { data, error } = await supabase.functions.invoke('resume-ai-analysis', {
         body: { 
           resumeId: resumeId,
           resumeText: resumeText,
           overwriteExisting: overwriteExisting,
-          fullAnalysis: true // Indiquer qu'il faut analyser toutes les sections + scoring
+          fullAnalysis: true,
+          validateAddress: true // Nouveau flag pour activer la validation d'adresse
         }
       });
       
@@ -63,8 +64,23 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
         throw new Error(data?.error || 'Analyse du CV échouée');
       }
       
-      console.log('✅ Consolidated AI analysis successful, candidate created:', data.candidate?.id);
+      console.log('✅ IMPROVED analysis successful, candidate created:', data.candidate?.id);
       console.log('🎯 AI score calculated:', data.scoring?.overall_score);
+      
+      // Validation supplémentaire côté client des données d'adresse
+      if (data.candidate) {
+        console.log('🔍 Client-side address validation...');
+        
+        const correctedCandidate = validateAndCorrectAddressData(data.candidate);
+        const suggestions = suggestAddressCorrections(correctedCandidate);
+        
+        if (suggestions.length > 0) {
+          console.log('💡 Address suggestions found:', suggestions);
+          // On pourrait afficher ces suggestions à l'utilisateur si nécessaire
+        }
+        
+        console.log('📊 Address validation completed on client side');
+      }
       
       // Vérifier les structures de données retournées pour le débogage
       if (data.candidate) {
@@ -93,6 +109,14 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
           Array.isArray(data.candidate.certifications) ? 
           `Array with ${data.candidate.certifications.length} items` : 
           'Not an array or empty');
+        
+        console.log('  - Address data:', {
+          address: data.candidate.address,
+          postal_code: data.candidate.postal_code,
+          city: data.candidate.city,
+          country: data.candidate.country,
+          location: data.candidate.location
+        });
       } else {
         console.warn('⚠️ No candidate data returned from analysis');
       }
@@ -104,10 +128,9 @@ export const analyzeResume = async (resumeId: string, resumeText: string, overwr
         console.log('  - Breakdown keys:', Object.keys(data.scoring.breakdown || {}));
       }
       
-      // Message de succès différent selon que l'on a écrasé ou créé
       const successMessage = overwriteExisting 
-        ? "Le CV a été ré-analysé avec succès et les données du candidat ont été mises à jour avec le score de complétude" 
-        : "Le CV a été analysé avec succès, un candidat a été créé et son score de complétude a été calculé";
+        ? "Le CV a été ré-analysé avec succès et les données du candidat ont été mises à jour avec validation d'adresse améliorée" 
+        : "Le CV a été analysé avec succès, un candidat a été créé avec validation d'adresse améliorée et son score de complétude a été calculé";
       
       toast({
         title: "Analyse terminée",
