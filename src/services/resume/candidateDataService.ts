@@ -1,5 +1,4 @@
 
-
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from '@/services/data/candidateService';
@@ -28,37 +27,34 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     }
     
     // Handle both array and direct object responses
-    const candidateData = Array.isArray(data) ? data[0] : data;
-    
-    // Type assertion to access address fields safely
-    const candidate = candidateData as any;
+    const candidateRawData = Array.isArray(data) ? data[0] : data;
     
     // LOG DÉTAILLÉ des données brutes récupérées de la base
     console.log('🗃️ RAW DATA FROM DATABASE:', {
-      id: candidate?.id,
-      first_name: candidate?.first_name,
-      last_name: candidate?.last_name,
-      address: candidate?.address,
-      postal_code: candidate?.postal_code,
-      city: candidate?.city,
-      country: candidate?.country,
-      location: candidate?.location
+      id: candidateRawData?.id,
+      first_name: candidateRawData?.first_name,
+      last_name: candidateRawData?.last_name,
+      address: candidateRawData?.address,
+      postal_code: candidateRawData?.postal_code,
+      city: candidateRawData?.city,
+      country: candidateRawData?.country,
+      location: candidateRawData?.location
     });
     
     // Log spécifiquement pour Louis Le Potvin
-    if (candidate?.first_name === 'Louis' && candidate?.last_name === 'Le Potvin') {
+    if (candidateRawData?.first_name === 'Louis' && candidateRawData?.last_name === 'Le Potvin') {
       console.log('🎯 LOUIS LE POTVIN - RAW DATABASE DATA:', {
-        address: candidate?.address || 'UNDEFINED',
-        postal_code: candidate?.postal_code || 'UNDEFINED', 
-        city: candidate?.city || 'UNDEFINED',
-        country: candidate?.country || 'UNDEFINED',
-        location: candidate?.location || 'UNDEFINED'
+        address: candidateRawData?.address || 'UNDEFINED',
+        postal_code: candidateRawData?.postal_code || 'UNDEFINED', 
+        city: candidateRawData?.city || 'UNDEFINED',
+        country: candidateRawData?.country || 'UNDEFINED',
+        location: candidateRawData?.location || 'UNDEFINED'
       });
     }
     
     console.log('✅ Successfully retrieved complete candidate data from database');
     
-    return candidateData as CandidateData;
+    return candidateRawData as CandidateData;
   } catch (error: any) {
     console.error('❌ Exception in getCompleteCandidateData:', error);
     toast({
@@ -69,4 +65,3 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     throw error;
   }
 };
-
