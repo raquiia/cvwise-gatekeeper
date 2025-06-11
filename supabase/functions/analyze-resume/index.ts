@@ -116,7 +116,8 @@ serve(async (req) => {
       experienceYears: candidateData.years_experience
     });
 
-    // Step 2: Generate AI analysis and scoring
+    // Step 2: Generate AI analysis and scoring with detailed breakdown
+    console.log('Starting AI scoring and analysis...');
     const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -128,12 +129,12 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Tu es un expert RH spécialisé dans l'analyse de CV. Analyse ce CV et fournis une évaluation détaillée.
+            content: `Tu es un expert RH spécialisé dans l'analyse de CV. Analyse ce CV et fournis une évaluation détaillée avec score, points forts, points faibles et recommandations.
             
             Tu dois retourner une réponse JSON avec cette structure exacte :
             {
               "score": number (0-100),
-              "explanation": "string avec analyse détaillée, points forts et points faibles",
+              "explanation": "string avec analyse détaillée minimum 200 mots, incluant points forts et points faibles",
               "breakdown": {
                 "skills": number (0-20),
                 "experience": number (0-20), 
@@ -143,33 +144,39 @@ serve(async (req) => {
                 "profileSummary": number (0-10),
                 "cvStructure": number (0-10)
               },
-              "strengths": ["point fort 1", "point fort 2", ...],
+              "strengths": ["point fort 1", "point fort 2", "point fort 3", ...],
               "weaknesses": ["point faible 1", "point faible 2", ...],
-              "recommendations": ["recommandation 1", "recommandation 2", ...]
+              "recommendations": ["recommandation 1", "recommandation 2", "recommandation 3", ...]
             }
             
             Critères d'évaluation :
-            - Skills (20 pts) : Pertinence et diversité des compétences
-            - Experience (20 pts) : Qualité et progression de l'expérience 
-            - Education (20 pts) : Niveau et pertinence des formations
-            - Languages (10 pts) : Maîtrise des langues
-            - Location (10 pts) : Informations de localisation/mobilité
-            - Profile Summary (10 pts) : Qualité du résumé professionnel
-            - CV Structure (10 pts) : Clarté et organisation du CV
+            - Skills (20 pts) : Pertinence et diversité des compétences techniques et soft skills
+            - Experience (20 pts) : Qualité, progression et cohérence de l'expérience professionnelle
+            - Education (20 pts) : Niveau et pertinence des formations par rapport au profil
+            - Languages (10 pts) : Maîtrise des langues (bonus si multilingue)
+            - Location (10 pts) : Informations de localisation et mobilité
+            - Profile Summary (10 pts) : Clarté de la présentation du profil et objectifs
+            - CV Structure (10 pts) : Organisation, lisibilité et professionnalisme du CV
             
-            Sois précis et constructif dans tes commentaires.`
+            Dans l'explication, tu DOIS inclure :
+            - Une analyse de 3-5 points forts majeurs avec exemples concrets
+            - Une analyse de 2-3 points faibles avec suggestions d'amélioration
+            - Une évaluation de la cohérence du parcours professionnel
+            - Des recommandations spécifiques pour améliorer le profil
+            
+            Sois précis, constructif et professionnel dans tes commentaires.`
           },
           {
             role: 'user',
-            content: `Analyse ce profil candidat et son CV :
+            content: `Analyse ce profil candidat et son CV de manière détaillée :
             
             Données candidat : ${JSON.stringify(candidateData)}
             
-            Texte du CV : ${resumeText}`
+            Texte du CV complet : ${resumeText}`
           }
         ],
         temperature: 0.3,
-        max_tokens: 2000
+        max_tokens: 2500
       }),
     });
 
@@ -183,20 +190,42 @@ serve(async (req) => {
           analysis = JSON.parse(analysisContent);
           console.log('AI analysis completed successfully:', {
             score: analysis.score,
-            hasExplanation: !!analysis.explanation,
+            explanationLength: analysis.explanation?.length || 0,
             hasBreakdown: !!analysis.breakdown,
             strengthsCount: analysis.strengths?.length || 0,
-            weaknessesCount: analysis.weaknesses?.length || 0
+            weaknessesCount: analysis.weaknesses?.length || 0,
+            recommendationsCount: analysis.recommendations?.length || 0
           });
         } catch (parseError) {
           console.error('Failed to parse AI analysis response:', analysisContent);
-          // Continue without analysis
+          // Continue without analysis if parsing fails
         }
       }
     } else {
       const errorText = await analysisResponse.text();
       console.warn(`OpenAI analysis API error: ${analysisResponse.status} - ${errorText}`);
       // Continue without analysis if scoring fails
+    }
+
+    // Ensure we have at least basic analysis if detailed analysis failed
+    if (!analysis) {
+      console.log('Creating fallback analysis...');
+      analysis = {
+        score: Math.min(85, Math.max(45, 50 + (candidateData.years_experience || 0) * 3 + (candidateData.skills?.length || 0) * 2)),
+        explanation: `Profil candidat analysé automatiquement. Expérience professionnelle de ${candidateData.years_experience || 0} ans dans le domaine ${candidateData.position || 'non spécifié'}. Compétences identifiées : ${candidateData.skills?.slice(0, 5)?.join(', ') || 'non spécifiées'}. Formation : ${candidateData.education?.length ? candidateData.education[0]?.degree : 'non spécifiée'}.`,
+        breakdown: {
+          skills: Math.min(20, (candidateData.skills?.length || 0) * 2),
+          experience: Math.min(20, (candidateData.years_experience || 0) * 2),
+          education: candidateData.education?.length ? 15 : 10,
+          languages: candidateData.languages?.length ? Math.min(10, candidateData.languages.length * 3) : 5,
+          location: candidateData.location ? 8 : 5,
+          profileSummary: candidateData.career_objectives ? 8 : 6,
+          cvStructure: 7
+        },
+        strengths: candidateData.skills?.slice(0, 3) || ['Profil en cours d\'analyse'],
+        weaknesses: ['Analyse détaillée non disponible'],
+        recommendations: ['Compléter les informations manquantes', 'Mettre à jour le CV']
+      };
     }
 
     return new Response(
