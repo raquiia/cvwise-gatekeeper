@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Briefcase, Building, Calendar, DollarSign, Clock, MapPin, Car } from 'lucide-react';
+import { Briefcase, Building, Calendar, DollarSign, Clock, MapPin, Car, Target } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
 
 interface ProfessionalSectionProps {
@@ -65,6 +65,41 @@ const ProfessionalSection: React.FC<ProfessionalSectionProps> = ({ candidate }) 
             </div>
           )}
         </div>
+
+        {/* Score de complétude du profil */}
+        {candidate.profile_completeness !== undefined && candidate.profile_completeness !== null && (
+          <div className="bg-muted/30 p-3 rounded-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-navy-dark">Complétude du profil</span>
+              <span className="text-lg font-bold text-navy">{candidate.profile_completeness}%</span>
+            </div>
+            <div className="w-full bg-muted mt-2 rounded-full h-2">
+              <div 
+                className="bg-navy h-2 rounded-full transition-all duration-300" 
+                style={{ width: `${candidate.profile_completeness}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
+
+        {/* Objectifs de carrière - compact */}
+        {candidate.career_objectives && candidate.career_objectives.trim() && (
+          <div className="bg-muted/30 p-3 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="w-4 h-4 text-navy" />
+              <span className="text-sm font-medium text-navy-dark">Objectifs de carrière</span>
+            </div>
+            <p className="text-sm text-navy-dark leading-relaxed line-clamp-3">{candidate.career_objectives}</p>
+          </div>
+        )}
+
+        {/* Centres d'intérêt - compact */}
+        {candidate.interests && candidate.interests.trim() && (
+          <div className="bg-muted/30 p-3 rounded-lg">
+            <div className="text-sm font-medium text-navy-dark mb-1">Centres d'intérêt</div>
+            <p className="text-sm text-navy-dark leading-relaxed line-clamp-2">{candidate.interests}</p>
+          </div>
+        )}
 
         {/* Salaire et mobilité */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">

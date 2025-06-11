@@ -9,6 +9,15 @@ interface IdentityContactSectionProps {
 }
 
 const IdentityContactSection: React.FC<IdentityContactSectionProps> = ({ candidate }) => {
+  // Debug logging pour vérifier les données d'adresse
+  console.log('IdentityContactSection - Address data:', {
+    address: candidate.address,
+    postal_code: candidate.postal_code,
+    city: candidate.city,
+    country: candidate.country,
+    location: candidate.location
+  });
+
   return (
     <Card className="border-navy/10 shadow-sm">
       <CardHeader className="pb-3">
@@ -43,27 +52,40 @@ const IdentityContactSection: React.FC<IdentityContactSectionProps> = ({ candida
           )}
         </div>
 
-        {/* Adresse compacte */}
+        {/* Adresse complète */}
         {(candidate.address || candidate.city || candidate.postal_code || candidate.country) && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <MapPin className="w-4 h-4 text-navy" />
-              <span className="font-medium text-muted-foreground">Adresse</span>
+              <span className="font-medium text-muted-foreground">Adresse complète</span>
             </div>
-            <div className="text-sm text-navy-dark ml-6">
-              {candidate.address && <div>{candidate.address}</div>}
-              <div>
-                {candidate.postal_code && <span className="bg-navy/10 px-2 py-0.5 rounded mr-2">{candidate.postal_code}</span>}
-                {candidate.city} {candidate.country && `(${candidate.country})`}
+            <div className="text-sm text-navy-dark ml-6 space-y-1">
+              {candidate.address && (
+                <div className="font-medium">{candidate.address}</div>
+              )}
+              <div className="flex items-center gap-2">
+                {candidate.postal_code && (
+                  <span className="bg-navy/10 px-2 py-0.5 rounded font-mono text-xs">
+                    {candidate.postal_code}
+                  </span>
+                )}
+                <span>
+                  {candidate.city}
+                  {candidate.country && candidate.country !== candidate.city && (
+                    <span className="text-muted-foreground ml-1">({candidate.country})</span>
+                  )}
+                </span>
               </div>
             </div>
           </div>
         )}
 
-        {/* Localisation héritée si différente */}
-        {candidate.location && candidate.location !== `${candidate.city || ''}${candidate.country ? `, ${candidate.country}` : ''}` && (
-          <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-            <strong>Localisation héritée :</strong> {candidate.location}
+        {/* Localisation héritée si différente de l'adresse structurée */}
+        {candidate.location && 
+         candidate.location !== `${candidate.city || ''}${candidate.country ? `, ${candidate.country}` : ''}` && 
+         candidate.location !== candidate.city && (
+          <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded border-l-2 border-navy/20">
+            <strong>Localisation alternative :</strong> {candidate.location}
           </div>
         )}
       </CardContent>
