@@ -50,6 +50,7 @@ export const useAIScoring = () => {
         }
       }));
 
+      // Démarrer le chargement immédiatement
       fetchAIScore(candidateId, jobOfferId, key);
     }
 
@@ -68,6 +69,7 @@ export const useAIScoring = () => {
     try {
       console.log(`🔍 [useAIScoring] Fetching AI score for candidate ${candidateId}, jobOffer: ${jobOfferId || 'general'}`);
       
+      // Appeler la fonction RPC avec les bons paramètres
       const { data, error } = await supabase.rpc('get_ai_candidate_score', {
         p_candidate_id: candidateId,
         p_job_offer_id: jobOfferId || null
@@ -78,7 +80,7 @@ export const useAIScoring = () => {
         throw error;
       }
 
-      console.log(`📊 [useAIScoring] AI score data received:`, data);
+      console.log(`📊 [useAIScoring] Raw AI score data received:`, data);
 
       if (data && data.length > 0) {
         const scoreData = data[0];
@@ -92,7 +94,7 @@ export const useAIScoring = () => {
               ? JSON.parse(scoreData.breakdown) 
               : scoreData.breakdown;
           } catch (e) {
-            console.warn('Failed to parse breakdown:', e);
+            console.warn('❌ [useAIScoring] Failed to parse breakdown:', e);
             breakdown = {};
           }
         }
@@ -110,7 +112,7 @@ export const useAIScoring = () => {
           }
         }));
       } else {
-        console.log(`ℹ️ [useAIScoring] No AI score found for candidate ${candidateId}`);
+        console.log(`ℹ️ [useAIScoring] No AI score found in database for candidate ${candidateId}`);
         setScores(prev => ({
           ...prev,
           [key]: {
@@ -215,6 +217,25 @@ export const useAIScoring = () => {
     }
   };
 
+  // Force le rechargement d'un score spécifique
+  const forceRefresh = (candidateId: string, jobOfferId?: string) => {
+    const key = `${candidateId}_${jobOfferId || 'general'}`;
+    console.log(`🔄 [useAIScoring] Force refreshing score for key: ${key}`);
+    
+    // Supprimer du cache et recharger
+    setScores(prev => {
+      const newScores = { ...prev };
+      delete newScores[key];
+      return newScores;
+    });
+    
+    // Supprimer du loading ref aussi
+    loadingRef.current.delete(key);
+    
+    // Relancer le chargement
+    getAIScore(candidateId, jobOfferId);
+  };
+
   // Propriété dérivée pour savoir si on est en mode job-specific
   const isJobSpecific = Object.values(scores).some(score => score.isJobSpecific);
 
@@ -223,6 +244,7 @@ export const useAIScoring = () => {
     saveAIScore,
     clearCache,
     preloadScoresFromDatabase,
+    forceRefresh,
     isJobSpecific
   };
 };

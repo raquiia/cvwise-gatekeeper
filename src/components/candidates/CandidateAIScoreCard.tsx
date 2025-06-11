@@ -3,7 +3,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Brain, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Brain, TrendingUp, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { useCandidateScore } from '@/hooks/use-candidate-score';
 import { CandidateData } from '@/services/data/candidateService';
@@ -17,7 +18,7 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
   candidate, 
   compact = false 
 }) => {
-  const { getAIScore } = useAIScoring();
+  const { getAIScore, forceRefresh } = useAIScoring();
   const { score: contextualScore, isLoading: contextualLoading } = useCandidateScore(candidate);
   
   // Récupérer le score IA général (pas job-spécifique)
@@ -29,6 +30,7 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
     explanationLength: aiScore.explanation?.length || 0,
     isLoading: aiScore.isLoading,
     error: aiScore.error,
+    source: aiScore.source,
     contextualScore: contextualScore?.overall,
     profileCompleteness: candidate.profile_completeness
   });
@@ -38,6 +40,13 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
   const isLoading = aiScore.isLoading || contextualLoading;
   const hasAIScore = aiScore.score !== null;
   const hasExplanation = !!aiScore.explanation && aiScore.explanation.length > 0;
+
+  const handleRefresh = () => {
+    console.log(`🔄 [CandidateAIScoreCard] Manual refresh requested for candidate ${candidate.id}`);
+    if (candidate.id) {
+      forceRefresh(candidate.id);
+    }
+  };
 
   const getScoreColor = (score: number) => {
     if (score >= 85) return 'text-emerald-600 bg-emerald-50 border-emerald-200';
@@ -94,17 +103,36 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
             )}
           </CardTitle>
           
-          <Badge className={`px-3 py-1 text-sm font-bold border ${getScoreColor(displayScore)}`}>
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              `${displayScore}/100`
-            )}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge className={`px-3 py-1 text-sm font-bold border ${getScoreColor(displayScore)}`}>
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                `${displayScore}/100`
+              )}
+            </Badge>
+            
+            {/* Bouton de refresh pour forcer le rechargement */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="h-8 w-8 p-0"
+              title="Actualiser le score depuis la base de données"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
         
         <p className="text-sm text-gray-600">
           {getScoreLabel(displayScore, hasAIScore)}
+          {aiScore.source && (
+            <span className="text-xs text-gray-500 ml-2">
+              ({aiScore.source === 'database' ? 'depuis la base' : aiScore.source})
+            </span>
+          )}
         </p>
       </CardHeader>
       
