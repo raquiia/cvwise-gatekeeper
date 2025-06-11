@@ -28,36 +28,49 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
     // Handle both array and direct object responses
     const candidateRawData = Array.isArray(data) ? data[0] : data;
     
-    // Log the address data returned from the corrected RPC function
-    console.log('🏠 Address data from corrected RPC function:', {
+    // Log complet des données d'adresse retournées
+    console.log('🏠 Complete address data from RPC function:', {
+      candidateId,
       address: candidateRawData.address,
       postal_code: candidateRawData.postal_code,
       city: candidateRawData.city,
       country: candidateRawData.country,
+      location: candidateRawData.location,
+      // Types de données pour debug
       addressType: typeof candidateRawData.address,
       postalCodeType: typeof candidateRawData.postal_code,
       cityType: typeof candidateRawData.city,
-      countryType: typeof candidateRawData.country
+      countryType: typeof candidateRawData.country,
+      locationType: typeof candidateRawData.location,
+      // Vérification des valeurs vides
+      addressEmpty: !candidateRawData.address || candidateRawData.address.trim() === '',
+      postalCodeEmpty: !candidateRawData.postal_code || candidateRawData.postal_code.trim() === '',
+      cityEmpty: !candidateRawData.city || candidateRawData.city.trim() === '',
+      countryEmpty: !candidateRawData.country || candidateRawData.country.trim() === '',
+      locationEmpty: !candidateRawData.location || candidateRawData.location.trim() === ''
     });
     
-    // Create the candidate data object with explicit address field mapping
+    // Create the candidate data object with explicit address field mapping and cleaning
     const candidateData: CandidateData = {
       ...candidateRawData,
-      // Explicitly map address fields to ensure they're not lost
-      address: candidateRawData.address || '',
-      postal_code: candidateRawData.postal_code || '',
-      city: candidateRawData.city || '',
-      country: candidateRawData.country || ''
+      // Explicitly map and clean address fields to ensure they're properly processed
+      address: candidateRawData.address ? candidateRawData.address.trim() : '',
+      postal_code: candidateRawData.postal_code ? candidateRawData.postal_code.trim() : '',
+      city: candidateRawData.city ? candidateRawData.city.trim() : '',
+      country: candidateRawData.country ? candidateRawData.country.trim() : '',
+      location: candidateRawData.location ? candidateRawData.location.trim() : ''
     };
     
-    console.log('✅ Successfully retrieved complete candidate data with address fields:', {
+    console.log('✅ Successfully retrieved and cleaned candidate data with address fields:', {
       id: candidateData.id,
       first_name: candidateData.first_name,
       last_name: candidateData.last_name,
       address: candidateData.address,
       postal_code: candidateData.postal_code,
       city: candidateData.city, 
-      country: candidateData.country
+      country: candidateData.country,
+      location: candidateData.location,
+      hasAnyAddressInfo: !!(candidateData.address || candidateData.postal_code || candidateData.city || candidateData.country || candidateData.location)
     });
     
     return candidateData;
