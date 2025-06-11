@@ -17,6 +17,7 @@ export interface AIScoreData {
   isJobSpecific: boolean;
   isLoading: boolean;
   error: string | null;
+  source?: 'database' | 'fresh_calculation' | 'cache';
 }
 
 export const useAIScoring = () => {
@@ -44,7 +45,8 @@ export const useAIScoring = () => {
           breakdown: undefined,
           isJobSpecific: !!jobOfferId,
           isLoading: true,
-          error: null
+          error: null,
+          source: undefined
         }
       }));
 
@@ -57,7 +59,8 @@ export const useAIScoring = () => {
       breakdown: undefined,
       isJobSpecific: !!jobOfferId,
       isLoading: true,
-      error: null
+      error: null,
+      source: undefined
     };
   };
 
@@ -81,15 +84,29 @@ export const useAIScoring = () => {
         const scoreData = data[0];
         console.log(`✅ [useAIScoring] Found AI score: ${scoreData.score}/100 with explanation length: ${scoreData.explanation?.length || 0}`);
         
+        // Parse breakdown safely
+        let breakdown = {};
+        if (scoreData.breakdown) {
+          try {
+            breakdown = typeof scoreData.breakdown === 'string' 
+              ? JSON.parse(scoreData.breakdown) 
+              : scoreData.breakdown;
+          } catch (e) {
+            console.warn('Failed to parse breakdown:', e);
+            breakdown = {};
+          }
+        }
+        
         setScores(prev => ({
           ...prev,
           [key]: {
             score: scoreData.score,
             explanation: scoreData.explanation || '',
-            breakdown: scoreData.breakdown || {},
+            breakdown: breakdown,
             isJobSpecific: !!jobOfferId,
             isLoading: false,
-            error: null
+            error: null,
+            source: 'database'
           }
         }));
       } else {
@@ -102,7 +119,8 @@ export const useAIScoring = () => {
             breakdown: undefined,
             isJobSpecific: !!jobOfferId,
             isLoading: false,
-            error: null
+            error: null,
+            source: undefined
           }
         }));
       }
@@ -116,7 +134,8 @@ export const useAIScoring = () => {
           breakdown: undefined,
           isJobSpecific: !!jobOfferId,
           isLoading: false,
-          error: error.message
+          error: error.message,
+          source: undefined
         }
       }));
     } finally {
@@ -159,7 +178,8 @@ export const useAIScoring = () => {
           breakdown,
           isJobSpecific: !!jobOfferId,
           isLoading: false,
-          error: null
+          error: null,
+          source: 'fresh_calculation'
         }
       }));
 
@@ -168,6 +188,18 @@ export const useAIScoring = () => {
       console.error(`❌ [useAIScoring] Error saving AI score:`, error);
       return false;
     }
+  };
+
+  const preloadScoresFromDatabase = async (candidateIds: string[], jobOfferId?: string) => {
+    console.log(`🔄 [useAIScoring] Preloading scores for ${candidateIds.length} candidates`);
+    
+    // Précharger en parallèle mais sans bloquer l'interface
+    candidateIds.forEach(candidateId => {
+      const key = `${candidateId}_${jobOfferId || 'general'}`;
+      if (!scores[key] && !loadingRef.current.has(key)) {
+        getAIScore(candidateId, jobOfferId);
+      }
+    });
   };
 
   const clearCache = (candidateId?: string) => {
@@ -183,9 +215,14 @@ export const useAIScoring = () => {
     }
   };
 
+  // Propriété dérivée pour savoir si on est en mode job-specific
+  const isJobSpecific = Object.values(scores).some(score => score.isJobSpecific);
+
   return {
     getAIScore,
     saveAIScore,
-    clearCache
+    clearCache,
+    preloadScoresFromDatabase,
+    isJobSpecific
   };
 };
