@@ -12,6 +12,7 @@ import NetworksReferencesSection from './profile/NetworksReferencesSection';
 import ProjectsSection from './profile/ProjectsSection';
 import PreferencesObjectivesSection from './profile/PreferencesObjectivesSection';
 import CandidateAIScoreCard from '../CandidateAIScoreCard';
+import DebugAIScoreButton from './DebugAIScoreButton';
 
 interface ProfileTabProps {
   candidate: CandidateData;
@@ -31,7 +32,12 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
         <ProfessionalSection candidate={candidate} />
         
         {/* Score IA et analyse */}
-        <CandidateAIScoreCard candidate={candidate} />
+        <div className="space-y-3">
+          <CandidateAIScoreCard candidate={candidate} />
+          {candidate.id && (
+            <DebugAIScoreButton candidateId={candidate.id} />
+          )}
+        </div>
       </div>
       
       {/* Notes personnelles - Section importante */}
