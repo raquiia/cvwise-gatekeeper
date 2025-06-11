@@ -11,6 +11,7 @@ import LanguagesSection from './profile/LanguagesSection';
 import NetworksReferencesSection from './profile/NetworksReferencesSection';
 import ProjectsSection from './profile/ProjectsSection';
 import PreferencesObjectivesSection from './profile/PreferencesObjectivesSection';
+import CandidateAIScoreCard from '../CandidateAIScoreCard';
 
 interface ProfileTabProps {
   candidate: CandidateData;
@@ -22,12 +23,15 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   return (
     <div className="p-6 space-y-6 bg-gradient-to-br from-sand/20 via-white to-navy/5 min-h-full">
       {/* Section principale - Informations essentielles */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Identité & Contact */}
         <IdentityContactSection candidate={candidate} />
         
         {/* Informations professionnelles */}
         <ProfessionalSection candidate={candidate} />
+        
+        {/* Score IA et analyse */}
+        <CandidateAIScoreCard candidate={candidate} />
       </div>
       
       {/* Notes personnelles - Section importante */}

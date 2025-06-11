@@ -1,162 +1,189 @@
 
-import React, { useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Brain, Briefcase, Target, AlertCircle, FileSearch } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Brain, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
-import type { CandidateData } from '@/services/data/candidateService';
-import { ensureStringArray } from '@/utils/candidateUtils';
+import { useCandidateScore } from '@/hooks/use-candidate-score';
+import { CandidateData } from '@/services/data/candidateService';
 
 interface CandidateAIScoreCardProps {
   candidate: CandidateData;
-  onClick?: () => void;
-  isSelected?: boolean;
+  compact?: boolean;
 }
 
-const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
-  candidate,
-  onClick,
-  isSelected = false
+const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({ 
+  candidate, 
+  compact = false 
 }) => {
   const { getAIScore } = useAIScoring();
-  const scoreData = getAIScore(candidate.id!);
+  const { score: contextualScore, isLoading: contextualLoading } = useCandidateScore(candidate);
   
-  // Charger automatiquement le score depuis la base de données
-  useEffect(() => {
-    if (candidate.id && scoreData.score === null && !scoreData.isLoading && !scoreData.error) {
-      console.log(`[CandidateAIScoreCard] Score will be loaded from database for candidate ${candidate.id}`);
-    }
-  }, [candidate.id, scoreData.score, scoreData.isLoading, scoreData.error]);
+  // Récupérer le score IA général (pas job-spécifique)
+  const aiScore = getAIScore(candidate.id || '');
   
-  const getScoreColor = (score: number | null) => {
-    if (score === null) return 'bg-gray-100 text-gray-600';
-    if (score >= 85) return 'bg-emerald-500 text-white';
-    if (score >= 70) return 'bg-green-500 text-white';
-    if (score >= 55) return 'bg-amber-500 text-white';
-    if (score >= 40) return 'bg-orange-500 text-white';
-    return 'bg-red-500 text-white';
+  console.log(`🎯 [CandidateAIScoreCard] Rendering for candidate ${candidate.id}:`, {
+    aiScore: aiScore.score,
+    hasExplanation: !!aiScore.explanation,
+    explanationLength: aiScore.explanation?.length || 0,
+    isLoading: aiScore.isLoading,
+    error: aiScore.error,
+    contextualScore: contextualScore?.overall,
+    profileCompleteness: candidate.profile_completeness
+  });
+
+  // Priorité : Score IA > Score contextuel > Score legacy du candidat
+  const displayScore = aiScore.score ?? contextualScore?.overall ?? candidate.score ?? candidate.profile_completeness ?? 0;
+  const isLoading = aiScore.isLoading || contextualLoading;
+  const hasAIScore = aiScore.score !== null;
+  const hasExplanation = !!aiScore.explanation && aiScore.explanation.length > 0;
+
+  const getScoreColor = (score: number) => {
+    if (score >= 85) return 'text-emerald-600 bg-emerald-50 border-emerald-200';
+    if (score >= 70) return 'text-green-600 bg-green-50 border-green-200';
+    if (score >= 55) return 'text-amber-600 bg-amber-50 border-amber-200';
+    if (score >= 40) return 'text-orange-600 bg-orange-50 border-orange-200';
+    return 'text-red-600 bg-red-50 border-red-200';
   };
-  
-  const getScoreLabel = (score: number | null, isJobSpecific: boolean) => {
-    if (score === null) return 'Non calculé';
-    if (isJobSpecific) {
-      if (score >= 70) return 'Excellent match';
-      if (score >= 50) return 'Bon match';
-      if (score >= 30) return 'Match partiel';
-      return 'Match faible';
+
+  const getScoreLabel = (score: number, hasAI: boolean) => {
+    if (hasAI) {
+      if (score >= 85) return 'Profil excellent (IA)';
+      if (score >= 70) return 'Très bon profil (IA)';
+      if (score >= 55) return 'Bon profil (IA)';
+      if (score >= 40) return 'Profil à développer (IA)';
+      return 'Profil incomplet (IA)';
     } else {
-      if (score >= 85) return 'Profil excellent';
-      if (score >= 70) return 'Très bon profil';
-      if (score >= 55) return 'Bon profil';
-      if (score >= 40) return 'Profil à développer';
-      return 'Profil incomplet';
+      return 'Complétude du profil';
     }
   };
 
-  const skills = ensureStringArray(candidate.skills);
-  
-  // Debug logging
-  console.log(`[CandidateAIScoreCard] Rendering candidate ${candidate.id} with score data:`, scoreData);
-  
+  if (compact) {
+    return (
+      <div className="flex items-center gap-2">
+        {hasAIScore && (
+          <Brain className="w-4 h-4 text-purple-600" />
+        )}
+        <Badge className={`px-2 py-1 text-sm font-bold border ${getScoreColor(displayScore)}`}>
+          {isLoading ? (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          ) : (
+            `${displayScore}%`
+          )}
+        </Badge>
+      </div>
+    );
+  }
+
   return (
-    <Card 
-      className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-2 ${
-        isSelected ? 'border-purple-300 shadow-lg' : 'border-gray-200 hover:border-purple-200'
-      }`}
-      onClick={onClick}
-    >
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <h3 className="font-semibold text-lg text-gray-900 mb-1">
-              {candidate.first_name} {candidate.last_name}
-            </h3>
-            <p className="text-sm text-gray-600 mb-2">{candidate.position || 'Poste non spécifié'}</p>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span>{candidate.years_experience || 0} ans d'exp.</span>
-              <span>•</span>
-              <span>{candidate.location || 'Lieu non spécifié'}</span>
-            </div>
-          </div>
-          
-          <div className="flex flex-col items-end gap-2">
-            <Badge 
-              variant={scoreData.isJobSpecific ? "default" : "secondary"} 
-              className="text-xs"
-            >
-              {scoreData.isJobSpecific ? <Briefcase size={10} className="mr-1" /> : <Target size={10} className="mr-1" />}
-              {scoreData.isJobSpecific ? 'Match' : 'Profil'}
-            </Badge>
-            
-            <div className="flex items-center gap-2">
-              <Brain className="w-4 h-4 text-purple-600" />
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold ${getScoreColor(scoreData.score)}`}>
-                {scoreData.isLoading ? (
-                  <Brain className="w-4 h-4 animate-pulse" />
-                ) : scoreData.error ? (
-                  <AlertCircle className="w-4 h-4" />
-                ) : scoreData.score !== null ? (
-                  scoreData.score
-                ) : (
-                  <FileSearch className="w-4 h-4" />
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-        
+    <Card className="w-full border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <div className="text-xs">
-            {scoreData.error ? (
-              <span className="text-red-600" title={scoreData.error}>
-                Erreur de chargement
-              </span>
-            ) : scoreData.isLoading ? (
-              <span className="text-purple-600">Chargement du score...</span>
-            ) : scoreData.score !== null ? (
-              <span className={`font-medium ${
-                scoreData.score >= 70 ? 'text-green-700' : 
-                scoreData.score >= 40 ? 'text-amber-700' : 'text-gray-600'
-              }`}>
-                {getScoreLabel(scoreData.score, scoreData.isJobSpecific)}
-              </span>
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            {hasAIScore ? (
+              <>
+                <Brain className="w-5 h-5 text-purple-600" />
+                <span>Score IA</span>
+              </>
             ) : (
-              <span className="text-gray-600">
-                Score calculé lors de l'analyse CV
-              </span>
+              <>
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                <span>Score de profil</span>
+              </>
             )}
-          </div>
+          </CardTitle>
+          
+          <Badge className={`px-3 py-1 text-sm font-bold border ${getScoreColor(displayScore)}`}>
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              `${displayScore}/100`
+            )}
+          </Badge>
         </div>
         
-        {skills.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <div className="flex flex-wrap gap-1">
-              {skills.slice(0, 3).map((skill, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {skill}
-                </Badge>
-              ))}
-              {skills.length > 3 && (
-                <Badge variant="outline" className="text-xs">
-                  +{skills.length - 3}
-                </Badge>
+        <p className="text-sm text-gray-600">
+          {getScoreLabel(displayScore, hasAIScore)}
+        </p>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        {/* Progress bar */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="font-medium">Score global</span>
+            <span className="font-semibold">{displayScore}%</span>
+          </div>
+          <Progress 
+            value={displayScore} 
+            className="w-full h-2"
+          />
+        </div>
+
+        {/* Breakdown si disponible */}
+        {aiScore.breakdown && Object.keys(aiScore.breakdown).length > 0 && (
+          <div className="space-y-3">
+            <h4 className="font-medium text-gray-900 text-sm">Détail par catégorie</h4>
+            <div className="space-y-2 text-xs">
+              {aiScore.breakdown.skills !== undefined && (
+                <div className="flex items-center justify-between">
+                  <span>Compétences</span>
+                  <span className="font-medium">{aiScore.breakdown.skills}%</span>
+                </div>
+              )}
+              {aiScore.breakdown.experience !== undefined && (
+                <div className="flex items-center justify-between">
+                  <span>Expérience</span>
+                  <span className="font-medium">{aiScore.breakdown.experience}%</span>
+                </div>
+              )}
+              {aiScore.breakdown.education !== undefined && (
+                <div className="flex items-center justify-between">
+                  <span>Formation</span>
+                  <span className="font-medium">{aiScore.breakdown.education}%</span>
+                </div>
               )}
             </div>
           </div>
         )}
-        
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <div className="flex items-center justify-between text-xs text-purple-600">
-            <span className="flex items-center gap-1">
-              <Brain size={10} />
-              Score IA
-              {scoreData.source && (
-                <span className="text-gray-400">({scoreData.source})</span>
-              )}
-            </span>
-            <span>OpenAI</span>
+
+        {/* Explication IA */}
+        {hasExplanation && (
+          <div className="space-y-2">
+            <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
+              <Brain className="w-4 h-4 text-purple-600" />
+              Analyse détaillée IA
+            </h4>
+            <div className="text-sm text-gray-700 leading-relaxed p-3 bg-purple-50 border border-purple-200 rounded-lg">
+              {aiScore.explanation}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Message si pas de score IA */}
+        {!hasAIScore && !isLoading && (
+          <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-800">
+              <p className="font-medium">Analyse IA non disponible</p>
+              <p className="text-xs text-blue-600 mt-1">
+                Le CV n'a pas encore été analysé par l'IA. Analysez le CV pour obtenir un score détaillé et des recommandations.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Erreur */}
+        {aiScore.error && (
+          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-red-800">
+              <p className="font-medium">Erreur de chargement</p>
+              <p className="text-xs text-red-600 mt-1">{aiScore.error}</p>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
