@@ -1,8 +1,14 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+// Create Supabase client with service role for database operations
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,6 +18,9 @@ serve(async (req) => {
   try {
     const { resumeText, resumeId } = await req.json();
     
+    console.log('🚀 [analyze-resume] Starting analysis for resume ID:', resumeId);
+    console.log('📝 [analyze-resume] Resume text length:', resumeText?.length || 0);
+    
     if (!resumeText || !resumeId) {
       throw new Error('Missing resumeText or resumeId');
     }
@@ -20,10 +29,8 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    console.log('Starting resume analysis for resume ID:', resumeId);
-    console.log('Resume text length:', resumeText.length);
-
     // Step 1: Extract candidate information from resume text using AI
+    console.log('🔍 [analyze-resume] Step 1: Starting candidate data extraction...');
     const extractionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -31,7 +38,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o-2024-11-20',
         messages: [
           {
             role: 'system',
@@ -84,7 +91,7 @@ serve(async (req) => {
 
     if (!extractionResponse.ok) {
       const errorText = await extractionResponse.text();
-      console.error('OpenAI extraction API error:', extractionResponse.status, errorText);
+      console.error('❌ [analyze-resume] OpenAI extraction API error:', extractionResponse.status, errorText);
       throw new Error(`OpenAI extraction API error: ${extractionResponse.status} - ${errorText}`);
     }
 
@@ -95,29 +102,28 @@ serve(async (req) => {
       throw new Error('No content received from OpenAI for extraction');
     }
 
-    console.log('Raw extraction response:', extractedContent);
+    console.log('✅ [analyze-resume] Step 1 completed: Raw extraction response received');
 
     // Parse the extracted candidate information
     let candidateData;
     try {
       candidateData = JSON.parse(extractedContent);
+      console.log('✅ [analyze-resume] Step 1 success: Candidate information extracted:', {
+        name: `${candidateData.first_name} ${candidateData.last_name}`,
+        email: candidateData.email,
+        position: candidateData.position,
+        address: candidateData.address,
+        city: candidateData.city,
+        skillsCount: candidateData.skills?.length || 0,
+        experienceYears: candidateData.years_experience
+      });
     } catch (parseError) {
-      console.error('Failed to parse candidate extraction response:', extractedContent);
+      console.error('❌ [analyze-resume] Failed to parse candidate extraction response:', extractedContent);
       throw new Error('Invalid JSON response from AI extraction');
     }
 
-    console.log('Candidate information extracted successfully:', {
-      name: `${candidateData.first_name} ${candidateData.last_name}`,
-      email: candidateData.email,
-      position: candidateData.position,
-      address: candidateData.address,
-      city: candidateData.city,
-      skillsCount: candidateData.skills?.length || 0,
-      experienceYears: candidateData.years_experience
-    });
-
     // Step 2: Generate AI analysis and scoring with detailed breakdown
-    console.log('Starting AI scoring and analysis...');
+    console.log('🤖 [analyze-resume] Step 2: Starting AI scoring and analysis...');
     const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -125,7 +131,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
+        model: 'gpt-4o-2024-11-20',
         messages: [
           {
             role: 'system',
@@ -205,7 +211,7 @@ serve(async (req) => {
       if (analysisContent) {
         try {
           analysis = JSON.parse(analysisContent);
-          console.log('AI analysis completed successfully:', {
+          console.log('✅ [analyze-resume] Step 2 success: AI analysis completed:', {
             score: analysis.score,
             explanationLength: analysis.explanation?.length || 0,
             hasBreakdown: !!analysis.breakdown,
@@ -214,19 +220,19 @@ serve(async (req) => {
             recommendationsCount: analysis.recommendations?.length || 0
           });
         } catch (parseError) {
-          console.error('Failed to parse AI analysis response:', analysisContent);
-          // Continue without analysis if parsing fails
+          console.error('❌ [analyze-resume] Failed to parse AI analysis response:', analysisContent);
+          console.log('🔧 [analyze-resume] Creating fallback analysis...');
         }
       }
     } else {
       const errorText = await analysisResponse.text();
-      console.warn(`OpenAI analysis API error: ${analysisResponse.status} - ${errorText}`);
-      // Continue without analysis if scoring fails
+      console.warn(`⚠️ [analyze-resume] OpenAI analysis API error: ${analysisResponse.status} - ${errorText}`);
+      console.log('🔧 [analyze-resume] Will create fallback analysis...');
     }
 
     // Ensure we have at least basic analysis if detailed analysis failed
     if (!analysis) {
-      console.log('Creating fallback analysis...');
+      console.log('🔧 [analyze-resume] Creating fallback analysis...');
       analysis = {
         score: Math.min(85, Math.max(45, 50 + (candidateData.years_experience || 0) * 3 + (candidateData.skills?.length || 0) * 2)),
         explanation: `Profil candidat analysé automatiquement. Expérience professionnelle de ${candidateData.years_experience || 0} ans dans le domaine ${candidateData.position || 'non spécifié'}. Compétences identifiées : ${candidateData.skills?.slice(0, 5)?.join(', ') || 'non spécifiées'}. Formation : ${candidateData.education?.length ? candidateData.education[0]?.degree : 'non spécifiée'}.`,
@@ -243,7 +249,110 @@ serve(async (req) => {
         weaknesses: ['Analyse détaillée non disponible'],
         recommendations: ['Compléter les informations manquantes', 'Mettre à jour le CV']
       };
+      console.log('✅ [analyze-resume] Fallback analysis created with score:', analysis.score);
     }
+
+    // Step 3: Get candidate ID from resume
+    console.log('🔍 [analyze-resume] Step 3: Finding candidate ID from resume...');
+    const { data: candidateRecord, error: candidateError } = await supabase
+      .from('candidates')
+      .select('id, user_id')
+      .eq('resume_id', resumeId)
+      .single();
+
+    if (candidateError || !candidateRecord) {
+      console.error('❌ [analyze-resume] Error finding candidate:', candidateError);
+      throw new Error(`Candidate not found for resume ${resumeId}: ${candidateError?.message}`);
+    }
+
+    console.log('✅ [analyze-resume] Step 3 success: Found candidate:', {
+      candidateId: candidateRecord.id,
+      userId: candidateRecord.user_id
+    });
+
+    // Step 4: Save AI score to database with DETAILED TRACING
+    console.log('💾 [analyze-resume] Step 4: Starting AI score save to database...');
+    console.log('📊 [analyze-resume] Data to save:', {
+      candidateId: candidateRecord.id,
+      score: analysis.score,
+      explanationLength: analysis.explanation?.length || 0,
+      strengthsArray: analysis.strengths,
+      strengthsCount: analysis.strengths?.length || 0,
+      weaknessesArray: analysis.weaknesses,
+      weaknessesCount: analysis.weaknesses?.length || 0,
+      recommendationsArray: analysis.recommendations,
+      recommendationsCount: analysis.recommendations?.length || 0,
+      breakdown: analysis.breakdown
+    });
+
+    try {
+      // Use the RPC function to save the AI score
+      const { data: savedScore, error: saveError } = await supabase.rpc('save_ai_candidate_score', {
+        p_candidate_id: candidateRecord.id,
+        p_score: analysis.score,
+        p_explanation: analysis.explanation || '',
+        p_job_offer_id: null,
+        p_breakdown: analysis.breakdown || {},
+        p_strengths: analysis.strengths || [],
+        p_weaknesses: analysis.weaknesses || [],
+        p_recommendations: analysis.recommendations || []
+      });
+
+      if (saveError) {
+        console.error('❌ [analyze-resume] Step 4 FAILED: RPC save error:', saveError);
+        console.error('❌ [analyze-resume] RPC error details:', {
+          message: saveError.message,
+          code: saveError.code,
+          details: saveError.details,
+          hint: saveError.hint
+        });
+        throw new Error(`Failed to save AI score: ${saveError.message}`);
+      }
+
+      console.log('✅ [analyze-resume] Step 4 SUCCESS: AI score saved to database:', {
+        savedScoreData: savedScore,
+        savedCount: savedScore?.length || 0
+      });
+
+      // Verify the save by querying back
+      console.log('🔍 [analyze-resume] Step 5: Verifying save by querying back...');
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('ai_candidate_scores')
+        .select('*')
+        .eq('candidate_id', candidateRecord.id)
+        .order('calculated_at', { ascending: false })
+        .limit(1);
+
+      if (verifyError) {
+        console.error('❌ [analyze-resume] Step 5 FAILED: Verification error:', verifyError);
+      } else {
+        console.log('✅ [analyze-resume] Step 5 SUCCESS: Verification complete:', {
+          verifyCount: verifyData?.length || 0,
+          verifyData: verifyData?.[0] ? {
+            id: verifyData[0].id,
+            score: verifyData[0].score,
+            hasExplanation: !!verifyData[0].explanation,
+            strengthsCount: verifyData[0].strengths ? JSON.parse(JSON.stringify(verifyData[0].strengths)).length : 0,
+            weaknessesCount: verifyData[0].weaknesses ? JSON.parse(JSON.stringify(verifyData[0].weaknesses)).length : 0,
+            recommendationsCount: verifyData[0].recommendations ? JSON.parse(JSON.stringify(verifyData[0].recommendations)).length : 0,
+            calculatedAt: verifyData[0].calculated_at
+          } : null
+        });
+      }
+
+    } catch (saveError) {
+      console.error('❌ [analyze-resume] Step 4 CRITICAL ERROR: Exception during save:', saveError);
+      console.error('❌ [analyze-resume] Save exception details:', {
+        name: saveError.name,
+        message: saveError.message,
+        stack: saveError.stack
+      });
+      
+      // Continue without throwing to return the analysis even if save fails
+      console.log('⚠️ [analyze-resume] Continuing despite save error to return analysis...');
+    }
+
+    console.log('🎉 [analyze-resume] Analysis complete, returning results...');
 
     return new Response(
       JSON.stringify({
@@ -257,7 +366,13 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in analyze-resume function:', error);
+    console.error('💥 [analyze-resume] CRITICAL ERROR in analyze-resume function:', error);
+    console.error('💥 [analyze-resume] Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
+    
     return new Response(
       JSON.stringify({
         success: false,
