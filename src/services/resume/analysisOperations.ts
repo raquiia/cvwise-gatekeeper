@@ -110,6 +110,7 @@ export const analyzeResume = async (
       try {
         console.log('💾 Saving comprehensive AI analysis with details...');
         
+        // Use type assertion to handle new parameters
         const { error: scoreError } = await supabase.rpc('save_ai_candidate_score', {
           p_candidate_id: finalCandidate.id,
           p_score: analysisData.analysis.score,
@@ -119,7 +120,7 @@ export const analyzeResume = async (
           p_strengths: analysisData.analysis.strengths || [],
           p_weaknesses: analysisData.analysis.weaknesses || [],
           p_recommendations: analysisData.analysis.recommendations || []
-        });
+        } as any);
 
         if (scoreError) {
           console.error('❌ Error saving comprehensive AI score:', scoreError);
