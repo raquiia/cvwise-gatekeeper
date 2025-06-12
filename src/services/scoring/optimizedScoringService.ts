@@ -31,6 +31,20 @@ export interface ScoringBreakdown {
   job_offer_id?: string;
 }
 
+// Helper function pour extraire les scores du breakdown AI de manière sûre
+const safeGetBreakdownScore = (breakdown: any, key: string, defaultValue: number = 0): number => {
+  if (!breakdown || typeof breakdown !== 'object' || Array.isArray(breakdown)) {
+    return defaultValue;
+  }
+  
+  const value = breakdown[key];
+  if (typeof value === 'number') {
+    return value;
+  }
+  
+  return defaultValue;
+};
+
 export class OptimizedScoringService {
   
   /**
@@ -58,17 +72,15 @@ export class OptimizedScoringService {
         return await this.calculateCompletenessScore(candidateId);
       }
       
-      // Extraire les scores depuis le breakdown AI
-      const breakdown = candidate.ai_breakdown || {};
-      
+      // Extraire les scores depuis le breakdown AI de manière sûre
       return {
-        education_score: breakdown.education || 0,
-        experience_score: breakdown.experience || 0,
-        skills_score: breakdown.skills || 0,
-        languages_score: breakdown.languages || 0,
-        location_mobility_score: breakdown.location || 0,
-        profile_summary_score: breakdown.profileSummary || 0,
-        cv_structure_score: breakdown.cvStructure || 0,
+        education_score: safeGetBreakdownScore(candidate.ai_breakdown, 'education'),
+        experience_score: safeGetBreakdownScore(candidate.ai_breakdown, 'experience'),
+        skills_score: safeGetBreakdownScore(candidate.ai_breakdown, 'skills'),
+        languages_score: safeGetBreakdownScore(candidate.ai_breakdown, 'languages'),
+        location_mobility_score: safeGetBreakdownScore(candidate.ai_breakdown, 'location'),
+        profile_summary_score: safeGetBreakdownScore(candidate.ai_breakdown, 'profileSummary'),
+        cv_structure_score: safeGetBreakdownScore(candidate.ai_breakdown, 'cvStructure'),
         general_score: candidate.ai_score,
         calculated_at: candidate.ai_analyzed_at || new Date().toISOString(),
         is_job_specific: false
@@ -123,16 +135,14 @@ export class OptimizedScoringService {
         };
       }
       
-      const breakdown = candidate.ai_breakdown || {};
-      
       return {
-        education_score: breakdown.education || 0,
-        experience_score: breakdown.experience || 0,
-        skills_score: breakdown.skills || 0,
-        languages_score: breakdown.languages || 0,
-        location_mobility_score: breakdown.location || 0,
-        profile_summary_score: breakdown.profileSummary || 0,
-        cv_structure_score: breakdown.cvStructure || 0,
+        education_score: safeGetBreakdownScore(candidate.ai_breakdown, 'education'),
+        experience_score: safeGetBreakdownScore(candidate.ai_breakdown, 'experience'),
+        skills_score: safeGetBreakdownScore(candidate.ai_breakdown, 'skills'),
+        languages_score: safeGetBreakdownScore(candidate.ai_breakdown, 'languages'),
+        location_mobility_score: safeGetBreakdownScore(candidate.ai_breakdown, 'location'),
+        profile_summary_score: safeGetBreakdownScore(candidate.ai_breakdown, 'profileSummary'),
+        cv_structure_score: safeGetBreakdownScore(candidate.ai_breakdown, 'cvStructure'),
         general_score: candidate.ai_score || data || 50,
         calculated_at: candidate.ai_analyzed_at || new Date().toISOString(),
         is_job_specific: false
