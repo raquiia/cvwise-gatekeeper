@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Brain, Sparkles, Info, Target, RefreshCw, Loader2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { aiScoringService } from '@/services/aiScoringService';
 import { toast } from '@/hooks/use-toast';
 
 interface AIAnalysisData {
@@ -17,7 +16,7 @@ interface AIAnalysisData {
   strengths: string[];
   weaknesses: string[];
   recommendations: string[];
-  calculated_at: string;
+  calculated_at?: string;
 }
 
 interface AIAnalysisDisplayProps {
@@ -39,37 +38,21 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({ candidateId, onAn
     
     try {
       setIsLoading(true);
-      console.log('🔍 [AIAnalysisDisplay] Fetching AI analysis from database for candidate:', candidateId);
+      console.log('🔍 [AIAnalysisDisplay] Fetching AI analysis for candidate:', candidateId);
       
-      const { data, error } = await supabase.rpc('get_ai_candidate_score', {
-        p_candidate_id: candidateId,
-        p_job_offer_id: null
-      });
+      const result = await aiScoringService.getAIScore(candidateId);
 
-      if (error) {
-        console.error('❌ [AIAnalysisDisplay] Error fetching AI analysis:', error);
-        throw error;
-      }
-
-      console.log('📊 [AIAnalysisDisplay] Raw data from database:', data);
-
-      if (data && data.length > 0) {
-        const scoreRecord = data[0];
-        console.log('✅ [AIAnalysisDisplay] Processing score record:', scoreRecord);
-
-        // Convertir les données JSON en arrays
-        const strengths = Array.isArray(scoreRecord.strengths) ? scoreRecord.strengths : [];
-        const weaknesses = Array.isArray(scoreRecord.weaknesses) ? scoreRecord.weaknesses : [];
-        const recommendations = Array.isArray(scoreRecord.recommendations) ? scoreRecord.recommendations : [];
+      if (result.success && result.score !== undefined) {
+        console.log('✅ [AIAnalysisDisplay] AI score retrieved successfully');
 
         const processedData: AIAnalysisData = {
-          score: scoreRecord.score || 0,
-          explanation: scoreRecord.explanation || '',
-          breakdown: scoreRecord.breakdown || {},
-          strengths: strengths.filter(item => typeof item === 'string'),
-          weaknesses: weaknesses.filter(item => typeof item === 'string'),
-          recommendations: recommendations.filter(item => typeof item === 'string'),
-          calculated_at: scoreRecord.calculated_at || new Date().toISOString()
+          score: result.score,
+          explanation: result.explanation || '',
+          breakdown: result.breakdown || {},
+          strengths: result.strengths || [],
+          weaknesses: result.weaknesses || [],
+          recommendations: result.recommendations || [],
+          calculated_at: new Date().toISOString()
         };
 
         console.log('🎯 [AIAnalysisDisplay] Processed analysis data:', {
@@ -267,7 +250,7 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({ candidateId, onAn
           
           <div className="mt-2 text-xs text-navy font-medium flex items-center gap-1">
             <Brain size={12} />
-            Analysé le {new Date(analysisData.calculated_at).toLocaleDateString('fr-FR')}
+            Analysé récemment
           </div>
         </div>
 
