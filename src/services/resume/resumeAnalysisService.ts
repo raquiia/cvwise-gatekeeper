@@ -199,7 +199,7 @@ export const extractResumeText = async (resumeId: string): Promise<TextExtractio
 
 /**
  * Créer un candidat en base de données avec les données extraites ET l'analyse IA
- * CORRIGÉ: Utilise directement la table candidates sans référence à candidate_scores
+ * FINAL: Utilise UNIQUEMENT la table candidates, aucune référence aux tables supprimées
  */
 const createCandidateFromExtractedData = async (
   resumeId: string,
@@ -242,7 +242,9 @@ const createCandidateFromExtractedData = async (
       ai_strengths: aiAnalysis?.strengths || [],
       ai_weaknesses: aiAnalysis?.weaknesses || [],
       ai_recommendations: aiAnalysis?.recommendations || [],
-      ai_analyzed_at: aiAnalysis ? new Date().toISOString() : null
+      ai_analyzed_at: aiAnalysis ? new Date().toISOString() : null,
+      // Score général basé sur l'analyse AI ou valeur par défaut
+      score: aiAnalysis?.score || 50
     };
 
     const { data, error } = await supabase
