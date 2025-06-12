@@ -1,6 +1,15 @@
 
 import { CandidateData } from '@/services/data/candidateService';
 
+// Interface pour une expérience individuelle
+interface Experience {
+  company?: string;
+  end_date?: string;
+  start_date?: string;
+  position?: string;
+  [key: string]: any;
+}
+
 /**
  * Extrait la dernière entreprise (la plus récente) d'un candidat
  * Priorité : dernière expérience dans le champ `experiences`
@@ -10,7 +19,8 @@ export const getLastCompany = (candidate: CandidateData): string => {
   // 1. Essayer d'extraire depuis les expériences (plus fiable)
   if (candidate.experiences && Array.isArray(candidate.experiences) && candidate.experiences.length > 0) {
     // Trier les expériences par date de fin (plus récente en premier)
-    const sortedExperiences = [...candidate.experiences].sort((a, b) => {
+    const experiences = candidate.experiences as Experience[];
+    const sortedExperiences = [...experiences].sort((a, b) => {
       // Si pas de date de fin, considérer comme l'expérience actuelle (plus récente)
       if (!a.end_date && b.end_date) return -1;
       if (a.end_date && !b.end_date) return 1;
