@@ -23,7 +23,7 @@ serve(async (req) => {
     console.log('Starting unified resume analysis for resume ID:', resumeId);
     console.log('Resume text length:', resumeText.length);
 
-    // Requête IA unifiée : extraction + analyse + scoring en une seule fois
+    // Requête IA unifiée avec des critères de notation plus stricts et discriminants
     const unifiedResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -35,7 +35,74 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Tu es un expert RH spécialisé dans l'analyse complète de CV. Analyse ce CV et fournis une réponse JSON complète avec extraction des données ET analyse détaillée avec scoring.
+            content: `Tu es un expert RH spécialisé dans l'évaluation critique et discriminante de CV. Tu dois analyser ce CV avec des critères STRICTS et EXIGEANTS pour générer des scores réalistes et différenciés.
+
+            INSTRUCTIONS CRITIQUES DE NOTATION :
+            - Sois SÉLECTIF et CRITIQUE dans tes évaluations
+            - Les scores élevés (>75) doivent être EXCEPTIONNELS et justifiés
+            - Pénalise sévèrement les informations manquantes ou imprécises
+            - Différencie clairement les niveaux de compétence
+
+            GRILLE DE NOTATION STRICTE :
+            
+            **Skills (0-20 points)** :
+            - 0-5 : Aucune compétence ou compétences très basiques
+            - 6-10 : Quelques compétences de base, manque de profondeur
+            - 11-15 : Compétences correctes mais sans expertise avancée
+            - 16-18 : Compétences solides et diversifiées avec expertise
+            - 19-20 : Expertise exceptionnelle et rare (réservé aux profils d'exception)
+            
+            **Experience (0-20 points)** :
+            - 0-5 : Aucune expérience ou stages uniquement
+            - 6-10 : 1-2 ans d'expérience, profil junior
+            - 11-15 : 3-5 ans d'expérience, profil confirmé
+            - 16-18 : 6-10 ans avec progression et responsabilités
+            - 19-20 : >10 ans avec leadership et réalisations exceptionnelles
+            
+            **Education (0-20 points)** :
+            - 0-5 : Formation insuffisante ou non pertinente
+            - 6-10 : Formation de base (Bac+2/3)
+            - 11-15 : Formation supérieure correcte (Bac+4/5)
+            - 16-18 : Formation d'excellence (grandes écoles, spécialisations)
+            - 19-20 : Formation exceptionnelle avec distinctions
+            
+            **Languages (0-10 points)** :
+            - 0-2 : Monolingue français uniquement
+            - 3-5 : Anglais basique ou une langue supplémentaire
+            - 6-8 : Anglais bon niveau + autres langues
+            - 9-10 : Multilingue avec excellent niveau
+            
+            **Location (0-10 points)** :
+            - 0-3 : Informations de localisation incomplètes
+            - 4-6 : Localisation basique, mobilité limitée
+            - 7-8 : Bonne localisation avec mobilité
+            - 9-10 : Localisation optimale + mobilité internationale
+            
+            **Profile Summary (0-10 points)** :
+            - 0-3 : Objectifs flous ou inexistants
+            - 4-6 : Objectifs basiques peu détaillés
+            - 7-8 : Objectifs clairs et cohérents
+            - 9-10 : Objectifs précis, ambitieux et réalistes
+            
+            **CV Structure (0-10 points)** :
+            - 0-3 : CV mal structuré, informations manquantes
+            - 4-6 : Structure correcte mais perfectible
+            - 7-8 : CV bien structuré et complet
+            - 9-10 : CV impeccable, professionnel et exhaustif
+
+            PÉNALITÉS OBLIGATOIRES :
+            - Entreprise manquante : -5 points sur le score final
+            - Email manquant : -5 points
+            - Téléphone manquant : -3 points
+            - Expérience imprécise (sans dates) : -3 points
+            - Compétences floues : -3 points
+
+            DISTRIBUTION ATTENDUE DES SCORES :
+            - 0-40 : Profils incomplets, débutants ou inadéquats (30%)
+            - 41-60 : Profils juniors avec potentiel (40%)
+            - 61-75 : Profils confirmés et solides (25%)
+            - 76-85 : Profils seniors excellents (4%)
+            - 86-100 : Profils exceptionnels ultra-rares (1%)
 
             Tu dois retourner UNIQUEMENT un objet JSON avec cette structure exacte :
             {
@@ -65,8 +132,8 @@ serve(async (req) => {
                 "interests": "string"
               },
               "analysis": {
-                "score": number (0-100),
-                "explanation": "string avec analyse détaillée minimum 200 mots, incluant points forts et points faibles",
+                "score": number (0-100, APRÈS application des pénalités),
+                "explanation": "string avec analyse CRITIQUE et DÉTAILLÉE minimum 250 mots, incluant points faibles significatifs",
                 "breakdown": {
                   "skills": number (0-20),
                   "experience": number (0-20), 
@@ -76,62 +143,31 @@ serve(async (req) => {
                   "profileSummary": number (0-10),
                   "cvStructure": number (0-10)
                 },
-                "strengths": ["point fort 1", "point fort 2", "point fort 3", ...],
-                "weaknesses": ["point faible 1", "point faible 2", ...],
-                "recommendations": ["recommandation 1", "recommandation 2", "recommandation 3", ...]
+                "strengths": ["point fort 1", "point fort 2", ...] (maximum 3-4 points, sois sélectif),
+                "weaknesses": ["point faible 1", "point faible 2", "point faible 3", ...] (au moins 2-3 points),
+                "recommendations": ["recommandation 1", "recommandation 2", "recommandation 3", ...] (3-5 recommandations concrètes)
               }
             }
             
-            Instructions pour l'extraction des données candidat :
-            - Retourne UNIQUEMENT du JSON valide, pas de texte supplémentaire
-            - Si une information n'est pas trouvée, utilise "" pour les strings et [] pour les arrays
-            - Pour years_experience, estime le nombre d'années basé sur les expériences (0 si pas d'info)
-            - Sois précis pour l'adresse : extrait l'adresse complète si mentionnée
-            - Sépare bien adresse, code postal, ville, pays si possible
-            - Pour les compétences, inclus toutes les compétences techniques et soft skills trouvées
-            
-            Instructions pour l'analyse et le scoring :
-            - Skills (20 pts) : Pertinence et diversité des compétences techniques et soft skills
-            - Experience (20 pts) : Qualité, progression et cohérence de l'expérience professionnelle
-            - Education (20 pts) : Niveau et pertinence des formations par rapport au profil
-            - Languages (10 pts) : Maîtrise des langues (bonus si multilingue)
-            - Location (10 pts) : Informations de localisation et mobilité
-            - Profile Summary (10 pts) : Clarté de la présentation du profil et objectifs
-            - CV Structure (10 pts) : Organisation, lisibilité et professionnalisme du CV
-            
-            Dans l'explication, tu DOIS inclure :
-            - Une analyse de 3-5 points forts majeurs avec exemples concrets
-            - Une analyse de 2-3 points faibles avec suggestions d'amélioration
-            - Une évaluation de la cohérence du parcours professionnel
-            - Des recommandations spécifiques pour améliorer le profil
-            
-            Pour les strengths (3-5 points forts) :
-            - Identifie les compétences clés les plus remarquables
-            - Mets en avant l'expérience pertinente
-            - Souligne les formations ou certifications importantes
-            - Note la progression de carrière si applicable
-            
-            Pour les weaknesses (2-3 points faibles) :
-            - Identifie les lacunes en compétences
-            - Note les manques d'information dans le CV
-            - Souligne les incohérences ou gaps dans le parcours
-            
-            Pour les recommendations (3-5 recommandations) :
-            - Propose des actions concrètes pour améliorer le profil
-            - Suggère des compétences à acquérir
-            - Recommande des améliorations du CV
-            - Propose des objectifs de carrière
-            
-            Sois précis, constructif et professionnel dans tes commentaires.`
+            RÈGLES CRITIQUES :
+            - Sois IMPITOYABLE sur les informations manquantes
+            - Un CV avec company="" doit être pénalisé de -5 points
+            - Les scores >80 doivent être EXCEPTIONNELS et rares
+            - Justifie chaque point attribué avec rigueur
+            - Dans l'explication, mentionne EXPLICITEMENT les pénalités appliquées
+            - Les weaknesses doivent être substantielles et impactantes
+            - Ne sois PAS bienveillant : évalue objectivement
+
+            Analyse maintenant ce CV avec ces critères stricts et discriminants.`
           },
           {
             role: 'user',
-            content: `Analyse ce CV de manière complète (extraction + analyse + scoring) :
+            content: `Analyse ce CV de manière critique et stricte selon les nouveaux critères :
 
             ${resumeText}`
           }
         ],
-        temperature: 0.2,
+        temperature: 0.1,
         max_tokens: 4000
       }),
     });
@@ -167,11 +203,56 @@ serve(async (req) => {
       throw new Error('Missing candidateData or analysis in unified response');
     }
 
+    // Validation des scores et application de pénalités supplémentaires si nécessaire
+    let finalScore = analysis.score;
+    const penalties = [];
+    
+    // Vérification des pénalités critiques
+    if (!candidateData.company || candidateData.company.trim() === '') {
+      finalScore = Math.max(0, finalScore - 5);
+      penalties.push('Entreprise manquante (-5 pts)');
+    }
+    
+    if (!candidateData.email || candidateData.email.trim() === '') {
+      finalScore = Math.max(0, finalScore - 5);
+      penalties.push('Email manquant (-5 pts)');
+    }
+    
+    if (!candidateData.phone || candidateData.phone.trim() === '') {
+      finalScore = Math.max(0, finalScore - 3);
+      penalties.push('Téléphone manquant (-3 pts)');
+    }
+
+    // Vérification de la cohérence des sous-scores
+    const breakdownTotal = (analysis.breakdown.skills || 0) + 
+                          (analysis.breakdown.experience || 0) + 
+                          (analysis.breakdown.education || 0) + 
+                          (analysis.breakdown.languages || 0) + 
+                          (analysis.breakdown.location || 0) + 
+                          (analysis.breakdown.profileSummary || 0) + 
+                          (analysis.breakdown.cvStructure || 0);
+    
+    // Si le score final ne correspond pas à la somme des sous-scores, ajuster
+    if (Math.abs(finalScore - breakdownTotal) > 5) {
+      finalScore = Math.min(breakdownTotal, finalScore);
+      console.log('Score adjusted for consistency:', finalScore);
+    }
+
+    // Mise à jour du score final
+    analysis.score = finalScore;
+    
+    // Ajouter les pénalités à l'explication si nécessaire
+    if (penalties.length > 0) {
+      analysis.explanation += `\n\nPénalités appliquées : ${penalties.join(', ')}.`;
+    }
+
     console.log('Unified analysis completed successfully:', {
       candidateName: `${candidateData.first_name} ${candidateData.last_name}`,
       email: candidateData.email,
       position: candidateData.position,
-      score: analysis.score,
+      finalScore: finalScore,
+      originalScore: parsedResult.analysis.score,
+      penaltiesApplied: penalties,
       explanationLength: analysis.explanation?.length || 0,
       strengthsCount: analysis.strengths?.length || 0,
       weaknessesCount: analysis.weaknesses?.length || 0,
