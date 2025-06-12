@@ -27,21 +27,28 @@ serve(async (req) => {
       throw new Error("Le contenu de la note est requis et doit être une chaîne de caractères");
     }
 
-    // Appel direct à l'API OpenAI sans utiliser le client OpenAI
+    // Prompt optimisé pour GPT-4o-mini
     const prompt = `
     Voici une note d'entretien avec un candidat: "${content}"
 
-    En tant que professionnel RH, améliore cette note pour la rendre:
-    1. Plus structurée et professionnelle
-    2. Claire et concise
-    3. Objective et factuelle
-    4. Prête à être présentée à un client potentiel
-    5. Sans fautes d'orthographe ou de grammaire
+    En tant que professionnel RH expérimenté, améliore cette note pour la rendre:
+    1. Plus structurée et professionnelle avec des sections clairement définies
+    2. Claire, concise et factuelle sans répétitions
+    3. Objective et professionnelle, prête à être présentée à un client
+    4. Sans fautes d'orthographe, de grammaire ou de syntaxe
+    5. Avec une évaluation équilibrée (points forts ET points d'amélioration)
 
-    Garde toutes les informations importantes sur le candidat mais reformule-les de manière professionnelle.
-    Format ta réponse en plusieurs paragraphes bien organisés.
+    STRUCTURE ATTENDUE :
+    - Profil du candidat (résumé en 2-3 phrases)
+    - Points forts observés (2-4 points factuels)
+    - Points d'attention ou d'amélioration (1-3 points constructifs)
+    - Recommandations pour la suite du processus
+
+    Garde toutes les informations importantes du candidat mais reformule-les de manière professionnelle et structurée.
+    Utilise un ton professionnel mais accessible.
     `;
 
+    // Migration vers GPT-4o-mini pour réduire les coûts
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -49,32 +56,35 @@ serve(async (req) => {
         "Authorization": `Bearer ${openaiApiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4o-mini", // Migration vers gpt-4o-mini
         messages: [
           {
             role: "system",
-            content: "Tu es un assistant RH expert qui améliore les notes d'entretien pour les rendre professionnelles et impeccables, prêtes pour être présentées à des clients."
+            content: "Tu es un assistant RH expert qui améliore les notes d'entretien pour les rendre professionnelles, structurées et impeccables. Tu produis des comptes-rendus clairs et objectifs, prêts pour être présentés à des clients potentiels."
           },
           {
             role: "user",
             content: prompt
           }
         ],
-        temperature: 0.7,
-        max_tokens: 2000,
+        temperature: 0.3, // Réduit pour plus de cohérence
+        max_tokens: 2500, // Augmenté légèrement pour compenser
+        top_p: 0.9 // Ajouté pour améliorer la qualité
       })
     });
 
     // Vérifier si la réponse est OK
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("Erreur OpenAI:", errorData);
+      console.error("Erreur OpenAI (GPT-4o-mini):", errorData);
       throw new Error(`Erreur API OpenAI: ${response.status} ${response.statusText}`);
     }
 
     // Extraire le contenu amélioré
     const data = await response.json();
     const enhancedContent = data.choices[0]?.message?.content || "";
+
+    console.log("Interview note enhanced successfully with GPT-4o-mini");
 
     return new Response(
       JSON.stringify({ enhancedContent }),
@@ -87,7 +97,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Erreur:", error.message);
+    console.error("Erreur enhance-interview-note (GPT-4o-mini):", error.message);
     
     return new Response(
       JSON.stringify({ error: error.message }),
