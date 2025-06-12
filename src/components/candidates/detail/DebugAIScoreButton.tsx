@@ -14,24 +14,7 @@ const DebugAIScoreButton: React.FC<DebugAIScoreButtonProps> = ({ candidateId }) 
     try {
       console.log('🐛 [DEBUG] Starting AI score debug for candidate:', candidateId);
       
-      // First check what's in the database
-      const { data: debugData, error: debugError } = await supabase.rpc('debug_ai_candidate_scores', {
-        p_candidate_id: candidateId
-      });
-      
-      if (debugError) {
-        console.error('❌ [DEBUG] Error in debug function:', debugError);
-        toast({
-          title: "Erreur de debug",
-          description: debugError.message,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      console.log('🔍 [DEBUG] Raw debug data:', debugData);
-      
-      // Also check with the regular function
+      // Check with the regular function
       const { data: regularData, error: regularError } = await supabase.rpc('get_ai_candidate_score', {
         p_candidate_id: candidateId,
         p_job_offer_id: null
@@ -59,9 +42,13 @@ const DebugAIScoreButton: React.FC<DebugAIScoreButtonProps> = ({ candidateId }) 
         console.log('🔗 [DEBUG] Direct query data:', directData);
       }
       
+      // Check if data exists and show count
+      const dataCount = Array.isArray(regularData) ? regularData.length : 
+                       Array.isArray(directData) ? directData.length : 0;
+      
       toast({
         title: "Debug terminé",
-        description: `Vérifiez la console pour les résultats. Trouvé ${debugData?.length || 0} scores.`,
+        description: `Vérifiez la console pour les résultats. Trouvé ${dataCount} scores.`,
       });
       
     } catch (error: any) {
