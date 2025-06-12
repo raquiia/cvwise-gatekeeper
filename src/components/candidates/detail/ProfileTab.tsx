@@ -8,7 +8,6 @@ import type { CandidateData } from '@/services/data/candidateService';
 // Import des nouveaux composants optimisés
 import HeroSection from './profile/HeroSection';
 import CompactSkillsSection from './profile/CompactSkillsSection';
-import CompactExperienceSection from './profile/CompactExperienceSection';
 import ProfileSidebar from './profile/ProfileSidebar';
 import PersonalNotesSection from './profile/PersonalNotesSection';
 
@@ -16,7 +15,6 @@ import PersonalNotesSection from './profile/PersonalNotesSection';
 import ProjectsSection from './profile/ProjectsSection';
 import PreferencesObjectivesSection from './profile/PreferencesObjectivesSection';
 import SkillsEducationSection from './profile/SkillsEducationSection';
-import ExperiencesSection from './profile/ExperiencesSection';
 
 interface ProfileTabProps {
   candidate: CandidateData;
@@ -68,21 +66,11 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
           {/* Notes personnelles - Toujours visible */}
           {candidate.id && <PersonalNotesSection candidateId={candidate.id} />}
           
-          {/* Vue compacte vs détaillée */}
+          {/* Vue compacte vs détaillée pour les compétences uniquement */}
           {!isDetailedView ? (
-            <>
-              {/* Vue compacte - Seulement compétences et expériences */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <CompactExperienceSection candidate={candidate} />
-                <CompactSkillsSection candidate={candidate} />
-              </div>
-            </>
+            <CompactSkillsSection candidate={candidate} />
           ) : (
-            <>
-              {/* Vue détaillée */}
-              <ExperiencesSection candidate={candidate} />
-              <SkillsEducationSection candidate={candidate} />
-            </>
+            <SkillsEducationSection candidate={candidate} />
           )}
           
           {/* Sections contextuelles - Uniquement projets et objectifs */}
