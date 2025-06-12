@@ -9,54 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      ai_candidate_scores: {
-        Row: {
-          breakdown: Json
-          calculated_at: string
-          candidate_id: string
-          created_at: string
-          explanation: string
-          id: string
-          job_offer_id: string | null
-          recommendations: Json | null
-          score: number
-          strengths: Json | null
-          updated_at: string
-          user_id: string
-          weaknesses: Json | null
-        }
-        Insert: {
-          breakdown?: Json
-          calculated_at?: string
-          candidate_id: string
-          created_at?: string
-          explanation: string
-          id?: string
-          job_offer_id?: string | null
-          recommendations?: Json | null
-          score: number
-          strengths?: Json | null
-          updated_at?: string
-          user_id: string
-          weaknesses?: Json | null
-        }
-        Update: {
-          breakdown?: Json
-          calculated_at?: string
-          candidate_id?: string
-          created_at?: string
-          explanation?: string
-          id?: string
-          job_offer_id?: string | null
-          recommendations?: Json | null
-          score?: number
-          strengths?: Json | null
-          updated_at?: string
-          user_id?: string
-          weaknesses?: Json | null
-        }
-        Relationships: []
-      }
       candidate_job_matches: {
         Row: {
           calculation_version: number | null
@@ -132,129 +84,6 @@ export type Database = {
           },
         ]
       }
-      candidate_job_matching_scores: {
-        Row: {
-          availability_mobility_score: number
-          calculated_at: string
-          candidate_id: string
-          created_at: string
-          cultural_fit_score: number
-          data_hash: string
-          education_match_score: number
-          id: string
-          interview_notes_bonus: number
-          job_offer_id: string
-          languages_match_score: number
-          last_candidate_update: string | null
-          last_job_update: string | null
-          last_notes_update: string | null
-          location_score: number
-          relevant_experience_score: number
-          skills_tools_score: number
-          total_matching_score: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          availability_mobility_score?: number
-          calculated_at?: string
-          candidate_id: string
-          created_at?: string
-          cultural_fit_score?: number
-          data_hash: string
-          education_match_score?: number
-          id?: string
-          interview_notes_bonus?: number
-          job_offer_id: string
-          languages_match_score?: number
-          last_candidate_update?: string | null
-          last_job_update?: string | null
-          last_notes_update?: string | null
-          location_score?: number
-          relevant_experience_score?: number
-          skills_tools_score?: number
-          total_matching_score?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          availability_mobility_score?: number
-          calculated_at?: string
-          candidate_id?: string
-          created_at?: string
-          cultural_fit_score?: number
-          data_hash?: string
-          education_match_score?: number
-          id?: string
-          interview_notes_bonus?: number
-          job_offer_id?: string
-          languages_match_score?: number
-          last_candidate_update?: string | null
-          last_job_update?: string | null
-          last_notes_update?: string | null
-          location_score?: number
-          relevant_experience_score?: number
-          skills_tools_score?: number
-          total_matching_score?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      candidate_job_scores: {
-        Row: {
-          calculated_at: string | null
-          candidate_id: string
-          education_score: number
-          experience_score: number
-          id: string
-          job_offer_id: string
-          match_score: number
-          profile_completeness_score: number
-          skills_score: number
-          updated_at: string | null
-        }
-        Insert: {
-          calculated_at?: string | null
-          candidate_id: string
-          education_score?: number
-          experience_score?: number
-          id?: string
-          job_offer_id: string
-          match_score?: number
-          profile_completeness_score?: number
-          skills_score?: number
-          updated_at?: string | null
-        }
-        Update: {
-          calculated_at?: string | null
-          candidate_id?: string
-          education_score?: number
-          experience_score?: number
-          id?: string
-          job_offer_id?: string
-          match_score?: number
-          profile_completeness_score?: number
-          skills_score?: number
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "candidate_job_scores_candidate_id_fkey"
-            columns: ["candidate_id"]
-            isOneToOne: false
-            referencedRelation: "candidates"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "candidate_job_scores_job_offer_id_fkey"
-            columns: ["job_offer_id"]
-            isOneToOne: false
-            referencedRelation: "job_offers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       candidate_notes: {
         Row: {
           candidate_id: string
@@ -295,66 +124,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      candidate_scores: {
-        Row: {
-          calculated_at: string
-          candidate_id: string
-          created_at: string
-          cv_structure_score: number
-          data_hash: string
-          education_score: number
-          experience_score: number
-          general_score: number
-          id: string
-          languages_score: number
-          last_candidate_update: string | null
-          last_notes_update: string | null
-          location_mobility_score: number
-          profile_summary_score: number
-          skills_score: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          calculated_at?: string
-          candidate_id: string
-          created_at?: string
-          cv_structure_score?: number
-          data_hash: string
-          education_score?: number
-          experience_score?: number
-          general_score?: number
-          id?: string
-          languages_score?: number
-          last_candidate_update?: string | null
-          last_notes_update?: string | null
-          location_mobility_score?: number
-          profile_summary_score?: number
-          skills_score?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          calculated_at?: string
-          candidate_id?: string
-          created_at?: string
-          cv_structure_score?: number
-          data_hash?: string
-          education_score?: number
-          experience_score?: number
-          general_score?: number
-          id?: string
-          languages_score?: number
-          last_candidate_update?: string | null
-          last_notes_update?: string | null
-          location_mobility_score?: number
-          profile_summary_score?: number
-          skills_score?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
       }
       candidates: {
         Row: {
@@ -886,6 +655,13 @@ export type Database = {
           projects: Json
           profile_completeness: number
           last_updated_at: string
+          ai_score: number
+          ai_explanation: string
+          ai_breakdown: Json
+          ai_strengths: Json
+          ai_weaknesses: Json
+          ai_recommendations: Json
+          ai_analyzed_at: string
         }[]
       }
       get_candidate_status: {

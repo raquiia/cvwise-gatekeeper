@@ -16,13 +16,12 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
   onAnalyze,
   onRefresh 
 }) => {
-  console.log('🔍 [AIAnalysisDisplay] Rendering with candidate data:', {
+  console.log('🔍 [AIAnalysisDisplay] Rendering with candidate data (SIMPLIFIED):', {
     candidateId,
     hasCandidate: !!candidate,
-    aiScore: candidate?.ai_score,
-    aiAnalyzedAt: candidate?.ai_analyzed_at,
-    hasAiExplanation: !!candidate?.ai_explanation,
-    aiExplanationLength: candidate?.ai_explanation?.length || 0,
+    ai_score: candidate?.ai_score,
+    ai_explanation: candidate?.ai_explanation ? 'Present' : 'Missing',
+    ai_analyzed_at: candidate?.ai_analyzed_at,
     strengthsCount: Array.isArray(candidate?.ai_strengths) ? candidate.ai_strengths.length : 0,
     weaknessesCount: Array.isArray(candidate?.ai_weaknesses) ? candidate.ai_weaknesses.length : 0,
     recommendationsCount: Array.isArray(candidate?.ai_recommendations) ? candidate.ai_recommendations.length : 0
@@ -36,10 +35,10 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
     );
   }
 
-  // Vérifier si les données IA sont présentes
+  // Vérifier si les données IA sont présentes directement dans la table candidates
   const hasAIData = candidate.ai_score !== null && candidate.ai_score !== undefined;
   
-  console.log('📊 [AIAnalysisDisplay] AI Data status:', {
+  console.log('📊 [AIAnalysisDisplay] AI Data status (FROM CANDIDATES TABLE):', {
     hasAIData,
     ai_score: candidate.ai_score,
     ai_explanation: candidate.ai_explanation ? 'Present' : 'Missing',
@@ -85,14 +84,15 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
           <div>
             <h3 className="font-bold text-green-800 mb-2">Analyse IA disponible</h3>
             <p className="text-green-700 mb-4">
-              Données d'analyse IA trouvées pour ce candidat.
+              Les données d'analyse IA ont été trouvées directement dans les données du candidat.
             </p>
             <p className="text-sm text-green-600">
               <strong>Score IA:</strong> {candidate.ai_score}/100<br/>
               <strong>Analysé le:</strong> {candidate.ai_analyzed_at ? new Date(candidate.ai_analyzed_at).toLocaleDateString() : 'Date inconnue'}<br/>
               <strong>Points forts:</strong> {Array.isArray(candidate.ai_strengths) ? candidate.ai_strengths.length : 0}<br/>
               <strong>Points faibles:</strong> {Array.isArray(candidate.ai_weaknesses) ? candidate.ai_weaknesses.length : 0}<br/>
-              <strong>Recommandations:</strong> {Array.isArray(candidate.ai_recommendations) ? candidate.ai_recommendations.length : 0}
+              <strong>Recommandations:</strong> {Array.isArray(candidate.ai_recommendations) ? candidate.ai_recommendations.length : 0}<br/>
+              <strong>Explication:</strong> {candidate.ai_explanation ? 'Présente' : 'Manquante'}
             </p>
           </div>
         </div>
