@@ -6,6 +6,7 @@ export interface ResumeAnalysisResult {
   success: boolean;
   candidateId?: string;
   error?: string;
+  message?: string;
   analysisData?: any;
 }
 
