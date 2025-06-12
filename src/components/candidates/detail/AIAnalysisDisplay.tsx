@@ -1,11 +1,12 @@
+
 import React, { useState } from 'react';
 import { CandidateData } from '@/services/data/candidateService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, Brain, CheckCircle, XCircle, Lightbulb, FileText, Play, Loader2, Sparkles } from 'lucide-react';
-import { analyzeResume } from '@/services/resumeService';
+import { ChevronDown, ChevronUp, Brain, CheckCircle, XCircle, Lightbulb, FileText, Play, Loader2, Sparkles, RefreshCw } from 'lucide-react';
+import { analyzeResume } from '@/services/resume/resumeAnalysisService';
 import { toast } from '@/hooks/use-toast';
 
 interface AIAnalysisDisplayProps {
@@ -93,23 +94,33 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
       setIsAnalyzing(true);
       console.log('🚀 [AIAnalysisDisplay] Starting CV analysis for resume:', candidate.resume_id);
       
+      const actionText = hasAIData ? "Re-analyse IA en cours" : "Analyse IA en cours";
+      
       toast({
-        title: "Analyse IA en cours",
+        title: actionText,
         description: "L'analyse IA du CV a commencé. Les données seront mises à jour automatiquement...",
       });
 
       const result = await analyzeResume(candidate.resume_id);
       
       if (result.success) {
+        const successText = result.isUpdate ? "Re-analyse IA terminée" : "Analyse IA terminée";
+        const descriptionText = result.isUpdate 
+          ? "Le profil du candidat a été mis à jour avec les nouvelles données IA."
+          : "Le CV a été analysé avec succès. Les données IA sont maintenant disponibles.";
+          
         toast({
-          title: "Analyse IA terminée",
-          description: "Le CV a été analysé avec succès. Les données IA sont maintenant disponibles.",
+          title: successText,
+          description: descriptionText,
         });
         
-        // Rafraîchir les données du candidat
-        if (onRefresh) {
-          onRefresh();
-        }
+        // Rafraîchir les données du candidat avec un léger délai pour s'assurer que la DB est à jour
+        setTimeout(() => {
+          if (onRefresh) {
+            onRefresh();
+          }
+        }, 1000);
+        
       } else {
         throw new Error(result.error || 'Échec de l\'analyse IA');
       }
@@ -297,7 +308,7 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 mr-2" />
+                    <RefreshCw className="w-4 h-4 mr-2" />
                     Re-analyser
                   </>
                 )}

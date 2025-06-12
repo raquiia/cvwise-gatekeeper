@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -39,6 +38,7 @@ export interface ResumeAnalysisResult {
   message?: string;
   analysis?: AIAnalysisResult;
   error?: string;
+  isUpdate?: boolean; // Nouveau flag pour indiquer si c'est une mise à jour
 }
 
 /**
@@ -198,18 +198,30 @@ export const extractResumeText = async (resumeId: string): Promise<TextExtractio
 };
 
 /**
- * Créer un candidat en base de données avec les données extraites ET l'analyse IA
- * FINAL: Utilise UNIQUEMENT la table candidates, aucune référence aux tables supprimées
+ * Créer ou mettre à jour un candidat en base de données avec les données extraites ET l'analyse IA
+ * NOUVEAU: Gère la mise à jour si le candidat existe déjà pour ce resume_id
  */
-const createCandidateFromExtractedData = async (
+const createOrUpdateCandidateFromExtractedData = async (
   resumeId: string,
   candidateData: any,
   aiAnalysis?: AIAnalysisResult
-): Promise<string> => {
+): Promise<{ candidateId: string; isUpdate: boolean }> => {
   try {
-    console.log('📝 Creating candidate in database with extracted data and AI analysis');
+    console.log('📝 Checking if candidate exists for resume_id:', resumeId);
     
-    const candidateToInsert = {
+    // Vérifier si un candidat existe déjà pour ce resume_id
+    const { data: existingCandidate, error: checkError } = await supabase
+      .from('candidates')
+      .select('id')
+      .eq('resume_id', resumeId)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('❌ Error checking existing candidate:', checkError);
+      throw new Error(`Erreur lors de la vérification du candidat existant: ${checkError.message}`);
+    }
+
+    const candidateToSave = {
       resume_id: resumeId,
       user_id: (await supabase.auth.getUser()).data.user?.id,
       first_name: candidateData.first_name || '',
@@ -235,7 +247,7 @@ const createCandidateFromExtractedData = async (
       mobility: candidateData.mobility || '',
       career_objectives: candidateData.career_objectives || '',
       interests: candidateData.interests || '',
-      // Nouvelles colonnes AI directement stockées dans candidates
+      // Données AI
       ai_score: aiAnalysis?.score || null,
       ai_explanation: aiAnalysis?.explanation || null,
       ai_breakdown: aiAnalysis?.breakdown || {},
@@ -247,32 +259,55 @@ const createCandidateFromExtractedData = async (
       score: aiAnalysis?.score || 50
     };
 
-    const { data, error } = await supabase
-      .from('candidates')
-      .insert(candidateToInsert)
-      .select('id')
-      .single();
+    if (existingCandidate) {
+      // MISE À JOUR du candidat existant
+      console.log('🔄 Updating existing candidate:', existingCandidate.id);
+      
+      const { data, error } = await supabase
+        .from('candidates')
+        .update({
+          ...candidateToSave,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingCandidate.id)
+        .select('id')
+        .single();
 
-    if (error) {
-      console.error('❌ Error creating candidate:', error);
-      throw new Error(`Erreur lors de la création du candidat: ${error.message}`);
+      if (error) {
+        console.error('❌ Error updating candidate:', error);
+        throw new Error(`Erreur lors de la mise à jour du candidat: ${error.message}`);
+      }
+
+      console.log('✅ Candidate updated successfully:', data.id);
+      return { candidateId: data.id, isUpdate: true };
+
+    } else {
+      // CRÉATION d'un nouveau candidat
+      console.log('📝 Creating new candidate for resume_id:', resumeId);
+      
+      const { data, error } = await supabase
+        .from('candidates')
+        .insert(candidateToSave)
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('❌ Error creating candidate:', error);
+        throw new Error(`Erreur lors de la création du candidat: ${error.message}`);
+      }
+
+      console.log('✅ Candidate created successfully:', data.id);
+      return { candidateId: data.id, isUpdate: false };
     }
-
-    if (!data?.id) {
-      throw new Error('Aucun ID de candidat retourné');
-    }
-
-    console.log('✅ Candidate created successfully with ID and AI data:', data.id);
-    return data.id;
 
   } catch (error: any) {
-    console.error('❌ Failed to create candidate:', error);
+    console.error('❌ Failed to create or update candidate:', error);
     throw error;
   }
 };
 
 /**
- * Analyser un CV complet (extraction + analyse IA + création candidat + sauvegarde) - version unifiée
+ * Analyser un CV complet (extraction + analyse IA + création/mise à jour candidat) - version unifiée
  */
 export const analyzeResume = async (
   resumeId: string,
@@ -304,8 +339,8 @@ export const analyzeResume = async (
       };
     }
 
-    // Créer le candidat en base de données avec les données extraites ET l'analyse IA
-    const candidateId = await createCandidateFromExtractedData(
+    // Créer ou mettre à jour le candidat en base de données
+    const { candidateId, isUpdate } = await createOrUpdateCandidateFromExtractedData(
       resumeId, 
       analysisResult.candidateData,
       analysisResult.analysis
@@ -317,14 +352,19 @@ export const analyzeResume = async (
       .update({ parsed: true })
       .eq('id', resumeId);
 
-    console.log('🎯 Analysis complete - candidate created with embedded AI analysis:', candidateId);
+    const successMessage = isUpdate 
+      ? 'CV ré-analysé et candidat mis à jour avec succès'
+      : 'CV analysé et candidat créé avec succès';
+
+    console.log(`🎯 Analysis complete - candidate ${isUpdate ? 'updated' : 'created'}:`, candidateId);
 
     return {
       success: true,
       candidateId: candidateId,
       candidateData: { ...analysisResult.candidateData, id: candidateId },
       analysis: analysisResult.analysis,
-      message: 'CV analysé et candidat créé avec succès'
+      message: successMessage,
+      isUpdate: isUpdate
     };
 
   } catch (error: any) {
