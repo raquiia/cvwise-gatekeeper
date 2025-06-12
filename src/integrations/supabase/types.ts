@@ -18,9 +18,12 @@ export type Database = {
           explanation: string
           id: string
           job_offer_id: string | null
+          recommendations: Json | null
           score: number
+          strengths: Json | null
           updated_at: string
           user_id: string
+          weaknesses: Json | null
         }
         Insert: {
           breakdown?: Json
@@ -30,9 +33,12 @@ export type Database = {
           explanation: string
           id?: string
           job_offer_id?: string | null
+          recommendations?: Json | null
           score: number
+          strengths?: Json | null
           updated_at?: string
           user_id: string
+          weaknesses?: Json | null
         }
         Update: {
           breakdown?: Json
@@ -42,9 +48,12 @@ export type Database = {
           explanation?: string
           id?: string
           job_offer_id?: string | null
+          recommendations?: Json | null
           score?: number
+          strengths?: Json | null
           updated_at?: string
           user_id?: string
+          weaknesses?: Json | null
         }
         Relationships: []
       }
@@ -762,6 +771,9 @@ export type Database = {
           score: number
           explanation: string
           breakdown: Json
+          strengths: Json
+          weaknesses: Json
+          recommendations: Json
           calculated_at: string
           created_at: string
           updated_at: string
@@ -1028,6 +1040,9 @@ export type Database = {
           p_explanation: string
           p_job_offer_id?: string
           p_breakdown?: Json
+          p_strengths?: Json
+          p_weaknesses?: Json
+          p_recommendations?: Json
         }
         Returns: {
           id: string
@@ -1037,6 +1052,9 @@ export type Database = {
           score: number
           explanation: string
           breakdown: Json
+          strengths: Json
+          weaknesses: Json
+          recommendations: Json
           calculated_at: string
           created_at: string
           updated_at: string
