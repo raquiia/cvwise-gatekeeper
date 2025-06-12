@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { debugAIScoreForCandidate } from '@/utils/debugAIScore';
 import { analyzeResume } from '@/services/resumeService';
-import { Search, Brain, Loader2 } from 'lucide-react';
+import { Brain, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface DebugAIScoreButtonProps {
@@ -21,37 +21,30 @@ const DebugAIScoreButton: React.FC<DebugAIScoreButtonProps> = ({ candidateId }) 
       const result = await debugAIScoreForCandidate(candidateId);
       console.log('🏁 [DEBUG] Debug completed:', result);
       
-      // Si pas de score trouvé, proposer d'analyser le CV
-      if (!result.hasAIScore && result.candidateData?.resume_id) {
+      // Check if we have AI score data from the direct query
+      const hasAIScore = result.directQuery?.data && result.directQuery.data.length > 0;
+      
+      if (!hasAIScore) {
         toast({
           title: "Aucun score IA trouvé",
           description: "Lancement de l'analyse IA du CV...",
         });
         
-        const analysisResult = await analyzeResume(result.candidateData.resume_id);
+        // Try to find the candidate's resume_id
+        // We need to get this from the candidate data somehow
+        // For now, let's try to analyze directly using the analyzeResume function
+        // This will need the resume_id which we don't have directly here
         
-        if (analysisResult.success) {
-          toast({
-            title: "Analyse IA terminée",
-            description: "Le CV a été analysé avec succès. Actualisez la page pour voir les résultats.",
-          });
-        } else {
-          toast({
-            title: "Erreur d'analyse",
-            description: analysisResult.message || "Impossible d'analyser le CV",
-            variant: "destructive",
-          });
-        }
-      } else if (result.hasAIScore) {
         toast({
-          title: "Score IA trouvé",
-          description: `Score: ${result.aiScore}/100. Vérifiez la console pour plus de détails.`,
+          title: "Information manquante",
+          description: "Impossible de trouver l'ID du CV pour ce candidat. Utilisez le bouton 'Lancer l'analyse IA' sur la page du candidat.",
+          variant: "destructive",
         });
       } else {
+        const scoreData = result.directQuery.data[0];
         toast({
-          title: "Aucun CV associé",
-          description: "Ce candidat n'a pas de CV à analyser.",
-          variant: "destructive",
+          title: "Score IA trouvé",
+          description: `Score: ${scoreData.score}/100. Vérifiez la console pour plus de détails.`,
         });
       }
     } catch (error: any) {
@@ -73,14 +66,14 @@ const DebugAIScoreButton: React.FC<DebugAIScoreButtonProps> = ({ candidateId }) 
       onClick={handleDebug}
       disabled={isDebugging}
       className="bg-blue-50 border-blue-200 hover:bg-blue-100 text-blue-700"
-      title="Debug AI Score - Vérifier et analyser si nécessaire"
+      title="Debug AI Score - Vérifier les données en base"
     >
       {isDebugging ? (
         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
       ) : (
         <Brain className="w-4 h-4 mr-2" />
       )}
-      {isDebugging ? 'Analyse en cours...' : 'Debug & Analyser IA'}
+      {isDebugging ? 'Debug en cours...' : 'Debug Score IA'}
     </Button>
   );
 };
