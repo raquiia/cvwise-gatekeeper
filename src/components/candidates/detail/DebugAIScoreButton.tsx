@@ -1,9 +1,8 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { debugAIScoreForCandidate } from '@/utils/debugAIScore';
-import { analyzeResume } from '@/services/resumeService';
-import { Search, Brain, Loader2 } from 'lucide-react';
+import { Bug } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 interface DebugAIScoreButtonProps {
@@ -11,72 +10,79 @@ interface DebugAIScoreButtonProps {
 }
 
 const DebugAIScoreButton: React.FC<DebugAIScoreButtonProps> = ({ candidateId }) => {
-  const [isDebugging, setIsDebugging] = React.useState(false);
-
   const handleDebug = async () => {
-    console.log('🚀 [DEBUG] Starting AI score debug...');
-    setIsDebugging(true);
-    
     try {
-      const result = await debugAIScoreForCandidate(candidateId);
-      console.log('🏁 [DEBUG] Debug completed:', result);
+      console.log('🐛 [DEBUG] Starting AI score debug for candidate:', candidateId);
       
-      // Vérifier si on a des données de score IA directement
-      const hasDirectData = result.directQuery?.data && result.directQuery.data.length > 0;
-      const hasRpcData = result.rpcQuery?.data && result.rpcQuery.data.length > 0;
+      // First check what's in the database
+      const { data: debugData, error: debugError } = await supabase.rpc('debug_ai_candidate_scores', {
+        p_candidate_id: candidateId
+      });
       
-      if (hasDirectData || hasRpcData) {
-        const scoreData = hasDirectData ? result.directQuery.data[0] : result.rpcQuery.data[0];
+      if (debugError) {
+        console.error('❌ [DEBUG] Error in debug function:', debugError);
         toast({
-          title: "Score IA trouvé",
-          description: `Score: ${scoreData.score}/100. Vérifiez la console pour plus de détails.`,
-        });
-      } else {
-        // Pas de score trouvé, proposer d'analyser le CV
-        // Récupérer les infos du candidat depuis result
-        const candidateInfo = result.directQuery?.data?.[0] || result.rpcQuery?.data?.[0];
-        
-        toast({
-          title: "Aucun score IA trouvé",
-          description: "Lancement de l'analyse IA du CV...",
-        });
-        
-        // Pour tester, on va essayer d'analyser le CV si on a un resume_id
-        // Dans un vrai cas, il faudrait récupérer le resume_id du candidat
-        console.log('⚠️ [DEBUG] No AI score found, would need resume_id to analyze');
-        toast({
-          title: "Information manquante",
-          description: "ID du CV nécessaire pour lancer l'analyse. Utilisez le bouton d'analyse principal.",
+          title: "Erreur de debug",
+          description: debugError.message,
           variant: "destructive",
         });
+        return;
       }
+      
+      console.log('🔍 [DEBUG] Raw debug data:', debugData);
+      
+      // Also check with the regular function
+      const { data: regularData, error: regularError } = await supabase.rpc('get_ai_candidate_score', {
+        p_candidate_id: candidateId,
+        p_job_offer_id: null
+      });
+      
+      if (regularError) {
+        console.error('❌ [DEBUG] Error in regular function:', regularError);
+      } else {
+        console.log('📊 [DEBUG] Regular function data:', regularData);
+      }
+      
+      // Check the auth user
+      const { data: authData } = await supabase.auth.getUser();
+      console.log('👤 [DEBUG] Current user:', authData.user?.id);
+      
+      // Direct table query (this will respect RLS)
+      const { data: directData, error: directError } = await supabase
+        .from('ai_candidate_scores')
+        .select('*')
+        .eq('candidate_id', candidateId);
+      
+      if (directError) {
+        console.error('❌ [DEBUG] Error in direct query:', directError);
+      } else {
+        console.log('🔗 [DEBUG] Direct query data:', directData);
+      }
+      
+      toast({
+        title: "Debug terminé",
+        description: `Vérifiez la console pour les résultats. Trouvé ${debugData?.length || 0} scores.`,
+      });
+      
     } catch (error: any) {
-      console.error('❌ [DEBUG] Error during debug:', error);
+      console.error('❌ [DEBUG] Exception:', error);
       toast({
         title: "Erreur de debug",
-        description: error.message || "Erreur inconnue",
+        description: error.message,
         variant: "destructive",
       });
-    } finally {
-      setIsDebugging(false);
     }
   };
 
   return (
-    <Button
-      variant="outline"
+    <Button 
+      onClick={handleDebug} 
+      variant="outline" 
       size="sm"
-      onClick={handleDebug}
-      disabled={isDebugging}
-      className="bg-blue-50 border-blue-200 hover:bg-blue-100 text-blue-700"
-      title="Debug AI Score - Vérifier les données en base de données"
+      className="text-xs"
     >
-      {isDebugging ? (
-        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-      ) : (
-        <Brain className="w-4 h-4 mr-2" />
-      )}
-      {isDebugging ? 'Debug en cours...' : 'Debug Score IA'}
+      <Bug className="w-3 h-3 mr-1" />
+      Debug AI Score
     </Button>
   );
 };
