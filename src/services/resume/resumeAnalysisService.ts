@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { aiScoringService } from '../aiScoringService';
 import { toast } from '@/hooks/use-toast';
@@ -39,6 +38,7 @@ export interface ResumeAnalysisResult {
   candidateData?: any;
   message?: string;
   analysis?: AIAnalysisResult;
+  error?: string;
 }
 
 /**
