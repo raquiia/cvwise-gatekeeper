@@ -82,7 +82,7 @@ class IntelligentMatchingEngine {
       const cacheKey = this.generateCacheKey(candidate, jobOffer);
       
       if (useCache && !forceRecalculation) {
-        const cached = intelligentCache.get<IntelligentMatchResult>(cacheKey);
+        const cached = intelligentCache.get<IntelligentMatchResult>([cacheKey]);
         if (cached && this.isCacheValid(cached, candidate, jobOffer)) {
           this.metrics.cacheHits++;
           return { ...cached, cacheHit: true };
@@ -100,7 +100,7 @@ class IntelligentMatchingEngine {
       // Mise en cache avec TTL adaptatif
       const ttl = this.calculateAdaptiveTTL(matchResult);
       if (useCache) {
-        intelligentCache.set(cacheKey, matchResult, ttl);
+        intelligentCache.set([cacheKey], matchResult, ttl);
       }
 
       // Mise à jour des métriques
@@ -172,7 +172,7 @@ class IntelligentMatchingEngine {
                   if (useCache && candidate.id) {
                     const cacheKey = this.generateCacheKey(candidate, jobOffer);
                     const ttl = this.calculateAdaptiveTTL(result);
-                    intelligentCache.set(cacheKey, result, ttl);
+                    intelligentCache.set([cacheKey], result, ttl);
                   }
                   
                   return { candidateId: candidate.id!, result };
@@ -693,7 +693,7 @@ class IntelligentMatchingEngine {
         if (!candidate.id) return;
         
         const cacheKey = this.generateCacheKey(candidate, jobOffer);
-        const cached = intelligentCache.get<IntelligentMatchResult>(cacheKey);
+        const cached = intelligentCache.get<IntelligentMatchResult>([cacheKey]);
         
         if (cached && this.isCacheValid(cached, candidate, jobOffer)) {
           results.set(candidate.id, { ...cached, cacheHit: true });
@@ -723,7 +723,7 @@ class IntelligentMatchingEngine {
     
     // Cache des statistiques de matching pour cette offre
     const statsKey = `job_matching_stats_${jobOffer.id}`;
-    intelligentCache.set(statsKey, {
+    intelligentCache.set([statsKey], {
       averageScore: avgScore,
       candidateCount: results.size,
       calculatedAt: new Date().toISOString()
