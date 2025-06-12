@@ -14,41 +14,42 @@ const DebugAIScoreButton: React.FC<DebugAIScoreButtonProps> = ({ candidateId }) 
     try {
       console.log('🐛 [DEBUG] Starting AI score debug for candidate:', candidateId);
       
-      // Check with the regular function
-      const { data: regularData, error: regularError } = await supabase.rpc('get_ai_candidate_score', {
-        p_candidate_id: candidateId,
-        p_job_offer_id: null
-      });
-      
-      if (regularError) {
-        console.error('❌ [DEBUG] Error in regular function:', regularError);
-      } else {
-        console.log('📊 [DEBUG] Regular function data:', regularData);
-      }
-      
       // Check the auth user
       const { data: authData } = await supabase.auth.getUser();
       console.log('👤 [DEBUG] Current user:', authData.user?.id);
       
-      // Direct table query (this will respect RLS)
-      const { data: directData, error: directError } = await supabase
-        .from('ai_candidate_scores')
-        .select('*')
-        .eq('candidate_id', candidateId);
+      // Direct table query for candidate with AI data
+      const { data: candidateData, error: candidateError } = await supabase
+        .from('candidates')
+        .select('ai_score, ai_explanation, ai_strengths, ai_weaknesses, ai_recommendations, ai_analyzed_at')
+        .eq('id', candidateId);
       
-      if (directError) {
-        console.error('❌ [DEBUG] Error in direct query:', directError);
+      if (candidateError) {
+        console.error('❌ [DEBUG] Error in candidate query:', candidateError);
       } else {
-        console.log('🔗 [DEBUG] Direct query data:', directData);
+        console.log('🔗 [DEBUG] Candidate AI data:', candidateData);
       }
       
-      // Check if data exists and show count
-      const dataCount = Array.isArray(regularData) ? regularData.length : 
-                       Array.isArray(directData) ? directData.length : 0;
+      // Check using RPC function
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_candidate_by_id_bypassing_rls', {
+        candidate_id_param: candidateId
+      });
+      
+      if (rpcError) {
+        console.error('❌ [DEBUG] Error in RPC function:', rpcError);
+      } else {
+        console.log('🔗 [DEBUG] RPC function data:', rpcData?.[0] ? {
+          ai_score: rpcData[0].ai_score,
+          ai_explanation: rpcData[0].ai_explanation ? 'Present' : 'Missing',
+          ai_analyzed_at: rpcData[0].ai_analyzed_at
+        } : 'No data');
+      }
+      
+      const hasAIData = candidateData?.[0]?.ai_score !== null;
       
       toast({
         title: "Debug terminé",
-        description: `Vérifiez la console pour les résultats. Trouvé ${dataCount} scores.`,
+        description: `Vérifiez la console pour les résultats. AI Data: ${hasAIData ? 'Présent' : 'Absent'}`,
       });
       
     } catch (error: any) {
@@ -69,7 +70,7 @@ const DebugAIScoreButton: React.FC<DebugAIScoreButtonProps> = ({ candidateId }) 
       className="text-xs"
     >
       <Bug className="w-3 h-3 mr-1" />
-      Debug AI Score
+      Debug AI Data
     </Button>
   );
 };

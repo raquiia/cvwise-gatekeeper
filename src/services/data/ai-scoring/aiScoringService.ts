@@ -3,8 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { AICandidateScore, AIScoringResult, AIScoringError, AIScoreFetchOptions, AIScoringBreakdown } from './types';
 
 /**
- * Service pour récupérer les scores AI des candidats depuis la base de données
- * Les scores sont calculés lors de l'analyse du CV, pas ici
+ * Service pour récupérer les scores AI des candidats depuis la table candidates
+ * Les scores sont maintenant stockés directement dans la table candidates
  */
 export class AIScoringService {
   
@@ -36,7 +36,7 @@ export class AIScoringService {
   }
   
   /**
-   * Récupère le score AI d'un candidat depuis la base de données
+   * Récupère le score AI d'un candidat depuis la table candidates
    */
   async getScore(
     candidateId: string, 
@@ -44,36 +44,31 @@ export class AIScoringService {
     options: AIScoreFetchOptions = {}
   ): Promise<AIScoringResult | null> {
     try {
-      console.log(`[AI Scoring Service] Getting score for candidate ${candidateId}${jobOfferId ? ` and job ${jobOfferId}` : ''} from database`);
+      console.log(`[AI Scoring Service] Getting score for candidate ${candidateId} from candidates table`);
       
-      const { data, error } = await supabase.rpc(
-        'get_ai_candidate_score',
-        { 
-          p_candidate_id: candidateId,
-          p_job_offer_id: jobOfferId || null
-        }
-      );
+      const { data, error } = await supabase
+        .from('candidates')
+        .select('ai_score, ai_explanation, ai_breakdown, ai_strengths, ai_weaknesses, ai_recommendations, ai_analyzed_at')
+        .eq('id', candidateId)
+        .single();
       
       if (error) {
         console.error('[AI Scoring Service] Database error:', error);
         return null;
       }
       
-      // Handle array response from RPC function
-      const scoreData = Array.isArray(data) ? data[0] : data;
-      
-      if (!scoreData) {
-        console.log('[AI Scoring Service] No score found in database - will be calculated during CV analysis');
+      if (!data || data.ai_score === null) {
+        console.log('[AI Scoring Service] No AI score found in candidates table');
         return null;
       }
       
-      console.log('[AI Scoring Service] Found score in database:', scoreData.score);
+      console.log('[AI Scoring Service] Found AI score in candidates table:', data.ai_score);
       return {
-        score: scoreData.score,
-        explanation: scoreData.explanation,
-        breakdown: this.parseBreakdown(scoreData.breakdown),
+        score: data.ai_score,
+        explanation: data.ai_explanation || 'Score calculé par IA',
+        breakdown: this.parseBreakdown(data.ai_breakdown),
         source: 'database',
-        isJobSpecific: !!scoreData.job_offer_id
+        isJobSpecific: false // Les données dans candidates sont générales
       };
     } catch (error: any) {
       console.error('[AI Scoring Service] Error in getScore:', error);
@@ -82,27 +77,32 @@ export class AIScoringService {
   }
   
   /**
-   * Supprime un score AI
+   * Supprime un score AI (reset les colonnes dans candidates)
    */
   async deleteScore(candidateId: string, jobOfferId?: string | null): Promise<boolean> {
     try {
-      console.log(`[AI Scoring Service] Deleting score for candidate ${candidateId}${jobOfferId ? ` and job ${jobOfferId}` : ''}`);
+      console.log(`[AI Scoring Service] Deleting AI score for candidate ${candidateId}`);
       
-      const { data, error } = await supabase.rpc(
-        'delete_ai_candidate_score',
-        {
-          p_candidate_id: candidateId,
-          p_job_offer_id: jobOfferId || null
-        }
-      );
+      const { error } = await supabase
+        .from('candidates')
+        .update({
+          ai_score: null,
+          ai_explanation: null,
+          ai_breakdown: null,
+          ai_strengths: null,
+          ai_weaknesses: null,
+          ai_recommendations: null,
+          ai_analyzed_at: null
+        })
+        .eq('id', candidateId);
       
       if (error) {
-        console.error('[AI Scoring Service] Error deleting score:', error);
+        console.error('[AI Scoring Service] Error deleting AI score:', error);
         return false;
       }
       
-      console.log('[AI Scoring Service] Score deleted successfully');
-      return !!data;
+      console.log('[AI Scoring Service] AI score deleted successfully');
+      return true;
     } catch (error: any) {
       console.error('[AI Scoring Service] Error in deleteScore:', error);
       return false;
