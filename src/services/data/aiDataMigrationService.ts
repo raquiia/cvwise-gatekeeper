@@ -46,9 +46,16 @@ export class AIDataMigrationService {
         return false;
       }
 
+      // S'assurer que l'id est défini
+      if (!currentCandidate.id) {
+        console.error('❌ Candidate id is missing:', candidateId);
+        return false;
+      }
+
       // Mettre à jour le candidat avec les données AI
       const updatedCandidate = await candidateService.updateCandidate({
         ...currentCandidate,
+        id: currentCandidate.id, // S'assurer que l'id est présent
         ai_score: aiScore.score,
         ai_explanation: aiScore.explanation,
         ai_breakdown: aiScore.breakdown,
