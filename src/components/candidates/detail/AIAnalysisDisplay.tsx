@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
 import { CandidateData } from '@/services/data/candidateService';
-import CandidateAIScoreCard from '../CandidateAIScoreCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp, Brain, CheckCircle, XCircle, Lightbulb, FileText } from 'lucide-react';
+import { ChevronDown, ChevronUp, Brain, CheckCircle, XCircle, Lightbulb, FileText, Play, Loader2, Sparkles } from 'lucide-react';
+import { analyzeResume } from '@/services/resumeService';
+import { toast } from '@/hooks/use-toast';
 
 interface AIAnalysisDisplayProps {
   candidateId: string;
@@ -28,6 +29,11 @@ const safeArrayData = (data: any): string[] => {
   return [];
 };
 
+const safeObjectProperty = (data: any, property: string): any => {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return undefined;
+  return (data as Record<string, any>)[property];
+};
+
 const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({ 
   candidateId, 
   candidate,
@@ -37,6 +43,7 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
   const [showAllStrengths, setShowAllStrengths] = useState(false);
   const [showAllWeaknesses, setShowAllWeaknesses] = useState(false);
   const [showAllRecommendations, setShowAllRecommendations] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   console.log('🔍 [AIAnalysisDisplay] Rendering with candidate data:', {
     candidateId,
@@ -72,46 +79,225 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
     weaknessesCount: weaknesses.length,
     recommendationsCount: recommendations.length
   });
+
+  const handleAnalyzeCV = async () => {
+    if (!candidate.resume_id) {
+      toast({
+        title: "CV non trouvé",
+        description: "Aucun CV associé à ce candidat. Veuillez d'abord uploader un CV.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsAnalyzing(true);
+      console.log('🚀 [AIAnalysisDisplay] Starting CV analysis for resume:', candidate.resume_id);
+      
+      toast({
+        title: "Analyse IA en cours",
+        description: "L'analyse IA du CV a commencé. Les données seront mises à jour automatiquement...",
+      });
+
+      const result = await analyzeResume(candidate.resume_id);
+      
+      if (result.success) {
+        toast({
+          title: "Analyse IA terminée",
+          description: "Le CV a été analysé avec succès. Les données IA sont maintenant disponibles.",
+        });
+        
+        // Rafraîchir les données du candidat
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        throw new Error(result.error || 'Échec de l\'analyse IA');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ [AIAnalysisDisplay] Error analyzing CV:', error);
+      toast({
+        title: "Erreur d'analyse IA",
+        description: error.message || "Impossible d'analyser le CV",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 85) return 'text-emerald-600 bg-emerald-50 border-emerald-200';
+    if (score >= 70) return 'text-green-600 bg-green-50 border-green-200';
+    if (score >= 55) return 'text-amber-600 bg-amber-50 border-amber-200';
+    if (score >= 40) return 'text-orange-600 bg-orange-50 border-orange-200';
+    return 'text-red-600 bg-red-50 border-red-200';
+  };
+
+  const getScoreLabel = (score: number, hasAI: boolean) => {
+    if (hasAI) {
+      if (score >= 85) return 'Profil excellent (IA)';
+      if (score >= 70) return 'Très bon profil (IA)';
+      if (score >= 55) return 'Bon profil (IA)';
+      if (score >= 40) return 'Profil à développer (IA)';
+      return 'Profil incomplet (IA)';
+    } else {
+      return 'Score de complétude (pas encore d\'analyse IA)';
+    }
+  };
   
   if (!hasAIData) {
+    const displayScore = candidate.profile_completeness ?? 0;
+    
     return (
       <div className="space-y-6">
-        <div className="p-6 border border-amber-200 rounded-lg bg-amber-50">
-          <div className="flex items-start gap-3">
-            <div className="text-amber-600 text-xl">🤖</div>
-            <div>
-              <h3 className="font-bold text-amber-800 mb-2">Analyse IA non disponible</h3>
-              <p className="text-amber-700 mb-4">
-                Ce candidat n'a pas encore été analysé par l'intelligence artificielle. 
-                L'analyse IA génère un score détaillé avec points forts, faiblesses et recommandations.
-              </p>
-              <p className="text-sm text-amber-600">
-                <strong>Candidat:</strong> {candidate.first_name} {candidate.last_name}<br/>
-                <strong>ID:</strong> {candidateId}<br/>
-                <strong>CV associé:</strong> {candidate.resume_id ? 'Oui' : 'Non'}<br/>
-                <strong>Score de complétude:</strong> {candidate.profile_completeness || 0}%
-              </p>
+        {/* En-tête avec score de complétude */}
+        <Card className="border-2 border-amber-200 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg font-bold flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <Brain className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <span className="text-slate-800">Analyse IA Non Disponible</span>
+                  <div className="text-xs text-amber-600 font-medium mt-1">
+                    🔍 CV pas encore analysé par l'IA
+                  </div>
+                </div>
+              </CardTitle>
+              
+              <Badge className={`px-4 py-2 text-lg font-bold border-2 ${getScoreColor(displayScore)} shadow-sm`}>
+                {displayScore}/100
+              </Badge>
             </div>
-          </div>
-        </div>
-        
-        <CandidateAIScoreCard 
-          candidate={candidate} 
-          compact={false}
-          onRefresh={onRefresh}
-        />
+            
+            <p className="text-sm text-slate-600 font-medium">
+              {getScoreLabel(displayScore, false)}
+            </p>
+          </CardHeader>
+          
+          <CardContent className="p-6">
+            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="text-amber-600 text-xl">🤖</div>
+              <div>
+                <h3 className="font-bold text-amber-800 mb-2">Analyse IA requise</h3>
+                <p className="text-amber-700 mb-4">
+                  Ce candidat n'a pas encore été analysé par l'intelligence artificielle. 
+                  L'analyse IA génère un score détaillé avec points forts, faiblesses et recommandations.
+                </p>
+                <p className="text-sm text-amber-600 mb-4">
+                  <strong>Candidat:</strong> {candidate.first_name} {candidate.last_name}<br/>
+                  <strong>ID:</strong> {candidateId}<br/>
+                  <strong>CV associé:</strong> {candidate.resume_id ? 'Oui' : 'Non'}<br/>
+                  <strong>Score de complétude:</strong> {displayScore}%
+                </p>
+                
+                <Button
+                  onClick={handleAnalyzeCV}
+                  disabled={isAnalyzing || !candidate.resume_id}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  size="sm"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Analyse en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      Lancer l'analyse IA du CV
+                    </>
+                  )}
+                </Button>
+                {!candidate.resume_id && (
+                  <p className="text-xs text-amber-600 mt-2">
+                    ⚠️ Aucun CV associé à ce candidat
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
+  const displayScore = candidate.ai_score || 0;
+
   return (
     <div className="space-y-6">
-      {/* Carte de score principal */}
-      <CandidateAIScoreCard 
-        candidate={candidate} 
-        compact={false}
-        onRefresh={onRefresh}
-      />
+      {/* En-tête avec score IA */}
+      <Card className="border-2 border-purple-200 shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50 border-b border-purple-100">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-bold flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Brain className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <span className="text-slate-800">Analyse IA Complète</span>
+                <div className="text-xs text-purple-600 font-medium mt-1">
+                  ✨ Score calculé par intelligence artificielle
+                </div>
+              </div>
+            </CardTitle>
+            
+            <Badge className={`px-4 py-2 text-lg font-bold border-2 ${getScoreColor(displayScore)} shadow-sm`}>
+              {displayScore}/100
+            </Badge>
+          </div>
+          
+          <p className="text-sm text-slate-600 font-medium">
+            {getScoreLabel(displayScore, true)}
+            {candidate.ai_analyzed_at && (
+              <span className="text-xs text-slate-500 ml-2 bg-slate-100 px-2 py-1 rounded">
+                Analysé le {new Date(candidate.ai_analyzed_at).toLocaleDateString()}
+              </span>
+            )}
+          </p>
+        </CardHeader>
+
+        <CardContent className="p-6">
+          {/* Breakdown si disponible */}
+          {candidate.ai_breakdown && Object.keys(candidate.ai_breakdown).length > 0 && (
+            <div className="space-y-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+              <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-600" />
+                Détail par catégorie (IA)
+              </h4>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                {safeObjectProperty(candidate.ai_breakdown, 'skills') !== undefined && (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                    <span className="font-medium">Compétences</span>
+                    <span className="font-bold text-purple-600">{safeObjectProperty(candidate.ai_breakdown, 'skills')}/20</span>
+                  </div>
+                )}
+                {safeObjectProperty(candidate.ai_breakdown, 'experience') !== undefined && (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                    <span className="font-medium">Expérience</span>
+                    <span className="font-bold text-green-600">{safeObjectProperty(candidate.ai_breakdown, 'experience')}/20</span>
+                  </div>
+                )}
+                {safeObjectProperty(candidate.ai_breakdown, 'education') !== undefined && (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                    <span className="font-medium">Formation</span>
+                    <span className="font-bold text-blue-600">{safeObjectProperty(candidate.ai_breakdown, 'education')}/20</span>
+                  </div>
+                )}
+                {safeObjectProperty(candidate.ai_breakdown, 'languages') !== undefined && (
+                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                    <span className="font-medium">Langues</span>
+                    <span className="font-bold text-teal-600">{safeObjectProperty(candidate.ai_breakdown, 'languages')}/10</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Section d'explication détaillée */}
       {candidate.ai_explanation && (
