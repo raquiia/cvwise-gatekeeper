@@ -31,63 +31,69 @@ serve(async (req) => {
 
     // Step 1: Extract candidate information from resume text using AI
     console.log('🔍 [analyze-resume] Step 1: Starting candidate data extraction...');
-    const extractionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-2024-11-20',
-        messages: [
-          {
-            role: 'system',
-            content: `Tu es un expert en extraction d'informations de CV. Analyse ce CV et extrais les informations du candidat au format JSON strictement structuré.
-
-            Tu dois retourner UNIQUEMENT un objet JSON avec cette structure exacte :
+    let extractionResponse;
+    try {
+      extractionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-2024-11-20',
+          messages: [
             {
-              "first_name": "string",
-              "last_name": "string", 
-              "email": "string",
-              "phone": "string",
-              "position": "string",
-              "years_experience": number,
-              "location": "string",
-              "address": "string",
-              "postal_code": "string", 
-              "city": "string",
-              "country": "string",
-              "company": "string",
-              "skills": ["skill1", "skill2", ...],
-              "education": [{"degree": "string", "school": "string", "year": "string"}],
-              "experiences": [{"position": "string", "company": "string", "duration": "string", "description": "string"}],
-              "languages": [{"language": "string", "level": "string"}],
-              "availability": "string",
-              "salary_expectations": "string",
-              "contract_type": "string",
-              "remote_preference": "string",
-              "mobility": "string",
-              "career_objectives": "string",
-              "interests": "string"
-            }
+              role: 'system',
+              content: `Tu es un expert en extraction d'informations de CV. Analyse ce CV et extrais les informations du candidat au format JSON strictement structuré.
 
-            Règles importantes :
-            - Retourne UNIQUEMENT du JSON valide, pas de texte supplémentaire
-            - Si une information n'est pas trouvée, utilise "" pour les strings et [] pour les arrays
-            - Pour years_experience, estime le nombre d'années basé sur les expériences (0 si pas d'info)
-            - Sois précis pour l'adresse : extrait l'adresse complète si mentionnée
-            - Sépare bien adresse, code postal, ville, pays si possible
-            - Pour les compétences, inclus toutes les compétences techniques et soft skills trouvées`
-          },
-          {
-            role: 'user',
-            content: `Analyse ce CV et extrais les informations du candidat :\n\n${resumeText}`
-          }
-        ],
-        temperature: 0.1,
-        max_tokens: 3000
-      }),
-    });
+              Tu dois retourner UNIQUEMENT un objet JSON avec cette structure exacte :
+              {
+                "first_name": "string",
+                "last_name": "string", 
+                "email": "string",
+                "phone": "string",
+                "position": "string",
+                "years_experience": number,
+                "location": "string",
+                "address": "string",
+                "postal_code": "string", 
+                "city": "string",
+                "country": "string",
+                "company": "string",
+                "skills": ["skill1", "skill2", ...],
+                "education": [{"degree": "string", "school": "string", "year": "string"}],
+                "experiences": [{"position": "string", "company": "string", "duration": "string", "description": "string"}],
+                "languages": [{"language": "string", "level": "string"}],
+                "availability": "string",
+                "salary_expectations": "string",
+                "contract_type": "string",
+                "remote_preference": "string",
+                "mobility": "string",
+                "career_objectives": "string",
+                "interests": "string"
+              }
+
+              Règles importantes :
+              - Retourne UNIQUEMENT du JSON valide, pas de texte supplémentaire
+              - Si une information n'est pas trouvée, utilise "" pour les strings et [] pour les arrays
+              - Pour years_experience, estime le nombre d'années basé sur les expériences (0 si pas d'info)
+              - Sois précis pour l'adresse : extrait l'adresse complète si mentionnée
+              - Sépare bien adresse, code postal, ville, pays si possible
+              - Pour les compétences, inclus toutes les compétences techniques et soft skills trouvées`
+            },
+            {
+              role: 'user',
+              content: `Analyse ce CV et extrais les informations du candidat :\n\n${resumeText}`
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: 3000
+        }),
+      });
+    } catch (fetchError) {
+      console.error('❌ [analyze-resume] Step 1 FETCH ERROR:', fetchError);
+      throw new Error(`Failed to call OpenAI extraction API: ${fetchError.message}`);
+    }
 
     if (!extractionResponse.ok) {
       const errorText = await extractionResponse.text();
@@ -124,92 +130,99 @@ serve(async (req) => {
 
     // Step 2: Generate AI analysis and scoring with detailed breakdown
     console.log('🤖 [analyze-resume] Step 2: Starting AI scoring and analysis...');
-    const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-2024-11-20',
-        messages: [
-          {
-            role: 'system',
-            content: `Tu es un expert RH spécialisé dans l'analyse de CV. Analyse ce CV et fournis une évaluation détaillée avec score, points forts, points faibles et recommandations.
-            
-            Tu dois retourner une réponse JSON avec cette structure exacte :
+    let analysisResponse;
+    try {
+      analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-2024-11-20',
+          messages: [
             {
-              "score": number (0-100),
-              "explanation": "string avec analyse détaillée minimum 200 mots, incluant points forts et points faibles",
-              "breakdown": {
-                "skills": number (0-20),
-                "experience": number (0-20), 
-                "education": number (0-20),
-                "languages": number (0-10),
-                "location": number (0-10),
-                "profileSummary": number (0-10),
-                "cvStructure": number (0-10)
-              },
-              "strengths": ["point fort 1", "point fort 2", "point fort 3", ...],
-              "weaknesses": ["point faible 1", "point faible 2", ...],
-              "recommendations": ["recommandation 1", "recommandation 2", "recommandation 3", ...]
+              role: 'system',
+              content: `Tu es un expert RH spécialisé dans l'analyse de CV. Analyse ce CV et fournis une évaluation détaillée avec score, points forts, points faibles et recommandations.
+              
+              Tu dois retourner une réponse JSON avec cette structure exacte :
+              {
+                "score": number (0-100),
+                "explanation": "string avec analyse détaillée minimum 200 mots, incluant points forts et points faibles",
+                "breakdown": {
+                  "skills": number (0-20),
+                  "experience": number (0-20), 
+                  "education": number (0-20),
+                  "languages": number (0-10),
+                  "location": number (0-10),
+                  "profileSummary": number (0-10),
+                  "cvStructure": number (0-10)
+                },
+                "strengths": ["point fort 1", "point fort 2", "point fort 3", ...],
+                "weaknesses": ["point faible 1", "point faible 2", ...],
+                "recommendations": ["recommandation 1", "recommandation 2", "recommandation 3", ...]
+              }
+              
+              Critères d'évaluation :
+              - Skills (20 pts) : Pertinence et diversité des compétences techniques et soft skills
+              - Experience (20 pts) : Qualité, progression et cohérence de l'expérience professionnelle
+              - Education (20 pts) : Niveau et pertinence des formations par rapport au profil
+              - Languages (10 pts) : Maîtrise des langues (bonus si multilingue)
+              - Location (10 pts) : Informations de localisation et mobilité
+              - Profile Summary (10 pts) : Clarté de la présentation du profil et objectifs
+              - CV Structure (10 pts) : Organisation, lisibilité et professionnalisme du CV
+              
+              Dans l'explication, tu DOIS inclure :
+              - Une analyse de 3-5 points forts majeurs avec exemples concrets
+              - Une analyse de 2-3 points faibles avec suggestions d'amélioration
+              - Une évaluation de la cohérence du parcours professionnel
+              - Des recommandations spécifiques pour améliorer le profil
+              
+              Pour les strengths (3-5 points forts) :
+              - Identifie les compétences clés les plus remarquables
+              - Mets en avant l'expérience pertinente
+              - Souligne les formations ou certifications importantes
+              - Note la progression de carrière si applicable
+              
+              Pour les weaknesses (2-3 points faibles) :
+              - Identifie les lacunes en compétences
+              - Note les manques d'information dans le CV
+              - Souligne les incohérences ou gaps dans le parcours
+              
+              Pour les recommendations (3-5 recommandations) :
+              - Propose des actions concrètes pour améliorer le profil
+              - Suggère des compétences à acquérir
+              - Recommande des améliorations du CV
+              - Propose des objectifs de carrière
+              
+              Sois précis, constructif et professionnel dans tes commentaires.`
+            },
+            {
+              role: 'user',
+              content: `Analyse ce profil candidat et son CV de manière détaillée :
+              
+              Données candidat : ${JSON.stringify(candidateData)}
+              
+              Texte du CV complet : ${resumeText}`
             }
-            
-            Critères d'évaluation :
-            - Skills (20 pts) : Pertinence et diversité des compétences techniques et soft skills
-            - Experience (20 pts) : Qualité, progression et cohérence de l'expérience professionnelle
-            - Education (20 pts) : Niveau et pertinence des formations par rapport au profil
-            - Languages (10 pts) : Maîtrise des langues (bonus si multilingue)
-            - Location (10 pts) : Informations de localisation et mobilité
-            - Profile Summary (10 pts) : Clarté de la présentation du profil et objectifs
-            - CV Structure (10 pts) : Organisation, lisibilité et professionnalisme du CV
-            
-            Dans l'explication, tu DOIS inclure :
-            - Une analyse de 3-5 points forts majeurs avec exemples concrets
-            - Une analyse de 2-3 points faibles avec suggestions d'amélioration
-            - Une évaluation de la cohérence du parcours professionnel
-            - Des recommandations spécifiques pour améliorer le profil
-            
-            Pour les strengths (3-5 points forts) :
-            - Identifie les compétences clés les plus remarquables
-            - Mets en avant l'expérience pertinente
-            - Souligne les formations ou certifications importantes
-            - Note la progression de carrière si applicable
-            
-            Pour les weaknesses (2-3 points faibles) :
-            - Identifie les lacunes en compétences
-            - Note les manques d'information dans le CV
-            - Souligne les incohérences ou gaps dans le parcours
-            
-            Pour les recommendations (3-5 recommandations) :
-            - Propose des actions concrètes pour améliorer le profil
-            - Suggère des compétences à acquérir
-            - Recommande des améliorations du CV
-            - Propose des objectifs de carrière
-            
-            Sois précis, constructif et professionnel dans tes commentaires.`
-          },
-          {
-            role: 'user',
-            content: `Analyse ce profil candidat et son CV de manière détaillée :
-            
-            Données candidat : ${JSON.stringify(candidateData)}
-            
-            Texte du CV complet : ${resumeText}`
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 2500
-      }),
-    });
+          ],
+          temperature: 0.3,
+          max_tokens: 2500
+        }),
+      });
+    } catch (fetchError) {
+      console.error('❌ [analyze-resume] Step 2 FETCH ERROR:', fetchError);
+      // Continue avec fallback au lieu de fail
+      console.log('🔧 [analyze-resume] Continuing with fallback analysis...');
+    }
 
     let analysis = null;
-    if (analysisResponse.ok) {
-      const analysisData = await analysisResponse.json();
-      const analysisContent = analysisData.choices[0]?.message?.content;
-      
-      if (analysisContent) {
-        try {
+    if (analysisResponse && analysisResponse.ok) {
+      try {
+        const analysisData = await analysisResponse.json();
+        const analysisContent = analysisData.choices[0]?.message?.content;
+        
+        if (analysisContent) {
           analysis = JSON.parse(analysisContent);
           console.log('✅ [analyze-resume] Step 2 success: AI analysis completed:', {
             score: analysis.score,
@@ -219,15 +232,11 @@ serve(async (req) => {
             weaknessesCount: analysis.weaknesses?.length || 0,
             recommendationsCount: analysis.recommendations?.length || 0
           });
-        } catch (parseError) {
-          console.error('❌ [analyze-resume] Failed to parse AI analysis response:', analysisContent);
-          console.log('🔧 [analyze-resume] Creating fallback analysis...');
         }
+      } catch (parseError) {
+        console.error('❌ [analyze-resume] Failed to parse AI analysis response:', parseError);
+        console.log('🔧 [analyze-resume] Creating fallback analysis...');
       }
-    } else {
-      const errorText = await analysisResponse.text();
-      console.warn(`⚠️ [analyze-resume] OpenAI analysis API error: ${analysisResponse.status} - ${errorText}`);
-      console.log('🔧 [analyze-resume] Will create fallback analysis...');
     }
 
     // Ensure we have at least basic analysis if detailed analysis failed
@@ -252,25 +261,32 @@ serve(async (req) => {
       console.log('✅ [analyze-resume] Fallback analysis created with score:', analysis.score);
     }
 
-    // Step 3: Get candidate ID from resume
+    // Step 3: Get candidate ID from resume - SECURED WITH TRY/CATCH
     console.log('🔍 [analyze-resume] Step 3: Finding candidate ID from resume...');
-    const { data: candidateRecord, error: candidateError } = await supabase
-      .from('candidates')
-      .select('id, user_id')
-      .eq('resume_id', resumeId)
-      .single();
+    let candidateRecord;
+    try {
+      const { data: candidateData, error: candidateError } = await supabase
+        .from('candidates')
+        .select('id, user_id')
+        .eq('resume_id', resumeId)
+        .single();
 
-    if (candidateError || !candidateRecord) {
-      console.error('❌ [analyze-resume] Error finding candidate:', candidateError);
-      throw new Error(`Candidate not found for resume ${resumeId}: ${candidateError?.message}`);
+      if (candidateError || !candidateData) {
+        console.error('❌ [analyze-resume] Error finding candidate:', candidateError);
+        throw new Error(`Candidate not found for resume ${resumeId}: ${candidateError?.message}`);
+      }
+
+      candidateRecord = candidateData;
+      console.log('✅ [analyze-resume] Step 3 success: Found candidate:', {
+        candidateId: candidateRecord.id,
+        userId: candidateRecord.user_id
+      });
+    } catch (step3Error) {
+      console.error('❌ [analyze-resume] Step 3 CRITICAL ERROR:', step3Error);
+      throw new Error(`Step 3 failed: ${step3Error.message}`);
     }
 
-    console.log('✅ [analyze-resume] Step 3 success: Found candidate:', {
-      candidateId: candidateRecord.id,
-      userId: candidateRecord.user_id
-    });
-
-    // Step 4: Save AI score to database with DETAILED TRACING
+    // Step 4: Save AI score to database - SUPER SECURED WITH TRY/CATCH
     console.log('💾 [analyze-resume] Step 4: Starting AI score save to database...');
     console.log('📊 [analyze-resume] Data to save:', {
       candidateId: candidateRecord.id,
