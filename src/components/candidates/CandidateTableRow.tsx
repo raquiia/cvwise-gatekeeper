@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/utils/dateFormatter';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { cn } from '@/lib/utils';
+import { getLastCompany } from '@/utils/companyUtils';
 
 interface CandidateTableRowProps {
   candidate: CandidateData;
@@ -31,7 +32,8 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   const skills = ensureStringArray(candidate.skills);
   const { toast } = useToast();
   const { getAIScore, isJobSpecific } = useAIScoring();
-  
+  const lastCompany = getLastCompany(candidate);
+
   // Utiliser le système AI scoring unifié
   const aiScore = getAIScore(candidate.id!, jobOfferId);
   const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
@@ -170,7 +172,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
       {/* Company Column */}
       <TableCell>
         <div className="font-medium">
-          {candidate.company || 'Non spécifiée'}
+          {lastCompany}
         </div>
       </TableCell>
       

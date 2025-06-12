@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ensureStringArray } from '@/utils/candidateUtils';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { cn } from '@/lib/utils';
+import { getLastCompany } from '@/utils/companyUtils';
 
 interface CandidatesTableProps {
   candidates: CandidateData[];
@@ -144,6 +144,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
             const aiScore = getAIScore(candidate.id!, jobOfferId);
             const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
             const isAIScore = aiScore.score !== null;
+            const lastCompany = getLastCompany(candidate);
             
             return (
               <TableRow 
@@ -181,7 +182,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                 </TableCell>
                 
                 <TableCell className="text-gray-600">
-                  {candidate.company || 'Non spécifiée'}
+                  {lastCompany}
                 </TableCell>
                 
                 <TableCell className="text-gray-600">

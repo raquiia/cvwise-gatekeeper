@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { 
   ColumnDef, 
@@ -18,6 +17,7 @@ import { Search, ArrowUpDown, Brain, Sparkles, Briefcase, Target, FileSearch } f
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
+import { getLastCompany } from '@/utils/companyUtils';
 
 interface ModernTableViewProps {
   candidates: CandidateData[];
@@ -69,12 +69,17 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
     {
       accessorKey: 'position',
       header: 'Poste',
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="font-medium">{row.original.position || 'Non spécifié'}</span>
-          <span className="text-sm text-gray-500">{row.original.company || ''}</span>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const candidate = row.original;
+        const lastCompany = getLastCompany(candidate);
+        
+        return (
+          <div className="flex flex-col">
+            <span className="font-medium">{candidate.position || 'Non spécifié'}</span>
+            <span className="text-sm text-gray-500">{lastCompany}</span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: 'experience',
