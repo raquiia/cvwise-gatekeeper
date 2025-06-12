@@ -502,45 +502,12 @@ export type Database = {
         Args: { p_job_offer_id: string }
         Returns: string[]
       }
-      calculate_and_store_candidate_score: {
-        Args: { p_candidate_id: string }
-        Returns: number
-      }
-      calculate_and_store_completeness_score: {
-        Args: { p_candidate_id: string }
-        Returns: number
-      }
-      calculate_and_store_job_score: {
-        Args: { p_candidate_id: string; p_job_offer_id: string }
-        Returns: number
-      }
-      calculate_candidate_completeness_score: {
-        Args: { p_candidate_id: string }
-        Returns: {
-          education_score: number
-          experience_score: number
-          skills_score: number
-          languages_score: number
-          location_mobility_score: number
-          profile_summary_score: number
-          cv_structure_score: number
-          total_score: number
-        }[]
-      }
-      calculate_candidate_data_hash: {
-        Args: { p_candidate_id: string }
-        Returns: string
-      }
       calculate_candidate_job_match: {
         Args: { p_candidate_id: string; p_job_offer_id: string }
         Returns: string
       }
       check_duplicate_resume: {
         Args: { p_file_name: string; p_user_id: string }
-        Returns: boolean
-      }
-      delete_ai_candidate_score: {
-        Args: { p_candidate_id: string; p_job_offer_id?: string }
         Returns: boolean
       }
       delete_candidate_secure: {
@@ -550,24 +517,6 @@ export type Database = {
       delete_resume_by_id: {
         Args: { resume_id_param: string }
         Returns: boolean
-      }
-      get_ai_candidate_score: {
-        Args: { p_candidate_id: string; p_job_offer_id?: string }
-        Returns: {
-          id: string
-          candidate_id: string
-          job_offer_id: string
-          user_id: string
-          score: number
-          explanation: string
-          breakdown: Json
-          strengths: Json
-          weaknesses: Json
-          recommendations: Json
-          calculated_at: string
-          created_at: string
-          updated_at: string
-        }[]
       }
       get_all_matches_for_job_offer: {
         Args: { p_job_offer_id: string }
@@ -836,33 +785,6 @@ export type Database = {
           p_file_size: number
         }
         Returns: string
-      }
-      save_ai_candidate_score: {
-        Args: {
-          p_candidate_id: string
-          p_score: number
-          p_explanation: string
-          p_job_offer_id?: string
-          p_breakdown?: Json
-          p_strengths?: Json
-          p_weaknesses?: Json
-          p_recommendations?: Json
-        }
-        Returns: {
-          id: string
-          candidate_id: string
-          job_offer_id: string
-          user_id: string
-          score: number
-          explanation: string
-          breakdown: Json
-          strengths: Json
-          weaknesses: Json
-          recommendations: Json
-          calculated_at: string
-          created_at: string
-          updated_at: string
-        }[]
       }
       update_candidate_secure: {
         Args: { p_candidate_id: string; p_data: Json }

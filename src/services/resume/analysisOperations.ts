@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { candidateService, CandidateData } from '@/services/data/candidateService';
@@ -74,7 +73,7 @@ export const analyzeResume = async (
 
     onProgress?.({ current: 3, total: 4, status: 'saving', currentFile: 'Sauvegarde en base...' });
 
-    // 3. Créer ou mettre à jour le candidat en base
+    // 3. Créer ou mettre à jour le candidat en base avec les données AI
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Utilisateur non authentifié');
 
@@ -82,6 +81,14 @@ export const analyzeResume = async (
       ...analysisData.candidateData,
       resume_id: resumeId,
       user_id: user.id,
+      // Inclure directement les données AI dans la création
+      ai_score: analysisData.analysis?.score || null,
+      ai_explanation: analysisData.analysis?.explanation || null,
+      ai_breakdown: analysisData.analysis?.breakdown || {},
+      ai_strengths: analysisData.analysis?.strengths || [],
+      ai_weaknesses: analysisData.analysis?.weaknesses || [],
+      ai_recommendations: analysisData.analysis?.recommendations || [],
+      ai_analyzed_at: analysisData.analysis ? new Date().toISOString() : null,
       last_updated_at: new Date().toISOString()
     };
 
@@ -100,78 +107,11 @@ export const analyzeResume = async (
         ...candidateToSave,
         id: existingCandidates[0].id
       });
+      console.log('✅ Candidate updated with AI data:', finalCandidate.id);
     } else {
       // Création d'un nouveau candidat
       finalCandidate = await candidateService.createCandidate(candidateToSave);
-    }
-
-    // 4. Sauvegarder le score IA complet si disponible avec gestion d'erreur robuste
-    if (analysisData.analysis && finalCandidate.id) {
-      try {
-        console.log('💾 Saving comprehensive AI analysis with full details...');
-        console.log('📊 Analysis data to save:', {
-          score: analysisData.analysis.score,
-          explanationLength: analysisData.analysis.explanation?.length || 0,
-          strengthsCount: analysisData.analysis.strengths?.length || 0,
-          weaknessesCount: analysisData.analysis.weaknesses?.length || 0,
-          recommendationsCount: analysisData.analysis.recommendations?.length || 0,
-          breakdown: analysisData.analysis.breakdown
-        });
-        
-        // S'assurer que les arrays sont au bon format
-        const strengths = Array.isArray(analysisData.analysis.strengths) ? 
-          analysisData.analysis.strengths : [];
-        const weaknesses = Array.isArray(analysisData.analysis.weaknesses) ? 
-          analysisData.analysis.weaknesses : [];
-        const recommendations = Array.isArray(analysisData.analysis.recommendations) ? 
-          analysisData.analysis.recommendations : [];
-        
-        console.log('🔧 Formatted arrays for database:', {
-          strengthsCount: strengths.length,
-          weaknessesCount: weaknesses.length,
-          recommendationsCount: recommendations.length
-        });
-        
-        // Utiliser la fonction RPC mise à jour avec TOUS les nouveaux paramètres
-        const { data: saveResult, error: scoreError } = await supabase.rpc('save_ai_candidate_score', {
-          p_candidate_id: finalCandidate.id,
-          p_score: analysisData.analysis.score,
-          p_explanation: analysisData.analysis.explanation || '',
-          p_job_offer_id: null, // Score de complétude générale
-          p_breakdown: analysisData.analysis.breakdown || {},
-          p_strengths: strengths,
-          p_weaknesses: weaknesses,
-          p_recommendations: recommendations
-        });
-
-        if (scoreError) {
-          console.error('❌ Error saving comprehensive AI score:', scoreError);
-          throw new Error(`Erreur lors de la sauvegarde du score IA: ${scoreError.message}`);
-        }
-
-        console.log('✅ Comprehensive AI analysis saved successfully:', {
-          savedData: saveResult,
-          candidateId: finalCandidate.id
-        });
-
-        // Vérifier que la sauvegarde a bien fonctionné
-        if (!saveResult || saveResult.length === 0) {
-          console.warn('⚠️ Save operation completed but no data returned');
-        } else {
-          console.log('🎉 AI score save confirmed with data:', saveResult[0]);
-        }
-        
-      } catch (scoreError: any) {
-        console.error('❌ Exception saving comprehensive AI score:', scoreError);
-        // Ne pas faire échouer l'analyse complète si seule la sauvegarde du score échoue
-        toast({
-          title: "Avertissement",
-          description: "L'analyse a réussi mais le score IA n'a pas pu être sauvegardé complètement",
-          variant: "default",
-        });
-      }
-    } else {
-      console.warn('⚠️ No AI analysis data to save or candidate ID missing');
+      console.log('✅ Candidate created with AI data:', finalCandidate.id);
     }
 
     onProgress?.({ current: 4, total: 4, status: 'completed' });
