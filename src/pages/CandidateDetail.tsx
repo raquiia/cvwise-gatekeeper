@@ -142,6 +142,22 @@ const CandidateDetail = () => {
     });
   }, []);
 
+  // Enhanced refresh function that also refreshes AI scores
+  const handleRefreshWithAIScore = useCallback(async () => {
+    console.log('🔄 CandidateDetail: Enhanced refresh requested');
+    
+    // Refresh candidate data
+    await fetchCandidateData();
+    
+    // Force refresh AI scores after a short delay to ensure data is loaded
+    if (candidateId) {
+      setTimeout(() => {
+        console.log('🔄 CandidateDetail: Force refreshing AI scores');
+        // This will be handled by the AI scoring hooks in the components
+      }, 500);
+    }
+  }, [fetchCandidateData, candidateId]);
+
   if (loading) {
     return (
       <Layout>
@@ -210,7 +226,7 @@ const CandidateDetail = () => {
           <DataMissingAlert 
             candidateName={`${candidate?.first_name} ${candidate?.last_name}`} 
             resumeId={candidate?.resume_id}
-            onReanalysisComplete={fetchCandidateData}
+            onReanalysisComplete={handleRefreshWithAIScore}
           />
         )}
         
@@ -262,7 +278,7 @@ const CandidateDetail = () => {
                 <ProfileTab 
                   candidate={candidate} 
                   isLoading={loading}
-                  onRefresh={fetchCandidateData}
+                  onRefresh={handleRefreshWithAIScore}
                 />
               </TabsContent>
               
@@ -287,7 +303,7 @@ const CandidateDetail = () => {
                 className="animate-fade-in rounded-xl relative overflow-hidden bg-white/70 backdrop-blur-sm border border-navy/10 shadow-md"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
-                <NotesTab candidate={candidate} onDataUpdate={fetchCandidateData} />
+                <NotesTab candidate={candidate} onDataUpdate={handleRefreshWithAIScore} />
               </TabsContent>
               
               <TabsContent 

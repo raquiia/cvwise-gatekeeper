@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -294,11 +295,30 @@ export const analyzeResume = async (
       analysisResult.candidateData
     );
 
-    // Maintenant sauvegarder le score IA avec l'ID correct du candidat
+    // Sauvegarder le score IA avec l'ID correct du candidat
     if (analysisResult.analysis) {
       try {
+        console.log('💾 About to save AI score for candidate:', candidateId);
         await saveAIScoreToDatabase(candidateId, analysisResult.analysis);
         console.log('✅ AI score saved successfully for candidate:', candidateId);
+        
+        // Attendre un peu pour que la base de données se mette à jour
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Vérifier que le score a bien été sauvé
+        const { data: savedScore, error: checkError } = await supabase.rpc('get_ai_candidate_score', {
+          p_candidate_id: candidateId,
+          p_job_offer_id: null
+        });
+        
+        if (checkError) {
+          console.warn('⚠️ Could not verify saved AI score:', checkError);
+        } else if (savedScore && savedScore.length > 0) {
+          console.log('🎉 AI score verification successful:', savedScore[0]);
+        } else {
+          console.warn('⚠️ AI score was not found after save');
+        }
+        
       } catch (scoreError: any) {
         console.warn('⚠️ Failed to save AI score, but candidate was created:', scoreError);
         // On continue car le candidat a été créé avec succès
@@ -310,6 +330,8 @@ export const analyzeResume = async (
       .from('resumes')
       .update({ parsed: true })
       .eq('id', resumeId);
+
+    console.log('🎯 Analysis complete - returning success with candidateId:', candidateId);
 
     return {
       success: true,

@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Json } from '@/integrations/supabase/types';
 
 export interface AIScoreData {
   score: number | null;
@@ -20,100 +20,54 @@ export interface AIScoreData {
   isJobSpecific: boolean;
   isLoading: boolean;
   error: string | null;
-  source?: 'database' | 'fresh_calculation' | 'cache';
+  source?: string;
 }
 
-// Utility function to safely convert Json array to string array
-const jsonArrayToStringArray = (jsonData: Json): string[] => {
-  if (!jsonData) return [];
-  
-  if (Array.isArray(jsonData)) {
-    return jsonData
-      .filter((item): item is string => typeof item === 'string')
-      .map(item => String(item));
-  }
-  
-  if (typeof jsonData === 'string') {
-    try {
-      const parsed = JSON.parse(jsonData);
-      if (Array.isArray(parsed)) {
-        return parsed
-          .filter((item): item is string => typeof item === 'string')
-          .map(item => String(item));
-      }
-    } catch {
-      // If parsing fails, return empty array
-    }
-  }
-  
-  return [];
-};
+interface AIScoreCache {
+  [candidateId: string]: {
+    data: AIScoreData;
+    timestamp: number;
+    version: number;
+  };
+}
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const cacheRef: { current: AIScoreCache } = { current: {} };
+const loadingStatesRef: { current: Set<string> } = { current: new Set() };
 
 export const useAIScoring = () => {
-  const [scores, setScores] = useState<Record<string, AIScoreData>>({});
-  const loadingRef = useRef<Set<string>>(new Set());
+  const [, forceUpdate] = useState({});
+  const subscribersRef = useRef<Set<() => void>>(new Set());
 
-  const getAIScore = (candidateId: string, jobOfferId?: string): AIScoreData => {
-    const key = `${candidateId}_${jobOfferId || 'general'}`;
+  const triggerUpdate = useCallback(() => {
+    const update = {};
+    forceUpdate(update);
+    subscribersRef.current.forEach(callback => callback());
+  }, []);
+
+  const subscribe = useCallback((callback: () => void) => {
+    subscribersRef.current.add(callback);
+    return () => subscribersRef.current.delete(callback);
+  }, []);
+
+  const fetchAIScore = useCallback(async (candidateId: string, jobOfferId?: string): Promise<AIScoreData> => {
+    const cacheKey = `${candidateId}-${jobOfferId || 'general'}`;
     
-    // Retourner le score depuis le cache ou initialiser
-    const cachedScore = scores[key];
-    if (cachedScore) {
-      console.log(`✅ [useAIScoring] Returning cached score for ${candidateId}:`, {
-        score: cachedScore.score,
-        hasExplanation: !!cachedScore.explanation,
-        strengthsCount: cachedScore.strengths?.length || 0,
-        weaknessesCount: cachedScore.weaknesses?.length || 0,
-        recommendationsCount: cachedScore.recommendations?.length || 0
-      });
-      return cachedScore;
+    if (loadingStatesRef.current.has(cacheKey)) {
+      return cacheRef.current[cacheKey]?.data || {
+        score: null,
+        explanation: '',
+        isJobSpecific: !!jobOfferId,
+        isLoading: true,
+        error: null
+      };
     }
 
-    // Initialiser et charger si pas déjà en cours
-    if (!loadingRef.current.has(key)) {
-      loadingRef.current.add(key);
-      
-      console.log(`🔄 [useAIScoring] Starting fresh fetch for candidate ${candidateId}`);
-      
-      setScores(prev => ({
-        ...prev,
-        [key]: {
-          score: null,
-          explanation: '',
-          breakdown: undefined,
-          strengths: undefined,
-          weaknesses: undefined,
-          recommendations: undefined,
-          isJobSpecific: !!jobOfferId,
-          isLoading: true,
-          error: null,
-          source: undefined
-        }
-      }));
+    loadingStatesRef.current.add(cacheKey);
 
-      // Démarrer le chargement immédiatement
-      fetchAIScore(candidateId, jobOfferId, key);
-    }
-
-    return scores[key] || {
-      score: null,
-      explanation: '',
-      breakdown: undefined,
-      strengths: undefined,
-      weaknesses: undefined,
-      recommendations: undefined,
-      isJobSpecific: !!jobOfferId,
-      isLoading: true,
-      error: null,
-      source: undefined
-    };
-  };
-
-  const fetchAIScore = async (candidateId: string, jobOfferId: string | undefined, key: string) => {
     try {
-      console.log(`🔍 [useAIScoring] Fetching comprehensive AI score for candidate ${candidateId}, jobOffer: ${jobOfferId || 'general'}`);
-      
-      // Appeler la fonction RPC mise à jour qui retourne TOUS les champs
+      console.log(`🔍 [useAIScoring] Fetching AI score for candidate ${candidateId}${jobOfferId ? ` and job ${jobOfferId}` : ' (general)'}`);
+
       const { data, error } = await supabase.rpc('get_ai_candidate_score', {
         p_candidate_id: candidateId,
         p_job_offer_id: jobOfferId || null
@@ -121,212 +75,174 @@ export const useAIScoring = () => {
 
       if (error) {
         console.error('❌ [useAIScoring] Error fetching AI score:', error);
-        throw error;
+        throw new Error(`Failed to fetch AI score: ${error.message}`);
       }
 
-      console.log(`📊 [useAIScoring] Raw comprehensive AI score data received for ${candidateId}:`, data);
+      let aiScoreData: AIScoreData;
 
       if (data && data.length > 0) {
-        const scoreData = data[0];
-        console.log(`✅ [useAIScoring] Found comprehensive AI score for ${candidateId}: ${scoreData.score}/100 with full analysis`, {
-          explanation: scoreData.explanation?.length || 0,
-          strengths: Array.isArray(scoreData.strengths) ? scoreData.strengths.length : 0,
-          weaknesses: Array.isArray(scoreData.weaknesses) ? scoreData.weaknesses.length : 0,
-          recommendations: Array.isArray(scoreData.recommendations) ? scoreData.recommendations.length : 0
+        const scoreRecord = data[0];
+        console.log('✅ [useAIScoring] AI score found in database:', {
+          candidateId,
+          score: scoreRecord.score,
+          hasExplanation: !!scoreRecord.explanation,
+          strengthsCount: scoreRecord.strengths?.length || 0,
+          weaknessesCount: scoreRecord.weaknesses?.length || 0,
+          recommendationsCount: scoreRecord.recommendations?.length || 0
         });
-        
-        // Parse breakdown safely
-        let breakdown = {};
-        if (scoreData.breakdown) {
-          try {
-            breakdown = typeof scoreData.breakdown === 'string' 
-              ? JSON.parse(scoreData.breakdown) 
-              : scoreData.breakdown;
-          } catch (e) {
-            console.warn('❌ [useAIScoring] Failed to parse breakdown:', e);
-            breakdown = {};
-          }
-        }
 
-        // Parse arrays safely using our utility function
-        const strengths = jsonArrayToStringArray(scoreData.strengths);
-        const weaknesses = jsonArrayToStringArray(scoreData.weaknesses);
-        const recommendations = jsonArrayToStringArray(scoreData.recommendations);
-
-        console.log(`📈 [useAIScoring] Parsed analysis data for ${candidateId}:`, {
-          strengthsCount: strengths.length,
-          weaknessesCount: weaknesses.length,
-          recommendationsCount: recommendations.length,
-          strengthsSample: strengths.slice(0, 1),
-          weaknessesSample: weaknesses.slice(0, 1),
-          recommendationsSample: recommendations.slice(0, 1)
-        });
-        
-        setScores(prev => ({
-          ...prev,
-          [key]: {
-            score: scoreData.score,
-            explanation: scoreData.explanation || '',
-            breakdown: breakdown,
-            strengths: strengths,
-            weaknesses: weaknesses,
-            recommendations: recommendations,
-            isJobSpecific: !!jobOfferId,
-            isLoading: false,
-            error: null,
-            source: 'database'
-          }
-        }));
-      } else {
-        console.log(`ℹ️ [useAIScoring] No AI score found in database for candidate ${candidateId}`);
-        setScores(prev => ({
-          ...prev,
-          [key]: {
-            score: null,
-            explanation: '',
-            breakdown: undefined,
-            strengths: undefined,
-            weaknesses: undefined,
-            recommendations: undefined,
-            isJobSpecific: !!jobOfferId,
-            isLoading: false,
-            error: null,
-            source: undefined
-          }
-        }));
-      }
-    } catch (error: any) {
-      console.error(`❌ [useAIScoring] Error fetching AI score for ${candidateId}:`, error);
-      setScores(prev => ({
-        ...prev,
-        [key]: {
-          score: null,
-          explanation: '',
-          breakdown: undefined,
-          strengths: undefined,
-          weaknesses: undefined,
-          recommendations: undefined,
-          isJobSpecific: !!jobOfferId,
-          isLoading: false,
-          error: error.message,
-          source: undefined
-        }
-      }));
-    } finally {
-      loadingRef.current.delete(key);
-    }
-  };
-
-  const preloadScoresFromDatabase = async (candidateIds: string[], jobOfferId?: string) => {
-    console.log(`🔄 [useAIScoring] Preloading scores for ${candidateIds.length} candidates`);
-    
-    // Précharger en parallèle mais sans bloquer l'interface
-    candidateIds.forEach(candidateId => {
-      const key = `${candidateId}_${jobOfferId || 'general'}`;
-      if (!scores[key] && !loadingRef.current.has(key)) {
-        getAIScore(candidateId, jobOfferId);
-      }
-    });
-  };
-
-  const clearCache = (candidateId?: string) => {
-    if (candidateId) {
-      const keysToRemove = Object.keys(scores).filter(key => key.startsWith(`${candidateId}_`));
-      setScores(prev => {
-        const newScores = { ...prev };
-        keysToRemove.forEach(key => delete newScores[key]);
-        return newScores;
-      });
-    } else {
-      setScores({});
-    }
-  };
-
-  // Force le rechargement d'un score spécifique
-  const forceRefresh = (candidateId: string, jobOfferId?: string) => {
-    const key = `${candidateId}_${jobOfferId || 'general'}`;
-    console.log(`🔄 [useAIScoring] Force refreshing score for key: ${key}`);
-    
-    // Supprimer du cache et recharger
-    setScores(prev => {
-      const newScores = { ...prev };
-      delete newScores[key];
-      return newScores;
-    });
-    
-    // Supprimer du loading ref aussi
-    loadingRef.current.delete(key);
-    
-    // Relancer le chargement
-    getAIScore(candidateId, jobOfferId);
-  };
-
-  // Propriété dérivée pour savoir si on est en mode job-specific
-  const isJobSpecific = Object.values(scores).some(score => score.isJobSpecific);
-
-  const saveAIScore = async (
-    candidateId: string,
-    score: number,
-    explanation: string,
-    breakdown: any,
-    jobOfferId?: string,
-    strengths?: string[],
-    weaknesses?: string[],
-    recommendations?: string[]
-  ): Promise<boolean> => {
-    try {
-      console.log(`💾 [useAIScoring] Saving comprehensive AI score ${score}/100 for candidate ${candidateId}`);
-      
-      // Utiliser la fonction RPC mise à jour avec TOUS les nouveaux paramètres
-      const { data, error } = await supabase.rpc('save_ai_candidate_score', {
-        p_candidate_id: candidateId,
-        p_score: score,
-        p_explanation: explanation,
-        p_breakdown: breakdown,
-        p_job_offer_id: jobOfferId || null,
-        p_strengths: strengths || [],
-        p_weaknesses: weaknesses || [],
-        p_recommendations: recommendations || []
-      });
-
-      if (error) {
-        console.error('❌ [useAIScoring] Error saving comprehensive AI score:', error);
-        return false;
-      }
-
-      console.log(`✅ [useAIScoring] Comprehensive AI score saved successfully`);
-
-      // Mettre à jour le cache
-      const key = `${candidateId}_${jobOfferId || 'general'}`;
-      setScores(prev => ({
-        ...prev,
-        [key]: {
-          score,
-          explanation,
-          breakdown,
-          strengths: strengths || [],
-          weaknesses: weaknesses || [],
-          recommendations: recommendations || [],
+        aiScoreData = {
+          score: scoreRecord.score,
+          explanation: scoreRecord.explanation || '',
+          breakdown: scoreRecord.breakdown || {},
+          strengths: scoreRecord.strengths || [],
+          weaknesses: scoreRecord.weaknesses || [],
+          recommendations: scoreRecord.recommendations || [],
           isJobSpecific: !!jobOfferId,
           isLoading: false,
           error: null,
-          source: 'fresh_calculation'
-        }
-      }));
+          source: 'database'
+        };
+      } else {
+        console.log('📭 [useAIScoring] No AI score found in database for candidate:', candidateId);
+        aiScoreData = {
+          score: null,
+          explanation: '',
+          breakdown: {},
+          strengths: [],
+          weaknesses: [],
+          recommendations: [],
+          isJobSpecific: !!jobOfferId,
+          isLoading: false,
+          error: null,
+          source: 'none'
+        };
+      }
 
-      return true;
+      // Mettre à jour le cache avec un timestamp et une version
+      cacheRef.current[cacheKey] = {
+        data: aiScoreData,
+        timestamp: Date.now(),
+        version: Date.now() // Utiliser timestamp comme version
+      };
+
+      return aiScoreData;
+
     } catch (error: any) {
-      console.error(`❌ [useAIScoring] Error saving comprehensive AI score:`, error);
-      return false;
+      console.error('❌ [useAIScoring] Error in fetchAIScore:', error);
+      const errorData: AIScoreData = {
+        score: null,
+        explanation: '',
+        isJobSpecific: !!jobOfferId,
+        isLoading: false,
+        error: error.message
+      };
+
+      cacheRef.current[cacheKey] = {
+        data: errorData,
+        timestamp: Date.now(),
+        version: Date.now()
+      };
+
+      return errorData;
+    } finally {
+      loadingStatesRef.current.delete(cacheKey);
     }
-  };
+  }, []);
+
+  const getAIScore = useCallback((candidateId: string, jobOfferId?: string): AIScoreData => {
+    if (!candidateId) {
+      return {
+        score: null,
+        explanation: '',
+        isJobSpecific: !!jobOfferId,
+        isLoading: false,
+        error: 'No candidate ID provided'
+      };
+    }
+
+    const cacheKey = `${candidateId}-${jobOfferId || 'general'}`;
+    const cached = cacheRef.current[cacheKey];
+    const now = Date.now();
+
+    // Si on a des données en cache et qu'elles ne sont pas expirées
+    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+      return cached.data;
+    }
+
+    // Si on est en train de charger, retourner l'état de chargement
+    if (loadingStatesRef.current.has(cacheKey)) {
+      return {
+        score: null,
+        explanation: '',
+        isJobSpecific: !!jobOfferId,
+        isLoading: true,
+        error: null
+      };
+    }
+
+    // Lancer le fetch en arrière-plan
+    fetchAIScore(candidateId, jobOfferId).then(triggerUpdate);
+
+    // Retourner les données en cache si disponibles, sinon état de chargement
+    return cached?.data || {
+      score: null,
+      explanation: '',
+      isJobSpecific: !!jobOfferId,
+      isLoading: true,
+      error: null
+    };
+  }, [fetchAIScore, triggerUpdate]);
+
+  const forceRefresh = useCallback((candidateId: string, jobOfferId?: string) => {
+    const cacheKey = candidateId ? `${candidateId}-${jobOfferId || 'general'}` : '';
+    
+    if (cacheKey) {
+      console.log(`🔄 [useAIScoring] Force refreshing AI score for: ${cacheKey}`);
+      // Supprimer du cache pour forcer un nouveau fetch
+      delete cacheRef.current[cacheKey];
+      // Supprimer de l'état de chargement si nécessaire
+      loadingStatesRef.current.delete(cacheKey);
+      
+      // Relancer le fetch immédiatement
+      if (candidateId) {
+        fetchAIScore(candidateId, jobOfferId).then(triggerUpdate);
+      }
+    } else {
+      console.log('🔄 [useAIScoring] Force refreshing all AI scores (clearing entire cache)');
+      // Vider tout le cache
+      cacheRef.current = {};
+      loadingStatesRef.current.clear();
+      triggerUpdate();
+    }
+  }, [fetchAIScore, triggerUpdate]);
+
+  const clearCache = useCallback(() => {
+    console.log('🗑️ [useAIScoring] Clearing all AI score cache');
+    cacheRef.current = {};
+    loadingStatesRef.current.clear();
+    triggerUpdate();
+  }, [triggerUpdate]);
+
+  // Preload AI score when component mounts
+  const preloadAIScore = useCallback((candidateId: string, jobOfferId?: string) => {
+    if (candidateId) {
+      const cacheKey = `${candidateId}-${jobOfferId || 'general'}`;
+      const cached = cacheRef.current[cacheKey];
+      const now = Date.now();
+
+      // Only preload if not in cache or expired
+      if (!cached || (now - cached.timestamp) >= CACHE_DURATION) {
+        fetchAIScore(candidateId, jobOfferId).then(triggerUpdate);
+      }
+    }
+  }, [fetchAIScore, triggerUpdate]);
 
   return {
     getAIScore,
-    saveAIScore,
-    clearCache,
-    preloadScoresFromDatabase,
     forceRefresh,
-    isJobSpecific
+    clearCache,
+    preloadAIScore,
+    subscribe
   };
 };
