@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { CandidateData } from '@/services/data/candidateService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -152,7 +151,7 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
     
     return (
       <div className="space-y-6">
-        {/* En-tête avec score de complétude */}
+        {/* En-tête avec proposition d'analyse */}
         <Card className="border-2 border-amber-200 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100">
             <div className="flex items-center justify-between">
@@ -174,49 +173,83 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
             </div>
             
             <p className="text-sm text-slate-600 font-medium">
-              {getScoreLabel(displayScore, false)}
+              Score de complétude du profil (pas encore d'analyse IA)
             </p>
           </CardHeader>
           
           <CardContent className="p-6">
             <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
               <div className="text-amber-600 text-xl">🤖</div>
-              <div>
+              <div className="flex-1">
                 <h3 className="font-bold text-amber-800 mb-2">Analyse IA requise</h3>
                 <p className="text-amber-700 mb-4">
                   Ce candidat n'a pas encore été analysé par l'intelligence artificielle. 
-                  L'analyse IA génère un score détaillé avec points forts, faiblesses et recommandations.
+                  L'analyse IA génère un score détaillé avec points forts, faiblesses et recommandations personnalisées.
                 </p>
                 <p className="text-sm text-amber-600 mb-4">
                   <strong>Candidat:</strong> {candidate.first_name} {candidate.last_name}<br/>
                   <strong>ID:</strong> {candidateId}<br/>
                   <strong>CV associé:</strong> {candidate.resume_id ? 'Oui' : 'Non'}<br/>
-                  <strong>Score de complétude:</strong> {displayScore}%
+                  <strong>Score de complétude actuel:</strong> {displayScore}%
                 </p>
                 
-                <Button
-                  onClick={handleAnalyzeCV}
-                  disabled={isAnalyzing || !candidate.resume_id}
-                  className="bg-amber-600 hover:bg-amber-700 text-white"
-                  size="sm"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Analyse en cours...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4 mr-2" />
-                      Lancer l'analyse IA du CV
-                    </>
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={handleAnalyzeCV}
+                    disabled={isAnalyzing || !candidate.resume_id}
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                    size="default"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Analyse en cours...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Lancer l'analyse IA du CV
+                      </>
+                    )}
+                  </Button>
+                  
+                  {!candidate.resume_id && (
+                    <div className="text-xs text-amber-600 bg-amber-100 px-3 py-2 rounded-lg">
+                      ⚠️ Aucun CV associé à ce candidat
+                    </div>
                   )}
-                </Button>
-                {!candidate.resume_id && (
-                  <p className="text-xs text-amber-600 mt-2">
-                    ⚠️ Aucun CV associé à ce candidat
-                  </p>
-                )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Information complémentaire */}
+        <Card className="border border-slate-200">
+          <CardContent className="p-6">
+            <div className="text-center text-slate-600">
+              <Brain className="w-12 h-12 mx-auto mb-4 text-slate-400" />
+              <h3 className="font-semibold mb-2">Que fait l'analyse IA ?</h3>
+              <p className="text-sm mb-4">
+                L'analyse par intelligence artificielle évalue automatiquement le profil du candidat 
+                et génère un score détaillé basé sur l'expérience, les compétences, la formation et d'autres critères.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div className="bg-green-50 p-3 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-green-600 mx-auto mb-2" />
+                  <strong>Points forts</strong><br/>
+                  Identifie les atouts du candidat
+                </div>
+                <div className="bg-orange-50 p-3 rounded-lg">
+                  <XCircle className="w-5 h-5 text-orange-600 mx-auto mb-2" />
+                  <strong>Axes d'amélioration</strong><br/>
+                  Détecte les points à développer
+                </div>
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <Lightbulb className="w-5 h-5 text-blue-600 mx-auto mb-2" />
+                  <strong>Recommandations</strong><br/>
+                  Suggère des améliorations
+                </div>
               </div>
             </div>
           </CardContent>
@@ -245,9 +278,31 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
               </div>
             </CardTitle>
             
-            <Badge className={`px-4 py-2 text-lg font-bold border-2 ${getScoreColor(displayScore)} shadow-sm`}>
-              {displayScore}/100
-            </Badge>
+            <div className="flex items-center gap-3">
+              <Badge className={`px-4 py-2 text-lg font-bold border-2 ${getScoreColor(displayScore)} shadow-sm`}>
+                {displayScore}/100
+              </Badge>
+              
+              <Button
+                onClick={handleAnalyzeCV}
+                disabled={isAnalyzing || !candidate.resume_id}
+                variant="outline"
+                size="sm"
+                className="border-purple-300 text-purple-700 hover:bg-purple-50"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Re-analyse...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Re-analyser
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
           
           <p className="text-sm text-slate-600 font-medium">
