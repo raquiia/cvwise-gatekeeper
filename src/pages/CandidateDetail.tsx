@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { candidateService } from '@/services/data/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
-import { ArrowLeft, Briefcase, Edit, Sparkles } from 'lucide-react';
+import { ArrowLeft, Briefcase, Edit, Sparkles, Brain } from 'lucide-react';
 import { processCandidateData } from '@/utils/candidateUtils';
 import { toast } from '@/hooks/use-toast';
 import { getCompleteCandidateData } from '@/services/resume/candidateDataService';
@@ -17,6 +16,7 @@ import ExperienceTab from '@/components/candidates/detail/ExperienceTab';
 import EducationTab from '@/components/candidates/detail/EducationTab';
 import DetailsTab from '@/components/candidates/detail/DetailsTab';
 import NotesTab from '@/components/candidates/detail/NotesTab';
+import AIAnalysisTab from '@/components/candidates/detail/AIAnalysisTab';
 import CandidateLoading from '@/components/candidates/detail/CandidateLoading';
 import CandidateError from '@/components/candidates/detail/CandidateError';
 import DataMissingAlert from '@/components/candidates/detail/DataMissingAlert';
@@ -241,6 +241,13 @@ const CandidateDetail = () => {
                 Profil
               </TabsTrigger>
               <TabsTrigger 
+                value="ai-analysis" 
+                className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
+              >
+                <Brain size={16} className="mr-2" />
+                Analyse IA
+              </TabsTrigger>
+              <TabsTrigger 
                 value="experience" 
                 className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
               >
@@ -276,6 +283,18 @@ const CandidateDetail = () => {
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
                 <ProfileTab 
+                  candidate={candidate} 
+                  isLoading={loading}
+                  onRefresh={handleRefreshWithAIScore}
+                />
+              </TabsContent>
+              
+              <TabsContent 
+                value="ai-analysis"
+                className="animate-fade-in rounded-xl relative overflow-hidden bg-white/70 backdrop-blur-sm border border-navy/10 shadow-md"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
+                <AIAnalysisTab 
                   candidate={candidate} 
                   isLoading={loading}
                   onRefresh={handleRefreshWithAIScore}
