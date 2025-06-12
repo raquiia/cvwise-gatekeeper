@@ -26,7 +26,7 @@ export interface AIScoreResult {
 export class AIScoringService {
   
   /**
-   * Sauvegarder un score IA avec toutes ses données
+   * Sauvegarder un score IA avec toutes ses données directement dans la table candidates
    */
   async saveAIScore(
     candidateId: string,
@@ -49,17 +49,21 @@ export class AIScoringService {
         breakdown
       });
 
-      // Utiliser la fonction SQL corrigée pour sauvegarder
-      const { data, error } = await supabase.rpc('save_ai_candidate_score', {
-        p_candidate_id: candidateId,
-        p_score: score,
-        p_explanation: explanation,
-        p_job_offer_id: jobOfferId || null,
-        p_breakdown: breakdown,
-        p_strengths: strengths,
-        p_weaknesses: weaknesses,
-        p_recommendations: recommendations
-      });
+      // Sauvegarder directement dans la table candidates
+      const { data, error } = await supabase
+        .from('candidates')
+        .update({
+          ai_score: score,
+          ai_explanation: explanation,
+          ai_breakdown: breakdown,
+          ai_strengths: strengths,
+          ai_weaknesses: weaknesses,
+          ai_recommendations: recommendations,
+          ai_analyzed_at: new Date().toISOString()
+        })
+        .eq('id', candidateId)
+        .select()
+        .single();
 
       if (error) {
         console.error('❌ [AIScoringService] Error saving AI score:', error);
@@ -88,23 +92,24 @@ export class AIScoringService {
   }
 
   /**
-   * Récupérer un score IA existant
+   * Récupérer un score IA existant depuis la table candidates
    */
   async getAIScore(candidateId: string, jobOfferId?: string): Promise<AIScoreResult> {
     try {
       console.log('🔍 [AIScoringService] Getting AI score for candidate:', candidateId);
 
-      const { data, error } = await supabase.rpc('get_ai_candidate_score', {
-        p_candidate_id: candidateId,
-        p_job_offer_id: jobOfferId || null
-      });
+      const { data: candidateData, error } = await supabase
+        .from('candidates')
+        .select('ai_score, ai_explanation, ai_breakdown, ai_strengths, ai_weaknesses, ai_recommendations, ai_analyzed_at')
+        .eq('id', candidateId)
+        .single();
 
       if (error) {
         console.error('❌ [AIScoringService] Error getting AI score:', error);
         throw error;
       }
 
-      if (!data || data.length === 0) {
+      if (!candidateData || candidateData.ai_score === null) {
         console.log('📭 [AIScoringService] No AI score found for candidate:', candidateId);
         return {
           success: false,
@@ -112,8 +117,7 @@ export class AIScoringService {
         };
       }
 
-      const scoreData = data[0];
-      console.log('✅ [AIScoringService] AI score retrieved:', scoreData);
+      console.log('✅ [AIScoringService] AI score retrieved:', candidateData);
 
       // Gérer les types JSON de Supabase en toute sécurité
       const parseJsonField = (field: any): any => {
@@ -147,12 +151,12 @@ export class AIScoringService {
 
       return {
         success: true,
-        score: scoreData.score,
-        explanation: scoreData.explanation,
-        breakdown: parseJsonField(scoreData.breakdown),
-        strengths: parseJsonArray(scoreData.strengths),
-        weaknesses: parseJsonArray(scoreData.weaknesses),
-        recommendations: parseJsonArray(scoreData.recommendations)
+        score: candidateData.ai_score,
+        explanation: candidateData.ai_explanation || '',
+        breakdown: parseJsonField(candidateData.ai_breakdown),
+        strengths: parseJsonArray(candidateData.ai_strengths),
+        weaknesses: parseJsonArray(candidateData.ai_weaknesses),
+        recommendations: parseJsonArray(candidateData.ai_recommendations)
       };
 
     } catch (error: any) {
@@ -165,16 +169,24 @@ export class AIScoringService {
   }
 
   /**
-   * Supprimer un score IA
+   * Supprimer un score IA en remettant les champs à null
    */
   async deleteAIScore(candidateId: string, jobOfferId?: string): Promise<boolean> {
     try {
       console.log('🗑️ [AIScoringService] Deleting AI score for candidate:', candidateId);
 
-      const { data, error } = await supabase.rpc('delete_ai_candidate_score', {
-        p_candidate_id: candidateId,
-        p_job_offer_id: jobOfferId || null
-      });
+      const { error } = await supabase
+        .from('candidates')
+        .update({
+          ai_score: null,
+          ai_explanation: null,
+          ai_breakdown: {},
+          ai_strengths: [],
+          ai_weaknesses: [],
+          ai_recommendations: [],
+          ai_analyzed_at: null
+        })
+        .eq('id', candidateId);
 
       if (error) {
         console.error('❌ [AIScoringService] Error deleting AI score:', error);

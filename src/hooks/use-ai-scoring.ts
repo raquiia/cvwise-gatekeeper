@@ -84,10 +84,12 @@ export const useAIScoring = () => {
     try {
       console.log(`🔍 [useAIScoring] Fetching AI score for candidate ${candidateId}${jobOfferId ? ` and job ${jobOfferId}` : ' (general)'}`);
 
-      const { data, error } = await supabase.rpc('get_ai_candidate_score', {
-        p_candidate_id: candidateId,
-        p_job_offer_id: jobOfferId || null
-      });
+      // Récupérer directement depuis la table candidates
+      const { data: candidateData, error } = await supabase
+        .from('candidates')
+        .select('ai_score, ai_explanation, ai_breakdown, ai_strengths, ai_weaknesses, ai_recommendations, ai_analyzed_at')
+        .eq('id', candidateId)
+        .single();
 
       if (error) {
         console.error('❌ [useAIScoring] Error fetching AI score:', error);
@@ -96,31 +98,30 @@ export const useAIScoring = () => {
 
       let aiScoreData: AIScoreData;
 
-      if (data && data.length > 0) {
-        const scoreRecord = data[0];
-        console.log('✅ [useAIScoring] AI score found in database:', {
+      if (candidateData && candidateData.ai_score !== null) {
+        console.log('✅ [useAIScoring] AI score found in candidates table:', {
           candidateId,
-          score: scoreRecord.score,
-          hasExplanation: !!scoreRecord.explanation,
-          strengthsCount: jsonToStringArray(scoreRecord.strengths).length,
-          weaknessesCount: jsonToStringArray(scoreRecord.weaknesses).length,
-          recommendationsCount: jsonToStringArray(scoreRecord.recommendations).length
+          score: candidateData.ai_score,
+          hasExplanation: !!candidateData.ai_explanation,
+          strengthsCount: jsonToStringArray(candidateData.ai_strengths).length,
+          weaknessesCount: jsonToStringArray(candidateData.ai_weaknesses).length,
+          recommendationsCount: jsonToStringArray(candidateData.ai_recommendations).length
         });
 
         aiScoreData = {
-          score: scoreRecord.score,
-          explanation: scoreRecord.explanation || '',
-          breakdown: jsonToBreakdown(scoreRecord.breakdown),
-          strengths: jsonToStringArray(scoreRecord.strengths),
-          weaknesses: jsonToStringArray(scoreRecord.weaknesses),
-          recommendations: jsonToStringArray(scoreRecord.recommendations),
+          score: candidateData.ai_score,
+          explanation: candidateData.ai_explanation || '',
+          breakdown: jsonToBreakdown(candidateData.ai_breakdown),
+          strengths: jsonToStringArray(candidateData.ai_strengths),
+          weaknesses: jsonToStringArray(candidateData.ai_weaknesses),
+          recommendations: jsonToStringArray(candidateData.ai_recommendations),
           isJobSpecific: !!jobOfferId,
           isLoading: false,
           error: null,
           source: 'database'
         };
       } else {
-        console.log('📭 [useAIScoring] No AI score found in database for candidate:', candidateId);
+        console.log('📭 [useAIScoring] No AI score found in candidates table for candidate:', candidateId);
         aiScoreData = {
           score: null,
           explanation: '',

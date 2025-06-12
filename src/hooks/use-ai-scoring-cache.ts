@@ -65,26 +65,23 @@ export const useAIScoringCache = () => {
       console.log(`[AI Scoring Cache] Loading score for candidate: ${candidateId}`);
       
       const loadPromise = (async () => {
-        const { data: scoreData, error } = await supabase.rpc(
-          'get_ai_candidate_score',
-          { 
-            p_candidate_id: candidateId,
-            p_job_offer_id: activeJobOfferId || null
-          }
-        );
+        // Récupérer directement depuis la table candidates
+        const { data: candidateData, error } = await supabase
+          .from('candidates')
+          .select('ai_score, ai_explanation, ai_breakdown, ai_analyzed_at')
+          .eq('id', candidateId)
+          .single();
         
         if (error) {
           throw error;
         }
         
-        const scoreRecord = Array.isArray(scoreData) ? scoreData[0] : scoreData;
-        
         const cachedScore: CachedScore = {
-          score: scoreRecord?.score || null,
-          explanation: scoreRecord?.explanation || '',
-          breakdown: scoreRecord ? parseBreakdown(scoreRecord.breakdown) : null,
-          source: scoreRecord ? 'database' : null,
-          isJobSpecific: Boolean(scoreRecord?.job_offer_id),
+          score: candidateData?.ai_score || null,
+          explanation: candidateData?.ai_explanation || '',
+          breakdown: candidateData ? parseBreakdown(candidateData.ai_breakdown) : null,
+          source: candidateData ? 'database' : null,
+          isJobSpecific: false, // Les données AI dans candidates ne sont pas job-specific pour l'instant
           lastUpdated: Date.now(),
           isLoading: false,
           error: null
@@ -116,7 +113,7 @@ export const useAIScoringCache = () => {
       pendingRequests.delete(cacheKey);
       forceUpdate(prev => prev + 1);
     }
-  }, [getCacheKey, activeJobOfferId, isJobSpecific, parseBreakdown]);
+  }, [getCacheKey, isJobSpecific, parseBreakdown]);
 
   const getScore = useCallback((candidateId: string): CachedScore => {
     if (!candidateId) {
