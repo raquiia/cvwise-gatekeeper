@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { aiScoringService } from '../aiScoringService';
 import { toast } from '@/hooks/use-toast';
 
 export interface AIAnalysisResult {
@@ -295,28 +296,36 @@ export const analyzeResume = async (
       analysisResult.candidateData
     );
 
-    // Sauvegarder le score IA avec l'ID correct du candidat
+    // Sauvegarder le score IA avec le bon service
     if (analysisResult.analysis) {
       try {
-        console.log('💾 About to save AI score for candidate:', candidateId);
-        await saveAIScoreToDatabase(candidateId, analysisResult.analysis);
-        console.log('✅ AI score saved successfully for candidate:', candidateId);
+        console.log('💾 Saving AI score using aiScoringService for candidate:', candidateId);
         
-        // Attendre un peu pour que la base de données se mette à jour
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Vérifier que le score a bien été sauvé
-        const { data: savedScore, error: checkError } = await supabase.rpc('get_ai_candidate_score', {
-          p_candidate_id: candidateId,
-          p_job_offer_id: null
-        });
-        
-        if (checkError) {
-          console.warn('⚠️ Could not verify saved AI score:', checkError);
-        } else if (savedScore && savedScore.length > 0) {
-          console.log('🎉 AI score verification successful:', savedScore[0]);
+        const saveResult = await aiScoringService.saveAIScore(
+          candidateId,
+          analysisResult.analysis.score,
+          analysisResult.analysis.explanation || '',
+          analysisResult.analysis.breakdown || {},
+          analysisResult.analysis.strengths || [],
+          analysisResult.analysis.weaknesses || [],
+          analysisResult.analysis.recommendations || []
+        );
+
+        if (saveResult.success) {
+          console.log('✅ AI score saved successfully using aiScoringService');
+          
+          // Vérification immédiate
+          setTimeout(async () => {
+            const verifyResult = await aiScoringService.getAIScore(candidateId);
+            if (verifyResult.success) {
+              console.log('🎉 AI score verification successful:', verifyResult.score);
+            } else {
+              console.warn('⚠️ AI score verification failed:', verifyResult.error);
+            }
+          }, 1000);
+          
         } else {
-          console.warn('⚠️ AI score was not found after save');
+          console.error('❌ Failed to save AI score using aiScoringService:', saveResult.error);
         }
         
       } catch (scoreError: any) {
@@ -347,74 +356,6 @@ export const analyzeResume = async (
       success: false,
       message: error.message
     };
-  }
-};
-
-/**
- * Sauvegarder le score IA dans la base de données avec TOUS les nouveaux paramètres
- */
-const saveAIScoreToDatabase = async (
-  candidateId: string,
-  analysis: AIAnalysisResult
-): Promise<void> => {
-  try {
-    console.log('💾 Saving comprehensive AI score to database for candidate:', candidateId);
-    console.log('📊 Analysis data to save:', {
-      score: analysis.score,
-      explanationLength: analysis.explanation?.length || 0,
-      strengthsCount: analysis.strengths?.length || 0,
-      weaknessesCount: analysis.weaknesses?.length || 0,
-      recommendationsCount: analysis.recommendations?.length || 0,
-      breakdown: analysis.breakdown
-    });
-
-    // S'assurer que les arrays sont au bon format
-    const strengths = Array.isArray(analysis.strengths) ? analysis.strengths : [];
-    const weaknesses = Array.isArray(analysis.weaknesses) ? analysis.weaknesses : [];
-    const recommendations = Array.isArray(analysis.recommendations) ? analysis.recommendations : [];
-
-    console.log('🔧 Formatted arrays for database:', {
-      strengthsCount: strengths.length,
-      weaknessesCount: weaknesses.length,
-      recommendationsCount: recommendations.length,
-      strengthsSample: strengths.slice(0, 1),
-      weaknessesSample: weaknesses.slice(0, 1),
-      recommendationsSample: recommendations.slice(0, 1)
-    });
-
-    // Utiliser la fonction RPC avec l'ordre correct des paramètres selon la définition de la fonction
-    const { data, error } = await supabase.rpc('save_ai_candidate_score', {
-      p_candidate_id: candidateId,
-      p_score: analysis.score,
-      p_explanation: analysis.explanation || '',
-      p_job_offer_id: null, // Score de complétude générale
-      p_breakdown: analysis.breakdown || {},
-      p_strengths: strengths,
-      p_weaknesses: weaknesses,
-      p_recommendations: recommendations
-    });
-
-    if (error) {
-      console.error('❌ Error saving comprehensive AI score:', error);
-      throw new Error(`Database error: ${error.message}`);
-    }
-
-    console.log('✅ Comprehensive AI score saved successfully:', {
-      savedData: data,
-      candidateId: candidateId
-    });
-
-    // Vérifier que la sauvegarde a bien fonctionné
-    if (!data || data.length === 0) {
-      console.warn('⚠️ Save operation completed but no data returned');
-      throw new Error('No data returned from save operation');
-    } else {
-      console.log('🎉 AI score save confirmed with data:', data[0]);
-    }
-
-  } catch (error: any) {
-    console.error('❌ Failed to save comprehensive AI score:', error);
-    throw error; // Re-throw pour que l'appelant puisse gérer l'erreur
   }
 };
 

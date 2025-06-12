@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -5,9 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Brain, Sparkles, Info, Target, RefreshCw, Loader2 } from 'lucide-react';
+import { Brain, Sparkles, Info, Target, RefreshCw } from 'lucide-react';
 import { aiScoringService } from '@/services/aiScoringService';
-import { toast } from '@/hooks/use-toast';
 
 interface AIAnalysisData {
   score: number;
