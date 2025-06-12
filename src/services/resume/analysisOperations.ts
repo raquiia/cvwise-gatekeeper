@@ -105,12 +105,20 @@ export const analyzeResume = async (
       finalCandidate = await candidateService.createCandidate(candidateToSave);
     }
 
-    // 4. Sauvegarder le score IA complet si disponible
+    // 4. Sauvegarder le score IA complet si disponible avec TOUS les nouveaux paramètres
     if (analysisData.analysis && finalCandidate.id) {
       try {
-        console.log('💾 Saving comprehensive AI analysis with details...');
+        console.log('💾 Saving comprehensive AI analysis with full details...');
+        console.log('📊 Analysis data to save:', {
+          score: analysisData.analysis.score,
+          explanationLength: analysisData.analysis.explanation?.length || 0,
+          strengthsCount: analysisData.analysis.strengths?.length || 0,
+          weaknessesCount: analysisData.analysis.weaknesses?.length || 0,
+          recommendationsCount: analysisData.analysis.recommendations?.length || 0,
+          breakdown: analysisData.analysis.breakdown
+        });
         
-        // Use type assertion to handle new parameters
+        // Utiliser la fonction RPC mise à jour avec TOUS les nouveaux paramètres
         const { error: scoreError } = await supabase.rpc('save_ai_candidate_score', {
           p_candidate_id: finalCandidate.id,
           p_score: analysisData.analysis.score,
@@ -120,7 +128,7 @@ export const analyzeResume = async (
           p_strengths: analysisData.analysis.strengths || [],
           p_weaknesses: analysisData.analysis.weaknesses || [],
           p_recommendations: analysisData.analysis.recommendations || []
-        } as any);
+        });
 
         if (scoreError) {
           console.error('❌ Error saving comprehensive AI score:', scoreError);

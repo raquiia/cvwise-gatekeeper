@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -71,10 +72,13 @@ export const analyzeResumeWithAI = async (
     console.log('✅ AI analysis completed:', {
       score: analysis.score,
       hasExplanation: !!analysis.explanation,
-      hasBreakdown: !!analysis.breakdown
+      hasBreakdown: !!analysis.breakdown,
+      strengthsCount: analysis.strengths?.length || 0,
+      weaknessesCount: analysis.weaknesses?.length || 0,
+      recommendationsCount: analysis.recommendations?.length || 0
     });
 
-    // Sauvegarder automatiquement le score IA en base de données
+    // Sauvegarder automatiquement le score IA en base de données avec TOUS les nouveaux paramètres
     await saveAIScoreToDatabase(candidateData.id, analysis);
 
     return {
@@ -244,32 +248,44 @@ export const analyzeResume = async (
 };
 
 /**
- * Sauvegarder le score IA dans la base de données
+ * Sauvegarder le score IA dans la base de données avec TOUS les nouveaux paramètres
  */
 const saveAIScoreToDatabase = async (
   candidateId: string,
   analysis: AIAnalysisResult
 ): Promise<void> => {
   try {
-    console.log('💾 Saving AI score to database for candidate:', candidateId);
+    console.log('💾 Saving comprehensive AI score to database for candidate:', candidateId);
+    console.log('📊 Analysis data to save:', {
+      score: analysis.score,
+      explanationLength: analysis.explanation?.length || 0,
+      strengthsCount: analysis.strengths?.length || 0,
+      weaknessesCount: analysis.weaknesses?.length || 0,
+      recommendationsCount: analysis.recommendations?.length || 0,
+      breakdown: analysis.breakdown
+    });
 
+    // Utiliser la fonction RPC mise à jour avec TOUS les nouveaux paramètres
     const { data, error } = await supabase.rpc('save_ai_candidate_score', {
       p_candidate_id: candidateId,
       p_score: analysis.score,
       p_explanation: analysis.explanation,
       p_job_offer_id: null, // Score de complétude générale
-      p_breakdown: analysis.breakdown
+      p_breakdown: analysis.breakdown || {},
+      p_strengths: analysis.strengths || [],
+      p_weaknesses: analysis.weaknesses || [],
+      p_recommendations: analysis.recommendations || []
     });
 
     if (error) {
-      console.error('❌ Error saving AI score:', error);
+      console.error('❌ Error saving comprehensive AI score:', error);
       throw error;
     }
 
-    console.log('✅ AI score saved successfully:', data);
+    console.log('✅ Comprehensive AI score saved successfully:', data);
 
   } catch (error: any) {
-    console.error('❌ Failed to save AI score:', error);
+    console.error('❌ Failed to save comprehensive AI score:', error);
     // Ne pas faire échouer l'analyse si la sauvegarde échoue
     toast({
       title: "Avertissement",

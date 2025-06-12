@@ -78,7 +78,7 @@ export const useAIScoring = () => {
     try {
       console.log(`🔍 [useAIScoring] Fetching comprehensive AI score for candidate ${candidateId}, jobOffer: ${jobOfferId || 'general'}`);
       
-      // Appeler la fonction RPC avec les bons paramètres
+      // Appeler la fonction RPC mise à jour qui retourne TOUS les champs
       const { data, error } = await supabase.rpc('get_ai_candidate_score', {
         p_candidate_id: candidateId,
         p_job_offer_id: jobOfferId || null
@@ -92,12 +92,12 @@ export const useAIScoring = () => {
       console.log(`📊 [useAIScoring] Raw comprehensive AI score data received:`, data);
 
       if (data && data.length > 0) {
-        const scoreData = data[0] as any; // Type assertion to handle new fields
+        const scoreData = data[0];
         console.log(`✅ [useAIScoring] Found comprehensive AI score: ${scoreData.score}/100 with full analysis`, {
           explanation: scoreData.explanation?.length || 0,
-          strengths: scoreData.strengths?.length || 0,
-          weaknesses: scoreData.weaknesses?.length || 0,
-          recommendations: scoreData.recommendations?.length || 0
+          strengths: Array.isArray(scoreData.strengths) ? scoreData.strengths.length : 0,
+          weaknesses: Array.isArray(scoreData.weaknesses) ? scoreData.weaknesses.length : 0,
+          recommendations: Array.isArray(scoreData.recommendations) ? scoreData.recommendations.length : 0
         });
         
         // Parse breakdown safely
@@ -113,13 +113,13 @@ export const useAIScoring = () => {
           }
         }
 
-        // Parse arrays safely - handle both string and array formats
+        // Parse arrays safely - ensure we have proper arrays
         let strengths: string[] = [];
         let weaknesses: string[] = [];
         let recommendations: string[] = [];
 
         try {
-          // Handle strengths
+          // Handle strengths - ensure it's an array
           if (scoreData.strengths) {
             if (Array.isArray(scoreData.strengths)) {
               strengths = scoreData.strengths;
@@ -128,7 +128,7 @@ export const useAIScoring = () => {
             }
           }
 
-          // Handle weaknesses
+          // Handle weaknesses - ensure it's an array
           if (scoreData.weaknesses) {
             if (Array.isArray(scoreData.weaknesses)) {
               weaknesses = scoreData.weaknesses;
@@ -137,7 +137,7 @@ export const useAIScoring = () => {
             }
           }
 
-          // Handle recommendations
+          // Handle recommendations - ensure it's an array
           if (scoreData.recommendations) {
             if (Array.isArray(scoreData.recommendations)) {
               recommendations = scoreData.recommendations;
@@ -148,6 +148,15 @@ export const useAIScoring = () => {
         } catch (e) {
           console.warn('❌ [useAIScoring] Failed to parse analysis arrays:', e);
         }
+
+        console.log(`📈 [useAIScoring] Parsed analysis data:`, {
+          strengthsCount: strengths.length,
+          weaknessesCount: weaknesses.length,
+          recommendationsCount: recommendations.length,
+          strengthsSample: strengths.slice(0, 1),
+          weaknessesSample: weaknesses.slice(0, 1),
+          recommendationsSample: recommendations.slice(0, 1)
+        });
         
         setScores(prev => ({
           ...prev,
@@ -264,7 +273,7 @@ export const useAIScoring = () => {
     try {
       console.log(`💾 [useAIScoring] Saving comprehensive AI score ${score}/100 for candidate ${candidateId}`);
       
-      // Call RPC function with new parameters
+      // Utiliser la fonction RPC mise à jour avec TOUS les nouveaux paramètres
       const { data, error } = await supabase.rpc('save_ai_candidate_score', {
         p_candidate_id: candidateId,
         p_score: score,
@@ -274,7 +283,7 @@ export const useAIScoring = () => {
         p_strengths: strengths || [],
         p_weaknesses: weaknesses || [],
         p_recommendations: recommendations || []
-      } as any); // Type assertion to handle new parameters
+      });
 
       if (error) {
         console.error('❌ [useAIScoring] Error saving comprehensive AI score:', error);
