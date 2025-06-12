@@ -23,20 +23,24 @@ interface ProfileTabProps {
 const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh }) => {
   return (
     <div className="p-6 space-y-6 bg-gradient-to-br from-sand/20 via-white to-navy/5 min-h-full">
-      {/* Section principale - Informations essentielles */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Identité & Contact */}
-        <IdentityContactSection candidate={candidate} />
-        
-        {/* Informations professionnelles */}
-        <ProfessionalSection candidate={candidate} />
-        
-        {/* Score IA et analyse */}
-        <div className="space-y-3">
+      {/* Section principale - Score IA en première position pour Kevin Quaresma */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        {/* Score IA et analyse - Plus large et en première position */}
+        <div className="xl:col-span-5 space-y-3">
           <CandidateAIScoreCard candidate={candidate} />
           {candidate.id && (
             <DebugAIScoreButton candidateId={candidate.id} />
           )}
+        </div>
+        
+        {/* Identité & Contact */}
+        <div className="xl:col-span-4">
+          <IdentityContactSection candidate={candidate} />
+        </div>
+        
+        {/* Informations professionnelles */}
+        <div className="xl:col-span-3">
+          <ProfessionalSection candidate={candidate} />
         </div>
       </div>
       

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Brain, TrendingUp, AlertCircle, Loader2, RefreshCw, CheckCircle, XCircle, Lightbulb } from 'lucide-react';
+import { Brain, TrendingUp, AlertCircle, Loader2, RefreshCw, CheckCircle, XCircle, Lightbulb, Sparkles } from 'lucide-react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { useCandidateScore } from '@/hooks/use-candidate-score';
 import { CandidateData } from '@/services/data/candidateService';
@@ -24,7 +24,7 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
   // Récupérer le score IA général (pas job-spécifique)
   const aiScore = getAIScore(candidate.id || '');
   
-  console.log(`🎯 [CandidateAIScoreCard] Rendering comprehensive analysis for candidate ${candidate.id}:`, {
+  console.log(`🎯 [CandidateAIScoreCard] Rendering comprehensive analysis for candidate ${candidate.id} (${candidate.first_name} ${candidate.last_name}):`, {
     aiScore: aiScore.score,
     hasExplanation: !!aiScore.explanation,
     explanationLength: aiScore.explanation?.length || 0,
@@ -90,27 +90,36 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
   }
 
   return (
-    <Card className="w-full border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
+    <Card className="w-full border-2 border-slate-200 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white to-slate-50">
+      <CardHeader className="pb-4 bg-gradient-to-r from-purple-50 to-blue-50 border-b border-slate-100">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <CardTitle className="text-lg font-bold flex items-center gap-3">
             {hasAIScore ? (
               <>
-                <Brain className="w-5 h-5 text-purple-600" />
-                <span>Analyse IA Complète</span>
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Brain className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <span className="text-slate-800">Analyse IA Complète</span>
+                  <div className="text-xs text-purple-600 font-medium mt-1">
+                    ✨ Analyse complète avec recommandations
+                  </div>
+                </div>
               </>
             ) : (
               <>
-                <TrendingUp className="w-5 h-5 text-blue-600" />
-                <span>Score de profil</span>
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <TrendingUp className="w-6 h-6 text-blue-600" />
+                </div>
+                <span className="text-slate-800">Score de profil</span>
               </>
             )}
           </CardTitle>
           
-          <div className="flex items-center gap-2">
-            <Badge className={`px-3 py-1 text-sm font-bold border ${getScoreColor(displayScore)}`}>
+          <div className="flex items-center gap-3">
+            <Badge className={`px-4 py-2 text-lg font-bold border-2 ${getScoreColor(displayScore)} shadow-sm`}>
               {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 `${displayScore}/100`
               )}
@@ -121,7 +130,7 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
               size="sm"
               onClick={handleRefresh}
               disabled={isLoading}
-              className="h-8 w-8 p-0"
+              className="h-9 w-9 p-0 hover:bg-slate-100"
               title="Actualiser l'analyse depuis la base de données"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -129,135 +138,147 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
           </div>
         </div>
         
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-slate-600 font-medium">
           {getScoreLabel(displayScore, hasAIScore)}
           {aiScore.source && (
-            <span className="text-xs text-gray-500 ml-2">
-              ({aiScore.source === 'database' ? 'depuis la base' : aiScore.source})
+            <span className="text-xs text-slate-500 ml-2 bg-slate-100 px-2 py-1 rounded">
+              {aiScore.source === 'database' ? 'depuis la base' : aiScore.source}
             </span>
           )}
         </p>
       </CardHeader>
       
-      <CardContent className="space-y-4">
-        {/* Progress bar */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="font-medium">Score global</span>
-            <span className="font-semibold">{displayScore}%</span>
+      <CardContent className="space-y-6 p-6">
+        {/* Progress bar avec design amélioré */}
+        <div className="space-y-3">
+          <div className="flex justify-between text-sm font-medium">
+            <span className="text-slate-700">Score global</span>
+            <span className="text-slate-900 font-bold">{displayScore}%</span>
           </div>
-          <Progress 
-            value={displayScore} 
-            className="w-full h-2"
-          />
+          <div className="relative">
+            <Progress 
+              value={displayScore} 
+              className="w-full h-3 bg-slate-200"
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-xs font-medium text-white drop-shadow-sm">
+                {displayScore >= 50 ? `${displayScore}%` : ''}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Breakdown si disponible */}
+        {/* Breakdown si disponible avec design amélioré */}
         {aiScore.breakdown && Object.keys(aiScore.breakdown).length > 0 && (
-          <div className="space-y-3">
-            <h4 className="font-medium text-gray-900 text-sm">Détail par catégorie</h4>
-            <div className="space-y-2 text-xs">
+          <div className="space-y-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-600" />
+              Détail par catégorie
+            </h4>
+            <div className="grid grid-cols-2 gap-3 text-xs">
               {aiScore.breakdown.skills !== undefined && (
-                <div className="flex items-center justify-between">
-                  <span>Compétences</span>
-                  <span className="font-medium">{aiScore.breakdown.skills}/20</span>
+                <div className="flex items-center justify-between bg-white p-2 rounded border">
+                  <span className="font-medium">Compétences</span>
+                  <span className="font-bold text-purple-600">{aiScore.breakdown.skills}/20</span>
                 </div>
               )}
               {aiScore.breakdown.experience !== undefined && (
-                <div className="flex items-center justify-between">
-                  <span>Expérience</span>
-                  <span className="font-medium">{aiScore.breakdown.experience}/20</span>
+                <div className="flex items-center justify-between bg-white p-2 rounded border">
+                  <span className="font-medium">Expérience</span>
+                  <span className="font-bold text-green-600">{aiScore.breakdown.experience}/20</span>
                 </div>
               )}
               {aiScore.breakdown.education !== undefined && (
-                <div className="flex items-center justify-between">
-                  <span>Formation</span>
-                  <span className="font-medium">{aiScore.breakdown.education}/20</span>
+                <div className="flex items-center justify-between bg-white p-2 rounded border">
+                  <span className="font-medium">Formation</span>
+                  <span className="font-bold text-blue-600">{aiScore.breakdown.education}/20</span>
                 </div>
               )}
               {aiScore.breakdown.languages !== undefined && (
-                <div className="flex items-center justify-between">
-                  <span>Langues</span>
-                  <span className="font-medium">{aiScore.breakdown.languages}/10</span>
+                <div className="flex items-center justify-between bg-white p-2 rounded border">
+                  <span className="font-medium">Langues</span>
+                  <span className="font-bold text-teal-600">{aiScore.breakdown.languages}/10</span>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Points forts */}
+        {/* Points forts avec design amélioré */}
         {hasStrengths && (
-          <div className="space-y-2">
-            <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              Points forts
+          <div className="space-y-3">
+            <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              Points forts ({aiScore.strengths!.length})
             </h4>
-            <div className="space-y-1">
-              {aiScore.strengths!.map((strength, index) => (
-                <div key={index} className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-2 flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5 flex-shrink-0">✓</span>
-                  <span>{strength}</span>
+            <div className="space-y-2">
+              {aiScore.strengths!.slice(0, 3).map((strength, index) => (
+                <div key={index} className="text-sm text-green-800 bg-green-50 border-l-4 border-green-400 rounded-lg p-3 flex items-start gap-3 shadow-sm">
+                  <span className="text-green-600 mt-0.5 flex-shrink-0 font-bold">✓</span>
+                  <span className="font-medium">{strength}</span>
                 </div>
               ))}
+              {aiScore.strengths!.length > 3 && (
+                <div className="text-xs text-green-600 font-medium text-center">
+                  +{aiScore.strengths!.length - 3} autres points forts
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Points faibles */}
+        {/* Points faibles avec design amélioré */}
         {hasWeaknesses && (
-          <div className="space-y-2">
-            <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
-              <XCircle className="w-4 h-4 text-red-600" />
-              Points à améliorer
+          <div className="space-y-3">
+            <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-orange-600" />
+              Points d'amélioration ({aiScore.weaknesses!.length})
             </h4>
-            <div className="space-y-1">
-              {aiScore.weaknesses!.map((weakness, index) => (
-                <div key={index} className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-2 flex items-start gap-2">
-                  <span className="text-red-600 mt-0.5 flex-shrink-0">•</span>
-                  <span>{weakness}</span>
+            <div className="space-y-2">
+              {aiScore.weaknesses!.slice(0, 2).map((weakness, index) => (
+                <div key={index} className="text-sm text-orange-800 bg-orange-50 border-l-4 border-orange-400 rounded-lg p-3 flex items-start gap-3 shadow-sm">
+                  <span className="text-orange-600 mt-0.5 flex-shrink-0 font-bold">•</span>
+                  <span className="font-medium">{weakness}</span>
                 </div>
               ))}
+              {aiScore.weaknesses!.length > 2 && (
+                <div className="text-xs text-orange-600 font-medium text-center">
+                  +{aiScore.weaknesses!.length - 2} autres points d'amélioration
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Recommandations */}
+        {/* Recommandations avec design amélioré */}
         {hasRecommendations && (
-          <div className="space-y-2">
-            <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
-              <Lightbulb className="w-4 h-4 text-amber-600" />
-              Recommandations
+          <div className="space-y-3">
+            <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <Lightbulb className="w-5 h-5 text-amber-600" />
+              Recommandations IA ({aiScore.recommendations!.length})
             </h4>
-            <div className="space-y-1">
-              {aiScore.recommendations!.map((recommendation, index) => (
-                <div key={index} className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 flex items-start gap-2">
+            <div className="space-y-2">
+              {aiScore.recommendations!.slice(0, 3).map((recommendation, index) => (
+                <div key={index} className="text-sm text-amber-800 bg-amber-50 border-l-4 border-amber-400 rounded-lg p-3 flex items-start gap-3 shadow-sm">
                   <span className="text-amber-600 mt-0.5 flex-shrink-0">💡</span>
-                  <span>{recommendation}</span>
+                  <span className="font-medium">{recommendation}</span>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* Explication IA */}
-        {hasExplanation && (
-          <div className="space-y-2">
-            <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
-              <Brain className="w-4 h-4 text-purple-600" />
-              Analyse détaillée IA
-            </h4>
-            <div className="text-sm text-gray-700 leading-relaxed p-3 bg-purple-50 border border-purple-200 rounded-lg">
-              {aiScore.explanation}
+              {aiScore.recommendations!.length > 3 && (
+                <div className="text-xs text-amber-600 font-medium text-center">
+                  +{aiScore.recommendations!.length - 3} autres recommandations
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Message si pas de score IA */}
         {!hasAIScore && !isLoading && (
-          <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
             <div className="text-sm text-blue-800">
-              <p className="font-medium">Analyse IA non disponible</p>
+              <p className="font-bold">Analyse IA non disponible</p>
               <p className="text-xs text-blue-600 mt-1">
                 Le CV n'a pas encore été analysé par l'IA. Analysez le CV pour obtenir un score détaillé et des recommandations.
               </p>
@@ -267,14 +288,28 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
 
         {/* Erreur */}
         {aiScore.error && (
-          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
             <div className="text-sm text-red-800">
-              <p className="font-medium">Erreur de chargement</p>
+              <p className="font-bold">Erreur de chargement</p>
               <p className="text-xs text-red-600 mt-1">{aiScore.error}</p>
             </div>
           </div>
         )}
+
+        {/* Footer info */}
+        <div className="text-center pt-4 border-t border-slate-200">
+          <div className="text-xs text-slate-500 mb-1">
+            {hasAIScore 
+              ? 'Analyse IA complète - Mise à jour automatique'
+              : 'Score de complétude calculé automatiquement'}
+          </div>
+          {hasAIScore && (
+            <div className="text-xs text-purple-600 font-medium">
+              ✨ Analyse complète avec {aiScore.strengths?.length || 0} points forts, {aiScore.weaknesses?.length || 0} améliorations et {aiScore.recommendations?.length || 0} recommandations
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

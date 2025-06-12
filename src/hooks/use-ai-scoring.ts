@@ -59,12 +59,21 @@ export const useAIScoring = () => {
     // Retourner le score depuis le cache ou initialiser
     const cachedScore = scores[key];
     if (cachedScore) {
+      console.log(`✅ [useAIScoring] Returning cached score for ${candidateId}:`, {
+        score: cachedScore.score,
+        hasExplanation: !!cachedScore.explanation,
+        strengthsCount: cachedScore.strengths?.length || 0,
+        weaknessesCount: cachedScore.weaknesses?.length || 0,
+        recommendationsCount: cachedScore.recommendations?.length || 0
+      });
       return cachedScore;
     }
 
     // Initialiser et charger si pas déjà en cours
     if (!loadingRef.current.has(key)) {
       loadingRef.current.add(key);
+      
+      console.log(`🔄 [useAIScoring] Starting fresh fetch for candidate ${candidateId}`);
       
       setScores(prev => ({
         ...prev,
@@ -115,11 +124,11 @@ export const useAIScoring = () => {
         throw error;
       }
 
-      console.log(`📊 [useAIScoring] Raw comprehensive AI score data received:`, data);
+      console.log(`📊 [useAIScoring] Raw comprehensive AI score data received for ${candidateId}:`, data);
 
       if (data && data.length > 0) {
         const scoreData = data[0];
-        console.log(`✅ [useAIScoring] Found comprehensive AI score: ${scoreData.score}/100 with full analysis`, {
+        console.log(`✅ [useAIScoring] Found comprehensive AI score for ${candidateId}: ${scoreData.score}/100 with full analysis`, {
           explanation: scoreData.explanation?.length || 0,
           strengths: Array.isArray(scoreData.strengths) ? scoreData.strengths.length : 0,
           weaknesses: Array.isArray(scoreData.weaknesses) ? scoreData.weaknesses.length : 0,
@@ -144,7 +153,7 @@ export const useAIScoring = () => {
         const weaknesses = jsonArrayToStringArray(scoreData.weaknesses);
         const recommendations = jsonArrayToStringArray(scoreData.recommendations);
 
-        console.log(`📈 [useAIScoring] Parsed analysis data:`, {
+        console.log(`📈 [useAIScoring] Parsed analysis data for ${candidateId}:`, {
           strengthsCount: strengths.length,
           weaknessesCount: weaknesses.length,
           recommendationsCount: recommendations.length,
@@ -187,7 +196,7 @@ export const useAIScoring = () => {
         }));
       }
     } catch (error: any) {
-      console.error(`❌ [useAIScoring] Error fetching AI score:`, error);
+      console.error(`❌ [useAIScoring] Error fetching AI score for ${candidateId}:`, error);
       setScores(prev => ({
         ...prev,
         [key]: {
