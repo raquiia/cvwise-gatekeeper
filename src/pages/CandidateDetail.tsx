@@ -9,6 +9,7 @@ import { ArrowLeft, Briefcase, Edit, Sparkles, Brain } from 'lucide-react';
 import { processCandidateData } from '@/utils/candidateUtils';
 import { toast } from '@/hooks/use-toast';
 import { getCompleteCandidateData } from '@/services/resume/candidateDataService';
+import { aiDataMigrationService } from '@/services/data/aiDataMigrationService';
 
 // Import the component tabs
 import ProfileTab from '@/components/candidates/detail/ProfileTab';
@@ -59,7 +60,9 @@ const CandidateDetail = () => {
           address: data.address,
           postal_code: data.postal_code,
           city: data.city,
-          country: data.country
+          country: data.country,
+          ai_score: data.ai_score,
+          ai_analyzed_at: data.ai_analyzed_at
         } : "No data");
       } catch (directError: any) {
         console.error("Error with direct function, falling back to standard service:", directError);
@@ -73,6 +76,24 @@ const CandidateDetail = () => {
       } else {
         console.log("🔄 CandidateDetail: Processing candidate data...");
         
+        // Check and migrate AI data if needed
+        await aiDataMigrationService.checkAndMigrateIfNeeded(candidateId);
+        
+        // Re-fetch data after potential migration
+        try {
+          const updatedData = await getCompleteCandidateData(candidateId);
+          if (updatedData) {
+            data = updatedData;
+            console.log("📦 CandidateDetail: Updated data after AI migration:", {
+              ai_score: data.ai_score,
+              ai_analyzed_at: data.ai_analyzed_at,
+              hasAIData: !!(data.ai_score || data.ai_explanation)
+            });
+          }
+        } catch (refetchError) {
+          console.warn("Could not refetch after migration, using original data");
+        }
+        
         // Process the data to ensure arrays and properties are correctly formatted
         const processedData = processCandidateData(data);
         
@@ -82,7 +103,9 @@ const CandidateDetail = () => {
           address: processedData.address,
           postal_code: processedData.postal_code,
           city: processedData.city,
-          country: processedData.country
+          country: processedData.country,
+          ai_score: processedData.ai_score,
+          ai_analyzed_at: processedData.ai_analyzed_at
         });
         
         // Check data completeness
@@ -99,7 +122,8 @@ const CandidateDetail = () => {
           experiences: !hasEmptyExperiences,
           education: !hasEmptyEducation,
           languages: !hasEmptyLanguages,
-          isComplete: !hasIncompleteData
+          isComplete: !hasIncompleteData,
+          hasAIAnalysis: !!(processedData.ai_score || processedData.ai_explanation)
         });
         
         setDataIncompletenessDetected(hasIncompleteData);
@@ -113,7 +137,9 @@ const CandidateDetail = () => {
           address: processedData.address,
           postal_code: processedData.postal_code,
           city: processedData.city,
-          country: processedData.country
+          country: processedData.country,
+          ai_score: processedData.ai_score,
+          ai_analyzed_at: processedData.ai_analyzed_at
         });
       }
     } catch (err: any) {

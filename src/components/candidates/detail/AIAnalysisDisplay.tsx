@@ -20,13 +20,52 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
     candidateId,
     hasCandidate: !!candidate,
     aiScore: candidate?.ai_score,
-    aiAnalyzedAt: candidate?.ai_analyzed_at
+    aiAnalyzedAt: candidate?.ai_analyzed_at,
+    hasAiExplanation: !!candidate?.ai_explanation,
+    aiExplanationLength: candidate?.ai_explanation?.length || 0,
+    strengthsCount: Array.isArray(candidate?.ai_strengths) ? candidate.ai_strengths.length : 0,
+    weaknessesCount: Array.isArray(candidate?.ai_weaknesses) ? candidate.ai_weaknesses.length : 0,
+    recommendationsCount: Array.isArray(candidate?.ai_recommendations) ? candidate.ai_recommendations.length : 0
   });
 
   if (!candidate) {
     return (
       <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
         <p className="text-gray-500">Chargement des données du candidat...</p>
+      </div>
+    );
+  }
+
+  // Vérifier si les données IA sont présentes
+  const hasAIData = candidate.ai_score !== null && candidate.ai_score !== undefined;
+  
+  if (!hasAIData) {
+    return (
+      <div className="space-y-6">
+        <div className="p-6 border border-amber-200 rounded-lg bg-amber-50">
+          <div className="flex items-start gap-3">
+            <div className="text-amber-600 text-xl">🤖</div>
+            <div>
+              <h3 className="font-bold text-amber-800 mb-2">Analyse IA non disponible</h3>
+              <p className="text-amber-700 mb-4">
+                Ce candidat n'a pas encore été analysé par l'intelligence artificielle. 
+                L'analyse IA génère un score détaillé avec points forts, faiblesses et recommandations.
+              </p>
+              <p className="text-sm text-amber-600">
+                <strong>Candidat:</strong> {candidate.first_name} {candidate.last_name}<br/>
+                <strong>ID:</strong> {candidateId}<br/>
+                <strong>CV associé:</strong> {candidate.resume_id ? 'Oui' : 'Non'}<br/>
+                <strong>Score de complétude:</strong> {candidate.profile_completeness || 0}%
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <CandidateAIScoreCard 
+          candidate={candidate} 
+          compact={false}
+          onRefresh={onRefresh}
+        />
       </div>
     );
   }
