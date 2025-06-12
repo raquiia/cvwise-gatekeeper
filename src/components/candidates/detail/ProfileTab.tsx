@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Separator } from '@/components/ui/separator';
 import type { CandidateData } from '@/services/data/candidateService';
@@ -13,6 +14,7 @@ import PreferencesObjectivesSection from './profile/PreferencesObjectivesSection
 import CandidateAIScoreCard from '../CandidateAIScoreCard';
 import DebugAIScoreButton from './DebugAIScoreButton';
 import DatabaseDebugDisplay from './DatabaseDebugDisplay';
+import DatabaseDebugMichael from './DatabaseDebugMichael';
 
 interface ProfileTabProps {
   candidate: CandidateData;
@@ -23,6 +25,9 @@ interface ProfileTabProps {
 const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh }) => {
   return (
     <div className="p-6 space-y-6 bg-gradient-to-br from-sand/20 via-white to-navy/5 min-h-full">
+      {/* Debug spécial pour Michael Redard */}
+      <DatabaseDebugMichael />
+      
       {/* Section principale - Score IA en première position pour Kevin Quaresma */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* Score IA et analyse - Plus large et en première position */}
@@ -43,6 +48,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
           <ProfessionalSection candidate={candidate} />
         </div>
       </div>
+      
+      {/* Debug display original */}
+      {candidate.id && <DatabaseDebugDisplay candidateId={candidate.id} />}
       
       {/* Notes personnelles - Section importante */}
       {candidate.id && <PersonalNotesSection candidateId={candidate.id} />}
