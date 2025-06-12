@@ -11,12 +11,14 @@ interface CandidatesKanbanViewProps {
   candidates: CandidateData[];
   onViewCandidate: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
+  jobOfferId?: string;
 }
 
 const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
   candidates,
   onViewCandidate,
-  onCandidateDeleted
+  onCandidateDeleted,
+  jobOfferId
 }) => {
   const { preloadScoresFromDatabase } = useAIScoring();
   const { toast } = useToast();
@@ -32,9 +34,9 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
     const candidateIds = candidates.map(c => c.id!).filter(Boolean);
     if (candidateIds.length > 0) {
       console.log('Preloading AI scores for kanban candidates (once only):', candidateIds.length);
-      preloadScoresFromDatabase(candidateIds);
+      preloadScoresFromDatabase(candidateIds, jobOfferId);
     }
-  }, [candidates.length, preloadScoresFromDatabase]); // Dépendance sur length seulement
+  }, [candidates.length, preloadScoresFromDatabase, jobOfferId]); // Dépendance sur length seulement
 
   const statuses = [
     'initial',
@@ -122,6 +124,7 @@ const CandidatesKanbanView: React.FC<CandidatesKanbanViewProps> = ({
               onViewCandidate={onViewCandidate}
               onCandidateDeleted={handleCandidateDeleted}
               onDrop={handleDrop}
+              jobOfferId={jobOfferId}
             />
           );
         })}

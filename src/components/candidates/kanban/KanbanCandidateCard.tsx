@@ -15,20 +15,23 @@ interface KanbanCandidateCardProps {
   onViewCandidate: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
   isDragging?: boolean;
+  jobOfferId?: string;
 }
 
 const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
   candidate,
   onViewCandidate,
   onCandidateDeleted,
-  isDragging = false
+  isDragging = false,
+  jobOfferId
 }) => {
   const { toast } = useToast();
   const { getAIScore, isJobSpecific } = useAIScoring();
   const skills = ensureStringArray(candidate.skills);
   
   // Utiliser uniquement le système AI scoring unifié
-  const aiScore = getAIScore(candidate.id!);
+  const aiScore = getAIScore(candidate.id!, jobOfferId);
+  const jobSpecific = isJobSpecific(jobOfferId);
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -124,7 +127,7 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
                     <Brain size={8} className="mr-1" />
                     {getScoreSource(aiScore.source)}
                   </Badge>
-                  {isJobSpecific && (
+                  {jobSpecific && (
                     <div title="Score de correspondance">
                       <TrendingUp size={10} className="text-purple-600" />
                     </div>

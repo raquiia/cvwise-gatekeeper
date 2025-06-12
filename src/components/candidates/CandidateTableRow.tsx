@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -19,22 +18,25 @@ interface CandidateTableRowProps {
   onViewCandidate?: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
   hideScore?: boolean;
+  jobOfferId?: string;
 }
 
 const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ 
   candidate,
   onViewCandidate,
   onCandidateDeleted,
-  hideScore = false
+  hideScore = false,
+  jobOfferId
 }) => {
   const skills = ensureStringArray(candidate.skills);
   const { toast } = useToast();
   const { getAIScore, isJobSpecific } = useAIScoring();
   
   // Utiliser le système AI scoring unifié
-  const aiScore = getAIScore(candidate.id!);
+  const aiScore = getAIScore(candidate.id!, jobOfferId);
   const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
   const isAIScore = aiScore.score !== null;
+  const jobSpecific = isJobSpecific(jobOfferId);
 
   const getStatusBadge = (status: string) => {
     const statusLabel = CANDIDATE_STATUS_LABELS[status] || status;
@@ -125,7 +127,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
       <TableCell className="hidden md:table-cell">
         <div className="flex items-center gap-2">
           {getStatusBadge(candidate.detailed_status || 'initial')}
-          {isJobSpecific && (
+          {jobSpecific && (
             <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300">
               <Briefcase size={10} className="mr-1" />
               Match
@@ -245,7 +247,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
                 </Badge>
               </div>
             )}
-            {isJobSpecific && (
+            {jobSpecific && (
               <div title="Score de correspondance">
                 <TrendingUp size={12} className="ml-1 text-purple-600" />
               </div>

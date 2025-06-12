@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,7 @@ interface CandidatesTableProps {
   onStatusChange: (status: string | null) => void;
   onViewCandidate: (candidateId: string) => void;
   onCandidateDeleted: (candidateId: string) => void;
+  jobOfferId?: string;
 }
 
 const CandidatesTable: React.FC<CandidatesTableProps> = ({
@@ -24,7 +26,8 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
   selectedStatus,
   onStatusChange,
   onViewCandidate,
-  onCandidateDeleted
+  onCandidateDeleted,
+  jobOfferId
 }) => {
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateData | null>(null);
   const { toast } = useToast();
@@ -36,9 +39,9 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     const candidateIds = candidates.map(c => c.id!).filter(Boolean);
     if (candidateIds.length > 0) {
       console.log('Preloading AI scores for candidates table');
-      preloadScoresFromDatabase(candidateIds);
+      preloadScoresFromDatabase(candidateIds, jobOfferId);
     }
-  }, [candidates, preloadScoresFromDatabase]);
+  }, [candidates, preloadScoresFromDatabase, jobOfferId]);
   
   const handleStatusChange = (status: string | null) => {
     onStatusChange(status);
@@ -117,6 +120,8 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
     }
   };
 
+  const jobSpecific = isJobSpecific(jobOfferId);
+
   return (
     <div className="w-full bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <Table>
@@ -136,7 +141,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
         <TableBody>
           {candidates.map((candidate) => {
             const skills = ensureStringArray(candidate.skills);
-            const aiScore = getAIScore(candidate.id!);
+            const aiScore = getAIScore(candidate.id!, jobOfferId);
             const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
             const isAIScore = aiScore.score !== null;
             
@@ -213,7 +218,7 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                     <Badge className={getStatusColor(candidate.detailed_status || 'initial')}>
                       {CANDIDATE_STATUS_LABELS[candidate.detailed_status || 'initial'] || 'Initial'}
                     </Badge>
-                    {aiScore.isJobSpecific && (
+                    {jobSpecific && (
                       <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300">
                         <TrendingUp size={10} className="mr-1" />
                         Match

@@ -23,18 +23,22 @@ interface ModernTableViewProps {
   candidates: CandidateData[];
   onCandidateSelect: (candidate: CandidateData) => void;
   selectedCandidate?: CandidateData;
+  jobOfferId?: string;
 }
 
 const ModernTableView: React.FC<ModernTableViewProps> = ({
   candidates,
   onCandidateSelect,
-  selectedCandidate
+  selectedCandidate,
+  jobOfferId
 }) => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   
   const { getAIScore, isJobSpecific } = useAIScoring();
+  
+  const jobSpecific = isJobSpecific(jobOfferId);
   
   const columns: ColumnDef<CandidateData>[] = useMemo(() => [
     {
@@ -150,7 +154,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
       ),
       cell: ({ row }) => {
         const candidate = row.original;
-        const aiScore = getAIScore(candidate.id!);
+        const aiScore = getAIScore(candidate.id!, jobOfferId);
         
         const getScoreColor = (score: number | null) => {
           if (score === null) return 'bg-gray-100 text-gray-600 border-gray-200';
@@ -163,7 +167,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         
         const getScoreLabel = (score: number | null) => {
           if (score === null) return 'Non calculé';
-          if (isJobSpecific) {
+          if (jobSpecific) {
             if (score >= 70) return 'Excellent match';
             if (score >= 50) return 'Bon match';
             if (score >= 30) return 'Match partiel';
@@ -181,11 +185,11 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
           <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-2">
               <Badge 
-                variant={isJobSpecific ? "default" : "secondary"} 
+                variant={jobSpecific ? "default" : "secondary"} 
                 className="text-xs"
               >
-                {isJobSpecific ? <Briefcase size={8} className="mr-1" /> : <Target size={8} className="mr-1" />}
-                {isJobSpecific ? 'Match' : 'Profil'}
+                {jobSpecific ? <Briefcase size={8} className="mr-1" /> : <Target size={8} className="mr-1" />}
+                {jobSpecific ? 'Match' : 'Profil'}
               </Badge>
               
               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border-2 ${getScoreColor(aiScore.score)}`}>
@@ -224,40 +228,27 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
           </div>
         );
       },
-      accessorFn: (row) => getAIScore(row.id!).score || 0,
+      accessorFn: (row) => getAIScore(row.id!, jobOfferId).score || 0,
     },
     {
       accessorKey: 'detailed_status',
       header: 'Statut',
-      cell: ({ row }) => {
-        const getStatusColor = (status: string) => {
-          switch (status?.toLowerCase()) {
-            case 'qualification': return 'bg-blue-100 text-blue-800';
-            case 'contact': return 'bg-yellow-100 text-yellow-800';
-            case 'entretien': return 'bg-purple-100 text-purple-800';
-            case 'shortlist': return 'bg-green-100 text-green-800';
-            case 'refusé': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
-          }
-        };
-        
-        return (
-          <Badge className={getStatusColor(row.original.detailed_status || 'qualification')}>
-            {row.original.detailed_status || 'Qualification'}
-          </Badge>
-        );
-      },
+      cell: ({ row }) => (
+        <Badge variant="outline" className="capitalize">
+          {row.original.detailed_status || 'Initial'}
+        </Badge>
+      ),
     }
-  ], [getAIScore, isJobSpecific]);
-  
+  ], [getAIScore, jobOfferId, jobSpecific]);
+
   const table = useReactTable({
     data: candidates,
     columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     state: {
       sorting,
@@ -265,27 +256,17 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
       globalFilter,
     },
   });
-  
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Rechercher un candidat..."
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <Brain className="w-4 h-4 text-purple-600" />
-          <span>Scores calculés par IA</span>
-          <Badge variant="outline" className="text-xs">
-            {isJobSpecific ? 'Mode Correspondance' : 'Mode Complétude'}
-          </Badge>
-        </div>
+      <div className="flex items-center space-x-2">
+        <Search className="h-4 w-4 text-gray-400" />
+        <Input
+          placeholder="Rechercher des candidats..."
+          value={globalFilter ?? ""}
+          onChange={(event) => setGlobalFilter(String(event.target.value))}
+          className="max-w-sm"
+        />
       </div>
       
       <div className="rounded-md border">
@@ -294,7 +275,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="py-3">
+                  <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -311,36 +292,34 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  data-state={selectedCandidate?.id === row.original.id ? "selected" : undefined}
-                  className="cursor-pointer hover:bg-gray-50"
+                  data-state={row.getIsSelected() && "selected"}
+                  className={`cursor-pointer hover:bg-muted/50 ${
+                    selectedCandidate?.id === row.original.id ? 'bg-blue-50' : ''
+                  }`}
                   onClick={() => onCandidateSelect(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-4">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  Aucun candidat trouvé
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  Aucun candidat trouvé.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
-      </div>
-      
-      <div className="flex items-center justify-between text-sm text-gray-600">
-        <span>
-          {table.getFilteredRowModel().rows.length} candidat(s) trouvé(s)
-        </span>
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-purple-600" />
-          <span>Système de scoring intelligent avec OpenAI</span>
-        </div>
       </div>
     </div>
   );

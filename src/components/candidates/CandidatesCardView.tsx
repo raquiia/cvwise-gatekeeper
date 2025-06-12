@@ -16,12 +16,14 @@ interface CandidatesCardViewProps {
   candidates: CandidateData[];
   onViewCandidate: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
+  jobOfferId?: string;
 }
 
 const CandidatesCardView: React.FC<CandidatesCardViewProps> = ({
   candidates,
   onViewCandidate,
-  onCandidateDeleted
+  onCandidateDeleted,
+  jobOfferId
 }) => {
   const { toast } = useToast();
   const { getAIScore, preloadScoresFromDatabase, isJobSpecific } = useAIScoring();
@@ -31,9 +33,9 @@ const CandidatesCardView: React.FC<CandidatesCardViewProps> = ({
     const candidateIds = candidates.map(c => c.id!).filter(Boolean);
     if (candidateIds.length > 0) {
       console.log('Preloading AI scores for card view candidates:', candidateIds.length);
-      preloadScoresFromDatabase(candidateIds);
+      preloadScoresFromDatabase(candidateIds, jobOfferId);
     }
-  }, [candidates, preloadScoresFromDatabase]);
+  }, [candidates, preloadScoresFromDatabase, jobOfferId]);
 
   const handleDelete = async (candidateId: string) => {
     try {
@@ -77,11 +79,13 @@ const CandidatesCardView: React.FC<CandidatesCardViewProps> = ({
     );
   }
 
+  const jobSpecific = isJobSpecific(jobOfferId);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {candidates.map((candidate) => {
         const skills = ensureStringArray(candidate.skills);
-        const aiScore = getAIScore(candidate.id!);
+        const aiScore = getAIScore(candidate.id!, jobOfferId);
         const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
         const isAIScore = aiScore.score !== null;
 
@@ -147,7 +151,7 @@ const CandidatesCardView: React.FC<CandidatesCardViewProps> = ({
                           {isAIScore && <Brain size={10} className="mr-1" />}
                           {isAIScore ? getScoreSource(aiScore.source) : 'Ancien'}
                         </Badge>
-                        {isJobSpecific && (
+                        {jobSpecific && (
                           <div title="Score de correspondance">
                             <TrendingUp size={12} className="text-purple-600" />
                           </div>

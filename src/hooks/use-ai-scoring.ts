@@ -35,6 +35,22 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const cacheRef: { current: AIScoreCache } = { current: {} };
 const loadingStatesRef: { current: Set<string> } = { current: new Set() };
 
+// Helper function to safely convert Json arrays to string arrays
+const jsonToStringArray = (json: any): string[] => {
+  if (Array.isArray(json)) {
+    return json.filter(item => typeof item === 'string');
+  }
+  return [];
+};
+
+// Helper function to safely convert Json to breakdown object
+const jsonToBreakdown = (json: any): AIScoreData['breakdown'] => {
+  if (json && typeof json === 'object' && !Array.isArray(json)) {
+    return json as AIScoreData['breakdown'];
+  }
+  return {};
+};
+
 export const useAIScoring = () => {
   const [, forceUpdate] = useState({});
   const subscribersRef = useRef<Set<() => void>>(new Set());
@@ -86,18 +102,18 @@ export const useAIScoring = () => {
           candidateId,
           score: scoreRecord.score,
           hasExplanation: !!scoreRecord.explanation,
-          strengthsCount: scoreRecord.strengths?.length || 0,
-          weaknessesCount: scoreRecord.weaknesses?.length || 0,
-          recommendationsCount: scoreRecord.recommendations?.length || 0
+          strengthsCount: jsonToStringArray(scoreRecord.strengths).length,
+          weaknessesCount: jsonToStringArray(scoreRecord.weaknesses).length,
+          recommendationsCount: jsonToStringArray(scoreRecord.recommendations).length
         });
 
         aiScoreData = {
           score: scoreRecord.score,
           explanation: scoreRecord.explanation || '',
-          breakdown: scoreRecord.breakdown || {},
-          strengths: scoreRecord.strengths || [],
-          weaknesses: scoreRecord.weaknesses || [],
-          recommendations: scoreRecord.recommendations || [],
+          breakdown: jsonToBreakdown(scoreRecord.breakdown),
+          strengths: jsonToStringArray(scoreRecord.strengths),
+          weaknesses: jsonToStringArray(scoreRecord.weaknesses),
+          recommendations: jsonToStringArray(scoreRecord.recommendations),
           isJobSpecific: !!jobOfferId,
           isLoading: false,
           error: null,
@@ -238,11 +254,25 @@ export const useAIScoring = () => {
     }
   }, [fetchAIScore, triggerUpdate]);
 
+  // Preload multiple scores from database - alias for compatibility
+  const preloadScoresFromDatabase = useCallback((candidateIds: string[], jobOfferId?: string) => {
+    candidateIds.forEach(candidateId => {
+      preloadAIScore(candidateId, jobOfferId);
+    });
+  }, [preloadAIScore]);
+
+  // Check if current context is job-specific
+  const isJobSpecific = useCallback((jobOfferId?: string) => {
+    return !!jobOfferId;
+  }, []);
+
   return {
     getAIScore,
     forceRefresh,
     clearCache,
     preloadAIScore,
+    preloadScoresFromDatabase,
+    isJobSpecific,
     subscribe
   };
 };
