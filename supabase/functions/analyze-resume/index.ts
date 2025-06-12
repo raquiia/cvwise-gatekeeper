@@ -32,6 +32,8 @@ serve(async (req) => {
     // Step 1: Extract candidate information from resume text using AI
     console.log('🔍 [analyze-resume] Step 1: Starting candidate data extraction...');
     let extractionResponse;
+    let candidateData;
+    
     try {
       extractionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -90,49 +92,60 @@ serve(async (req) => {
           max_tokens: 3000
         }),
       });
+
+      if (!extractionResponse.ok) {
+        const errorText = await extractionResponse.text();
+        console.error('❌ [analyze-resume] OpenAI extraction API error:', extractionResponse.status, errorText);
+        throw new Error(`OpenAI extraction API error: ${extractionResponse.status} - ${errorText}`);
+      }
+
+      const extractionData = await extractionResponse.json();
+      const extractedContent = extractionData.choices[0]?.message?.content;
+      
+      if (!extractedContent) {
+        throw new Error('No content received from OpenAI for extraction');
+      }
+
+      console.log('✅ [analyze-resume] Step 1 completed: Raw extraction response received');
+
+      // Parse the extracted candidate information - BETTER JSON PARSING
+      try {
+        // Clean the response to extract only JSON content
+        let cleanContent = extractedContent.trim();
+        
+        // Remove markdown code blocks if present
+        if (cleanContent.startsWith('```json')) {
+          cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanContent.startsWith('```')) {
+          cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        
+        candidateData = JSON.parse(cleanContent);
+        console.log('✅ [analyze-resume] Step 1 success: Candidate information extracted:', {
+          name: `${candidateData.first_name} ${candidateData.last_name}`,
+          email: candidateData.email,
+          position: candidateData.position,
+          address: candidateData.address,
+          city: candidateData.city,
+          skillsCount: candidateData.skills?.length || 0,
+          experienceYears: candidateData.years_experience
+        });
+      } catch (parseError) {
+        console.error('❌ [analyze-resume] Failed to parse candidate extraction response:', extractedContent);
+        throw new Error('Invalid JSON response from AI extraction');
+      }
+
     } catch (fetchError) {
       console.error('❌ [analyze-resume] Step 1 FETCH ERROR:', fetchError);
       throw new Error(`Failed to call OpenAI extraction API: ${fetchError.message}`);
     }
 
-    if (!extractionResponse.ok) {
-      const errorText = await extractionResponse.text();
-      console.error('❌ [analyze-resume] OpenAI extraction API error:', extractionResponse.status, errorText);
-      throw new Error(`OpenAI extraction API error: ${extractionResponse.status} - ${errorText}`);
-    }
-
-    const extractionData = await extractionResponse.json();
-    const extractedContent = extractionData.choices[0]?.message?.content;
-    
-    if (!extractedContent) {
-      throw new Error('No content received from OpenAI for extraction');
-    }
-
-    console.log('✅ [analyze-resume] Step 1 completed: Raw extraction response received');
-
-    // Parse the extracted candidate information
-    let candidateData;
-    try {
-      candidateData = JSON.parse(extractedContent);
-      console.log('✅ [analyze-resume] Step 1 success: Candidate information extracted:', {
-        name: `${candidateData.first_name} ${candidateData.last_name}`,
-        email: candidateData.email,
-        position: candidateData.position,
-        address: candidateData.address,
-        city: candidateData.city,
-        skillsCount: candidateData.skills?.length || 0,
-        experienceYears: candidateData.years_experience
-      });
-    } catch (parseError) {
-      console.error('❌ [analyze-resume] Failed to parse candidate extraction response:', extractedContent);
-      throw new Error('Invalid JSON response from AI extraction');
-    }
-
     // Step 2: Generate AI analysis and scoring with detailed breakdown
     console.log('🤖 [analyze-resume] Step 2: Starting AI scoring and analysis...');
-    let analysisResponse;
+    let analysis = null;
+    
     try {
-      analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${openAIApiKey}`,
@@ -210,33 +223,41 @@ serve(async (req) => {
           max_tokens: 2500
         }),
       });
-    } catch (fetchError) {
-      console.error('❌ [analyze-resume] Step 2 FETCH ERROR:', fetchError);
-      // Continue avec fallback au lieu de fail
-      console.log('🔧 [analyze-resume] Continuing with fallback analysis...');
-    }
 
-    let analysis = null;
-    if (analysisResponse && analysisResponse.ok) {
-      try {
+      if (analysisResponse.ok) {
         const analysisData = await analysisResponse.json();
         const analysisContent = analysisData.choices[0]?.message?.content;
         
         if (analysisContent) {
-          analysis = JSON.parse(analysisContent);
-          console.log('✅ [analyze-resume] Step 2 success: AI analysis completed:', {
-            score: analysis.score,
-            explanationLength: analysis.explanation?.length || 0,
-            hasBreakdown: !!analysis.breakdown,
-            strengthsCount: analysis.strengths?.length || 0,
-            weaknessesCount: analysis.weaknesses?.length || 0,
-            recommendationsCount: analysis.recommendations?.length || 0
-          });
+          try {
+            // Clean the analysis response
+            let cleanAnalysisContent = analysisContent.trim();
+            
+            // Remove markdown code blocks if present
+            if (cleanAnalysisContent.startsWith('```json')) {
+              cleanAnalysisContent = cleanAnalysisContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+            } else if (cleanAnalysisContent.startsWith('```')) {
+              cleanAnalysisContent = cleanAnalysisContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+            }
+            
+            analysis = JSON.parse(cleanAnalysisContent);
+            console.log('✅ [analyze-resume] Step 2 success: AI analysis completed:', {
+              score: analysis.score,
+              explanationLength: analysis.explanation?.length || 0,
+              hasBreakdown: !!analysis.breakdown,
+              strengthsCount: analysis.strengths?.length || 0,
+              weaknessesCount: analysis.weaknesses?.length || 0,
+              recommendationsCount: analysis.recommendations?.length || 0
+            });
+          } catch (parseError) {
+            console.error('❌ [analyze-resume] Failed to parse AI analysis response:', parseError);
+            console.log('🔧 [analyze-resume] Creating fallback analysis...');
+          }
         }
-      } catch (parseError) {
-        console.error('❌ [analyze-resume] Failed to parse AI analysis response:', parseError);
-        console.log('🔧 [analyze-resume] Creating fallback analysis...');
       }
+    } catch (fetchError) {
+      console.error('❌ [analyze-resume] Step 2 FETCH ERROR:', fetchError);
+      console.log('🔧 [analyze-resume] Continuing with fallback analysis...');
     }
 
     // Ensure we have at least basic analysis if detailed analysis failed
