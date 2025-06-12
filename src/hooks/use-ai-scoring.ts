@@ -1,6 +1,6 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 
 export interface AIScoreData {
   score: number | null;
@@ -22,6 +22,32 @@ export interface AIScoreData {
   error: string | null;
   source?: 'database' | 'fresh_calculation' | 'cache';
 }
+
+// Utility function to safely convert Json array to string array
+const jsonArrayToStringArray = (jsonData: Json): string[] => {
+  if (!jsonData) return [];
+  
+  if (Array.isArray(jsonData)) {
+    return jsonData
+      .filter((item): item is string => typeof item === 'string')
+      .map(item => String(item));
+  }
+  
+  if (typeof jsonData === 'string') {
+    try {
+      const parsed = JSON.parse(jsonData);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((item): item is string => typeof item === 'string')
+          .map(item => String(item));
+      }
+    } catch {
+      // If parsing fails, return empty array
+    }
+  }
+  
+  return [];
+};
 
 export const useAIScoring = () => {
   const [scores, setScores] = useState<Record<string, AIScoreData>>({});
@@ -113,41 +139,10 @@ export const useAIScoring = () => {
           }
         }
 
-        // Parse arrays safely - ensure we have proper arrays
-        let strengths: string[] = [];
-        let weaknesses: string[] = [];
-        let recommendations: string[] = [];
-
-        try {
-          // Handle strengths - ensure it's an array
-          if (scoreData.strengths) {
-            if (Array.isArray(scoreData.strengths)) {
-              strengths = scoreData.strengths;
-            } else if (typeof scoreData.strengths === 'string') {
-              strengths = JSON.parse(scoreData.strengths);
-            }
-          }
-
-          // Handle weaknesses - ensure it's an array
-          if (scoreData.weaknesses) {
-            if (Array.isArray(scoreData.weaknesses)) {
-              weaknesses = scoreData.weaknesses;
-            } else if (typeof scoreData.weaknesses === 'string') {
-              weaknesses = JSON.parse(scoreData.weaknesses);
-            }
-          }
-
-          // Handle recommendations - ensure it's an array
-          if (scoreData.recommendations) {
-            if (Array.isArray(scoreData.recommendations)) {
-              recommendations = scoreData.recommendations;
-            } else if (typeof scoreData.recommendations === 'string') {
-              recommendations = JSON.parse(scoreData.recommendations);
-            }
-          }
-        } catch (e) {
-          console.warn('❌ [useAIScoring] Failed to parse analysis arrays:', e);
-        }
+        // Parse arrays safely using our utility function
+        const strengths = jsonArrayToStringArray(scoreData.strengths);
+        const weaknesses = jsonArrayToStringArray(scoreData.weaknesses);
+        const recommendations = jsonArrayToStringArray(scoreData.recommendations);
 
         console.log(`📈 [useAIScoring] Parsed analysis data:`, {
           strengthsCount: strengths.length,
