@@ -49,7 +49,7 @@ export class AIScoringService {
         breakdown
       });
 
-      // Utiliser notre fonction SQL corrigée pour sauvegarder
+      // Utiliser la fonction SQL corrigée pour sauvegarder
       const { data, error } = await supabase.rpc('save_ai_candidate_score', {
         p_candidate_id: candidateId,
         p_score: score,
