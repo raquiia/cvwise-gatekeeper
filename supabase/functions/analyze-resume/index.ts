@@ -164,6 +164,23 @@ serve(async (req) => {
             - Une évaluation de la cohérence du parcours professionnel
             - Des recommandations spécifiques pour améliorer le profil
             
+            Pour les strengths (3-5 points forts) :
+            - Identifie les compétences clés les plus remarquables
+            - Mets en avant l'expérience pertinente
+            - Souligne les formations ou certifications importantes
+            - Note la progression de carrière si applicable
+            
+            Pour les weaknesses (2-3 points faibles) :
+            - Identifie les lacunes en compétences
+            - Note les manques d'information dans le CV
+            - Souligne les incohérences ou gaps dans le parcours
+            
+            Pour les recommendations (3-5 recommandations) :
+            - Propose des actions concrètes pour améliorer le profil
+            - Suggère des compétences à acquérir
+            - Recommande des améliorations du CV
+            - Propose des objectifs de carrière
+            
             Sois précis, constructif et professionnel dans tes commentaires.`
           },
           {

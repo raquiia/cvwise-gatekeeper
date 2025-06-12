@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { candidateService, CandidateData } from '@/services/data/candidateService';
@@ -62,7 +63,13 @@ export const analyzeResume = async (
     console.log('✅ Resume analyzed successfully:', {
       candidateName: `${analysisData.candidateData?.first_name} ${analysisData.candidateData?.last_name}`,
       hasAnalysis: !!analysisData.analysis,
-      hasAddress: !!(analysisData.candidateData?.address || analysisData.candidateData?.city)
+      hasAddress: !!(analysisData.candidateData?.address || analysisData.candidateData?.city),
+      analysisDetails: {
+        score: analysisData.analysis?.score,
+        strengthsCount: analysisData.analysis?.strengths?.length || 0,
+        weaknessesCount: analysisData.analysis?.weaknesses?.length || 0,
+        recommendationsCount: analysisData.analysis?.recommendations?.length || 0
+      }
     });
 
     onProgress?.({ current: 3, total: 4, status: 'saving', currentFile: 'Sauvegarde en base...' });
@@ -98,24 +105,29 @@ export const analyzeResume = async (
       finalCandidate = await candidateService.createCandidate(candidateToSave);
     }
 
-    // 4. Sauvegarder le score IA si disponible
+    // 4. Sauvegarder le score IA complet si disponible
     if (analysisData.analysis && finalCandidate.id) {
       try {
+        console.log('💾 Saving comprehensive AI analysis with details...');
+        
         const { error: scoreError } = await supabase.rpc('save_ai_candidate_score', {
           p_candidate_id: finalCandidate.id,
           p_score: analysisData.analysis.score,
           p_explanation: analysisData.analysis.explanation,
           p_job_offer_id: null, // Score de complétude générale
-          p_breakdown: analysisData.analysis.breakdown || {}
+          p_breakdown: analysisData.analysis.breakdown || {},
+          p_strengths: analysisData.analysis.strengths || [],
+          p_weaknesses: analysisData.analysis.weaknesses || [],
+          p_recommendations: analysisData.analysis.recommendations || []
         });
 
         if (scoreError) {
-          console.error('❌ Error saving AI score:', scoreError);
+          console.error('❌ Error saving comprehensive AI score:', scoreError);
         } else {
-          console.log('✅ AI score saved successfully');
+          console.log('✅ Comprehensive AI analysis saved successfully with all details');
         }
       } catch (scoreError) {
-        console.error('❌ Exception saving AI score:', scoreError);
+        console.error('❌ Exception saving comprehensive AI score:', scoreError);
       }
     }
 
@@ -125,7 +137,7 @@ export const analyzeResume = async (
 
     toast({
       title: "Analyse terminée",
-      description: `Le CV de ${finalCandidate.first_name} ${finalCandidate.last_name} a été analysé avec succès${analysisData.analysis ? ' avec scoring IA' : ''}`,
+      description: `Le CV de ${finalCandidate.first_name} ${finalCandidate.last_name} a été analysé avec succès avec analyse IA complète`,
     });
 
     return {

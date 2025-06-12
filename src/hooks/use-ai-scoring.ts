@@ -14,6 +14,9 @@ export interface AIScoreData {
     profileSummary?: number;
     cvStructure?: number;
   };
+  strengths?: string[];
+  weaknesses?: string[];
+  recommendations?: string[];
   isJobSpecific: boolean;
   isLoading: boolean;
   error: string | null;
@@ -43,6 +46,9 @@ export const useAIScoring = () => {
           score: null,
           explanation: '',
           breakdown: undefined,
+          strengths: undefined,
+          weaknesses: undefined,
+          recommendations: undefined,
           isJobSpecific: !!jobOfferId,
           isLoading: true,
           error: null,
@@ -58,6 +64,9 @@ export const useAIScoring = () => {
       score: null,
       explanation: '',
       breakdown: undefined,
+      strengths: undefined,
+      weaknesses: undefined,
+      recommendations: undefined,
       isJobSpecific: !!jobOfferId,
       isLoading: true,
       error: null,
@@ -67,7 +76,7 @@ export const useAIScoring = () => {
 
   const fetchAIScore = async (candidateId: string, jobOfferId: string | undefined, key: string) => {
     try {
-      console.log(`🔍 [useAIScoring] Fetching AI score for candidate ${candidateId}, jobOffer: ${jobOfferId || 'general'}`);
+      console.log(`🔍 [useAIScoring] Fetching comprehensive AI score for candidate ${candidateId}, jobOffer: ${jobOfferId || 'general'}`);
       
       // Appeler la fonction RPC avec les bons paramètres
       const { data, error } = await supabase.rpc('get_ai_candidate_score', {
@@ -80,11 +89,16 @@ export const useAIScoring = () => {
         throw error;
       }
 
-      console.log(`📊 [useAIScoring] Raw AI score data received:`, data);
+      console.log(`📊 [useAIScoring] Raw comprehensive AI score data received:`, data);
 
       if (data && data.length > 0) {
         const scoreData = data[0];
-        console.log(`✅ [useAIScoring] Found AI score: ${scoreData.score}/100 with explanation length: ${scoreData.explanation?.length || 0}`);
+        console.log(`✅ [useAIScoring] Found comprehensive AI score: ${scoreData.score}/100 with full analysis`, {
+          explanation: scoreData.explanation?.length || 0,
+          strengths: scoreData.strengths?.length || 0,
+          weaknesses: scoreData.weaknesses?.length || 0,
+          recommendations: scoreData.recommendations?.length || 0
+        });
         
         // Parse breakdown safely
         let breakdown = {};
@@ -98,6 +112,22 @@ export const useAIScoring = () => {
             breakdown = {};
           }
         }
+
+        // Parse arrays safely
+        let strengths = [];
+        let weaknesses = [];
+        let recommendations = [];
+
+        try {
+          strengths = Array.isArray(scoreData.strengths) ? scoreData.strengths : 
+                     (scoreData.strengths ? JSON.parse(scoreData.strengths) : []);
+          weaknesses = Array.isArray(scoreData.weaknesses) ? scoreData.weaknesses : 
+                      (scoreData.weaknesses ? JSON.parse(scoreData.weaknesses) : []);
+          recommendations = Array.isArray(scoreData.recommendations) ? scoreData.recommendations : 
+                           (scoreData.recommendations ? JSON.parse(scoreData.recommendations) : []);
+        } catch (e) {
+          console.warn('❌ [useAIScoring] Failed to parse analysis arrays:', e);
+        }
         
         setScores(prev => ({
           ...prev,
@@ -105,6 +135,9 @@ export const useAIScoring = () => {
             score: scoreData.score,
             explanation: scoreData.explanation || '',
             breakdown: breakdown,
+            strengths: strengths,
+            weaknesses: weaknesses,
+            recommendations: recommendations,
             isJobSpecific: !!jobOfferId,
             isLoading: false,
             error: null,
@@ -119,6 +152,9 @@ export const useAIScoring = () => {
             score: null,
             explanation: '',
             breakdown: undefined,
+            strengths: undefined,
+            weaknesses: undefined,
+            recommendations: undefined,
             isJobSpecific: !!jobOfferId,
             isLoading: false,
             error: null,
@@ -134,6 +170,9 @@ export const useAIScoring = () => {
           score: null,
           explanation: '',
           breakdown: undefined,
+          strengths: undefined,
+          weaknesses: undefined,
+          recommendations: undefined,
           isJobSpecific: !!jobOfferId,
           isLoading: false,
           error: error.message,
@@ -241,7 +280,52 @@ export const useAIScoring = () => {
 
   return {
     getAIScore,
-    saveAIScore,
+    saveAIScore: async (candidateId: string, score: number, explanation: string, breakdown: any, jobOfferId?: string, strengths?: string[], weaknesses?: string[], recommendations?: string[]): Promise<boolean> => {
+      try {
+        console.log(`💾 [useAIScoring] Saving comprehensive AI score ${score}/100 for candidate ${candidateId}`);
+        
+        const { data, error } = await supabase.rpc('save_ai_candidate_score', {
+          p_candidate_id: candidateId,
+          p_score: score,
+          p_explanation: explanation,
+          p_breakdown: breakdown,
+          p_job_offer_id: jobOfferId || null,
+          p_strengths: strengths || [],
+          p_weaknesses: weaknesses || [],
+          p_recommendations: recommendations || []
+        });
+
+        if (error) {
+          console.error('❌ [useAIScoring] Error saving comprehensive AI score:', error);
+          return false;
+        }
+
+        console.log(`✅ [useAIScoring] Comprehensive AI score saved successfully`);
+
+        // Mettre à jour le cache
+        const key = `${candidateId}_${jobOfferId || 'general'}`;
+        setScores(prev => ({
+          ...prev,
+          [key]: {
+            score,
+            explanation,
+            breakdown,
+            strengths: strengths || [],
+            weaknesses: weaknesses || [],
+            recommendations: recommendations || [],
+            isJobSpecific: !!jobOfferId,
+            isLoading: false,
+            error: null,
+            source: 'fresh_calculation'
+          }
+        }));
+
+        return true;
+      } catch (error: any) {
+        console.error(`❌ [useAIScoring] Error saving comprehensive AI score:`, error);
+        return false;
+      }
+    },
     clearCache,
     preloadScoresFromDatabase,
     forceRefresh,

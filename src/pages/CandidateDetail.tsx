@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -21,6 +22,7 @@ import CandidateError from '@/components/candidates/detail/CandidateError';
 import DataMissingAlert from '@/components/candidates/detail/DataMissingAlert';
 import StatusSelector from '@/components/candidates/detail/StatusSelector';
 import ExportProfileButton from '@/components/candidates/detail/ExportProfileButton';
+import DebugAIScoreButton from '@/components/candidates/detail/DebugAIScoreButton';
 
 const CandidateDetail = () => {
   const { candidateId } = useParams<{ candidateId: string }>();
@@ -196,6 +198,8 @@ const CandidateDetail = () => {
                 <Briefcase size={16} className="mr-2 group-hover:scale-110 transition-transform duration-300" />
                 <span>Match d'emploi</span>
               </Button>
+              
+              <DebugAIScoreButton candidateId={candidate.id || ''} />
               
               <ExportProfileButton candidate={candidate} />
             </div>
