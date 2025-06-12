@@ -12,6 +12,7 @@ interface KanbanColumnProps {
   onViewCandidate: (candidateId: string) => void;
   onCandidateDeleted?: () => void;
   onDrop?: (candidateId: string, newStatus: string) => void;
+  jobOfferId?: string;
 }
 
 const KanbanColumn: React.FC<KanbanColumnProps> = ({
@@ -20,7 +21,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
   candidates,
   onViewCandidate,
   onCandidateDeleted,
-  onDrop
+  onDrop,
+  jobOfferId
 }) => {
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -81,6 +83,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
                 candidate={candidate}
                 onViewCandidate={onViewCandidate}
                 onCandidateDeleted={onCandidateDeleted}
+                jobOfferId={jobOfferId}
               />
             </div>
           ))
