@@ -24,7 +24,7 @@ export const getCompleteCandidateData = async (candidateId: string): Promise<Can
       return null;
     }
 
-    const candidateData = data[0];
+    const candidateData = data[0] as any; // Utiliser 'any' temporairement pour éviter les erreurs de type
     
     // Vérifier spécifiquement les données d'adresse et les données AI
     console.log('🏠 Complete address data from RPC function:', {
