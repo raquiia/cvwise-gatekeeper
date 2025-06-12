@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
@@ -14,6 +13,9 @@ interface AIScoreDisplayProps {
   score: number | null;
   explanation: string;
   breakdown: any;
+  strengths?: string[];
+  weaknesses?: string[];
+  recommendations?: string[];
   isLoading: boolean;
   isJobSpecific: boolean;
   error: string | null;
@@ -25,12 +27,18 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
   score,
   explanation,
   breakdown,
+  strengths,
+  weaknesses,
+  recommendations,
   isLoading,
   isJobSpecific,
   error,
   onRefresh
 }) => {
   const [isExplanationOpen, setIsExplanationOpen] = useState(true);
+  const [isStrengthsOpen, setIsStrengthsOpen] = useState(false);
+  const [isWeaknessesOpen, setIsWeaknessesOpen] = useState(false);
+  const [isRecommendationsOpen, setIsRecommendationsOpen] = useState(false);
   
   if (error) {
     return (
@@ -291,6 +299,99 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
               <CollapsibleContent className="mt-3">
                 <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg whitespace-pre-wrap">
                   {explanation}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </>
+        )}
+
+        {/* Section Points Forts */}
+        {strengths && strengths.length > 0 && (
+          <>
+            <Separator className="my-4" />
+            
+            <Collapsible open={isStrengthsOpen} onOpenChange={setIsStrengthsOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-0 h-auto text-foreground hover:text-foreground">
+                  <span className="text-sm font-medium flex items-center gap-2 text-green-600">
+                    <Sparkles size={16} />
+                    Points Forts ({strengths.length})
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {isStrengthsOpen ? 'Masquer' : 'Voir'}
+                  </span>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3">
+                <div className="space-y-2">
+                  {strengths.map((strength, index) => (
+                    <div key={index} className="flex items-start gap-2 p-2 bg-green-50 rounded-lg">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="text-sm text-green-800">{strength}</span>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </>
+        )}
+
+        {/* Section Points Faibles */}
+        {weaknesses && weaknesses.length > 0 && (
+          <>
+            <Separator className="my-4" />
+            
+            <Collapsible open={isWeaknessesOpen} onOpenChange={setIsWeaknessesOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-0 h-auto text-foreground hover:text-foreground">
+                  <span className="text-sm font-medium flex items-center gap-2 text-orange-600">
+                    <Info size={16} />
+                    Points d'Amélioration ({weaknesses.length})
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {isWeaknessesOpen ? 'Masquer' : 'Voir'}
+                  </span>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3">
+                <div className="space-y-2">
+                  {weaknesses.map((weakness, index) => (
+                    <div key={index} className="flex items-start gap-2 p-2 bg-orange-50 rounded-lg">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="text-sm text-orange-800">{weakness}</span>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </>
+        )}
+
+        {/* Section Recommandations */}
+        {recommendations && recommendations.length > 0 && (
+          <>
+            <Separator className="my-4" />
+            
+            <Collapsible open={isRecommendationsOpen} onOpenChange={setIsRecommendationsOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-0 h-auto text-foreground hover:text-foreground">
+                  <span className="text-sm font-medium flex items-center gap-2 text-blue-600">
+                    <Target size={16} />
+                    Recommandations ({recommendations.length})
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {isRecommendationsOpen ? 'Masquer' : 'Voir'}
+                  </span>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3">
+                <div className="space-y-2">
+                  {recommendations.map((recommendation, index) => (
+                    <div key={index} className="flex items-start gap-2 p-2 bg-blue-50 rounded-lg">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <span className="text-sm text-blue-800">{recommendation}</span>
+                    </div>
+                  ))}
                 </div>
               </CollapsibleContent>
             </Collapsible>
