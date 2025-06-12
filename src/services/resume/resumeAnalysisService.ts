@@ -1,5 +1,5 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { aiScoringService } from '../aiScoringService';
 import { toast } from '@/hooks/use-toast';
 
 export interface AIAnalysisResult {
@@ -198,44 +198,55 @@ export const extractResumeText = async (resumeId: string): Promise<TextExtractio
 };
 
 /**
- * Créer un candidat en base de données avec les données extraites
+ * Créer un candidat en base de données avec les données extraites ET l'analyse IA
  */
 const createCandidateFromExtractedData = async (
   resumeId: string,
-  candidateData: any
+  candidateData: any,
+  aiAnalysis?: AIAnalysisResult
 ): Promise<string> => {
   try {
-    console.log('📝 Creating candidate in database with extracted data');
+    console.log('📝 Creating candidate in database with extracted data and AI analysis');
     
+    const candidateToInsert = {
+      resume_id: resumeId,
+      user_id: (await supabase.auth.getUser()).data.user?.id,
+      first_name: candidateData.first_name || '',
+      last_name: candidateData.last_name || '',
+      email: candidateData.email || '',
+      phone: candidateData.phone || '',
+      position: candidateData.position || '',
+      years_experience: candidateData.years_experience || 0,
+      location: candidateData.location || '',
+      address: candidateData.address || '',
+      postal_code: candidateData.postal_code || '',
+      city: candidateData.city || '',
+      country: candidateData.country || '',
+      company: candidateData.company || '',
+      skills: candidateData.skills || [],
+      education: candidateData.education || [],
+      experiences: candidateData.experiences || [],
+      languages: candidateData.languages || [],
+      availability: candidateData.availability || '',
+      salary_expectations: candidateData.salary_expectations || '',
+      contract_type: candidateData.contract_type || '',
+      remote_preference: candidateData.remote_preference || '',
+      mobility: candidateData.mobility || '',
+      career_objectives: candidateData.career_objectives || '',
+      interests: candidateData.interests || '',
+      // Nouvelles colonnes AI directement stockées
+      ai_score: aiAnalysis?.score || null,
+      ai_explanation: aiAnalysis?.explanation || null,
+      ai_breakdown: aiAnalysis?.breakdown || {},
+      ai_strengths: aiAnalysis?.strengths || [],
+      ai_weaknesses: aiAnalysis?.weaknesses || [],
+      ai_recommendations: aiAnalysis?.recommendations || [],
+      ai_analyzed_at: aiAnalysis ? new Date().toISOString() : null
+    };
+
     const { data, error } = await supabase
       .from('candidates')
-      .insert({
-        resume_id: resumeId,
-        user_id: (await supabase.auth.getUser()).data.user?.id,
-        first_name: candidateData.first_name || '',
-        last_name: candidateData.last_name || '',
-        email: candidateData.email || '',
-        phone: candidateData.phone || '',
-        position: candidateData.position || '',
-        years_experience: candidateData.years_experience || 0,
-        location: candidateData.location || '',
-        address: candidateData.address || '',
-        postal_code: candidateData.postal_code || '',
-        city: candidateData.city || '',
-        country: candidateData.country || '',
-        company: candidateData.company || '',
-        skills: candidateData.skills || [],
-        education: candidateData.education || [],
-        experiences: candidateData.experiences || [],
-        languages: candidateData.languages || [],
-        availability: candidateData.availability || '',
-        salary_expectations: candidateData.salary_expectations || '',
-        contract_type: candidateData.contract_type || '',
-        remote_preference: candidateData.remote_preference || '',
-        mobility: candidateData.mobility || '',
-        career_objectives: candidateData.career_objectives || '',
-        interests: candidateData.interests || ''
-      })
+      .insert(candidateToInsert)
       .select('id')
       .single();
 
@@ -248,7 +259,7 @@ const createCandidateFromExtractedData = async (
       throw new Error('Aucun ID de candidat retourné');
     }
 
-    console.log('✅ Candidate created successfully with ID:', data.id);
+    console.log('✅ Candidate created successfully with ID and AI data:', data.id);
     return data.id;
 
   } catch (error: any) {
@@ -290,49 +301,12 @@ export const analyzeResume = async (
       };
     }
 
-    // Créer le candidat en base de données avec les données extraites
+    // Créer le candidat en base de données avec les données extraites ET l'analyse IA
     const candidateId = await createCandidateFromExtractedData(
       resumeId, 
-      analysisResult.candidateData
+      analysisResult.candidateData,
+      analysisResult.analysis
     );
-
-    // Sauvegarder le score IA avec le bon service
-    if (analysisResult.analysis) {
-      try {
-        console.log('💾 Saving AI score using aiScoringService for candidate:', candidateId);
-        
-        const saveResult = await aiScoringService.saveAIScore(
-          candidateId,
-          analysisResult.analysis.score,
-          analysisResult.analysis.explanation || '',
-          analysisResult.analysis.breakdown || {},
-          analysisResult.analysis.strengths || [],
-          analysisResult.analysis.weaknesses || [],
-          analysisResult.analysis.recommendations || []
-        );
-
-        if (saveResult.success) {
-          console.log('✅ AI score saved successfully using aiScoringService');
-          
-          // Vérification immédiate
-          setTimeout(async () => {
-            const verifyResult = await aiScoringService.getAIScore(candidateId);
-            if (verifyResult.success) {
-              console.log('🎉 AI score verification successful:', verifyResult.score);
-            } else {
-              console.warn('⚠️ AI score verification failed:', verifyResult.error);
-            }
-          }, 1000);
-          
-        } else {
-          console.error('❌ Failed to save AI score using aiScoringService:', saveResult.error);
-        }
-        
-      } catch (scoreError: any) {
-        console.warn('⚠️ Failed to save AI score, but candidate was created:', scoreError);
-        // On continue car le candidat a été créé avec succès
-      }
-    }
 
     // Marquer le CV comme analysé
     await supabase
@@ -340,7 +314,7 @@ export const analyzeResume = async (
       .update({ parsed: true })
       .eq('id', resumeId);
 
-    console.log('🎯 Analysis complete - returning success with candidateId:', candidateId);
+    console.log('🎯 Analysis complete - candidate created with embedded AI analysis:', candidateId);
 
     return {
       success: true,

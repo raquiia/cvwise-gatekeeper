@@ -5,8 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Brain, TrendingUp, AlertCircle, Loader2, RefreshCw, CheckCircle, XCircle, Lightbulb, Sparkles, FileSearch, Play } from 'lucide-react';
-import { useAIScoring } from '@/hooks/use-ai-scoring';
-import { useCandidateScore } from '@/hooks/use-candidate-score';
 import { CandidateData } from '@/services/data/candidateService';
 import { analyzeResume } from '@/services/resumeService';
 import { toast } from '@/hooks/use-toast';
@@ -14,41 +12,38 @@ import { toast } from '@/hooks/use-toast';
 interface CandidateAIScoreCardProps {
   candidate: CandidateData;
   compact?: boolean;
+  onRefresh?: () => void;
 }
 
 const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({ 
   candidate, 
-  compact = false 
+  compact = false,
+  onRefresh 
 }) => {
-  const { getAIScore, forceRefresh } = useAIScoring();
-  const { score: contextualScore, isLoading: contextualLoading } = useCandidateScore(candidate);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
   
-  // Récupérer le score IA général (pas job-spécifique)
-  const aiScore = getAIScore(candidate.id || '');
-  
-  console.log(`🎯 [CandidateAIScoreCard] Rendering for candidate ${candidate.id} (${candidate.first_name} ${candidate.last_name}):`, {
-    hasAIScore: aiScore.score !== null,
-    aiScore: aiScore.score,
-    hasExplanation: !!aiScore.explanation,
-    contextualScore: contextualScore?.overall,
-    profileCompleteness: candidate.profile_completeness,
-    isLoading: aiScore.isLoading,
-    error: aiScore.error,
-    source: aiScore.source
-  });
-
-  // Distinguer clairement entre score IA et score de complétude
-  const hasAIScore = aiScore.score !== null;
+  // Récupérer les données IA directement depuis le candidat
+  const hasAIScore = candidate.ai_score !== null && candidate.ai_score !== undefined;
   const displayScore = hasAIScore 
-    ? aiScore.score 
-    : contextualScore?.overall ?? candidate.profile_completeness ?? 0;
+    ? candidate.ai_score 
+    : candidate.profile_completeness ?? 0;
   
-  const isLoading = aiScore.isLoading || contextualLoading || isAnalyzing;
-  const hasExplanation = !!aiScore.explanation && aiScore.explanation.length > 0;
-  const hasStrengths = aiScore.strengths && aiScore.strengths.length > 0;
-  const hasWeaknesses = aiScore.weaknesses && aiScore.weaknesses.length > 0;
-  const hasRecommendations = aiScore.recommendations && aiScore.recommendations.length > 0;
+  const isLoading = isAnalyzing;
+  const hasExplanation = !!candidate.ai_explanation && candidate.ai_explanation.length > 0;
+  const hasStrengths = candidate.ai_strengths && Array.isArray(candidate.ai_strengths) && candidate.ai_strengths.length > 0;
+  const hasWeaknesses = candidate.ai_weaknesses && Array.isArray(candidate.ai_weaknesses) && candidate.ai_weaknesses.length > 0;
+  const hasRecommendations = candidate.ai_recommendations && Array.isArray(candidate.ai_recommendations) && candidate.ai_recommendations.length > 0;
+
+  console.log(`🎯 [CandidateAIScoreCard] Rendering for candidate ${candidate.id} (${candidate.first_name} ${candidate.last_name}):`, {
+    hasAIScore,
+    aiScore: candidate.ai_score,
+    hasExplanation,
+    profileCompleteness: candidate.profile_completeness,
+    aiAnalyzedAt: candidate.ai_analyzed_at,
+    strengthsCount: candidate.ai_strengths?.length || 0,
+    weaknessesCount: candidate.ai_weaknesses?.length || 0,
+    recommendationsCount: candidate.ai_recommendations?.length || 0
+  });
 
   const handleAnalyzeCV = async () => {
     if (!candidate.resume_id) {
@@ -64,15 +59,9 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
       setIsAnalyzing(true);
       console.log('🚀 [CandidateAIScoreCard] Starting CV analysis for resume:', candidate.resume_id);
       
-      // Effacer le cache avant de relancer l'analyse
-      if (candidate.id) {
-        console.log('🗑️ [CandidateAIScoreCard] Clearing AI score cache before re-analysis');
-        forceRefresh(candidate.id);
-      }
-      
       toast({
         title: "Analyse IA en cours",
-        description: "L'analyse IA du CV a commencé. Cela peut prendre quelques secondes...",
+        description: "L'analyse IA du CV a commencé. Les données seront mises à jour automatiquement...",
       });
 
       const result = await analyzeResume(candidate.resume_id);
@@ -80,15 +69,12 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
       if (result.success) {
         toast({
           title: "Analyse IA terminée",
-          description: "Le CV a été analysé avec succès. Le score IA et les recommandations sont maintenant disponibles.",
+          description: "Le CV a été analysé avec succès. Les données IA sont maintenant disponibles.",
         });
         
-        // Forcer le rafraîchissement du score après l'analyse
-        if (candidate.id) {
-          console.log('🔄 [CandidateAIScoreCard] Forcing score refresh after successful analysis');
-          setTimeout(() => {
-            forceRefresh(candidate.id!);
-          }, 1000);
+        // Rafraîchir les données du candidat
+        if (onRefresh) {
+          onRefresh();
         }
       } else {
         throw new Error(result.error || 'Échec de l\'analyse IA');
@@ -103,13 +89,6 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
       });
     } finally {
       setIsAnalyzing(false);
-    }
-  };
-
-  const handleRefresh = () => {
-    console.log(`🔄 [CandidateAIScoreCard] Manual refresh requested for candidate ${candidate.id}`);
-    if (candidate.id) {
-      forceRefresh(candidate.id);
     }
   };
 
@@ -196,24 +175,26 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
               )}
             </Badge>
             
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isLoading}
-              className="h-9 w-9 p-0 hover:bg-slate-100"
-              title="Actualiser l'analyse depuis la base de données"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
+            {onRefresh && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onRefresh}
+                disabled={isLoading}
+                className="h-9 w-9 p-0 hover:bg-slate-100"
+                title="Actualiser les données"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            )}
           </div>
         </div>
         
         <p className="text-sm text-slate-600 font-medium">
           {getScoreLabel(displayScore, hasAIScore)}
-          {aiScore.source && hasAIScore && (
+          {hasAIScore && candidate.ai_analyzed_at && (
             <span className="text-xs text-slate-500 ml-2 bg-slate-100 px-2 py-1 rounded">
-              {aiScore.source === 'database' ? 'depuis la base' : aiScore.source}
+              Analysé le {new Date(candidate.ai_analyzed_at).toLocaleDateString()}
             </span>
           )}
         </p>
@@ -282,35 +263,35 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
         </div>
 
         {/* Breakdown si disponible avec design amélioré */}
-        {aiScore.breakdown && Object.keys(aiScore.breakdown).length > 0 && hasAIScore && (
+        {candidate.ai_breakdown && Object.keys(candidate.ai_breakdown).length > 0 && hasAIScore && (
           <div className="space-y-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
             <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-purple-600" />
               Détail par catégorie (IA)
             </h4>
             <div className="grid grid-cols-2 gap-3 text-xs">
-              {aiScore.breakdown.skills !== undefined && (
+              {candidate.ai_breakdown.skills !== undefined && (
                 <div className="flex items-center justify-between bg-white p-2 rounded border">
                   <span className="font-medium">Compétences</span>
-                  <span className="font-bold text-purple-600">{aiScore.breakdown.skills}/20</span>
+                  <span className="font-bold text-purple-600">{candidate.ai_breakdown.skills}/20</span>
                 </div>
               )}
-              {aiScore.breakdown.experience !== undefined && (
+              {candidate.ai_breakdown.experience !== undefined && (
                 <div className="flex items-center justify-between bg-white p-2 rounded border">
                   <span className="font-medium">Expérience</span>
-                  <span className="font-bold text-green-600">{aiScore.breakdown.experience}/20</span>
+                  <span className="font-bold text-green-600">{candidate.ai_breakdown.experience}/20</span>
                 </div>
               )}
-              {aiScore.breakdown.education !== undefined && (
+              {candidate.ai_breakdown.education !== undefined && (
                 <div className="flex items-center justify-between bg-white p-2 rounded border">
                   <span className="font-medium">Formation</span>
-                  <span className="font-bold text-blue-600">{aiScore.breakdown.education}/20</span>
+                  <span className="font-bold text-blue-600">{candidate.ai_breakdown.education}/20</span>
                 </div>
               )}
-              {aiScore.breakdown.languages !== undefined && (
+              {candidate.ai_breakdown.languages !== undefined && (
                 <div className="flex items-center justify-between bg-white p-2 rounded border">
                   <span className="font-medium">Langues</span>
-                  <span className="font-bold text-teal-600">{aiScore.breakdown.languages}/10</span>
+                  <span className="font-bold text-teal-600">{candidate.ai_breakdown.languages}/10</span>
                 </div>
               )}
             </div>
@@ -322,18 +303,18 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
           <div className="space-y-3">
             <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
-              Points forts IA ({aiScore.strengths!.length})
+              Points forts IA ({candidate.ai_strengths!.length})
             </h4>
             <div className="space-y-2">
-              {aiScore.strengths!.slice(0, 3).map((strength, index) => (
+              {candidate.ai_strengths!.slice(0, 3).map((strength, index) => (
                 <div key={index} className="text-sm text-green-800 bg-green-50 border-l-4 border-green-400 rounded-lg p-3 flex items-start gap-3 shadow-sm">
                   <span className="text-green-600 mt-0.5 flex-shrink-0 font-bold">✓</span>
                   <span className="font-medium">{strength}</span>
                 </div>
               ))}
-              {aiScore.strengths!.length > 3 && (
+              {candidate.ai_strengths!.length > 3 && (
                 <div className="text-xs text-green-600 font-medium text-center">
-                  +{aiScore.strengths!.length - 3} autres points forts
+                  +{candidate.ai_strengths!.length - 3} autres points forts
                 </div>
               )}
             </div>
@@ -345,18 +326,18 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
           <div className="space-y-3">
             <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
               <XCircle className="w-5 h-5 text-orange-600" />
-              Points d'amélioration IA ({aiScore.weaknesses!.length})
+              Points d'amélioration IA ({candidate.ai_weaknesses!.length})
             </h4>
             <div className="space-y-2">
-              {aiScore.weaknesses!.slice(0, 2).map((weakness, index) => (
+              {candidate.ai_weaknesses!.slice(0, 2).map((weakness, index) => (
                 <div key={index} className="text-sm text-orange-800 bg-orange-50 border-l-4 border-orange-400 rounded-lg p-3 flex items-start gap-3 shadow-sm">
                   <span className="text-orange-600 mt-0.5 flex-shrink-0 font-bold">•</span>
                   <span className="font-medium">{weakness}</span>
                 </div>
               ))}
-              {aiScore.weaknesses!.length > 2 && (
+              {candidate.ai_weaknesses!.length > 2 && (
                 <div className="text-xs text-orange-600 font-medium text-center">
-                  +{aiScore.weaknesses!.length - 2} autres points d'amélioration
+                  +{candidate.ai_weaknesses!.length - 2} autres points d'amélioration
                 </div>
               )}
             </div>
@@ -368,31 +349,20 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
           <div className="space-y-3">
             <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
               <Lightbulb className="w-5 h-5 text-amber-600" />
-              Recommandations IA ({aiScore.recommendations!.length})
+              Recommandations IA ({candidate.ai_recommendations!.length})
             </h4>
             <div className="space-y-2">
-              {aiScore.recommendations!.slice(0, 3).map((recommendation, index) => (
+              {candidate.ai_recommendations!.slice(0, 3).map((recommendation, index) => (
                 <div key={index} className="text-sm text-amber-800 bg-amber-50 border-l-4 border-amber-400 rounded-lg p-3 flex items-start gap-3 shadow-sm">
                   <span className="text-amber-600 mt-0.5 flex-shrink-0">💡</span>
                   <span className="font-medium">{recommendation}</span>
                 </div>
               ))}
-              {aiScore.recommendations!.length > 3 && (
+              {candidate.ai_recommendations!.length > 3 && (
                 <div className="text-xs text-amber-600 font-medium text-center">
-                  +{aiScore.recommendations!.length - 3} autres recommandations
+                  +{candidate.ai_recommendations!.length - 3} autres recommandations
                 </div>
               )}
-            </div>
-          </div>
-        )}
-
-        {/* Erreur */}
-        {aiScore.error && (
-          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-red-800">
-              <p className="font-bold">Erreur de chargement de l'analyse IA</p>
-              <p className="text-xs text-red-600 mt-1">{aiScore.error}</p>
             </div>
           </div>
         )}
@@ -406,7 +376,7 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
           </div>
           {hasAIScore && (
             <div className="text-xs text-purple-600 font-medium">
-              ✨ Analyse complète avec {aiScore.strengths?.length || 0} points forts, {aiScore.weaknesses?.length || 0} améliorations et {aiScore.recommendations?.length || 0} recommandations
+              ✨ Analyse complète avec {candidate.ai_strengths?.length || 0} points forts, {candidate.ai_weaknesses?.length || 0} améliorations et {candidate.ai_recommendations?.length || 0} recommandations
             </div>
           )}
         </div>

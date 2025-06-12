@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -47,6 +48,14 @@ export interface CandidateData {
   profile_completeness?: number;
   notes?: string;
   last_updated_at?: string;
+  // Nouvelles colonnes AI
+  ai_score?: number;
+  ai_explanation?: string;
+  ai_breakdown?: Json;
+  ai_strengths?: Json;
+  ai_weaknesses?: Json;
+  ai_recommendations?: Json;
+  ai_analyzed_at?: string;
 }
 
 export interface UpdateCandidateOptions {
@@ -138,12 +147,13 @@ export const candidateService = {
 
   // Update an existing candidate
   updateCandidate: async (candidateData: Partial<CandidateData> & { id: string }): Promise<CandidateData> => {
-    console.log('candidateService.updateCandidate called with address data:', {
+    console.log('candidateService.updateCandidate called with AI data:', {
       id: candidateData.id,
-      address: candidateData.address,
-      postal_code: candidateData.postal_code,
-      city: candidateData.city,
-      country: candidateData.country
+      ai_score: candidateData.ai_score,
+      ai_explanation: candidateData.ai_explanation?.substring(0, 50),
+      ai_strengths_count: Array.isArray(candidateData.ai_strengths) ? candidateData.ai_strengths.length : 0,
+      ai_weaknesses_count: Array.isArray(candidateData.ai_weaknesses) ? candidateData.ai_weaknesses.length : 0,
+      ai_recommendations_count: Array.isArray(candidateData.ai_recommendations) ? candidateData.ai_recommendations.length : 0,
     });
     
     try {
@@ -185,6 +195,14 @@ export const candidateService = {
           industries: candidateData.industries,
           projects: candidateData.projects,
           notes: candidateData.notes,
+          // Inclure les nouvelles colonnes AI
+          ai_score: candidateData.ai_score,
+          ai_explanation: candidateData.ai_explanation,
+          ai_breakdown: candidateData.ai_breakdown,
+          ai_strengths: candidateData.ai_strengths,
+          ai_weaknesses: candidateData.ai_weaknesses,
+          ai_recommendations: candidateData.ai_recommendations,
+          ai_analyzed_at: candidateData.ai_analyzed_at,
           updated_at: new Date().toISOString()
         })
         .eq('id', candidateData.id)
@@ -196,12 +214,10 @@ export const candidateService = {
         throw new Error(`Erreur lors de la mise à jour: ${error.message}`);
       }
 
-      console.log('candidateService.updateCandidate success with address data:', {
+      console.log('candidateService.updateCandidate success with AI data:', {
         id: data.id,
-        address: data.address,
-        postal_code: data.postal_code,
-        city: data.city,
-        country: data.country
+        ai_score: data.ai_score,
+        ai_analyzed_at: data.ai_analyzed_at
       });
       return data;
     } catch (error: any) {
@@ -246,5 +262,10 @@ export const formatCandidateData = (candidate: any): CandidateData => {
     special_permits: candidate.special_permits || [],
     industries: candidate.industries || [],
     projects: candidate.projects || [],
+    // Formater les nouvelles données AI
+    ai_strengths: candidate.ai_strengths || [],
+    ai_weaknesses: candidate.ai_weaknesses || [],
+    ai_recommendations: candidate.ai_recommendations || [],
+    ai_breakdown: candidate.ai_breakdown || {},
   };
 };

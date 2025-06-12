@@ -8,7 +8,6 @@ import { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
 import { candidateService } from '@/services/data/candidateService';
 import { useToast } from '@/hooks/use-toast';
-import { useAIScoring } from '@/hooks/use-ai-scoring';
 
 interface KanbanCandidateCardProps {
   candidate: CandidateData;
@@ -26,12 +25,11 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
   jobOfferId
 }) => {
   const { toast } = useToast();
-  const { getAIScore, isJobSpecific } = useAIScoring();
   const skills = ensureStringArray(candidate.skills);
   
-  // Utiliser uniquement le système AI scoring unifié
-  const aiScore = getAIScore(candidate.id!, jobOfferId);
-  const jobSpecific = isJobSpecific(jobOfferId);
+  // Utiliser les données AI directement depuis le candidat
+  const hasAIScore = candidate.ai_score !== null && candidate.ai_score !== undefined;
+  const displayScore = hasAIScore ? candidate.ai_score : candidate.profile_completeness || 0;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -61,18 +59,6 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
     return 'text-red-600 bg-red-50';
   };
 
-  const getScoreSource = (source?: string) => {
-    switch (source) {
-      case 'database': return 'BDD';
-      case 'fresh_calculation': return 'Nouveau';
-      case 'cache': return 'Cache';
-      default: return 'IA';
-    }
-  };
-
-  // SUPPRIMÉ : Plus de useEffect pour déclencher automatiquement les calculs
-  // Les scores seront calculés à la demande ou préchargés intelligemment
-
   return (
     <Card 
       className={`group cursor-pointer border-purple-200/30 dark:border-purple-800/20 bg-white/90 dark:bg-navy-dark/90 backdrop-blur-sm hover:shadow-md transition-all duration-200 ${
@@ -97,54 +83,30 @@ const KanbanCandidateCard: React.FC<KanbanCandidateCardProps> = ({
             </div>
           </div>
           
-          {/* Score - Uniquement système AI */}
+          {/* Score - Système simplifié utilisant les données AI intégrées */}
           <div className="flex flex-col items-end gap-1">
-            {aiScore.isLoading ? (
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-xs text-muted-foreground">Calcul...</span>
-              </div>
-            ) : aiScore.error ? (
-              <div className="flex flex-col items-end gap-1" title={aiScore.error}>
-                <div className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                  N/A
-                </div>
-                <Badge variant="destructive" className="text-xs">
-                  Erreur
-                </Badge>
-              </div>
-            ) : aiScore.score !== null ? (
-              <div className="flex flex-col items-end gap-1">
-                <div className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(aiScore.score)}`}>
-                  {aiScore.score}%
-                </div>
-                <div className="flex items-center gap-1">
-                  <Badge 
-                    variant="default"
-                    className="text-xs bg-purple-100 text-purple-800 border-purple-300"
-                    title={aiScore.explanation || "Score calculé par l'IA"}
-                  >
+            <div className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(displayScore)}`}>
+              {displayScore}%
+            </div>
+            <div className="flex items-center gap-1">
+              <Badge 
+                variant="default"
+                className="text-xs bg-purple-100 text-purple-800 border-purple-300"
+                title={hasAIScore ? candidate.ai_explanation || "Score calculé par l'IA" : "Score de complétude"}
+              >
+                {hasAIScore ? (
+                  <>
                     <Brain size={8} className="mr-1" />
-                    {getScoreSource(aiScore.source)}
-                  </Badge>
-                  {jobSpecific && (
-                    <div title="Score de correspondance">
-                      <TrendingUp size={10} className="text-purple-600" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-end gap-1">
-                <div className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                  En attente
-                </div>
-                <Badge variant="secondary" className="text-xs">
-                  <Brain size={8} className="mr-1" />
-                  IA
-                </Badge>
-              </div>
-            )}
+                    IA
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp size={8} className="mr-1" />
+                    Profil
+                  </>
+                )}
+              </Badge>
+            </div>
           </div>
         </div>
 

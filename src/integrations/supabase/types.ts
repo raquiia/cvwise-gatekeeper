@@ -359,6 +359,13 @@ export type Database = {
       candidates: {
         Row: {
           address: string | null
+          ai_analyzed_at: string | null
+          ai_breakdown: Json | null
+          ai_explanation: string | null
+          ai_recommendations: Json | null
+          ai_score: number | null
+          ai_strengths: Json | null
+          ai_weaknesses: Json | null
           availability: string | null
           career_objectives: string | null
           certifications: Json | null
@@ -406,6 +413,13 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          ai_analyzed_at?: string | null
+          ai_breakdown?: Json | null
+          ai_explanation?: string | null
+          ai_recommendations?: Json | null
+          ai_score?: number | null
+          ai_strengths?: Json | null
+          ai_weaknesses?: Json | null
           availability?: string | null
           career_objectives?: string | null
           certifications?: Json | null
@@ -453,6 +467,13 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          ai_analyzed_at?: string | null
+          ai_breakdown?: Json | null
+          ai_explanation?: string | null
+          ai_recommendations?: Json | null
+          ai_score?: number | null
+          ai_strengths?: Json | null
+          ai_weaknesses?: Json | null
           availability?: string | null
           career_objectives?: string | null
           certifications?: Json | null
@@ -879,6 +900,13 @@ export type Database = {
         Args: { candidate_ids: string[] }
         Returns: {
           address: string | null
+          ai_analyzed_at: string | null
+          ai_breakdown: Json | null
+          ai_explanation: string | null
+          ai_recommendations: Json | null
+          ai_score: number | null
+          ai_strengths: Json | null
+          ai_weaknesses: Json | null
           availability: string | null
           career_objectives: string | null
           certifications: Json | null
@@ -1064,6 +1092,13 @@ export type Database = {
         Args: { p_candidate_id: string; p_data: Json }
         Returns: {
           address: string | null
+          ai_analyzed_at: string | null
+          ai_breakdown: Json | null
+          ai_explanation: string | null
+          ai_recommendations: Json | null
+          ai_score: number | null
+          ai_strengths: Json | null
+          ai_weaknesses: Json | null
           availability: string | null
           career_objectives: string | null
           certifications: Json | null
