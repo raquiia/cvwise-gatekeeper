@@ -43,17 +43,17 @@ export interface ResumeAnalysisResult {
  * Analyser un CV avec l'IA unifiée (extraction + analyse + scoring en une seule requête)
  */
 export const analyzeResumeWithAI = async (
-  candidateData: any,
+  resumeId: string,
   resumeText: string
 ): Promise<CVAnalysisResult> => {
   try {
-    console.log('🤖 Starting unified AI analysis for candidate:', candidateData.id);
+    console.log('🤖 Starting unified AI analysis for resume:', resumeId);
 
     // Appeler la nouvelle Edge Function unifiée
     const { data, error } = await supabase.functions.invoke('analyze-resume', {
       body: {
         resumeText,
-        resumeId: candidateData.resume_id || 'unknown'
+        resumeId
       }
     });
 
@@ -78,9 +78,6 @@ export const analyzeResumeWithAI = async (
       recommendationsCount: analysis.recommendations?.length || 0,
       extractedName: `${extractedCandidateData.first_name} ${extractedCandidateData.last_name}`
     });
-
-    // Sauvegarder automatiquement le score IA en base de données
-    await saveAIScoreToDatabase(candidateData.id, analysis);
 
     return {
       success: true,
@@ -199,7 +196,67 @@ export const extractResumeText = async (resumeId: string): Promise<TextExtractio
 };
 
 /**
- * Analyser un CV complet (extraction + analyse IA + sauvegarde) - version unifiée
+ * Créer un candidat en base de données avec les données extraites
+ */
+const createCandidateFromExtractedData = async (
+  resumeId: string,
+  candidateData: any
+): Promise<string> => {
+  try {
+    console.log('📝 Creating candidate in database with extracted data');
+    
+    const { data, error } = await supabase
+      .from('candidates')
+      .insert({
+        resume_id: resumeId,
+        user_id: (await supabase.auth.getUser()).data.user?.id,
+        first_name: candidateData.first_name || '',
+        last_name: candidateData.last_name || '',
+        email: candidateData.email || '',
+        phone: candidateData.phone || '',
+        position: candidateData.position || '',
+        years_experience: candidateData.years_experience || 0,
+        location: candidateData.location || '',
+        address: candidateData.address || '',
+        postal_code: candidateData.postal_code || '',
+        city: candidateData.city || '',
+        country: candidateData.country || '',
+        company: candidateData.company || '',
+        skills: candidateData.skills || [],
+        education: candidateData.education || [],
+        experiences: candidateData.experiences || [],
+        languages: candidateData.languages || [],
+        availability: candidateData.availability || '',
+        salary_expectations: candidateData.salary_expectations || '',
+        contract_type: candidateData.contract_type || '',
+        remote_preference: candidateData.remote_preference || '',
+        mobility: candidateData.mobility || '',
+        career_objectives: candidateData.career_objectives || '',
+        interests: candidateData.interests || ''
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('❌ Error creating candidate:', error);
+      throw new Error(`Erreur lors de la création du candidat: ${error.message}`);
+    }
+
+    if (!data?.id) {
+      throw new Error('Aucun ID de candidat retourné');
+    }
+
+    console.log('✅ Candidate created successfully with ID:', data.id);
+    return data.id;
+
+  } catch (error: any) {
+    console.error('❌ Failed to create candidate:', error);
+    throw error;
+  }
+};
+
+/**
+ * Analyser un CV complet (extraction + analyse IA + création candidat + sauvegarde) - version unifiée
  */
 export const analyzeResume = async (
   resumeId: string,
@@ -221,21 +278,45 @@ export const analyzeResume = async (
       text = extractResult.text;
     }
 
-    // Appeler directement l'analyse unifiée
-    const result = await analyzeResumeWithAI({ resume_id: resumeId }, text);
+    // Analyser avec l'IA unifiée
+    const analysisResult = await analyzeResumeWithAI(resumeId, text);
     
-    if (result.success && result.candidateData) {
+    if (!analysisResult.success || !analysisResult.candidateData) {
       return {
-        success: true,
-        candidateId: result.candidateData.id,
-        candidateData: result.candidateData,
-        analysis: result.analysis
+        success: false,
+        message: analysisResult.error || 'Échec de l\'analyse unifiée'
       };
     }
 
+    // Créer le candidat en base de données avec les données extraites
+    const candidateId = await createCandidateFromExtractedData(
+      resumeId, 
+      analysisResult.candidateData
+    );
+
+    // Maintenant sauvegarder le score IA avec l'ID correct du candidat
+    if (analysisResult.analysis) {
+      try {
+        await saveAIScoreToDatabase(candidateId, analysisResult.analysis);
+        console.log('✅ AI score saved successfully for candidate:', candidateId);
+      } catch (scoreError: any) {
+        console.warn('⚠️ Failed to save AI score, but candidate was created:', scoreError);
+        // On continue car le candidat a été créé avec succès
+      }
+    }
+
+    // Marquer le CV comme analysé
+    await supabase
+      .from('resumes')
+      .update({ parsed: true })
+      .eq('id', resumeId);
+
     return {
-      success: false,
-      message: result.error || 'Échec de l\'analyse unifiée'
+      success: true,
+      candidateId: candidateId,
+      candidateData: { ...analysisResult.candidateData, id: candidateId },
+      analysis: analysisResult.analysis,
+      message: 'CV analysé et candidat créé avec succès'
     };
 
   } catch (error: any) {
@@ -279,7 +360,7 @@ const saveAIScoreToDatabase = async (
       recommendationsSample: recommendations.slice(0, 1)
     });
 
-    // Utiliser la fonction RPC mise à jour avec TOUS les nouveaux paramètres
+    // Utiliser la fonction RPC avec l'ordre correct des paramètres selon la définition de la fonction
     const { data, error } = await supabase.rpc('save_ai_candidate_score', {
       p_candidate_id: candidateId,
       p_score: analysis.score,
