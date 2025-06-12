@@ -1,4 +1,3 @@
-
 import { supabase, SUPABASE_API_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 import { analyzeResume } from './resume/resumeAnalysisService';
 
