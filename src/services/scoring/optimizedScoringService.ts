@@ -93,58 +93,93 @@ export class OptimizedScoringService {
   }
   
   /**
-   * Calculer et stocker le score de complétude via la fonction SQL
+   * Calculer et stocker le score de complétude directement dans candidates
    */
   async calculateCompletenessScore(candidateId: string): Promise<ScoringBreakdown | null> {
     try {
       console.log('Calculating completeness score for candidate:', candidateId);
       
-      // Utiliser la fonction SQL existante pour calculer le score
-      const { data, error } = await supabase.rpc('calculate_and_store_completeness_score', {
-        p_candidate_id: candidateId
-      });
-      
-      if (error) {
-        console.error('Error calculating completeness score:', error);
-        throw error;
-      }
-      
-      console.log('Completeness score calculated:', data);
-      
-      // Récupérer les données AI mises à jour
-      const { data: candidate, error: fetchError } = await supabase
+      // Récupérer les données du candidat pour calculer le score
+      const { data: candidate, error } = await supabase
         .from('candidates')
-        .select('ai_score, ai_breakdown, ai_analyzed_at')
+        .select('*')
         .eq('id', candidateId)
         .single();
       
-      if (fetchError || !candidate) {
-        console.error('Error fetching updated candidate data:', fetchError);
-        // Retourner un score basique basé sur le résultat de la fonction
-        return {
-          education_score: 0,
-          experience_score: 0,
-          skills_score: 0,
-          languages_score: 0,
-          location_mobility_score: 0,
-          profile_summary_score: 0,
-          cv_structure_score: 0,
-          general_score: data || 50,
-          calculated_at: new Date().toISOString(),
-          is_job_specific: false
-        };
+      if (error || !candidate) {
+        console.error('Error fetching candidate data:', error);
+        return null;
       }
       
+      // Calculer un score basique basé sur les données disponibles
+      let skillsScore = 0;
+      let experienceScore = 0;
+      let educationScore = 0;
+      let languagesScore = 0;
+      let locationScore = 0;
+      let profileScore = 0;
+      let structureScore = 0;
+      
+      // Calcul des scores basé sur les données du candidat
+      if (candidate.skills && Array.isArray(candidate.skills) && candidate.skills.length > 0) {
+        skillsScore = Math.min(candidate.skills.length * 10, 100);
+      }
+      
+      if (candidate.years_experience && candidate.years_experience > 0) {
+        experienceScore = Math.min(candidate.years_experience * 10, 100);
+      }
+      
+      if (candidate.education && Array.isArray(candidate.education) && candidate.education.length > 0) {
+        educationScore = 80;
+      }
+      
+      if (candidate.languages && Array.isArray(candidate.languages) && candidate.languages.length > 0) {
+        languagesScore = 70;
+      }
+      
+      if (candidate.location) {
+        locationScore = 60;
+      }
+      
+      if (candidate.career_objectives) {
+        profileScore = 60;
+      }
+      
+      // Score de structure basé sur la complétude du profil
+      const fields = ['first_name', 'last_name', 'email', 'phone', 'position'];
+      const filledFields = fields.filter(field => candidate[field]).length;
+      structureScore = (filledFields / fields.length) * 100;
+      
+      const generalScore = Math.round((skillsScore + experienceScore + educationScore + languagesScore + locationScore + profileScore + structureScore) / 7);
+      
+      // Mettre à jour le candidat avec le score calculé
+      await supabase
+        .from('candidates')
+        .update({
+          ai_score: generalScore,
+          ai_breakdown: {
+            skills: skillsScore,
+            experience: experienceScore,
+            education: educationScore,
+            languages: languagesScore,
+            location: locationScore,
+            profileSummary: profileScore,
+            cvStructure: structureScore
+          },
+          ai_analyzed_at: new Date().toISOString()
+        })
+        .eq('id', candidateId);
+      
       return {
-        education_score: safeGetBreakdownScore(candidate.ai_breakdown, 'education'),
-        experience_score: safeGetBreakdownScore(candidate.ai_breakdown, 'experience'),
-        skills_score: safeGetBreakdownScore(candidate.ai_breakdown, 'skills'),
-        languages_score: safeGetBreakdownScore(candidate.ai_breakdown, 'languages'),
-        location_mobility_score: safeGetBreakdownScore(candidate.ai_breakdown, 'location'),
-        profile_summary_score: safeGetBreakdownScore(candidate.ai_breakdown, 'profileSummary'),
-        cv_structure_score: safeGetBreakdownScore(candidate.ai_breakdown, 'cvStructure'),
-        general_score: candidate.ai_score || data || 50,
-        calculated_at: candidate.ai_analyzed_at || new Date().toISOString(),
+        education_score: educationScore,
+        experience_score: experienceScore,
+        skills_score: skillsScore,
+        languages_score: languagesScore,
+        location_mobility_score: locationScore,
+        profile_summary_score: profileScore,
+        cv_structure_score: structureScore,
+        general_score: generalScore,
+        calculated_at: new Date().toISOString(),
         is_job_specific: false
       };
       
