@@ -40,56 +40,58 @@ export interface ResumeAnalysisResult {
 }
 
 /**
- * Analyser un CV avec l'IA et sauvegarder le score automatiquement
+ * Analyser un CV avec l'IA unifiée (extraction + analyse + scoring en une seule requête)
  */
 export const analyzeResumeWithAI = async (
   candidateData: any,
   resumeText: string
 ): Promise<CVAnalysisResult> => {
   try {
-    console.log('🤖 Starting AI analysis for candidate:', candidateData.id);
+    console.log('🤖 Starting unified AI analysis for candidate:', candidateData.id);
 
-    // Appeler l'Edge Function d'analyse
+    // Appeler la nouvelle Edge Function unifiée
     const { data, error } = await supabase.functions.invoke('analyze-resume', {
       body: {
-        candidateData,
-        resumeText
+        resumeText,
+        resumeId: candidateData.resume_id || 'unknown'
       }
     });
 
     if (error) {
-      console.error('❌ Error calling analyze-resume function:', error);
+      console.error('❌ Error calling unified analyze-resume function:', error);
       throw error;
     }
 
     if (!data.success) {
-      throw new Error(data.error || 'Analysis failed');
+      throw new Error(data.error || 'Unified analysis failed');
     }
 
     const analysis: AIAnalysisResult = data.analysis;
+    const extractedCandidateData = data.candidateData;
     
-    console.log('✅ AI analysis completed:', {
+    console.log('✅ Unified AI analysis completed:', {
       score: analysis.score,
       hasExplanation: !!analysis.explanation,
       hasBreakdown: !!analysis.breakdown,
       strengthsCount: analysis.strengths?.length || 0,
       weaknessesCount: analysis.weaknesses?.length || 0,
-      recommendationsCount: analysis.recommendations?.length || 0
+      recommendationsCount: analysis.recommendations?.length || 0,
+      extractedName: `${extractedCandidateData.first_name} ${extractedCandidateData.last_name}`
     });
 
-    // Sauvegarder automatiquement le score IA en base de données avec TOUS les nouveaux paramètres
+    // Sauvegarder automatiquement le score IA en base de données
     await saveAIScoreToDatabase(candidateData.id, analysis);
 
     return {
       success: true,
-      candidateData,
+      candidateData: extractedCandidateData,
       analysis
     };
 
   } catch (error: any) {
-    console.error('❌ Error in analyzeResumeWithAI:', error);
+    console.error('❌ Error in unified analyzeResumeWithAI:', error);
     toast({
-      title: "Erreur d'analyse IA",
+      title: "Erreur d'analyse IA unifiée",
       description: error.message || "Impossible d'analyser le CV avec l'IA",
       variant: "destructive",
     });
@@ -197,7 +199,7 @@ export const extractResumeText = async (resumeId: string): Promise<TextExtractio
 };
 
 /**
- * Analyser un CV complet (extraction + analyse IA + sauvegarde)
+ * Analyser un CV complet (extraction + analyse IA + sauvegarde) - version unifiée
  */
 export const analyzeResume = async (
   resumeId: string,
@@ -219,9 +221,8 @@ export const analyzeResume = async (
       text = extractResult.text;
     }
 
-    // Appeler l'analyse complète via l'analysisOperations
-    const { analyzeResume: analyzeResumeOperation } = await import('./analysisOperations');
-    const result = await analyzeResumeOperation(resumeId);
+    // Appeler directement l'analyse unifiée
+    const result = await analyzeResumeWithAI({ resume_id: resumeId }, text);
     
     if (result.success && result.candidateData) {
       return {
@@ -234,11 +235,11 @@ export const analyzeResume = async (
 
     return {
       success: false,
-      message: result.error || 'Échec de l\'analyse'
+      message: result.error || 'Échec de l\'analyse unifiée'
     };
 
   } catch (error: any) {
-    console.error('Error in analyzeResume:', error);
+    console.error('Error in unified analyzeResume:', error);
     return {
       success: false,
       message: error.message
@@ -247,7 +248,7 @@ export const analyzeResume = async (
 };
 
 /**
- * Sauvegarder le score IA dans la base de données avec TOUS les nouveaux paramètres et gestion d'erreur améliorée
+ * Sauvegarder le score IA dans la base de données avec TOUS les nouveaux paramètres
  */
 const saveAIScoreToDatabase = async (
   candidateId: string,
