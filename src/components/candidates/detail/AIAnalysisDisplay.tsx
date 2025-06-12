@@ -39,6 +39,13 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
   // Vérifier si les données IA sont présentes
   const hasAIData = candidate.ai_score !== null && candidate.ai_score !== undefined;
   
+  console.log('📊 [AIAnalysisDisplay] AI Data status:', {
+    hasAIData,
+    ai_score: candidate.ai_score,
+    ai_explanation: candidate.ai_explanation ? 'Present' : 'Missing',
+    ai_analyzed_at: candidate.ai_analyzed_at
+  });
+  
   if (!hasAIData) {
     return (
       <div className="space-y-6">
@@ -71,11 +78,32 @@ const AIAnalysisDisplay: React.FC<AIAnalysisDisplayProps> = ({
   }
 
   return (
-    <CandidateAIScoreCard 
-      candidate={candidate} 
-      compact={false}
-      onRefresh={onRefresh}
-    />
+    <div className="space-y-6">
+      <div className="p-6 border border-green-200 rounded-lg bg-green-50">
+        <div className="flex items-start gap-3">
+          <div className="text-green-600 text-xl">✅</div>
+          <div>
+            <h3 className="font-bold text-green-800 mb-2">Analyse IA disponible</h3>
+            <p className="text-green-700 mb-4">
+              Données d'analyse IA trouvées pour ce candidat.
+            </p>
+            <p className="text-sm text-green-600">
+              <strong>Score IA:</strong> {candidate.ai_score}/100<br/>
+              <strong>Analysé le:</strong> {candidate.ai_analyzed_at ? new Date(candidate.ai_analyzed_at).toLocaleDateString() : 'Date inconnue'}<br/>
+              <strong>Points forts:</strong> {Array.isArray(candidate.ai_strengths) ? candidate.ai_strengths.length : 0}<br/>
+              <strong>Points faibles:</strong> {Array.isArray(candidate.ai_weaknesses) ? candidate.ai_weaknesses.length : 0}<br/>
+              <strong>Recommandations:</strong> {Array.isArray(candidate.ai_recommendations) ? candidate.ai_recommendations.length : 0}
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <CandidateAIScoreCard 
+        candidate={candidate} 
+        compact={false}
+        onRefresh={onRefresh}
+      />
+    </div>
   );
 };
 

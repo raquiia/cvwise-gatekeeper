@@ -47,52 +47,14 @@ const CandidateDetail = () => {
       setLoading(true);
       console.log("🔄 CandidateDetail: Starting data fetch for ID:", candidateId);
       
-      // First try using the direct function to get complete candidate data
-      let data = null;
-      
-      try {
-        console.log("Attempting to get complete data via bypassing_rls function");
-        data = await getCompleteCandidateData(candidateId);
-        console.log("📦 CandidateDetail: Raw data received from getCompleteCandidateData:", data ? {
-          id: data.id,
-          first_name: data.first_name,
-          last_name: data.last_name,
-          address: data.address,
-          postal_code: data.postal_code,
-          city: data.city,
-          country: data.country,
-          ai_score: data.ai_score,
-          ai_analyzed_at: data.ai_analyzed_at
-        } : "No data");
-      } catch (directError: any) {
-        console.error("Error with direct function, falling back to standard service:", directError);
-        data = await candidateService.getCandidateById(candidateId);
-        console.log("Fallback method result:", data ? "Success" : "No data");
-      }
+      // Utiliser directement le service mis à jour qui récupère les données AI
+      const data = await getCompleteCandidateData(candidateId);
       
       if (!data) {
         console.log("Candidate not found:", candidateId);
         setError("Candidat non trouvé");
       } else {
         console.log("🔄 CandidateDetail: Processing candidate data...");
-        
-        // Check and migrate AI data if needed
-        await aiDataMigrationService.checkAndMigrateIfNeeded(candidateId);
-        
-        // Re-fetch data after potential migration
-        try {
-          const updatedData = await getCompleteCandidateData(candidateId);
-          if (updatedData) {
-            data = updatedData;
-            console.log("📦 CandidateDetail: Updated data after AI migration:", {
-              ai_score: data.ai_score,
-              ai_analyzed_at: data.ai_analyzed_at,
-              hasAIData: !!(data.ai_score || data.ai_explanation)
-            });
-          }
-        } catch (refetchError) {
-          console.warn("Could not refetch after migration, using original data");
-        }
         
         // Process the data to ensure arrays and properties are correctly formatted
         const processedData = processCandidateData(data);
@@ -105,7 +67,8 @@ const CandidateDetail = () => {
           city: processedData.city,
           country: processedData.country,
           ai_score: processedData.ai_score,
-          ai_analyzed_at: processedData.ai_analyzed_at
+          ai_analyzed_at: processedData.ai_analyzed_at,
+          hasAIData: !!(processedData.ai_score || processedData.ai_explanation)
         });
         
         // Check data completeness
