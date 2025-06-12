@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,9 +22,18 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
   const { getAIScore, forceRefresh } = useAIScoring();
   const { score: contextualScore, isLoading: contextualLoading } = useCandidateScore(candidate);
   const [isAnalyzing, setIsAnalyzing] = React.useState(false);
+  const [refreshTrigger, setRefreshTrigger] = React.useState(0);
   
-  // Récupérer le score IA général (pas job-spécifique)
+  // Récupérer le score IA général (pas job-spécifique) avec trigger de refresh
   const aiScore = getAIScore(candidate.id || '');
+  
+  // Force un refresh quand refreshTrigger change
+  React.useEffect(() => {
+    if (refreshTrigger > 0 && candidate.id) {
+      console.log('🔄 [CandidateAIScoreCard] Triggering forced refresh due to refreshTrigger change');
+      forceRefresh(candidate.id);
+    }
+  }, [refreshTrigger, candidate.id, forceRefresh]);
   
   console.log(`🎯 [CandidateAIScoreCard] Rendering for candidate ${candidate.id} (${candidate.first_name} ${candidate.last_name}):`, {
     hasAIScore: aiScore.score !== null,
@@ -35,7 +43,8 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
     profileCompleteness: candidate.profile_completeness,
     isLoading: aiScore.isLoading,
     error: aiScore.error,
-    source: aiScore.source
+    source: aiScore.source,
+    refreshTrigger: refreshTrigger
   });
 
   // Distinguer clairement entre score IA et score de complétude
@@ -83,12 +92,24 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
           description: "Le CV a été analysé avec succès. Le score IA et les recommandations sont maintenant disponibles.",
         });
         
-        // Forcer le rafraîchissement du score après l'analyse
+        // Déclencher plusieurs refreshs pour s'assurer que les données sont récupérées
         if (candidate.id) {
-          console.log('🔄 [CandidateAIScoreCard] Forcing score refresh after successful analysis');
+          console.log('🔄 [CandidateAIScoreCard] Forcing multiple score refreshes after successful analysis');
+          
+          // Refresh immédiat
+          forceRefresh(candidate.id);
+          
+          // Refresh après 1 seconde
           setTimeout(() => {
             forceRefresh(candidate.id!);
+            setRefreshTrigger(prev => prev + 1);
           }, 1000);
+          
+          // Refresh après 3 secondes pour être sûr
+          setTimeout(() => {
+            forceRefresh(candidate.id!);
+            setRefreshTrigger(prev => prev + 1);
+          }, 3000);
         }
       } else {
         throw new Error(result.error || 'Échec de l\'analyse IA');
@@ -110,6 +131,7 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
     console.log(`🔄 [CandidateAIScoreCard] Manual refresh requested for candidate ${candidate.id}`);
     if (candidate.id) {
       forceRefresh(candidate.id);
+      setRefreshTrigger(prev => prev + 1);
     }
   };
 
