@@ -1,4 +1,3 @@
-
 import { supabase, SUPABASE_API_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 import { aiScoringService } from './aiScoringService';
 
@@ -10,7 +9,10 @@ export interface ResumeAnalysisResult {
 }
 
 // Re-export des fonctions depuis le module resume/resumeOperations
-export { uploadResume, getUserResumes, checkDuplicateResume, type ResumeData } from './resume/resumeOperations';
+export { uploadResume, getUserResumes, checkDuplicateResume } from './resume/resumeOperations';
+
+// Re-export du type ResumeData depuis le bon module
+export type { ResumeData } from './data/resumeDataService';
 
 // Fonctions de téléchargement et suppression
 export const downloadResume = async (filePath: string, fileName: string): Promise<boolean> => {
