@@ -11,8 +11,10 @@ import LanguagesSection from './profile/LanguagesSection';
 import NetworksReferencesSection from './profile/NetworksReferencesSection';
 import ProjectsSection from './profile/ProjectsSection';
 import PreferencesObjectivesSection from './profile/PreferencesObjectivesSection';
-import CandidateAIScoreCard from '../CandidateAIScoreCard';
+import AIAnalysisDisplay from './AIAnalysisDisplay';
 import DebugAIScoreButton from './DebugAIScoreButton';
+import { analyzeResume } from '@/services/resumeService';
+import { toast } from '@/hooks/use-toast';
 
 interface ProfileTabProps {
   candidate: CandidateData;
@@ -21,13 +23,57 @@ interface ProfileTabProps {
 }
 
 const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh }) => {
+  const handleAnalyzeCV = async () => {
+    if (!candidate.resume_id) {
+      toast({
+        title: "CV non trouvé",
+        description: "Aucun CV associé à ce candidat. Veuillez d'abord uploader un CV.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      toast({
+        title: "Analyse en cours",
+        description: "L'analyse IA du CV a commencé...",
+      });
+
+      const result = await analyzeResume(candidate.resume_id);
+      
+      if (result.success) {
+        toast({
+          title: "Analyse terminée",
+          description: "Le CV a été analysé avec succès.",
+        });
+        
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        throw new Error(result.error || 'Échec de l\'analyse');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Error analyzing CV:', error);
+      toast({
+        title: "Erreur d'analyse",
+        description: error.message || "Impossible d'analyser le CV",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="p-6 space-y-6 bg-gradient-to-br from-sand/20 via-white to-navy/5 min-h-full">
-      {/* Section principale - Score IA en première position pour Kevin Quaresma */}
+      {/* Section principale - Analyse IA en première position */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        {/* Score IA et analyse - Plus large et en première position */}
+        {/* Analyse IA complète - Plus large et en première position */}
         <div className="xl:col-span-5 space-y-3">
-          <CandidateAIScoreCard candidate={candidate} />
+          <AIAnalysisDisplay 
+            candidateId={candidate.id!} 
+            onAnalyze={handleAnalyzeCV}
+          />
           {candidate.id && (
             <DebugAIScoreButton candidateId={candidate.id} />
           )}
