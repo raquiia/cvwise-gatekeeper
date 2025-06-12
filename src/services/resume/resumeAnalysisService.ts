@@ -199,6 +199,7 @@ export const extractResumeText = async (resumeId: string): Promise<TextExtractio
 
 /**
  * Créer un candidat en base de données avec les données extraites ET l'analyse IA
+ * CORRIGÉ: Utilise directement la table candidates sans référence à candidate_scores
  */
 const createCandidateFromExtractedData = async (
   resumeId: string,
@@ -234,7 +235,7 @@ const createCandidateFromExtractedData = async (
       mobility: candidateData.mobility || '',
       career_objectives: candidateData.career_objectives || '',
       interests: candidateData.interests || '',
-      // Nouvelles colonnes AI directement stockées
+      // Nouvelles colonnes AI directement stockées dans candidates
       ai_score: aiAnalysis?.score || null,
       ai_explanation: aiAnalysis?.explanation || null,
       ai_breakdown: aiAnalysis?.breakdown || {},
