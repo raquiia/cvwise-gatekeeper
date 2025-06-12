@@ -8,12 +8,31 @@ import { Brain, TrendingUp, AlertCircle, Loader2, RefreshCw, CheckCircle, XCircl
 import { CandidateData } from '@/services/data/candidateService';
 import { analyzeResume } from '@/services/resumeService';
 import { toast } from '@/hooks/use-toast';
+import { Json } from '@/integrations/supabase/types';
 
 interface CandidateAIScoreCardProps {
   candidate: CandidateData;
   compact?: boolean;
   onRefresh?: () => void;
 }
+
+// Helper functions pour gérer les types Json de manière sûre
+const safeArrayLength = (data: Json | null | undefined): number => {
+  if (!data) return 0;
+  if (Array.isArray(data)) return data.length;
+  return 0;
+};
+
+const safeArraySlice = (data: Json | null | undefined, start: number, end?: number): any[] => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data.slice(start, end);
+  return [];
+};
+
+const safeObjectProperty = (data: Json | null | undefined, property: string): any => {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return undefined;
+  return (data as Record<string, any>)[property];
+};
 
 const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({ 
   candidate, 
@@ -30,9 +49,9 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
   
   const isLoading = isAnalyzing;
   const hasExplanation = !!candidate.ai_explanation && candidate.ai_explanation.length > 0;
-  const hasStrengths = candidate.ai_strengths && Array.isArray(candidate.ai_strengths) && candidate.ai_strengths.length > 0;
-  const hasWeaknesses = candidate.ai_weaknesses && Array.isArray(candidate.ai_weaknesses) && candidate.ai_weaknesses.length > 0;
-  const hasRecommendations = candidate.ai_recommendations && Array.isArray(candidate.ai_recommendations) && candidate.ai_recommendations.length > 0;
+  const hasStrengths = safeArrayLength(candidate.ai_strengths) > 0;
+  const hasWeaknesses = safeArrayLength(candidate.ai_weaknesses) > 0;
+  const hasRecommendations = safeArrayLength(candidate.ai_recommendations) > 0;
 
   console.log(`🎯 [CandidateAIScoreCard] Rendering for candidate ${candidate.id} (${candidate.first_name} ${candidate.last_name}):`, {
     hasAIScore,
@@ -40,9 +59,9 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
     hasExplanation,
     profileCompleteness: candidate.profile_completeness,
     aiAnalyzedAt: candidate.ai_analyzed_at,
-    strengthsCount: candidate.ai_strengths?.length || 0,
-    weaknessesCount: candidate.ai_weaknesses?.length || 0,
-    recommendationsCount: candidate.ai_recommendations?.length || 0
+    strengthsCount: safeArrayLength(candidate.ai_strengths),
+    weaknessesCount: safeArrayLength(candidate.ai_weaknesses),
+    recommendationsCount: safeArrayLength(candidate.ai_recommendations)
   });
 
   const handleAnalyzeCV = async () => {
@@ -270,28 +289,28 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
               Détail par catégorie (IA)
             </h4>
             <div className="grid grid-cols-2 gap-3 text-xs">
-              {candidate.ai_breakdown.skills !== undefined && (
+              {safeObjectProperty(candidate.ai_breakdown, 'skills') !== undefined && (
                 <div className="flex items-center justify-between bg-white p-2 rounded border">
                   <span className="font-medium">Compétences</span>
-                  <span className="font-bold text-purple-600">{candidate.ai_breakdown.skills}/20</span>
+                  <span className="font-bold text-purple-600">{safeObjectProperty(candidate.ai_breakdown, 'skills')}/20</span>
                 </div>
               )}
-              {candidate.ai_breakdown.experience !== undefined && (
+              {safeObjectProperty(candidate.ai_breakdown, 'experience') !== undefined && (
                 <div className="flex items-center justify-between bg-white p-2 rounded border">
                   <span className="font-medium">Expérience</span>
-                  <span className="font-bold text-green-600">{candidate.ai_breakdown.experience}/20</span>
+                  <span className="font-bold text-green-600">{safeObjectProperty(candidate.ai_breakdown, 'experience')}/20</span>
                 </div>
               )}
-              {candidate.ai_breakdown.education !== undefined && (
+              {safeObjectProperty(candidate.ai_breakdown, 'education') !== undefined && (
                 <div className="flex items-center justify-between bg-white p-2 rounded border">
                   <span className="font-medium">Formation</span>
-                  <span className="font-bold text-blue-600">{candidate.ai_breakdown.education}/20</span>
+                  <span className="font-bold text-blue-600">{safeObjectProperty(candidate.ai_breakdown, 'education')}/20</span>
                 </div>
               )}
-              {candidate.ai_breakdown.languages !== undefined && (
+              {safeObjectProperty(candidate.ai_breakdown, 'languages') !== undefined && (
                 <div className="flex items-center justify-between bg-white p-2 rounded border">
                   <span className="font-medium">Langues</span>
-                  <span className="font-bold text-teal-600">{candidate.ai_breakdown.languages}/10</span>
+                  <span className="font-bold text-teal-600">{safeObjectProperty(candidate.ai_breakdown, 'languages')}/10</span>
                 </div>
               )}
             </div>
@@ -303,18 +322,18 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
           <div className="space-y-3">
             <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
-              Points forts IA ({candidate.ai_strengths!.length})
+              Points forts IA ({safeArrayLength(candidate.ai_strengths)})
             </h4>
             <div className="space-y-2">
-              {candidate.ai_strengths!.slice(0, 3).map((strength, index) => (
+              {safeArraySlice(candidate.ai_strengths, 0, 3).map((strength, index) => (
                 <div key={index} className="text-sm text-green-800 bg-green-50 border-l-4 border-green-400 rounded-lg p-3 flex items-start gap-3 shadow-sm">
                   <span className="text-green-600 mt-0.5 flex-shrink-0 font-bold">✓</span>
                   <span className="font-medium">{strength}</span>
                 </div>
               ))}
-              {candidate.ai_strengths!.length > 3 && (
+              {safeArrayLength(candidate.ai_strengths) > 3 && (
                 <div className="text-xs text-green-600 font-medium text-center">
-                  +{candidate.ai_strengths!.length - 3} autres points forts
+                  +{safeArrayLength(candidate.ai_strengths) - 3} autres points forts
                 </div>
               )}
             </div>
@@ -326,18 +345,18 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
           <div className="space-y-3">
             <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
               <XCircle className="w-5 h-5 text-orange-600" />
-              Points d'amélioration IA ({candidate.ai_weaknesses!.length})
+              Points d'amélioration IA ({safeArrayLength(candidate.ai_weaknesses)})
             </h4>
             <div className="space-y-2">
-              {candidate.ai_weaknesses!.slice(0, 2).map((weakness, index) => (
+              {safeArraySlice(candidate.ai_weaknesses, 0, 2).map((weakness, index) => (
                 <div key={index} className="text-sm text-orange-800 bg-orange-50 border-l-4 border-orange-400 rounded-lg p-3 flex items-start gap-3 shadow-sm">
                   <span className="text-orange-600 mt-0.5 flex-shrink-0 font-bold">•</span>
                   <span className="font-medium">{weakness}</span>
                 </div>
               ))}
-              {candidate.ai_weaknesses!.length > 2 && (
+              {safeArrayLength(candidate.ai_weaknesses) > 2 && (
                 <div className="text-xs text-orange-600 font-medium text-center">
-                  +{candidate.ai_weaknesses!.length - 2} autres points d'amélioration
+                  +{safeArrayLength(candidate.ai_weaknesses) - 2} autres points d'amélioration
                 </div>
               )}
             </div>
@@ -349,18 +368,18 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
           <div className="space-y-3">
             <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
               <Lightbulb className="w-5 h-5 text-amber-600" />
-              Recommandations IA ({candidate.ai_recommendations!.length})
+              Recommandations IA ({safeArrayLength(candidate.ai_recommendations)})
             </h4>
             <div className="space-y-2">
-              {candidate.ai_recommendations!.slice(0, 3).map((recommendation, index) => (
+              {safeArraySlice(candidate.ai_recommendations, 0, 3).map((recommendation, index) => (
                 <div key={index} className="text-sm text-amber-800 bg-amber-50 border-l-4 border-amber-400 rounded-lg p-3 flex items-start gap-3 shadow-sm">
                   <span className="text-amber-600 mt-0.5 flex-shrink-0">💡</span>
                   <span className="font-medium">{recommendation}</span>
                 </div>
               ))}
-              {candidate.ai_recommendations!.length > 3 && (
+              {safeArrayLength(candidate.ai_recommendations) > 3 && (
                 <div className="text-xs text-amber-600 font-medium text-center">
-                  +{candidate.ai_recommendations!.length - 3} autres recommandations
+                  +{safeArrayLength(candidate.ai_recommendations) - 3} autres recommandations
                 </div>
               )}
             </div>
@@ -376,7 +395,7 @@ const CandidateAIScoreCard: React.FC<CandidateAIScoreCardProps> = ({
           </div>
           {hasAIScore && (
             <div className="text-xs text-purple-600 font-medium">
-              ✨ Analyse complète avec {candidate.ai_strengths?.length || 0} points forts, {candidate.ai_weaknesses?.length || 0} améliorations et {candidate.ai_recommendations?.length || 0} recommandations
+              ✨ Analyse complète avec {safeArrayLength(candidate.ai_strengths)} points forts, {safeArrayLength(candidate.ai_weaknesses)} améliorations et {safeArrayLength(candidate.ai_recommendations)} recommandations
             </div>
           )}
         </div>
