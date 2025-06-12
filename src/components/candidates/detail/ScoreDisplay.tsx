@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { useCandidateScore } from '@/hooks/use-candidate-score';
@@ -111,8 +110,18 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRef
     }, 2000);
   };
 
-  // Affichage simplifié du score uniquement
-  const displayScore = aiScoreData.score || candidateScore;
+  // Extraire correctement le score numérique
+  const getNumericScore = (): number | null => {
+    if (aiScoreData.score !== null) {
+      return aiScoreData.score;
+    }
+    if (candidateScore && typeof candidateScore === 'object' && 'overall' in candidateScore) {
+      return candidateScore.overall;
+    }
+    return null;
+  };
+
+  const displayScore = getNumericScore();
   const displayExplanation = explanation || aiScoreData.explanation;
 
   return (
@@ -134,7 +143,7 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRef
           </Button>
         </div>
 
-        {displayScore ? (
+        {displayScore !== null ? (
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <div className="text-2xl font-bold text-navy-dark">
