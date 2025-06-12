@@ -108,9 +108,7 @@ export const useOptimizedScoring = () => {
         education: scoreBreakdown.is_job_specific ? 
           scoreBreakdown.education_match_score! : 
           scoreBreakdown.education_score,
-        profileCompleteness: scoreBreakdown.is_job_specific ? 
-          50 : // Valeur fixe pour le matching
-          scoreBreakdown.cv_structure_score,
+        profileCompleteness: scoreBreakdown.cv_structure_score,
         isJobSpecific: scoreBreakdown.is_job_specific,
         matchContext: scoreBreakdown.is_job_specific ? activeJobOfferTitle : undefined,
         details: {

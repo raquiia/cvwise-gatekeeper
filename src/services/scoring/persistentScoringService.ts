@@ -3,8 +3,8 @@ import { optimizedScoringService } from './optimizedScoringService';
 import { CandidateData } from '@/services/data/candidateService';
 
 /**
- * Service pour gérer la persistance et la synchronisation des scores
- * Ce service fait le pont entre l'ancien système et le nouveau système optimisé
+ * Service pour gérer la persistance et la synchronisation des scores - SIMPLIFIÉ
+ * Ce service fait le pont entre l'ancien système et le nouveau système utilisant la table candidates
  */
 export class PersistentScoringService {
   
