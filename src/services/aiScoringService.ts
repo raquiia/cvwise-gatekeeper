@@ -115,14 +115,44 @@ export class AIScoringService {
       const scoreData = data[0];
       console.log('✅ [AIScoringService] AI score retrieved:', scoreData);
 
+      // Gérer les types JSON de Supabase en toute sécurité
+      const parseJsonField = (field: any): any => {
+        if (field === null || field === undefined) return {};
+        if (typeof field === 'object') return field;
+        if (typeof field === 'string') {
+          try {
+            return JSON.parse(field);
+          } catch {
+            return {};
+          }
+        }
+        return {};
+      };
+
+      const parseJsonArray = (field: any): string[] => {
+        if (field === null || field === undefined) return [];
+        if (Array.isArray(field)) {
+          return field.filter(item => typeof item === 'string');
+        }
+        if (typeof field === 'string') {
+          try {
+            const parsed = JSON.parse(field);
+            return Array.isArray(parsed) ? parsed.filter(item => typeof item === 'string') : [];
+          } catch {
+            return [];
+          }
+        }
+        return [];
+      };
+
       return {
         success: true,
         score: scoreData.score,
         explanation: scoreData.explanation,
-        breakdown: scoreData.breakdown,
-        strengths: Array.isArray(scoreData.strengths) ? scoreData.strengths : [],
-        weaknesses: Array.isArray(scoreData.weaknesses) ? scoreData.weaknesses : [],
-        recommendations: Array.isArray(scoreData.recommendations) ? scoreData.recommendations : []
+        breakdown: parseJsonField(scoreData.breakdown),
+        strengths: parseJsonArray(scoreData.strengths),
+        weaknesses: parseJsonArray(scoreData.weaknesses),
+        recommendations: parseJsonArray(scoreData.recommendations)
       };
 
     } catch (error: any) {

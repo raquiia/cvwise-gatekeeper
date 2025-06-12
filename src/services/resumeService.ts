@@ -9,6 +9,73 @@ export interface ResumeAnalysisResult {
   analysisData?: any;
 }
 
+// Re-export des fonctions depuis le module resume/resumeOperations
+export { uploadResume, getUserResumes, checkDuplicateResume, type ResumeData } from './resume/resumeOperations';
+
+// Fonctions de téléchargement et suppression
+export const downloadResume = async (filePath: string, fileName: string): Promise<boolean> => {
+  try {
+    console.log('Downloading resume from path:', filePath);
+    
+    const { data, error } = await supabase.storage
+      .from('resumes')
+      .download(filePath);
+    
+    if (error) {
+      console.error('Error downloading file:', error);
+      return false;
+    }
+    
+    // Créer un blob et déclencher le téléchargement
+    const blob = data;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    return true;
+  } catch (error: any) {
+    console.error('Exception during download:', error);
+    return false;
+  }
+};
+
+export const deleteResume = async (resumeId: string, filePath: string): Promise<boolean> => {
+  try {
+    console.log('Deleting resume:', resumeId, 'at path:', filePath);
+    
+    // Supprimer le fichier du storage
+    const { error: storageError } = await supabase.storage
+      .from('resumes')
+      .remove([filePath]);
+    
+    if (storageError) {
+      console.error('Error deleting file from storage:', storageError);
+      // Continuer même si la suppression du fichier échoue
+    }
+    
+    // Supprimer l'enregistrement de la base de données
+    const { error: dbError } = await supabase
+      .from('resumes')
+      .delete()
+      .eq('id', resumeId);
+    
+    if (dbError) {
+      console.error('Error deleting resume from database:', dbError);
+      return false;
+    }
+    
+    return true;
+  } catch (error: any) {
+    console.error('Exception during resume deletion:', error);
+    return false;
+  }
+};
+
 export const analyzeResume = async (resumeId: string): Promise<ResumeAnalysisResult> => {
   try {
     console.log('🚀 Starting resume analysis for resume:', resumeId);
