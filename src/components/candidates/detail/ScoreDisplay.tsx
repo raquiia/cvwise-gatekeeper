@@ -14,7 +14,7 @@ interface ScoreDisplayProps {
 }
 
 const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRefresh }) => {
-  const { getAIScore } = useAIScoring();
+  const { getAIScore, forceRefresh } = useAIScoring();
   const { score: candidateScore, explanation, isLoading: scoreLoading } = useCandidateScore(candidate);
   const aiScoreData = getAIScore(candidate.id!);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -46,6 +46,12 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRef
       setIsAnalyzing(true);
       console.log('🚀 Starting CV analysis for resume:', candidate.resume_id);
       
+      // Effacer le cache avant de relancer l'analyse
+      if (candidate.id) {
+        console.log('🗑️ Clearing AI score cache before re-analysis');
+        forceRefresh(candidate.id);
+      }
+      
       toast({
         title: "Analyse en cours",
         description: "L'analyse IA du CV a commencé...",
@@ -58,6 +64,14 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRef
           title: "Analyse terminée",
           description: "Le CV a été analysé avec succès. Le score IA et les informations ont été mis à jour.",
         });
+        
+        // Forcer le rafraîchissement du score après l'analyse
+        if (candidate.id) {
+          console.log('🔄 Forcing score refresh after successful analysis');
+          setTimeout(() => {
+            forceRefresh(candidate.id!);
+          }, 1000); // Petit délai pour laisser le temps à la base de données
+        }
         
         // Rafraîchir les données du candidat
         if (onRefresh) {
@@ -81,7 +95,17 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRef
 
   const handleRefresh = () => {
     console.log('ScoreDisplay: Manual refresh requested');
-    handleAnalyzeCV();
+    if (candidate.id) {
+      console.log('🔄 Forcing immediate score refresh');
+      forceRefresh(candidate.id);
+    }
+    // Si pas de score après le refresh, proposer de relancer l'analyse
+    setTimeout(() => {
+      const refreshedScore = getAIScore(candidate.id!);
+      if (!refreshedScore.score && !refreshedScore.isLoading) {
+        handleAnalyzeCV();
+      }
+    }, 2000);
   };
   
   return (
@@ -90,6 +114,9 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRef
       score={aiScoreData.score}
       explanation={explanation || aiScoreData.explanation}
       breakdown={aiScoreData.breakdown}
+      strengths={aiScoreData.strengths}
+      weaknesses={aiScoreData.weaknesses}
+      recommendations={aiScoreData.recommendations}
       isLoading={isLoading || aiScoreData.isLoading || scoreLoading || isAnalyzing}
       isJobSpecific={aiScoreData.isJobSpecific}
       error={aiScoreData.error}

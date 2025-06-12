@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -248,7 +247,7 @@ export const analyzeResume = async (
 };
 
 /**
- * Sauvegarder le score IA dans la base de données avec TOUS les nouveaux paramètres
+ * Sauvegarder le score IA dans la base de données avec TOUS les nouveaux paramètres et gestion d'erreur améliorée
  */
 const saveAIScoreToDatabase = async (
   candidateId: string,
@@ -265,33 +264,53 @@ const saveAIScoreToDatabase = async (
       breakdown: analysis.breakdown
     });
 
+    // S'assurer que les arrays sont au bon format
+    const strengths = Array.isArray(analysis.strengths) ? analysis.strengths : [];
+    const weaknesses = Array.isArray(analysis.weaknesses) ? analysis.weaknesses : [];
+    const recommendations = Array.isArray(analysis.recommendations) ? analysis.recommendations : [];
+
+    console.log('🔧 Formatted arrays for database:', {
+      strengthsCount: strengths.length,
+      weaknessesCount: weaknesses.length,
+      recommendationsCount: recommendations.length,
+      strengthsSample: strengths.slice(0, 1),
+      weaknessesSample: weaknesses.slice(0, 1),
+      recommendationsSample: recommendations.slice(0, 1)
+    });
+
     // Utiliser la fonction RPC mise à jour avec TOUS les nouveaux paramètres
     const { data, error } = await supabase.rpc('save_ai_candidate_score', {
       p_candidate_id: candidateId,
       p_score: analysis.score,
-      p_explanation: analysis.explanation,
+      p_explanation: analysis.explanation || '',
       p_job_offer_id: null, // Score de complétude générale
       p_breakdown: analysis.breakdown || {},
-      p_strengths: analysis.strengths || [],
-      p_weaknesses: analysis.weaknesses || [],
-      p_recommendations: analysis.recommendations || []
+      p_strengths: strengths,
+      p_weaknesses: weaknesses,
+      p_recommendations: recommendations
     });
 
     if (error) {
       console.error('❌ Error saving comprehensive AI score:', error);
-      throw error;
+      throw new Error(`Database error: ${error.message}`);
     }
 
-    console.log('✅ Comprehensive AI score saved successfully:', data);
+    console.log('✅ Comprehensive AI score saved successfully:', {
+      savedData: data,
+      candidateId: candidateId
+    });
+
+    // Vérifier que la sauvegarde a bien fonctionné
+    if (!data || data.length === 0) {
+      console.warn('⚠️ Save operation completed but no data returned');
+      throw new Error('No data returned from save operation');
+    } else {
+      console.log('🎉 AI score save confirmed with data:', data[0]);
+    }
 
   } catch (error: any) {
     console.error('❌ Failed to save comprehensive AI score:', error);
-    // Ne pas faire échouer l'analyse si la sauvegarde échoue
-    toast({
-      title: "Avertissement",
-      description: "Le score IA n'a pas pu être sauvegardé en base de données",
-      variant: "default",
-    });
+    throw error; // Re-throw pour que l'appelant puisse gérer l'erreur
   }
 };
 
