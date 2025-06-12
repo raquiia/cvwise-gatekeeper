@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Separator } from '@/components/ui/separator';
 import type { CandidateData } from '@/services/data/candidateService';
@@ -13,6 +12,7 @@ import ProjectsSection from './profile/ProjectsSection';
 import PreferencesObjectivesSection from './profile/PreferencesObjectivesSection';
 import CandidateAIScoreCard from '../CandidateAIScoreCard';
 import DebugAIScoreButton from './DebugAIScoreButton';
+import DatabaseDebugDisplay from './DatabaseDebugDisplay';
 
 interface ProfileTabProps {
   candidate: CandidateData;
