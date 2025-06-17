@@ -1,9 +1,14 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* FONTS */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
 @layer base {
   :root {
+    /* Couleurs de base modernes avec contraste optimisé */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -30,32 +35,44 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-
     --ring: 222.1 83.2% 9.8%;
 
     --radius: 0.5rem;
+
+    /* Couleurs personnalisées unifiées */
+    --navy: 222.1 83.2% 9.8%;
+    --navy-dark: 222.2 84% 4.9%;
+    --navy-light: 217.2 91.2% 59.8%;
+    
+    --sand: 43 74% 94%;
+    --sand-dark: 43 30% 84%;
+    
+    --gold: 43 96% 56%;
+    --gold-dark: 43 96% 46%;
+    --gold-light: 43 96% 66%;
   }
 
   .dark {
+    /* Mode sombre avec contraste WCAG AA garanti */
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
  
-    --popover: 222.2 84% 4.9%;
+    --popover: 217.2 32.6% 17.5%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary-foreground: 222.2 84% 4.9%;
 
-    --secondary: 212.2 84% 3.9%;
+    --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 212.2 84% 3.9%;
-    --muted-foreground: 215 39% 83.1%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 212.2 84% 3.9%;
+    --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
@@ -63,8 +80,19 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-
     --ring: 217.2 91.2% 59.8%;
+
+    /* Couleurs personnalisées pour le mode sombre */
+    --navy: 217.2 91.2% 59.8%;
+    --navy-dark: 222.2 84% 4.9%;
+    --navy-light: 217.2 91.2% 69.8%;
+    
+    --sand: 210 40% 98%;
+    --sand-dark: 215 20.2% 65.1%;
+    
+    --gold: 43 96% 66%;
+    --gold-dark: 43 96% 56%;
+    --gold-light: 43 96% 76%;
   }
 }
 
@@ -72,126 +100,145 @@
   * {
     @apply border-border;
   }
+  
+  html,
   body {
-    @apply bg-background text-foreground;
+    font-family: 'Poppins', sans-serif;
+    @apply h-full bg-background text-foreground;
+  }
+
+  /* Transitions globales pour un UX fluide */
+  * {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   }
 }
 
-/* tailwind.css */
-@tailwind components;
-@tailwind utilities;
-
-/* FONTS */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-
-/* UTILITIES */
-html,
-body {
-	font-family: 'Poppins', sans-serif;
-	@apply h-full;
-}
-
-/* ===== Scrollbar CSS ===== */
+/* ===== Scrollbar CSS unifié ===== */
 /* Firefox */
 * {
-  scrollbar-width: auto;
-  scrollbar-color: #9ca3af #f3f4f6;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--muted));
 }
 
 /* Chrome, Edge, and Safari */
 *::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 *::-webkit-scrollbar-track {
-  background: #f3f4f6;
+  background: hsl(var(--muted));
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #9ca3af;
+  background-color: hsl(var(--muted-foreground));
   border-radius: 10px;
-  border: 0px solid #ffffff;
+  border: 1px solid hsl(var(--muted));
 }
 
-/* COLORS */
-:root {
-  --navy: #1e293b;
-  --navy-dark: #0f172a;
-  --sand: #f1f5f9;
+*::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--foreground) / 0.8);
 }
 
-/* CV Tags Styling */
-.cv-tag {
-  @apply inline-flex items-center px-2 py-1 text-xs font-medium rounded-full;
-}
-
-.cv-tag-analyzed {
-  @apply bg-green-100 text-green-700 border border-green-200;
-}
-
-.cv-tag-extracted {
-  @apply bg-blue-100 text-blue-600 border border-blue-200;
-}
-
-/* Card hover effects */
-.card-hover {
-  @apply transition-all duration-300;
-}
-
-.card-hover:hover {
-  @apply transform -translate-y-1;
-}
-
-.card-hover-disabled {
-  @apply cursor-pointer;
-}
-
-/* Button hover effect */
-.btn-hover-effect {
-  @apply transition-all duration-300;
-}
-
-.btn-hover-effect:hover:not(:disabled) {
-  @apply transform -translate-y-0.5 shadow-md;
-}
-
-/* Glass effect */
-.glass {
-  @apply bg-white/90 backdrop-blur-sm border border-white/50;
-}
-
-/* Animation keyframes */
-@keyframes scale {
-  0% {
-    transform: scale(0.95);
-    opacity: 0;
+/* Styles de composants unifiés */
+@layer components {
+  /* Input moderne unifié */
+  .input-field {
+    @apply h-10 px-3 py-2 bg-background border border-input rounded-md shadow-sm 
+           focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring 
+           transition-all duration-200 placeholder:text-muted-foreground;
   }
-  100% {
-    transform: scale(1);
-    opacity: 1;
+
+  /* Effet de carte moderne */
+  .card-modern {
+    @apply bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg 
+           shadow-sm hover:shadow-md transition-all duration-300;
+  }
+
+  /* Bouton avec effet moderne */
+  .btn-modern {
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium 
+           transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 
+           focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 
+           disabled:pointer-events-none;
+  }
+
+  /* Glassmorphism subtil */
+  .glass {
+    @apply bg-background/80 backdrop-blur-md border border-border/50;
+  }
+
+  /* Navigation moderne */
+  .nav-item {
+    @apply relative flex items-center px-3 py-2 text-sm font-medium rounded-md 
+           text-foreground/70 hover:text-foreground hover:bg-accent/50 
+           transition-all duration-200;
+  }
+
+  .nav-item.active {
+    @apply text-foreground bg-accent font-semibold;
   }
 }
 
-.animate-scale {
-  animation: scale 0.3s ease-out forwards;
+/* Animations modernes */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out forwards;
+  }
 }
 
 @keyframes fadeIn {
-  0% {
+  from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(4px);
   }
-  100% {
+  to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-out forwards;
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-/* Input field styling */
-.input-field {
-  @apply h-10 px-3 py-2 bg-white border border-input rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition-all;
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Suppression des anciens styles en conflit */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

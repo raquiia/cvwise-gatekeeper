@@ -1,5 +1,5 @@
 
-import React, { ReactNode, useEffect } from 'react';
+import React, { ReactNode } from 'react';
 import Navbar from './Navbar';
 
 type LayoutProps = {
@@ -13,36 +13,26 @@ export const Layout: React.FC<LayoutProps> = ({
   className = '',
   isAdminPage = false
 }) => {
-  // Check for system dark mode preference
-  useEffect(() => {
-    const isDarkMode = localStorage.getItem('theme') === 'dark' || 
-      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, []);
-
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
-      <main className={`flex-grow pt-20 ${isAdminPage ? 'bg-sand/30 dark:bg-navy-dark/50' : ''} ${className}`}>
-        {children}
+      <main className={`flex-grow pt-16 ${isAdminPage ? 'bg-muted/30' : ''} ${className}`}>
+        <div className="animate-fade-in">
+          {children}
+        </div>
       </main>
       
-      <footer className="bg-navy-dark text-sand py-6 mt-auto dark:bg-navy-dark/95">
-        <div className="container mx-auto px-4">
+      <footer className="bg-card border-t border-border mt-auto">
+        <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <div className="w-8 h-8 bg-sand rounded-lg flex items-center justify-center">
-                <span className="text-navy-dark text-lg font-bold">CV</span>
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <span className="text-primary-foreground text-lg font-bold">CV</span>
               </div>
-              <span className="text-lg font-semibold">CVwise</span>
+              <span className="text-lg font-semibold text-foreground">CVwise</span>
             </div>
             
-            <div className="text-sm text-sand/80">
+            <div className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()} CVwise. Tous droits réservés.
             </div>
           </div>
