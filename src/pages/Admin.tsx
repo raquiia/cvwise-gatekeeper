@@ -138,10 +138,11 @@ const Admin = () => {
   
   const companiesCount = uniqueCompanies.size;
   
+  // Trier les utilisateurs par date de création (inscription) plutôt que dernière connexion
   const recentUsers = realUsers.slice()
     .sort((a, b) => {
-      const dateA = a.last_sign_in_at ? new Date(a.last_sign_in_at).getTime() : 0;
-      const dateB = b.last_sign_in_at ? new Date(b.last_sign_in_at).getTime() : 0;
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
       return dateB - dateA;
     })
     .map(user => ({
@@ -163,13 +164,13 @@ const Admin = () => {
             Gérez les paramètres administratifs de votre espace CVwise.
           </p>
           
-          {/* Bouton de confirmation pour Claire Laurent */}
+          {/* Bouton de confirmation pour Claire Laurent - conditionnel */}
           <div className="mt-4">
             <ConfirmClaireButton />
           </div>
         </div>
 
-        {/* Interface principale d'administration - toujours affichée, sans vérification des droits */}
+        {/* Interface principale d'administration */}
         <Tabs defaultValue="pending-users" className="mb-8">
           <TabsList className="mb-6 bg-background/80 dark:bg-muted/10 w-full flex overflow-x-auto">
             <TabsTrigger 
