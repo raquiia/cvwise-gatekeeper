@@ -14,67 +14,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from '@/context/AuthContext';
-import { useUserData } from '@/hooks/useUserData';
 import { formatDate } from '@/utils/dateFormatter';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useRecruiterPerformance } from '@/hooks/useRecruiterPerformance';
 import ConfirmClaireButton from '@/components/admin/ConfirmClaireButton';
 
 // Admin components
 import PendingUsersList from '@/components/admin/PendingUsersList';
-import ActiveUsersList from '@/components/admin/ActiveUsersList';
 import ExampleUsersList from '@/components/admin/ExampleUsersList';
-import UserStats from '@/components/admin/UserStats';
+import RecruiterActivityStats from '@/components/admin/RecruiterActivityStats';
+import RecruiterPerformanceTable from '@/components/admin/RecruiterPerformanceTable';
 import SystemActivities from '@/components/admin/SystemActivities';
 import AppSettings from '@/components/admin/AppSettings';
 import UserManagement from '@/components/admin/UserManagement';
-
-// Mock data pour les utilisateurs actifs
-const activeUsersData = [
-  {
-    id: 101,
-    name: 'Antoine Leroy',
-    email: 'antoine.leroy@example.com',
-    company: 'ConsultPro',
-    role: 'Administrateur',
-    lastLogin: '26/07/2023 10:45',
-    status: 'online',
-    avatar: null
-  },
-  {
-    id: 102,
-    name: 'Marie Bernard',
-    email: 'marie.bernard@example.com',
-    company: 'TechConsult SA',
-    role: 'Recruteur',
-    lastLogin: '25/07/2023 16:20',
-    status: 'offline',
-    avatar: null
-  },
-  {
-    id: 103,
-    name: 'Thomas Durand',
-    email: 'thomas.durand@example.com',
-    company: 'IndustrieGroup',
-    role: 'Recruteur',
-    lastLogin: '26/07/2023 09:10',
-    status: 'offline',
-    avatar: null
-  },
-  {
-    id: 104,
-    name: 'Julie Lambert',
-    email: 'julie.lambert@example.com',
-    company: 'ConsultPro',
-    role: 'Recruteur',
-    lastLogin: '24/07/2023 14:30',
-    status: 'offline',
-    avatar: null
-  }
-];
 
 // Mock data pour les activités système
 const systemActivitiesData = [
@@ -119,8 +74,7 @@ const Admin = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { realUsers, loading: usersDataLoading } = useUserData();
-  const [totalCandidatesCount, setTotalCandidatesCount] = useState(0);
+  const { recruiters, stats, loading } = useRecruiterPerformance();
 
   // Redirection si l'utilisateur n'est pas connecté
   useEffect(() => {
@@ -129,41 +83,6 @@ const Admin = () => {
       return;
     }
   }, [user, navigate]);
-
-  // Récupérer le nombre total de candidats
-  useEffect(() => {
-    const fetchTotalCandidatesCount = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('candidates')
-          .select('id', { count: 'exact', head: true });
-        
-        if (!error && data !== null) {
-          setTotalCandidatesCount(data.length || 0);
-        }
-      } catch (error) {
-        console.error('Error fetching candidates count:', error);
-      }
-    };
-
-    fetchTotalCandidatesCount();
-  }, []);
-  
-  // Trier les utilisateurs par date de création (inscription) plutôt que dernière connexion
-  const recentUsers = realUsers.slice()
-    .sort((a, b) => {
-      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return dateB - dateA;
-    })
-    .map(user => ({
-      id: user.id,
-      email: user.email || '',
-      first_name: user.profile?.first_name || user.first_name || '',
-      last_name: user.profile?.last_name || user.last_name || '',
-      created_at: user.created_at,
-      last_sign_in_at: user.last_sign_in_at
-    }));
   
   return (
     <Layout className="py-8 bg-sand/30">
@@ -172,7 +91,7 @@ const Admin = () => {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-navy-dark mb-4">Administration</h1>
           <p className="text-muted-foreground mb-2">
-            Gérez les paramètres administratifs de votre ATS interne.
+            Tableau de bord administratif pour le suivi des performances de recrutement.
           </p>
           
           {/* Bouton de confirmation pour Claire Laurent - conditionnel */}
@@ -182,8 +101,15 @@ const Admin = () => {
         </div>
 
         {/* Interface principale d'administration */}
-        <Tabs defaultValue="pending-users" className="mb-8">
+        <Tabs defaultValue="performance" className="mb-8">
           <TabsList className="mb-6 bg-background/80 dark:bg-muted/10 w-full flex overflow-x-auto">
+            <TabsTrigger 
+              value="performance" 
+              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+            >
+              <Users size={16} />
+              Performance
+            </TabsTrigger>
             <TabsTrigger 
               value="pending-users" 
               className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
@@ -197,13 +123,6 @@ const Admin = () => {
             >
               <UserPlus size={16} />
               Créer un utilisateur
-            </TabsTrigger>
-            <TabsTrigger 
-              value="users" 
-              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-            >
-              <Users size={16} />
-              Recruteurs
             </TabsTrigger>
             <TabsTrigger 
               value="settings" 
@@ -221,6 +140,29 @@ const Admin = () => {
             </TabsTrigger>
           </TabsList>
           
+          <TabsContent value="performance" className="mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="md:col-span-1">
+                <RecruiterActivityStats 
+                  totalRecruiters={stats.totalRecruiters}
+                  totalCandidates={stats.totalCandidates}
+                  candidatesInMission={stats.candidatesInMission}
+                  recentActivity={stats.recentActivity}
+                  averageConversionRate={stats.averageConversionRate}
+                  totalRevenuePotential={stats.totalRevenuePotential}
+                />
+              </div>
+              
+              <div className="md:col-span-3">
+                <RecruiterPerformanceTable 
+                  recruiters={recruiters}
+                  loading={loading}
+                  formatDate={formatDate}
+                />
+              </div>
+            </div>
+          </TabsContent>
+          
           <TabsContent value="pending-users" className="mt-4">
             <PendingUsersList />
           </TabsContent>
@@ -228,29 +170,6 @@ const Admin = () => {
           <TabsContent value="create-user" className="mt-4">
             <div className="max-w-2xl mx-auto">
               <UserManagement />
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="users">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="md:col-span-1">
-                <UserStats 
-                  activeUsersCount={realUsers.length}
-                  pendingUsersCount={0} // This will be updated by the PendingUsersList component
-                  recentUsers={recentUsers}
-                  formatDate={formatDate}
-                  totalCandidatesCount={totalCandidatesCount}
-                />
-              </div>
-              
-              <div className="md:col-span-3 space-y-6">
-                <ActiveUsersList 
-                  users={realUsers}
-                  loading={usersDataLoading}
-                  currentUserId={user?.id}
-                  formatDate={formatDate}
-                />
-              </div>
             </div>
           </TabsContent>
           
