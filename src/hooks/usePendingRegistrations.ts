@@ -39,7 +39,13 @@ export const usePendingRegistrations = () => {
         return;
       }
 
-      setPendingRegistrations(data || []);
+      // Cast explicite pour résoudre le problème de typage
+      const typedData = (data || []).map((item: any) => ({
+        ...item,
+        status: item.status as 'pending' | 'approved' | 'rejected'
+      })) as PendingRegistration[];
+
+      setPendingRegistrations(typedData);
     } catch (error) {
       console.error('Error:', error);
     } finally {

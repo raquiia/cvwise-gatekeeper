@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Settings, Shield, Building, RefreshCw, 
-  UserCheck, AlertTriangle, Info as InfoIcon, UserPlus
+  UserCheck, AlertTriangle, Info as InfoIcon, UserPlus, Clock
 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
