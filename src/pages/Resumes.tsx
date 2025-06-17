@@ -65,6 +65,9 @@ const Resumes = () => {
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0, percent: 0 });
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [openBatchAnalyzeDialog, setOpenBatchAnalyzeDialog] = useState(false);
+  
+  // État pour gérer l'affichage des filtres
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     const initAndLoad = async () => {
@@ -462,28 +465,24 @@ const Resumes = () => {
   return (
     <Layout className="py-8 bg-gradient-to-b from-sand/30 to-white">
       <div className="container mx-auto px-4">
-        <ResumesHeader />
-        
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
-          <input
-            type="text"
-            placeholder="Rechercher un CV..."
-            className="input-field pl-10 w-full shadow-sm focus:shadow-md transition-shadow duration-300"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        
-        <ResumesFilters
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          selectedStatus={selectedStatus}
-          setSelectedStatus={setSelectedStatus}
-          resumesCount={resumes.length}
-          onEnableSelection={() => setSelectionMode(true)}
-          selectionMode={selectionMode}
+        <ResumesHeader 
+          totalResumes={resumes.length}
+          onFilterToggle={() => setShowFilters(!showFilters)}
+          showFilters={showFilters}
+          onSearch={setSearchQuery}
         />
+        
+        {showFilters && (
+          <ResumesFilters
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            selectedStatus={selectedStatus}
+            setSelectedStatus={setSelectedStatus}
+            resumesCount={resumes.length}
+            onEnableSelection={() => setSelectionMode(true)}
+            selectionMode={selectionMode}
+          />
+        )}
         
         {selectionMode && (
           <>
