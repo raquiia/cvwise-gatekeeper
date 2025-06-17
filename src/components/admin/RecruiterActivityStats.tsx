@@ -15,7 +15,6 @@ interface RecruiterActivityStatsProps {
   candidatesInMission: number;
   recentActivity: number;
   averageConversionRate: number;
-  totalRevenuePotential: number;
 }
 
 const RecruiterActivityStats: React.FC<RecruiterActivityStatsProps> = ({ 
@@ -23,8 +22,7 @@ const RecruiterActivityStats: React.FC<RecruiterActivityStatsProps> = ({
   totalCandidates,
   candidatesInMission,
   recentActivity,
-  averageConversionRate,
-  totalRevenuePotential
+  averageConversionRate
 }) => {
   return (
     <Card className="h-full">
@@ -80,13 +78,6 @@ const RecruiterActivityStats: React.FC<RecruiterActivityStatsProps> = ({
               <span className="text-sm font-medium">Taux conversion</span>
               <span className={`font-semibold ${averageConversionRate >= 15 ? 'text-green-600' : averageConversionRate >= 10 ? 'text-amber-600' : 'text-red-600'}`}>
                 {averageConversionRate.toFixed(1)}%
-              </span>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Potentiel commission</span>
-              <span className="font-semibold text-blue-600">
-                {totalRevenuePotential.toLocaleString('fr-FR')}€
               </span>
             </div>
           </div>

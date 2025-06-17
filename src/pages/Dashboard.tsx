@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { supabase } from '@/integrations/supabase/client';
@@ -161,7 +160,6 @@ const Dashboard = () => {
                       candidatesInMission={recruiterStats.candidatesInMission}
                       recentActivity={recruiterStats.recentActivity}
                       averageConversionRate={recruiterStats.averageConversionRate}
-                      totalRevenuePotential={recruiterStats.totalRevenuePotential}
                     />
                   </CardContent>
                 </Card>

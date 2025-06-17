@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Settings, Shield, RefreshCw, 
@@ -149,7 +148,6 @@ const Admin = () => {
                   candidatesInMission={stats.candidatesInMission}
                   recentActivity={stats.recentActivity}
                   averageConversionRate={stats.averageConversionRate}
-                  totalRevenuePotential={stats.totalRevenuePotential}
                 />
               </div>
               

@@ -12,8 +12,7 @@ export const useRecruiterPerformance = () => {
     totalCandidates: 0,
     candidatesInMission: 0,
     recentActivity: 0,
-    averageConversionRate: 0,
-    totalRevenuePotential: 0
+    averageConversionRate: 0
   });
   const { toast } = useToast();
 
@@ -79,7 +78,7 @@ export const useRecruiterPerformance = () => {
           candidatesInMission,
           recentActivity,
           conversionRate,
-          pipelineValue: candidatesInMission * 5000, // Estimation 5k€ per mission
+          pipelineValue: candidatesInMission * 5000, // Estimation 5k€ per mission (kept for table display)
           lastActivity: lastCandidate?.created_at || profile.created_at,
           status
         });
@@ -92,7 +91,6 @@ export const useRecruiterPerformance = () => {
 
       // Calculate aggregated stats
       const avgConversionRate = profiles?.length > 0 ? totalConversionRate / profiles.length : 0;
-      const totalRevenuePotential = totalInMission * 5000; // 5k€ per mission
 
       setRecruiters(recruiterPerformance);
       setStats({
@@ -100,8 +98,7 @@ export const useRecruiterPerformance = () => {
         totalCandidates,
         candidatesInMission: totalInMission,
         recentActivity: totalRecentActivity,
-        averageConversionRate: avgConversionRate,
-        totalRevenuePotential
+        averageConversionRate: avgConversionRate
       });
 
     } catch (error: any) {
