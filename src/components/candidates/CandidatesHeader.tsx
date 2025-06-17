@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 import ReprocessDataButton from './ReprocessDataButton';
+import { Users, Filter } from 'lucide-react';
 
 interface CandidatesHeaderProps {
   onStatusChange: (status: string | null) => void;
@@ -16,40 +17,62 @@ const CandidatesHeader: React.FC<CandidatesHeaderProps> = ({
   candidateCount
 }) => {
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-800 mb-1">Filtrer par statut</h2>
-          <p className="text-sm text-gray-500">
-            {candidateCount} candidat{candidateCount !== 1 ? 's' : ''} au total
-          </p>
+    <div className="relative mb-6">
+      {/* Modern Card with Glassmorphism */}
+      <div className="bg-card/70 dark:bg-card/40 backdrop-blur-xl border border-border/50 rounded-2xl shadow-xl p-6">
+        {/* Header Section */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg">
+                <Users className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent">
+                  Filtres Intelligents
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                  {candidateCount} candidat{candidateCount !== 1 ? 's' : ''} dans votre base
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <ReprocessDataButton />
+          </div>
         </div>
-        <div className="mt-4 md:mt-0">
-          <ReprocessDataButton />
-        </div>
-      </div>
-      
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant={selectedStatus === null ? "default" : "outline"}
-          size="sm"
-          onClick={() => onStatusChange(null)}
-          className="whitespace-nowrap"
-        >
-          Tous
-        </Button>
         
-        {Object.keys(CANDIDATE_STATUS_LABELS).map((status) => (
-          <Button
-            key={status}
-            variant={selectedStatus === status ? "default" : "outline"}
-            size="sm"
-            onClick={() => onStatusChange(status)}
-            className="whitespace-nowrap"
-          >
-            {CANDIDATE_STATUS_LABELS[status as keyof typeof CANDIDATE_STATUS_LABELS]}
-          </Button>
-        ))}
+        {/* Status Filters */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Filter className="w-4 h-4" />
+            Filtrer par statut
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={selectedStatus === null ? "default" : "outline"}
+              size="sm"
+              onClick={() => onStatusChange(null)}
+              className="whitespace-nowrap bg-white/80 dark:bg-card/80 backdrop-blur-sm border-border/50 hover:bg-accent/80 transition-all duration-200"
+            >
+              Tous les candidats
+            </Button>
+            
+            {Object.keys(CANDIDATE_STATUS_LABELS).map((status) => (
+              <Button
+                key={status}
+                variant={selectedStatus === status ? "default" : "outline"}
+                size="sm"
+                onClick={() => onStatusChange(status)}
+                className="whitespace-nowrap bg-white/80 dark:bg-card/80 backdrop-blur-sm border-border/50 hover:bg-accent/80 transition-all duration-200"
+              >
+                {CANDIDATE_STATUS_LABELS[status as keyof typeof CANDIDATE_STATUS_LABELS]}
+              </Button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

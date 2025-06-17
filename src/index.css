@@ -8,7 +8,7 @@
 
 @layer base {
   :root {
-    /* Couleurs de base modernes avec contraste optimisé */
+    /* Couleurs de base modernes avec contraste optimisé WCAG AA */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -37,19 +37,7 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.1 83.2% 9.8%;
 
-    --radius: 0.5rem;
-
-    /* Couleurs personnalisées unifiées */
-    --navy: 222.1 83.2% 9.8%;
-    --navy-dark: 222.2 84% 4.9%;
-    --navy-light: 217.2 91.2% 59.8%;
-    
-    --sand: 43 74% 94%;
-    --sand-dark: 43 30% 84%;
-    
-    --gold: 43 96% 56%;
-    --gold-dark: 43 96% 46%;
-    --gold-light: 43 96% 66%;
+    --radius: 0.75rem;
   }
 
   .dark {
@@ -57,7 +45,7 @@
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 217.2 32.6% 17.5%;
     --card-foreground: 210 40% 98%;
  
     --popover: 217.2 32.6% 17.5%;
@@ -81,18 +69,6 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 217.2 91.2% 59.8%;
-
-    /* Couleurs personnalisées pour le mode sombre */
-    --navy: 217.2 91.2% 59.8%;
-    --navy-dark: 222.2 84% 4.9%;
-    --navy-light: 217.2 91.2% 69.8%;
-    
-    --sand: 210 40% 98%;
-    --sand-dark: 215 20.2% 65.1%;
-    
-    --gold: 43 96% 66%;
-    --gold-dark: 43 96% 56%;
-    --gold-light: 43 96% 76%;
   }
 }
 
@@ -142,30 +118,101 @@
 
 /* Styles de composants unifiés */
 @layer components {
+  /* Page Layout Moderne */
+  .page-gradient {
+    @apply bg-gradient-to-br from-background via-background to-muted/20;
+  }
+
+  /* Cards Modernes avec Glassmorphism */
+  .card-modern {
+    @apply bg-card/70 dark:bg-card/40 backdrop-blur-xl border border-border/50 rounded-2xl 
+           shadow-xl hover:shadow-2xl transition-all duration-300;
+  }
+
+  .card-interactive {
+    @apply card-modern hover:scale-[1.02] hover:-translate-y-1;
+  }
+
+  .card-stats {
+    @apply card-interactive relative overflow-hidden group;
+  }
+
+  /* Headers Unifiés */
+  .page-header {
+    @apply mb-8 flex flex-col md:flex-row md:items-center justify-between;
+  }
+
+  .page-title {
+    @apply text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 
+           bg-clip-text text-transparent mb-2;
+  }
+
+  .page-subtitle {
+    @apply text-muted-foreground text-lg;
+  }
+
+  /* Buttons Modernes */
+  .btn-modern {
+    @apply bg-white/80 dark:bg-card/80 backdrop-blur-sm border-border/50 
+           hover:bg-accent/80 transition-all duration-200;
+  }
+
+  .btn-gradient {
+    @apply bg-gradient-to-r text-white border-0 shadow-lg hover:shadow-xl 
+           transition-all duration-200;
+  }
+
+  .btn-primary-gradient {
+    @apply btn-gradient from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600;
+  }
+
+  .btn-success-gradient {
+    @apply btn-gradient from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600;
+  }
+
+  .btn-warning-gradient {
+    @apply btn-gradient from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600;
+  }
+
+  .btn-purple-gradient {
+    @apply btn-gradient from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600;
+  }
+
   /* Input moderne unifié */
-  .input-field {
-    @apply h-10 px-3 py-2 bg-background border border-input rounded-md shadow-sm 
-           focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring 
+  .input-modern {
+    @apply bg-background/80 backdrop-blur-sm border border-border/50 rounded-xl 
+           focus:ring-2 focus:ring-primary/25 focus:border-primary 
            transition-all duration-200 placeholder:text-muted-foreground;
   }
 
-  /* Effet de carte moderne */
-  .card-modern {
-    @apply bg-card/50 backdrop-blur-sm border border-border/50 rounded-lg 
-           shadow-sm hover:shadow-md transition-all duration-300;
-  }
-
-  /* Bouton avec effet moderne */
-  .btn-modern {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium 
-           transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 
-           focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 
-           disabled:pointer-events-none;
-  }
-
-  /* Glassmorphism subtil */
+  /* Glassmorphism Effects */
   .glass {
     @apply bg-background/80 backdrop-blur-md border border-border/50;
+  }
+
+  .glass-card {
+    @apply bg-card/70 dark:bg-card/40 backdrop-blur-xl border border-border/50;
+  }
+
+  /* Icon Containers */
+  .icon-container {
+    @apply p-2 rounded-xl shadow-lg transition-transform duration-200;
+  }
+
+  .icon-blue {
+    @apply icon-container bg-gradient-to-br from-blue-500 to-cyan-500;
+  }
+
+  .icon-green {
+    @apply icon-container bg-gradient-to-br from-green-500 to-emerald-500;
+  }
+
+  .icon-purple {
+    @apply icon-container bg-gradient-to-br from-purple-500 to-violet-500;
+  }
+
+  .icon-orange {
+    @apply icon-container bg-gradient-to-br from-orange-500 to-red-500;
   }
 
   /* Navigation moderne */
@@ -177,6 +224,30 @@
 
   .nav-item.active {
     @apply text-foreground bg-accent font-semibold;
+  }
+
+  /* Content Containers */
+  .content-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+  }
+
+  .section-container {
+    @apply glass-card rounded-2xl shadow-xl overflow-hidden;
+  }
+
+  /* Loading States */
+  .loading-spinner {
+    @apply w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin;
+  }
+
+  .loading-container {
+    @apply flex justify-center items-center py-12;
+  }
+
+  /* Error States */
+  .error-container {
+    @apply bg-destructive/10 border border-destructive/20 rounded-xl p-4 
+           text-destructive backdrop-blur-sm;
   }
 }
 
@@ -192,6 +263,14 @@
 
   .animate-slide-up {
     animation: slideUp 0.3s ease-out forwards;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
   }
 }
 
@@ -228,6 +307,16 @@
   }
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 20px -10px hsl(var(--primary)); }
+  to { box-shadow: 0 0 30px -5px hsl(var(--primary)); }
+}
+
 /* Suppression des anciens styles en conflit */
 .line-clamp-2 {
   display: -webkit-box;
@@ -241,4 +330,15 @@
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Responsive Design Utilities */
+@media (max-width: 768px) {
+  .page-title {
+    @apply text-2xl;
+  }
+  
+  .page-subtitle {
+    @apply text-base;
+  }
 }

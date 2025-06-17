@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -203,15 +204,15 @@ const CandidatesContent = () => {
     if (loading) {
       return (
         <div className="flex justify-center items-center py-12">
-          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="ml-4 text-gray-600">Chargement des candidats...</p>
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="ml-4 text-muted-foreground">Chargement des candidats...</p>
         </div>
       );
     }
 
     if (error) {
       return (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+        <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 text-destructive backdrop-blur-sm">
           {error}
         </div>
       );
@@ -264,23 +265,24 @@ const CandidatesContent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+        
+        {/* Modern Page Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
           <div className="mb-4 md:mb-0">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent mb-2">
               Candidats
             </h1>
-            <p className="text-gray-600">
-              Gérez vos candidats efficacement
+            <p className="text-muted-foreground text-lg">
+              Gérez vos talents avec l'intelligence artificielle
             </p>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Button 
               variant={showFilters ? "default" : "outline"} 
-              className="gap-2"
+              className="gap-2 bg-white/80 dark:bg-card/80 backdrop-blur-sm border-border/50 hover:bg-accent/80 transition-all duration-200"
               onClick={handleToggleFilters}
             >
               <Filter size={16} />
@@ -288,20 +290,20 @@ const CandidatesContent = () => {
             </Button>
             
             <Link to="/resumes/upload">
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2 bg-white/80 dark:bg-card/80 backdrop-blur-sm border-border/50 hover:bg-accent/80 transition-all duration-200">
                 <Upload size={16} />
                 Importer
               </Button>
             </Link>
             
             <Link to="/resumes">
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2 bg-white/80 dark:bg-card/80 backdrop-blur-sm border-border/50 hover:bg-accent/80 transition-all duration-200">
                 <FileText size={16} />
                 CV
               </Button>
             </Link>
             
-            <Button className="gap-2">
+            <Button className="gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200">
               <UserPlus size={16} />
               Ajouter
             </Button>
@@ -334,37 +336,39 @@ const CandidatesContent = () => {
         {/* Filters */}
         {showFilters && (
           <div className="mb-6">
-            <CandidatesFilters 
-              showFilters={true}
-              onLocationChange={() => {}}
-              onCompanyChange={() => {}}
-              onPreviousCompanyChange={() => {}}
-              onSkillsChange={() => {}}
-              onExperienceChange={() => {}}
-              onEducationLevelChange={() => {}}
-              onCertificationChange={() => {}}
-              onLanguageChange={() => {}}
-              onAvailabilityChange={() => {}}
-              onSalaryChange={() => {}}
-              onContractTypeChange={() => {}}
-              onRemotePreferenceChange={() => {}}
-              onMobilityChange={() => {}}
-              onReset={() => setFilteredCandidates(candidates)}
-              onSemanticSearchChange={() => {}}
-              onApplyFilters={() => {}}
-              onResetFilters={() => {}}
-              location=""
-              company=""
-              previousCompany=""
-              experience="all"
-              semanticSearch=""
-              selectedSkills={[]}
-            />
+            <div className="bg-card/70 dark:bg-card/40 backdrop-blur-xl border border-border/50 rounded-2xl shadow-xl p-6">
+              <CandidatesFilters 
+                showFilters={true}
+                onLocationChange={() => {}}
+                onCompanyChange={() => {}}
+                onPreviousCompanyChange={() => {}}
+                onSkillsChange={() => {}}
+                onExperienceChange={() => {}}
+                onEducationLevelChange={() => {}}
+                onCertificationChange={() => {}}
+                onLanguageChange={() => {}}
+                onAvailabilityChange={() => {}}
+                onSalaryChange={() => {}}
+                onContractTypeChange={() => {}}
+                onRemotePreferenceChange={() => {}}
+                onMobilityChange={() => {}}
+                onReset={() => setFilteredCandidates(candidates)}
+                onSemanticSearchChange={() => {}}
+                onApplyFilters={() => {}}
+                onResetFilters={() => {}}
+                location=""
+                company=""
+                previousCompany=""
+                experience="all"
+                semanticSearch=""
+                selectedSkills={[]}
+              />
+            </div>
           </div>
         )}
         
         {/* Main Content with different views */}
-        <div>
+        <div className="bg-card/50 dark:bg-card/30 backdrop-blur-xl border border-border/50 rounded-2xl shadow-xl overflow-hidden">
           {renderCurrentView()}
         </div>
       </div>
