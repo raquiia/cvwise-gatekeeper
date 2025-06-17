@@ -24,6 +24,7 @@ import Admin from '@/pages/Admin';
 import RecruiterDetail from '@/pages/RecruiterDetail';
 import AllUsers from '@/pages/AllUsers';
 import UseCases from '@/pages/UseCases';
+import Profile from '@/pages/Profile';
 import NotFound from '@/pages/NotFound';
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/registration-pending" element={<RegistrationPending />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/candidates" element={<Candidates />} />
               <Route path="/candidates/:id" element={<CandidateDetail />} />
               <Route path="/resumes" element={<Resumes />} />
