@@ -166,7 +166,7 @@ const Dashboard = () => {
                         last_sign_in_at: user.last_sign_in_at
                       }))}
                       formatDate={formatDate}
-                      companiesCount={topCandidatesCount}
+                      totalCandidatesCount={candidatesCount}
                     />
                   </CardContent>
                 </Card>
