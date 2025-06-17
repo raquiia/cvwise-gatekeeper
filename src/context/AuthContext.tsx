@@ -147,6 +147,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
+      
+      // First check if there's a pending registration for this email
+      const { data: pendingData, error: pendingError } = await supabase
+        .from('pending_registrations')
+        .select('status')
+        .eq('email', email)
+        .single();
+
+      if (!pendingError && pendingData) {
+        if (pendingData.status === 'pending') {
+          toast({
+            title: "Compte en attente de validation",
+            description: "Votre compte n'a pas encore été validé par un administrateur",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        } else if (pendingData.status === 'rejected') {
+          toast({
+            title: "Accès refusé",
+            description: "Votre demande d'inscription a été rejetée",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       
       if (error) {
@@ -168,31 +196,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string, userData: any) => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            first_name: userData.firstName,
-            last_name: userData.lastName,
-            company: userData.company,
-          },
-        },
-      });
       
+      // Hash the password and store in pending_registrations
+      const { data, error } = await supabase
+        .from('pending_registrations')
+        .insert({
+          email,
+          password_hash: password, // In a real app, this should be hashed on the server
+          first_name: userData.firstName,
+          last_name: userData.lastName,
+          company: userData.company || null,
+        })
+        .select()
+        .single();
+
       if (error) {
-        toast({
-          title: "Échec de l'inscription",
-          description: error.message,
-          variant: "destructive",
-        });
+        if (error.code === '23505') { // Unique constraint violation
+          toast({
+            title: "Email déjà utilisé",
+            description: "Un compte avec cet email existe déjà ou est en attente de validation",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Échec de l'inscription",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
         setLoading(false);
         throw error;
       }
       
       toast({
         title: "Inscription réussie",
-        description: "Votre demande d'inscription a été envoyée",
+        description: "Votre demande d'inscription a été envoyée et est en attente de validation",
       });
       
       navigate('/registration-pending');

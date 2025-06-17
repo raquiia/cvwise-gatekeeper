@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Settings, Shield, Building, RefreshCw, 
@@ -30,37 +31,6 @@ import UserStats from '@/components/admin/UserStats';
 import SystemActivities from '@/components/admin/SystemActivities';
 import AppSettings from '@/components/admin/AppSettings';
 import UserManagement from '@/components/admin/UserManagement';
-
-// Mock data pour les utilisateurs en attente
-const pendingUsersData = [
-  {
-    id: 1,
-    name: 'Sophie Martin',
-    email: 'sophie.martin@example.com',
-    company: 'TechConsult SA',
-    role: 'Recruteur',
-    registrationDate: '25/07/2023',
-    avatar: null
-  },
-  {
-    id: 2,
-    name: 'François Dubois',
-    email: 'francois.dubois@example.com',
-    company: 'IndustrieGroup',
-    role: 'Responsable RH',
-    registrationDate: '24/07/2023',
-    avatar: null
-  },
-  {
-    id: 3,
-    name: 'Camille Petit',
-    email: 'camille.petit@example.com',
-    company: 'PME Solutions',
-    role: 'Directrice des Opérations',
-    registrationDate: '23/07/2023',
-    avatar: null
-  }
-];
 
 // Mock data pour les utilisateurs actifs
 const activeUsersData = [
@@ -149,7 +119,6 @@ const Admin = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [pendingUsers, setPendingUsers] = useState(pendingUsersData);
   const { realUsers, loading: usersDataLoading } = useUserData();
 
   // Redirection si l'utilisateur n'est pas connecté
@@ -159,17 +128,6 @@ const Admin = () => {
       return;
     }
   }, [user, navigate]);
-
-  const handleApproveUser = (userId: number) => {
-    const userToApprove = pendingUsers.find(user => user.id === userId);
-    if (userToApprove) {
-      setPendingUsers(prev => prev.filter(user => user.id !== userId));
-    }
-  };
-  
-  const handleRejectUser = (userId: number) => {
-    setPendingUsers(prev => prev.filter(user => user.id !== userId));
-  };
   
   // Extraction du nombre d'entreprises uniques
   const uniqueCompanies = new Set(
@@ -212,8 +170,15 @@ const Admin = () => {
         </div>
 
         {/* Interface principale d'administration - toujours affichée, sans vérification des droits */}
-        <Tabs defaultValue="create-user" className="mb-8">
+        <Tabs defaultValue="pending-users" className="mb-8">
           <TabsList className="mb-6 bg-background/80 dark:bg-muted/10 w-full flex overflow-x-auto">
+            <TabsTrigger 
+              value="pending-users" 
+              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+            >
+              <Clock size={16} />
+              Demandes en attente
+            </TabsTrigger>
             <TabsTrigger 
               value="create-user" 
               className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
@@ -251,6 +216,10 @@ const Admin = () => {
             </TabsTrigger>
           </TabsList>
           
+          <TabsContent value="pending-users" className="mt-4">
+            <PendingUsersList />
+          </TabsContent>
+          
           <TabsContent value="create-user" className="mt-4">
             <div className="max-w-2xl mx-auto">
               <UserManagement />
@@ -262,7 +231,7 @@ const Admin = () => {
               <div className="md:col-span-1">
                 <UserStats 
                   activeUsersCount={realUsers.length}
-                  pendingUsersCount={pendingUsers.length}
+                  pendingUsersCount={0} // This will be updated by the PendingUsersList component
                   recentUsers={recentUsers}
                   formatDate={formatDate}
                   companiesCount={companiesCount}
@@ -270,12 +239,6 @@ const Admin = () => {
               </div>
               
               <div className="md:col-span-3 space-y-6">
-                <PendingUsersList 
-                  pendingUsers={pendingUsers}
-                  onApproveUser={handleApproveUser}
-                  onRejectUser={handleRejectUser}
-                />
-                
                 <ActiveUsersList 
                   users={realUsers}
                   loading={usersDataLoading}
