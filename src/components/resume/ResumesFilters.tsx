@@ -45,25 +45,25 @@ const ResumesFilters: React.FC<ResumesFiltersProps> = ({
   };
 
   return (
-    <div className="glass rounded-lg p-3 mb-6 flex flex-wrap items-center gap-3">
+    <div className="glass-card rounded-lg p-3 mb-6 flex flex-wrap items-center gap-3">
       <div className="flex items-center">
-        <span className="text-sm font-medium text-navy-dark mr-2">Filtres:</span>
+        <span className="text-sm font-medium text-foreground mr-2">Filtres:</span>
       </div>
       
       <div className="flex items-center">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-1 text-sm">
+            <Button variant="outline" size="sm" className="h-9 gap-1 text-sm border-border hover:bg-accent">
               <Calendar size={16} className="mr-1" />
               <span>Date</span>
               <ChevronDown size={14} />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem>Aujourd'hui</DropdownMenuItem>
-            <DropdownMenuItem>Cette semaine</DropdownMenuItem>
-            <DropdownMenuItem>Ce mois-ci</DropdownMenuItem>
-            <DropdownMenuItem>Tous</DropdownMenuItem>
+          <DropdownMenuContent className="glass-card border-border">
+            <DropdownMenuItem className="hover:bg-accent">Aujourd'hui</DropdownMenuItem>
+            <DropdownMenuItem className="hover:bg-accent">Cette semaine</DropdownMenuItem>
+            <DropdownMenuItem className="hover:bg-accent">Ce mois-ci</DropdownMenuItem>
+            <DropdownMenuItem className="hover:bg-accent">Tous</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -71,19 +71,19 @@ const ResumesFilters: React.FC<ResumesFiltersProps> = ({
       <div className="flex items-center">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 gap-1 text-sm">
+            <Button variant="outline" size="sm" className="h-9 gap-1 text-sm border-border hover:bg-accent">
               <span>Statut</span>
               <ChevronDown size={14} />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setSelectedStatus(null)}>
+          <DropdownMenuContent className="glass-card border-border">
+            <DropdownMenuItem onClick={() => setSelectedStatus(null)} className="hover:bg-accent">
               Tous
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSelectedStatus('analyzed')}>
+            <DropdownMenuItem onClick={() => setSelectedStatus('analyzed')} className="hover:bg-accent">
               Analysés
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSelectedStatus('pending')}>
+            <DropdownMenuItem onClick={() => setSelectedStatus('pending')} className="hover:bg-accent">
               En attente
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -96,7 +96,7 @@ const ResumesFilters: React.FC<ResumesFiltersProps> = ({
             <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
             <Input
               placeholder="Filtrer par entreprise..."
-              className="h-9 pl-10"
+              className="h-9 pl-10 input-modern"
               value={companyFilter}
               onChange={(e) => setCompanyFilter(e.target.value)}
             />
@@ -110,7 +110,7 @@ const ResumesFilters: React.FC<ResumesFiltersProps> = ({
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
             <Input
               placeholder="Recherche sémantique (ex: chef de projet ferroviaire)..."
-              className="h-9 pl-10"
+              className="h-9 pl-10 input-modern"
               value={semanticSearchQuery}
               onChange={(e) => setSemanticSearchQuery(e.target.value)}
             />
@@ -123,7 +123,7 @@ const ResumesFilters: React.FC<ResumesFiltersProps> = ({
           <Button 
             variant="outline" 
             size="sm" 
-            className="h-9 text-navy-dark"
+            className="h-9 text-foreground border-border hover:bg-accent"
             onClick={onEnableSelection}
             disabled={resumesCount === 0}
           >
@@ -135,7 +135,7 @@ const ResumesFilters: React.FC<ResumesFiltersProps> = ({
         <Button 
           variant="ghost" 
           size="sm" 
-          className="h-9 text-muted-foreground"
+          className="h-9 text-muted-foreground hover:bg-accent"
           onClick={handleReset}
         >
           Réinitialiser
