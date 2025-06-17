@@ -1,5 +1,5 @@
 
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/context/ThemeContext';
@@ -34,28 +34,26 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <ActiveJobProvider>
-            <Router>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/registration-pending" element={<RegistrationPending />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/candidates" element={<Candidates />} />
-                <Route path="/candidates/:id" element={<CandidateDetail />} />
-                <Route path="/resumes" element={<Resumes />} />
-                <Route path="/resumes/upload" element={<ResumeUpload />} />
-                <Route path="/job-offers" element={<JobOffers />} />
-                <Route path="/job-offers/create" element={<JobOfferCreate />} />
-                <Route path="/job-offers/:id/edit" element={<JobOfferEdit />} />
-                <Route path="/job-offers/:id" element={<JobOfferDetail />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/admin/recruiter/:id" element={<RecruiterDetail />} />
-                <Route path="/all-users" element={<AllUsers />} />
-                <Route path="/use-cases" element={<UseCases />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Router>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/registration-pending" element={<RegistrationPending />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/candidates" element={<Candidates />} />
+              <Route path="/candidates/:id" element={<CandidateDetail />} />
+              <Route path="/resumes" element={<Resumes />} />
+              <Route path="/resumes/upload" element={<ResumeUpload />} />
+              <Route path="/job-offers" element={<JobOffers />} />
+              <Route path="/job-offers/create" element={<JobOfferCreate />} />
+              <Route path="/job-offers/:id/edit" element={<JobOfferEdit />} />
+              <Route path="/job-offers/:id" element={<JobOfferDetail />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/admin/recruiter/:id" element={<RecruiterDetail />} />
+              <Route path="/all-users" element={<AllUsers />} />
+              <Route path="/use-cases" element={<UseCases />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
             <Toaster />
           </ActiveJobProvider>
         </AuthProvider>
