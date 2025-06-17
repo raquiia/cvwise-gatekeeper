@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useNavigate } from 'react-router-dom';
 
 export interface RecruiterPerformance {
   id: string;
@@ -40,6 +41,12 @@ const RecruiterPerformanceTable: React.FC<RecruiterPerformanceTableProps> = ({
   loading, 
   formatDate
 }) => {
+  const navigate = useNavigate();
+
+  const handleRowClick = (recruiterId: string) => {
+    navigate(`/admin/recruiter/${recruiterId}`);
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'excellent':
@@ -83,7 +90,7 @@ const RecruiterPerformanceTable: React.FC<RecruiterPerformanceTableProps> = ({
           </Badge>
         </div>
         <CardDescription>
-          Suivi de l'activité et des performances de chaque recruteur
+          Suivi de l'activité et des performances de chaque recruteur. Cliquez sur une ligne pour voir les détails.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -122,7 +129,11 @@ const RecruiterPerformanceTable: React.FC<RecruiterPerformanceTableProps> = ({
               </thead>
               <tbody>
                 {recruiters.map((recruiter) => (
-                  <tr key={recruiter.id} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
+                  <tr 
+                    key={recruiter.id} 
+                    className="border-b border-border/20 hover:bg-muted/20 transition-colors cursor-pointer"
+                    onClick={() => handleRowClick(recruiter.id)}
+                  >
                     <td className="p-3">
                       <div className="flex items-center">
                         <Avatar className="h-8 w-8 mr-3">
