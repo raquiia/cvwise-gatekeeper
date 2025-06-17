@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, Settings, Shield, Building, RefreshCw, 
+  Users, Settings, Shield, RefreshCw, 
   UserCheck, AlertTriangle, Info as InfoIcon, UserPlus, Clock
 } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -101,10 +101,10 @@ const systemActivitiesData = [
   },
   {
     id: 4,
-    action: 'Nouvelle entreprise',
-    description: 'L\'entreprise "PME Solutions" a été ajoutée au système',
+    action: 'Nouveau candidat',
+    description: 'Un nouveau candidat "Pierre Martin" a été ajouté au système',
     timestamp: '24/07/2023 14:20',
-    icon: <Building size={16} className="text-purple-500 dark:text-purple-400" />
+    icon: <UserCheck size={16} className="text-purple-500 dark:text-purple-400" />
   },
   {
     id: 5,
@@ -120,6 +120,7 @@ const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { realUsers, loading: usersDataLoading } = useUserData();
+  const [totalCandidatesCount, setTotalCandidatesCount] = useState(0);
 
   // Redirection si l'utilisateur n'est pas connecté
   useEffect(() => {
@@ -128,15 +129,25 @@ const Admin = () => {
       return;
     }
   }, [user, navigate]);
-  
-  // Extraction du nombre d'entreprises uniques
-  const uniqueCompanies = new Set(
-    realUsers
-      .filter(user => user.profile?.company || user.company)
-      .map(user => user.profile?.company || user.company)
-  );
-  
-  const companiesCount = uniqueCompanies.size;
+
+  // Récupérer le nombre total de candidats
+  useEffect(() => {
+    const fetchTotalCandidatesCount = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('candidates')
+          .select('id', { count: 'exact', head: true });
+        
+        if (!error && data !== null) {
+          setTotalCandidatesCount(data.length || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching candidates count:', error);
+      }
+    };
+
+    fetchTotalCandidatesCount();
+  }, []);
   
   // Trier les utilisateurs par date de création (inscription) plutôt que dernière connexion
   const recentUsers = realUsers.slice()
@@ -161,7 +172,7 @@ const Admin = () => {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-navy-dark mb-4">Administration</h1>
           <p className="text-muted-foreground mb-2">
-            Gérez les paramètres administratifs de votre espace CVwise.
+            Gérez les paramètres administratifs de votre ATS interne.
           </p>
           
           {/* Bouton de confirmation pour Claire Laurent - conditionnel */}
@@ -192,7 +203,7 @@ const Admin = () => {
               className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
             >
               <Users size={16} />
-              Liste des utilisateurs
+              Recruteurs
             </TabsTrigger>
             <TabsTrigger 
               value="settings" 
@@ -207,13 +218,6 @@ const Admin = () => {
             >
               <Shield size={16} />
               Système
-            </TabsTrigger>
-            <TabsTrigger 
-              value="companies" 
-              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-            >
-              <Building size={16} />
-              Entreprises
             </TabsTrigger>
           </TabsList>
           
@@ -235,7 +239,7 @@ const Admin = () => {
                   pendingUsersCount={0} // This will be updated by the PendingUsersList component
                   recentUsers={recentUsers}
                   formatDate={formatDate}
-                  companiesCount={companiesCount}
+                  totalCandidatesCount={totalCandidatesCount}
                 />
               </div>
               
@@ -268,26 +272,6 @@ const Admin = () => {
                 <CardTitle>Statut du système</CardTitle>
                 <CardDescription>
                   Paramètres avancés et informations système
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="p-8 text-center">
-                    <p className="text-muted-foreground">
-                      Cette section est en cours de développement.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="companies">
-            <Card className="dark:border-border/10">
-              <CardHeader>
-                <CardTitle>Gestion des entreprises</CardTitle>
-                <CardDescription>
-                  Ajoutez, modifiez ou supprimez des entreprises
                 </CardDescription>
               </CardHeader>
               <CardContent>

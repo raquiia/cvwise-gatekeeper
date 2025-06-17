@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { UserCheck, Clock, Building, User } from 'lucide-react';
+import { UserCheck, Clock, FileText, User } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   Card,
@@ -15,7 +15,7 @@ interface UserStatsProps {
   pendingUsersCount: number;
   recentUsers: Pick<RealUser, 'id' | 'first_name' | 'last_name' | 'last_sign_in_at' | 'email' | 'created_at'>[]; 
   formatDate: (date?: string) => string;
-  companiesCount: number;
+  totalCandidatesCount: number;
 }
 
 const UserStats: React.FC<UserStatsProps> = ({ 
@@ -23,7 +23,7 @@ const UserStats: React.FC<UserStatsProps> = ({
   pendingUsersCount, 
   recentUsers,
   formatDate,
-  companiesCount
+  totalCandidatesCount
 }) => {
   return (
     <Card className="h-full">
@@ -37,7 +37,7 @@ const UserStats: React.FC<UserStatsProps> = ({
               <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center mr-3">
                 <UserCheck size={16} className="text-emerald-600 dark:text-emerald-400" />
               </div>
-              <span className="text-sm font-medium">Utilisateurs actifs</span>
+              <span className="text-sm font-medium">Recruteurs actifs</span>
             </div>
             <span className="font-semibold">{activeUsersCount}</span>
           </div>
@@ -55,17 +55,17 @@ const UserStats: React.FC<UserStatsProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950/60 flex items-center justify-center mr-3">
-                <Building size={16} className="text-blue-600 dark:text-blue-400" />
+                <FileText size={16} className="text-blue-600 dark:text-blue-400" />
               </div>
-              <span className="text-sm font-medium">Entreprises</span>
+              <span className="text-sm font-medium">Candidats totaux</span>
             </div>
-            <span className="font-semibold">{companiesCount}</span>
+            <span className="font-semibold">{totalCandidatesCount}</span>
           </div>
           
           <Separator className="dark:bg-border/10" />
           
           <div>
-            <h4 className="text-sm font-medium mb-2">Derniers utilisateurs inscrits</h4>
+            <h4 className="text-sm font-medium mb-2">Derniers recruteurs inscrits</h4>
             <div className="space-y-2">
               {recentUsers.length > 0 ? (
                 recentUsers.slice(0, 3).map((user, idx) => (
@@ -85,7 +85,7 @@ const UserStats: React.FC<UserStatsProps> = ({
                 ))
               ) : (
                 <div className="text-xs text-muted-foreground">
-                  Aucun utilisateur récent
+                  Aucun recruteur récent
                 </div>
               )}
             </div>
