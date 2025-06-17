@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { 
   ColumnDef, 
@@ -47,7 +48,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 font-semibold"
+          className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
         >
           Candidat
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -57,10 +58,10 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         const candidate = row.original;
         return (
           <div className="flex flex-col">
-            <span className="font-medium">
+            <span className="font-medium text-foreground">
               {candidate.first_name} {candidate.last_name}
             </span>
-            <span className="text-sm text-gray-500">{candidate.email}</span>
+            <span className="text-sm text-muted-foreground">{candidate.email}</span>
           </div>
         );
       },
@@ -75,8 +76,8 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         
         return (
           <div className="flex flex-col">
-            <span className="font-medium">{candidate.position || 'Non spécifié'}</span>
-            <span className="text-sm text-gray-500">{lastCompany}</span>
+            <span className="font-medium text-foreground">{candidate.position || 'Non spécifié'}</span>
+            <span className="text-sm text-muted-foreground">{lastCompany}</span>
           </div>
         );
       },
@@ -87,7 +88,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 font-semibold"
+          className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
         >
           Expérience
           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -116,8 +117,8 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         
         return (
           <div className="flex flex-col">
-            <span className="font-medium">{candidate.years_experience || 0} ans</span>
-            <span className="text-sm text-gray-500">{formatLocation()}</span>
+            <span className="font-medium text-foreground">{candidate.years_experience || 0} ans</span>
+            <span className="text-sm text-muted-foreground">{formatLocation()}</span>
           </div>
         );
       },
@@ -131,12 +132,12 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         return (
           <div className="flex flex-wrap gap-1 max-w-xs">
             {skills.slice(0, 2).map((skill, index) => (
-              <Badge key={index} variant="secondary" className="text-xs">
+              <Badge key={index} variant="secondary" className="text-xs bg-secondary/60 text-secondary-foreground border-secondary/40">
                 {skill}
               </Badge>
             ))}
             {skills.length > 2 && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs border-border/60 text-muted-foreground">
                 +{skills.length - 2}
               </Badge>
             )}
@@ -150,7 +151,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 font-semibold"
+          className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
         >
           <Brain className="mr-2 h-4 w-4 text-purple-600" />
           Score IA
@@ -162,7 +163,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
         const aiScore = getAIScore(candidate.id!, jobOfferId);
         
         const getScoreColor = (score: number | null) => {
-          if (score === null) return 'bg-gray-100 text-gray-600 border-gray-200';
+          if (score === null) return 'bg-muted text-muted-foreground border-border';
           if (score >= 85) return 'bg-emerald-500 text-white border-emerald-300';
           if (score >= 70) return 'bg-green-500 text-white border-green-300';
           if (score >= 55) return 'bg-amber-500 text-white border-amber-300';
@@ -191,7 +192,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
             <div className="flex items-center gap-2">
               <Badge 
                 variant={jobSpecific ? "default" : "secondary"} 
-                className="text-xs"
+                className="text-xs bg-secondary/60 text-secondary-foreground"
               >
                 {jobSpecific ? <Briefcase size={8} className="mr-1" /> : <Target size={8} className="mr-1" />}
                 {jobSpecific ? 'Match' : 'Profil'}
@@ -210,13 +211,13 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
             
             <div className="text-xs text-center">
               {aiScore.error ? (
-                <span className="text-red-600">Erreur</span>
+                <span className="text-destructive">Erreur</span>
               ) : aiScore.isLoading ? (
                 <span className="text-purple-600">Calcul...</span>
               ) : (
                 <span className={`font-medium ${
-                  aiScore.score !== null && aiScore.score >= 70 ? 'text-green-700' : 
-                  aiScore.score !== null && aiScore.score >= 40 ? 'text-amber-700' : 'text-gray-600'
+                  aiScore.score !== null && aiScore.score >= 70 ? 'text-green-700 dark:text-green-400' : 
+                  aiScore.score !== null && aiScore.score >= 40 ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'
                 }`}>
                   {getScoreLabel(aiScore.score)}
                 </span>
@@ -224,7 +225,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
             </div>
             
             {aiScore.score === null && !aiScore.isLoading && !aiScore.error && (
-              <div className="text-xs text-center text-gray-500">
+              <div className="text-xs text-center text-muted-foreground">
                 <span>Score calculé</span>
                 <br />
                 <span>lors de l'analyse CV</span>
@@ -239,7 +240,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
       accessorKey: 'detailed_status',
       header: 'Statut',
       cell: ({ row }) => (
-        <Badge variant="outline" className="capitalize">
+        <Badge variant="outline" className="capitalize border-border/60 text-foreground">
           {row.original.detailed_status || 'Initial'}
         </Badge>
       ),
@@ -265,22 +266,22 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex items-center space-x-2">
-        <Search className="h-4 w-4 text-gray-400" />
+        <Search className="h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Rechercher des candidats..."
           value={globalFilter ?? ""}
           onChange={(event) => setGlobalFilter(String(event.target.value))}
-          className="max-w-sm"
+          className="max-w-sm input-modern"
         />
       </div>
       
-      <div className="rounded-md border">
+      <div className="card-modern overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="border-border/50 hover:bg-transparent">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead key={header.id} className="text-foreground font-semibold">
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -298,13 +299,13 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className={`cursor-pointer hover:bg-muted/50 ${
-                    selectedCandidate?.id === row.original.id ? 'bg-blue-50' : ''
+                  className={`cursor-pointer border-border/30 hover:bg-accent/50 transition-colors duration-200 ${
+                    selectedCandidate?.id === row.original.id ? 'bg-primary/10 border-primary/30' : ''
                   }`}
                   onClick={() => onCandidateSelect(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="py-4">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -317,7 +318,7 @@ const ModernTableView: React.FC<ModernTableViewProps> = ({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-24 text-center text-muted-foreground"
                 >
                   Aucun candidat trouvé.
                 </TableCell>

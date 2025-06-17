@@ -463,7 +463,7 @@ const Resumes = () => {
   });
 
   return (
-    <Layout className="py-8 bg-gradient-to-b from-sand/30 to-white">
+    <Layout className="py-8 bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto px-4">
         <ResumesHeader 
           totalResumes={resumes.length}
@@ -509,15 +509,15 @@ const Resumes = () => {
                     Supprimer ({selectedResumes.length})
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="bg-white p-6 rounded-xl shadow-xl border border-gray-100 animate-scale">
+                <AlertDialogContent className="glass-card p-6 rounded-xl shadow-xl border-border/50 animate-scale">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-xl font-bold text-navy-dark">Confirmation de suppression</AlertDialogTitle>
-                    <AlertDialogDescription className="text-navy/70">
+                    <AlertDialogTitle className="text-xl font-bold text-foreground">Confirmation de suppression</AlertDialogTitle>
+                    <AlertDialogDescription className="text-muted-foreground">
                       Êtes-vous sûr de vouloir supprimer {selectedResumes.length} CV ? Cette action est irréversible.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter className="mt-6">
-                    <AlertDialogCancel className="transition-all duration-300 hover:bg-gray-100">Annuler</AlertDialogCancel>
+                    <AlertDialogCancel className="transition-all duration-300 hover:bg-accent/50">Annuler</AlertDialogCancel>
                     <AlertDialogAction onClick={handleBatchDelete} className="bg-red-600 hover:bg-red-700 transition-colors">
                       Supprimer
                     </AlertDialogAction>
@@ -530,7 +530,7 @@ const Resumes = () => {
                   <Button 
                     variant="default"
                     disabled={selectedResumes.length === 0 || isProcessingBatch || isBatchAnalyzing}
-                    className="bg-navy hover:bg-navy-dark transition-colors shadow-sm hover:shadow-md"
+                    className="btn-primary-gradient shadow-sm hover:shadow-md"
                   >
                     {isBatchAnalyzing ? (
                       <Loader2 size={16} className="mr-2 animate-spin" />
@@ -540,17 +540,17 @@ const Resumes = () => {
                     Analyser ({selectedResumes.length})
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="bg-white p-6 rounded-xl shadow-xl border border-gray-100 animate-scale">
+                <AlertDialogContent className="glass-card p-6 rounded-xl shadow-xl border-border/50 animate-scale">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-xl font-bold text-navy-dark">Confirmation d'analyse en lot</AlertDialogTitle>
-                    <AlertDialogDescription className="text-navy/70">
+                    <AlertDialogTitle className="text-xl font-bold text-foreground">Confirmation d'analyse en lot</AlertDialogTitle>
+                    <AlertDialogDescription className="text-muted-foreground">
                       Vous êtes sur le point d'analyser {selectedResumes.length} CV. Cette action peut prendre un certain temps.
                       <br /><br />
                       Les CV déjà analysés seront ignorés. Pour les autres, le texte sera extrait puis analysé automatiquement.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter className="mt-6">
-                    <AlertDialogCancel className="transition-all duration-300 hover:bg-gray-100">Annuler</AlertDialogCancel>
+                    <AlertDialogCancel className="transition-all duration-300 hover:bg-accent/50">Annuler</AlertDialogCancel>
                     <AlertDialogAction onClick={handleBatchAnalyze} className="bg-blue-600 hover:bg-blue-700 transition-colors">
                       Analyser
                     </AlertDialogAction>
@@ -562,7 +562,7 @@ const Resumes = () => {
                 variant="outline"
                 onClick={cancelSelection}
                 disabled={isBatchAnalyzing || isProcessingBatch}
-                className="border-navy/30 text-navy hover:bg-navy/5 transition-colors"
+                className="btn-modern text-foreground border-border/60 hover:border-primary/30 hover:bg-accent/80 transition-colors"
               >
                 Annuler
               </Button>
@@ -574,7 +574,7 @@ const Resumes = () => {
                   <span className="text-sm text-muted-foreground">Analyse en cours...</span>
                   <span className="text-sm text-muted-foreground">{batchProgress.current}/{batchProgress.total} CV</span>
                 </div>
-                <Progress value={batchProgress.percent} className="h-2 bg-gray-100" />
+                <Progress value={batchProgress.percent} className="h-2 bg-muted rounded-full" />
               </div>
             )}
           </>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -168,13 +169,13 @@ const CandidateDetail = () => {
   }
 
   return (
-    <Layout>
+    <Layout className="bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-muted-foreground mb-4 hover:bg-navy/5 transition-all duration-300 group"
+            className="text-muted-foreground mb-4 hover:bg-accent/50 transition-all duration-300 group"
             onClick={() => navigate('/candidates')}
           >
             <ArrowLeft size={16} className="mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
@@ -183,7 +184,7 @@ const CandidateDetail = () => {
           
           <div className="relative flex flex-col md:flex-row md:items-center justify-between">
             <div className="relative animate-fade-in">
-              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-700 via-indigo-700 to-blue-700">
+              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-700 via-indigo-700 to-blue-700 dark:from-purple-400 dark:via-indigo-400 dark:to-blue-400">
                 {candidate?.first_name} {candidate?.last_name}
               </h1>
               <div className="absolute -bottom-1 left-0 w-1/4 h-0.5 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500"></div>
@@ -198,7 +199,7 @@ const CandidateDetail = () => {
               <Button 
                 variant="outline"
                 onClick={() => navigate(`/candidates/${candidateId}/job-match`)}
-                className="bg-white/80 border-navy/20 hover:border-navy/30 hover:bg-white/90 text-navy transition-all duration-300 group"
+                className="btn-modern text-foreground border-border/60 hover:border-primary/30 hover:bg-accent/80 transition-all duration-300 group"
               >
                 <Briefcase size={16} className="mr-2 group-hover:scale-110 transition-transform duration-300" />
                 <span>Match d'emploi</span>
@@ -221,42 +222,42 @@ const CandidateDetail = () => {
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
           <div className="relative">
-            <TabsList className="w-full md:w-auto bg-white/80 backdrop-blur-sm border border-navy/10 px-1 py-1 rounded-lg mb-6 overflow-hidden shadow-sm">
+            <TabsList className="w-full md:w-auto glass-card px-1 py-1 rounded-xl mb-6 overflow-hidden shadow-lg border-border/50">
               <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-teal-500/5 opacity-70 pointer-events-none"></div>
               <TabsTrigger 
                 value="profile" 
-                className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
+                className="px-4 py-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 text-foreground hover:bg-accent/50"
               >
                 Profil
               </TabsTrigger>
               <TabsTrigger 
                 value="ai-analysis" 
-                className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
+                className="px-4 py-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 text-foreground hover:bg-accent/50"
               >
                 <Brain size={16} className="mr-2" />
                 Analyse IA
               </TabsTrigger>
               <TabsTrigger 
                 value="experience" 
-                className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
+                className="px-4 py-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 text-foreground hover:bg-accent/50"
               >
                 Expérience
               </TabsTrigger>
               <TabsTrigger 
                 value="education" 
-                className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
+                className="px-4 py-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 text-foreground hover:bg-accent/50"
               >
                 Formation
               </TabsTrigger>
               <TabsTrigger 
                 value="notes" 
-                className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
+                className="px-4 py-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 text-foreground hover:bg-accent/50"
               >
                 Notes
               </TabsTrigger>
               <TabsTrigger 
                 value="details" 
-                className="px-4 py-2 rounded data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
+                className="px-4 py-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 text-foreground hover:bg-accent/50"
               >
                 Détails
               </TabsTrigger>
@@ -268,7 +269,7 @@ const CandidateDetail = () => {
             <>
               <TabsContent 
                 value="profile"
-                className="animate-fade-in rounded-xl relative overflow-hidden bg-white/70 backdrop-blur-sm border border-navy/10 shadow-md"
+                className="animate-fade-in rounded-xl relative overflow-hidden glass-card shadow-lg border-border/50"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
                 <ProfileTab 
@@ -280,7 +281,7 @@ const CandidateDetail = () => {
               
               <TabsContent 
                 value="ai-analysis"
-                className="animate-fade-in rounded-xl relative overflow-hidden bg-white/70 backdrop-blur-sm border border-navy/10 shadow-md"
+                className="animate-fade-in rounded-xl relative overflow-hidden glass-card shadow-lg border-border/50"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
                 <AIAnalysisTab 
@@ -292,7 +293,7 @@ const CandidateDetail = () => {
               
               <TabsContent 
                 value="experience"
-                className="animate-fade-in rounded-xl relative overflow-hidden bg-white/70 backdrop-blur-sm border border-navy/10 shadow-md"
+                className="animate-fade-in rounded-xl relative overflow-hidden glass-card shadow-lg border-border/50"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
                 <ExperienceTab candidate={candidate} />
@@ -300,7 +301,7 @@ const CandidateDetail = () => {
               
               <TabsContent 
                 value="education"
-                className="animate-fade-in rounded-xl relative overflow-hidden bg-white/70 backdrop-blur-sm border border-navy/10 shadow-md"
+                className="animate-fade-in rounded-xl relative overflow-hidden glass-card shadow-lg border-border/50"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
                 <EducationTab candidate={candidate} />
@@ -308,7 +309,7 @@ const CandidateDetail = () => {
               
               <TabsContent 
                 value="notes"
-                className="animate-fade-in rounded-xl relative overflow-hidden bg-white/70 backdrop-blur-sm border border-navy/10 shadow-md"
+                className="animate-fade-in rounded-xl relative overflow-hidden glass-card shadow-lg border-border/50"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
                 <NotesTab candidate={candidate} onDataUpdate={handleRefreshWithAIScore} />
@@ -316,7 +317,7 @@ const CandidateDetail = () => {
               
               <TabsContent 
                 value="details"
-                className="animate-fade-in rounded-xl relative overflow-hidden bg-white/70 backdrop-blur-sm border border-navy/10 shadow-md"
+                className="animate-fade-in rounded-xl relative overflow-hidden glass-card shadow-lg border-border/50"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
                 <DetailsTab candidate={candidate} />

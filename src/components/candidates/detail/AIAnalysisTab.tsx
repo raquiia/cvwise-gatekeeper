@@ -11,13 +11,13 @@ interface AIAnalysisTabProps {
 
 const AIAnalysisTab: React.FC<AIAnalysisTabProps> = ({ candidate, isLoading, onRefresh }) => {
   return (
-    <div className="p-6 space-y-6 bg-gradient-to-br from-purple/10 via-white to-blue/10 min-h-full">
+    <div className="p-6 space-y-6 bg-gradient-to-br from-background/80 via-background to-muted/20 min-h-full">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">
+          <h2 className="text-2xl font-bold text-foreground mb-2">
             Analyse Intelligence Artificielle
           </h2>
-          <p className="text-slate-600">
+          <p className="text-muted-foreground">
             Analyse complète du profil de {candidate.first_name} {candidate.last_name} 
             généré par l'intelligence artificielle
           </p>

@@ -26,7 +26,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   const [isDetailedView, setIsDetailedView] = useState(false);
 
   return (
-    <div className="space-y-6 bg-gradient-to-br from-sand/10 via-white to-navy/5 min-h-full">
+    <div className="space-y-6 bg-gradient-to-br from-background/80 via-background to-muted/20 min-h-full p-6">
       {/* Section Hero */}
       <HeroSection 
         candidate={candidate} 
@@ -36,14 +36,14 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
 
       {/* Toggle de vue */}
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-navy-dark">
+        <h2 className="text-xl font-semibold text-foreground">
           Profil détaillé
         </h2>
         <Button 
           variant="outline" 
           size="sm"
           onClick={() => setIsDetailedView(!isDetailedView)}
-          className="bg-white/80 border-navy/20 hover:border-navy/30 hover:bg-white/90 text-navy"
+          className="btn-modern border-border/60 text-foreground hover:border-primary/30 hover:bg-accent/80"
         >
           {isDetailedView ? (
             <>
@@ -74,7 +74,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
           )}
           
           {/* Sections contextuelles - Uniquement projets et objectifs */}
-          <Separator className="bg-gradient-to-r from-transparent via-navy/20 to-transparent" />
+          <Separator className="bg-gradient-to-r from-transparent via-border/50 to-transparent" />
           
           <div className="space-y-6">
             <ProjectsSection candidate={candidate} />
