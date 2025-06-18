@@ -18,7 +18,6 @@ import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } f
 import { Button } from '@/components/ui/button';
 import { Filter, Upload, FileText, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import ReprocessDataButton from '@/components/candidates/ReprocessDataButton';
 
 // Helper function to extract status from candidate
 const extractCandidateStatus = async (candidate: CandidateData): Promise<string> => {
