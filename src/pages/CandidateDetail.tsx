@@ -11,6 +11,7 @@ import { processCandidateData } from '@/utils/candidateUtils';
 import { toast } from '@/hooks/use-toast';
 import { getCompleteCandidateData } from '@/services/resume/candidateDataService';
 import { aiDataMigrationService } from '@/services/data/aiDataMigrationService';
+import { useAuth } from '@/context/AuthContext';
 
 // Import the component tabs
 import ProfileTab from '@/components/candidates/detail/ProfileTab';
@@ -29,17 +30,39 @@ import DebugAIScoreButton from '@/components/candidates/detail/DebugAIScoreButto
 const CandidateDetail = () => {
   const { candidateId } = useParams<{ candidateId: string }>();
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [candidate, setCandidate] = useState<CandidateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
 
+  // Check authentication and redirect if needed
+  useEffect(() => {
+    if (!authLoading && !user) {
+      console.log("User not authenticated, redirecting to login");
+      toast({
+        title: "Connexion requise",
+        description: "Vous devez être connecté pour voir les détails du candidat",
+        variant: "destructive",
+      });
+      navigate('/login');
+      return;
+    }
+  }, [authLoading, user, navigate]);
+
   // Stable function that doesn't depend on state
   const fetchCandidateData = useCallback(async () => {
     if (!candidateId) {
       console.error("No candidate ID provided");
       setError("Identifiant de candidat manquant");
+      setLoading(false);
+      return;
+    }
+
+    if (!user) {
+      console.log("User not authenticated, cannot fetch candidate data");
+      setError("Vous devez être connecté pour voir ce candidat");
       setLoading(false);
       return;
     }
@@ -53,7 +76,7 @@ const CandidateDetail = () => {
       
       if (!data) {
         console.log("Candidate not found:", candidateId);
-        setError("Candidat non trouvé");
+        setError("Candidat non trouvé ou vous n'avez pas accès à ce candidat");
       } else {
         console.log("🔄 CandidateDetail: Processing candidate data...");
         
@@ -108,16 +131,25 @@ const CandidateDetail = () => {
       }
     } catch (err: any) {
       console.error("Error loading candidate:", err);
-      setError(`Une erreur s'est produite lors du chargement des données: ${err.message}`);
+      // Improve error message based on the error type
+      if (err.message?.includes('not authorized') || err.message?.includes('Access denied')) {
+        setError("Vous n'avez pas accès à ce candidat ou votre session a expiré. Veuillez vous reconnecter.");
+      } else if (err.message?.includes('not found')) {
+        setError("Ce candidat n'existe pas ou n'est plus disponible.");
+      } else {
+        setError(`Une erreur s'est produite lors du chargement des données: ${err.message}`);
+      }
     } finally {
       setLoading(false);
     }
-  }, [candidateId]);
+  }, [candidateId, user]);
 
-  // Effect that runs only when candidateId changes
+  // Effect that runs only when candidateId changes and user is authenticated
   useEffect(() => {
-    fetchCandidateData();
-  }, [candidateId, fetchCandidateData]);
+    if (!authLoading && user && candidateId) {
+      fetchCandidateData();
+    }
+  }, [candidateId, fetchCandidateData, authLoading, user]);
 
   // Stable status change handler
   const handleStatusChange = useCallback((newStatus: string) => {
@@ -147,6 +179,22 @@ const CandidateDetail = () => {
       }, 500);
     }
   }, [fetchCandidateData, candidateId]);
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <CandidateLoading />
+        </div>
+      </Layout>
+    );
+  }
+
+  // Don't render anything if user is not authenticated (redirect is handled in useEffect)
+  if (!user) {
+    return null;
+  }
 
   if (loading) {
     return (
