@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -81,7 +80,7 @@ const CandidatesContent = () => {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const fetchCandidates = async () => {
     if (!user?.id) {
@@ -95,11 +94,19 @@ const CandidatesContent = () => {
       setError(null);
       
       console.log("Fetching candidates for user:", user.id);
-      const data = await candidateService.getUserCandidates();
+      
+      // Pour les admins, récupérer tous les candidats, sinon seulement ceux de l'utilisateur
+      const data = isAdmin ? 
+        await candidateService.getAllCandidates() : 
+        await candidateService.getUserCandidates();
+      
       console.log("Retrieved candidates:", data);
       
       if (Array.isArray(data)) {
-        const sortedCandidates = [...data].sort((a, b) => 
+        // Filtrer explicitement par user_id si ce n'est pas un admin
+        const userCandidates = isAdmin ? data : data.filter(candidate => candidate.user_id === user.id);
+        
+        const sortedCandidates = [...userCandidates].sort((a, b) => 
           new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
         );
         
@@ -180,6 +187,27 @@ const CandidatesContent = () => {
   };
 
   const handleViewCandidate = (candidateId: string) => {
+    // Vérifier que le candidat appartient bien à l'utilisateur ou que c'est un admin
+    const candidate = candidates.find(c => c.id === candidateId);
+    
+    if (!candidate) {
+      toast({
+        title: "Erreur",
+        description: "Candidat non trouvé",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!isAdmin && candidate.user_id !== user?.id) {
+      toast({
+        title: "Accès refusé",
+        description: "Vous n'avez pas l'autorisation de voir ce candidat",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     navigate(`/candidates/${candidateId}`);
   };
 
@@ -226,6 +254,8 @@ const CandidatesContent = () => {
             onStatusChange={handleStatusChange}
             onViewCandidate={handleViewCandidate}
             onCandidateDeleted={handleCandidateDeleted}
+            currentUserId={user?.id}
+            isAdmin={isAdmin}
           />
         );
       case 'cards':
@@ -258,6 +288,8 @@ const CandidatesContent = () => {
             onStatusChange={handleStatusChange}
             onViewCandidate={handleViewCandidate}
             onCandidateDeleted={handleCandidateDeleted}
+            currentUserId={user?.id}
+            isAdmin={isAdmin}
           />
         );
     }
@@ -271,10 +303,10 @@ const CandidatesContent = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
           <div className="mb-4 md:mb-0">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent mb-2">
-              Candidats
+              {isAdmin ? "Tous les candidats" : "Mes candidats"}
             </h1>
             <p className="text-muted-foreground text-lg">
-              Gérez vos talents avec l'intelligence artificielle
+              {isAdmin ? "Gérez tous les talents avec l'intelligence artificielle" : "Gérez vos talents avec l'intelligence artificielle"}
             </p>
           </div>
           
