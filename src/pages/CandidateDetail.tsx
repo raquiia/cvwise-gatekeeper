@@ -1,118 +1,159 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/AuthContext';
-import { candidateService, CandidateData } from '@/services/data/candidateService';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { candidateService } from '@/services/data/candidateService';
+import { CandidateData } from '@/services/data/candidateService';
+import { ArrowLeft, Briefcase, Edit, Sparkles, Brain } from 'lucide-react';
+import { processCandidateData } from '@/utils/candidateUtils';
+import { toast } from '@/hooks/use-toast';
+import { getCompleteCandidateData } from '@/services/resume/candidateDataService';
+import { aiDataMigrationService } from '@/services/data/aiDataMigrationService';
 
-// Import des composants d'onglets
+// Import the component tabs
 import ProfileTab from '@/components/candidates/detail/ProfileTab';
-import DetailsTab from '@/components/candidates/detail/DetailsTab';
 import ExperienceTab from '@/components/candidates/detail/ExperienceTab';
 import EducationTab from '@/components/candidates/detail/EducationTab';
+import DetailsTab from '@/components/candidates/detail/DetailsTab';
 import NotesTab from '@/components/candidates/detail/NotesTab';
 import AIAnalysisTab from '@/components/candidates/detail/AIAnalysisTab';
-
-// Import des composants d'état
 import CandidateLoading from '@/components/candidates/detail/CandidateLoading';
 import CandidateError from '@/components/candidates/detail/CandidateError';
-
-// Import des icônes
-import { ArrowLeft, User, FileText, Briefcase, GraduationCap, StickyNote, Brain } from 'lucide-react';
+import DataMissingAlert from '@/components/candidates/detail/DataMissingAlert';
+import StatusSelector from '@/components/candidates/detail/StatusSelector';
+import ExportProfileButton from '@/components/candidates/detail/ExportProfileButton';
+import DebugAIScoreButton from '@/components/candidates/detail/DebugAIScoreButton';
 
 const CandidateDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const { candidateId } = useParams<{ candidateId: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user, isAdmin } = useAuth();
-  
   const [candidate, setCandidate] = useState<CandidateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [errorType, setErrorType] = useState<'not_found' | 'access_denied' | 'generic'>('generic');
+  const [activeTab, setActiveTab] = useState('profile');
+  const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
 
-  const fetchCandidate = async () => {
-    if (!id) {
+  // Stable function that doesn't depend on state
+  const fetchCandidateData = useCallback(async () => {
+    if (!candidateId) {
+      console.error("No candidate ID provided");
       setError("Identifiant de candidat manquant");
-      setErrorType('not_found');
-      setLoading(false);
-      return;
-    }
-
-    if (!user) {
-      setError("Vous devez être connecté pour voir ce candidat");
-      setErrorType('access_denied');
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      setError(null);
+      console.log("🔄 CandidateDetail: Starting data fetch for ID:", candidateId);
       
-      console.log('Fetching candidate with ID:', id);
-      console.log('Current user:', user.id);
-      console.log('Is admin:', isAdmin);
+      // Utiliser directement le service mis à jour qui récupère les données AI
+      const data = await getCompleteCandidateData(candidateId);
       
-      const candidateData = await candidateService.getCandidateById(id);
-      
-      if (!candidateData) {
+      if (!data) {
+        console.log("Candidate not found:", candidateId);
         setError("Candidat non trouvé");
-        setErrorType('not_found');
-        return;
-      }
-
-      console.log('Retrieved candidate:', candidateData);
-      console.log('Candidate user_id:', candidateData.user_id);
-      
-      // Vérifier les permissions d'accès
-      if (!isAdmin && candidateData.user_id !== user.id) {
-        console.log('Access denied: User is not owner and not admin');
-        setError("Vous n'avez pas l'autorisation de voir ce candidat");
-        setErrorType('access_denied');
-        return;
-      }
-
-      setCandidate(candidateData);
-    } catch (error: any) {
-      console.error('Error fetching candidate:', error);
-      
-      // Analyser le type d'erreur
-      if (error.message?.includes('not found') || error.message?.includes('non trouvé')) {
-        setError("Candidat non trouvé");
-        setErrorType('not_found');
-      } else if (error.message?.includes('access denied') || error.message?.includes('accès refusé')) {
-        setError("Accès refusé à ce candidat");
-        setErrorType('access_denied');
       } else {
-        setError(error.message || "Erreur lors du chargement du candidat");
-        setErrorType('generic');
+        console.log("🔄 CandidateDetail: Processing candidate data...");
+        
+        // Process the data to ensure arrays and properties are correctly formatted
+        const processedData = processCandidateData(data);
+        
+        console.log("📋 CandidateDetail: Data after processCandidateData:", {
+          first_name: processedData.first_name,
+          last_name: processedData.last_name,
+          address: processedData.address,
+          postal_code: processedData.postal_code,
+          city: processedData.city,
+          country: processedData.country,
+          ai_score: processedData.ai_score,
+          ai_analyzed_at: processedData.ai_analyzed_at,
+          hasAIData: !!(processedData.ai_score || processedData.ai_explanation)
+        });
+        
+        // Check data completeness
+        const hasEmptyExperiences = !processedData.experiences || 
+          (Array.isArray(processedData.experiences) && processedData.experiences.length === 0);
+        const hasEmptyEducation = !processedData.education || 
+          (Array.isArray(processedData.education) && processedData.education.length === 0);
+        const hasEmptyLanguages = !processedData.languages || 
+          (Array.isArray(processedData.languages) && processedData.languages.length === 0);
+        
+        const hasIncompleteData = hasEmptyExperiences || hasEmptyEducation || hasEmptyLanguages;
+        
+        console.log("Data completeness check:", {
+          experiences: !hasEmptyExperiences,
+          education: !hasEmptyEducation,
+          languages: !hasEmptyLanguages,
+          isComplete: !hasIncompleteData,
+          hasAIAnalysis: !!(processedData.ai_score || processedData.ai_explanation)
+        });
+        
+        setDataIncompletenessDetected(hasIncompleteData);
+        
+        console.log("💾 CandidateDetail: Setting candidate state with processed data");
+        setCandidate(processedData);
+        
+        console.log("🎯 CandidateDetail: Final candidate state set:", {
+          first_name: processedData.first_name,
+          last_name: processedData.last_name,
+          address: processedData.address,
+          postal_code: processedData.postal_code,
+          city: processedData.city,
+          country: processedData.country,
+          ai_score: processedData.ai_score,
+          ai_analyzed_at: processedData.ai_analyzed_at
+        });
       }
-      
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de charger le candidat",
-        variant: "destructive",
-      });
+    } catch (err: any) {
+      console.error("Error loading candidate:", err);
+      setError(`Une erreur s'est produite lors du chargement des données: ${err.message}`);
     } finally {
       setLoading(false);
     }
-  };
+  }, [candidateId]);
 
+  // Effect that runs only when candidateId changes
   useEffect(() => {
-    fetchCandidate();
-  }, [id, user]);
+    fetchCandidateData();
+  }, [candidateId, fetchCandidateData]);
 
-  const handleRefresh = () => {
-    fetchCandidate();
-  };
+  // Stable status change handler
+  const handleStatusChange = useCallback((newStatus: string) => {
+    setCandidate(prevCandidate => {
+      if (prevCandidate) {
+        return {
+          ...prevCandidate,
+          detailed_status: newStatus
+        };
+      }
+      return prevCandidate;
+    });
+  }, []);
+
+  // Enhanced refresh function that also refreshes AI scores
+  const handleRefreshWithAIScore = useCallback(async () => {
+    console.log('🔄 CandidateDetail: Enhanced refresh requested');
+    
+    // Refresh candidate data
+    await fetchCandidateData();
+    
+    // Force refresh AI scores after a short delay to ensure data is loaded
+    if (candidateId) {
+      setTimeout(() => {
+        console.log('🔄 CandidateDetail: Force refreshing AI scores');
+        // This will be handled by the AI scoring hooks in the components
+      }, 500);
+    }
+  }, [fetchCandidateData, candidateId]);
 
   if (loading) {
     return (
       <Layout>
-        <CandidateLoading />
+        <div className="container mx-auto px-4 py-8">
+          <CandidateLoading />
+        </div>
       </Layout>
     );
   }
@@ -120,98 +161,169 @@ const CandidateDetail = () => {
   if (error || !candidate) {
     return (
       <Layout>
-        <CandidateError errorMessage={error} errorType={errorType} />
+        <div className="container mx-auto px-4 py-8">
+          <CandidateError errorMessage={error} />
+        </div>
       </Layout>
     );
   }
 
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
-        {/* Header avec navigation */}
+    <Layout className="bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
           <Button 
             variant="ghost" 
+            size="sm" 
+            className="text-muted-foreground mb-4 hover:bg-accent/50 transition-all duration-300 group"
             onClick={() => navigate('/candidates')}
-            className="mb-4 gap-2"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Retour aux candidats
+            <ArrowLeft size={16} className="mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
+            <span className="border-b border-transparent group-hover:border-muted-foreground transition-colors duration-300">Retour aux candidats</span>
           </Button>
           
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">
-                {candidate.first_name} {candidate.last_name}
+          <div className="relative flex flex-col md:flex-row md:items-center justify-between">
+            <div className="relative animate-fade-in">
+              <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-700 via-indigo-700 to-blue-700 dark:from-purple-400 dark:via-indigo-400 dark:to-blue-400">
+                {candidate?.first_name} {candidate?.last_name}
               </h1>
-              <p className="text-muted-foreground mt-1">
-                {candidate.position || 'Poste non spécifié'}
-              </p>
-              {isAdmin && candidate.user_id !== user?.id && (
-                <p className="text-sm text-amber-600 font-medium mt-1">
-                  ⚠️ Candidat d'un autre utilisateur (ID: {candidate.user_id?.substring(0, 8)}...)
-                </p>
-              )}
+              <div className="absolute -bottom-1 left-0 w-1/4 h-0.5 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500"></div>
+            </div>
+            
+            <div className="flex gap-2 mt-4 md:mt-0">
+              <StatusSelector 
+                candidateId={candidate.id || ''} 
+                onStatusChange={handleStatusChange} 
+              />
+              
+              <Button 
+                variant="outline"
+                onClick={() => navigate(`/candidates/${candidateId}/job-match`)}
+                className="btn-modern text-foreground border-border/60 hover:border-primary/30 hover:bg-accent/80 transition-all duration-300 group"
+              >
+                <Briefcase size={16} className="mr-2 group-hover:scale-110 transition-transform duration-300" />
+                <span>Match d'emploi</span>
+              </Button>
+              
+              <DebugAIScoreButton candidateId={candidate.id || ''} />
+              
+              <ExportProfileButton candidate={candidate} />
             </div>
           </div>
         </div>
-
-        {/* Onglets principaux */}
-        <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="profile" className="gap-2">
-              <User className="h-4 w-4" />
-              Profil
-            </TabsTrigger>
-            <TabsTrigger value="details" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Détails
-            </TabsTrigger>
-            <TabsTrigger value="experience" className="gap-2">
-              <Briefcase className="h-4 w-4" />
-              Expérience
-            </TabsTrigger>
-            <TabsTrigger value="education" className="gap-2">
-              <GraduationCap className="h-4 w-4" />
-              Formation
-            </TabsTrigger>
-            <TabsTrigger value="notes" className="gap-2">
-              <StickyNote className="h-4 w-4" />
-              Notes
-            </TabsTrigger>
-            <TabsTrigger value="ai-analysis" className="gap-2">
-              <Brain className="h-4 w-4" />
-              Analyse IA
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="profile">
-            <ProfileTab 
-              candidate={candidate} 
-              isLoading={loading}
-              onRefresh={handleRefresh}
-            />
-          </TabsContent>
-
-          <TabsContent value="details">
-            <DetailsTab candidate={candidate} />
-          </TabsContent>
-
-          <TabsContent value="experience">
-            <ExperienceTab candidate={candidate} />
-          </TabsContent>
-
-          <TabsContent value="education">
-            <EducationTab candidate={candidate} />
-          </TabsContent>
-
-          <TabsContent value="notes">
-            <NotesTab candidate={candidate} />
-          </TabsContent>
-
-          <TabsContent value="ai-analysis">
-            <AIAnalysisTab candidate={candidate} />
-          </TabsContent>
+        
+        {dataIncompletenessDetected && (
+          <DataMissingAlert 
+            candidateName={`${candidate?.first_name} ${candidate?.last_name}`} 
+            resumeId={candidate?.resume_id}
+            onReanalysisComplete={handleRefreshWithAIScore}
+          />
+        )}
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+          <div className="relative">
+            <TabsList className="w-full md:w-auto glass-card px-1 py-1 rounded-xl mb-6 overflow-hidden shadow-lg border-border/50">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-teal-500/5 opacity-70 pointer-events-none"></div>
+              <TabsTrigger 
+                value="profile" 
+                className="px-4 py-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 text-foreground hover:bg-accent/50"
+              >
+                Profil
+              </TabsTrigger>
+              <TabsTrigger 
+                value="ai-analysis" 
+                className="px-4 py-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 text-foreground hover:bg-accent/50"
+              >
+                <Brain size={16} className="mr-2" />
+                Analyse IA
+              </TabsTrigger>
+              <TabsTrigger 
+                value="experience" 
+                className="px-4 py-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 text-foreground hover:bg-accent/50"
+              >
+                Expérience
+              </TabsTrigger>
+              <TabsTrigger 
+                value="education" 
+                className="px-4 py-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 text-foreground hover:bg-accent/50"
+              >
+                Formation
+              </TabsTrigger>
+              <TabsTrigger 
+                value="notes" 
+                className="px-4 py-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 text-foreground hover:bg-accent/50"
+              >
+                Notes
+              </TabsTrigger>
+              <TabsTrigger 
+                value="details" 
+                className="px-4 py-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600/90 data-[state=active]:to-blue-600/90 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 text-foreground hover:bg-accent/50"
+              >
+                Détails
+              </TabsTrigger>
+              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-purple-500 via-blue-500 to-teal-500 opacity-30"></div>
+            </TabsList>
+          </div>
+          
+          {candidate && (
+            <>
+              <TabsContent 
+                value="profile"
+                className="animate-fade-in rounded-xl relative overflow-hidden glass-card shadow-lg border-border/50"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
+                <ProfileTab 
+                  candidate={candidate} 
+                  isLoading={loading}
+                  onRefresh={handleRefreshWithAIScore}
+                />
+              </TabsContent>
+              
+              <TabsContent 
+                value="ai-analysis"
+                className="animate-fade-in rounded-xl relative overflow-hidden glass-card shadow-lg border-border/50"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
+                <AIAnalysisTab 
+                  candidate={candidate} 
+                  isLoading={loading}
+                  onRefresh={handleRefreshWithAIScore}
+                />
+              </TabsContent>
+              
+              <TabsContent 
+                value="experience"
+                className="animate-fade-in rounded-xl relative overflow-hidden glass-card shadow-lg border-border/50"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
+                <ExperienceTab candidate={candidate} />
+              </TabsContent>
+              
+              <TabsContent 
+                value="education"
+                className="animate-fade-in rounded-xl relative overflow-hidden glass-card shadow-lg border-border/50"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
+                <EducationTab candidate={candidate} />
+              </TabsContent>
+              
+              <TabsContent 
+                value="notes"
+                className="animate-fade-in rounded-xl relative overflow-hidden glass-card shadow-lg border-border/50"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
+                <NotesTab candidate={candidate} onDataUpdate={handleRefreshWithAIScore} />
+              </TabsContent>
+              
+              <TabsContent 
+                value="details"
+                className="animate-fade-in rounded-xl relative overflow-hidden glass-card shadow-lg border-border/50"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none"></div>
+                <DetailsTab candidate={candidate} />
+              </TabsContent>
+            </>
+          )}
         </Tabs>
       </div>
     </Layout>
