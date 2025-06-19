@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { recruitmentAnalyticsService, GlobalRecruitmentStats } from '@/services/analytics/recruitmentAnalyticsService';
+import { recruitmentAnalyticsService, GlobalRecruitmentStats, RecruiterKPI } from '@/services/analytics/recruitmentAnalyticsService';
 
 // Admin components
 import PendingUsersList from '@/components/admin/PendingUsersList';
@@ -31,7 +31,8 @@ import SystemActivities from '@/components/admin/SystemActivities';
 import AppSettings from '@/components/admin/AppSettings';
 import UserManagement from '@/components/admin/UserManagement';
 import RecruitmentUserStats from '@/components/admin/RecruitmentUserStats';
-import RecruiterKPICard from '@/components/admin/RecruiterKPICard';
+import RecruiterOverviewCard from '@/components/admin/RecruiterOverviewCard';
+import RecruiterDetailedKPI from '@/components/admin/RecruiterDetailedKPI';
 
 // Mock data pour les utilisateurs en attente
 const pendingUsersData = [
@@ -374,7 +375,7 @@ const Admin = () => {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {realUsers.map(user => (
-                      <RecruiterKPICard
+                      <RecruiterKPI
                         key={user.id}
                         kpi={{
                           recruiterId: user.id,
