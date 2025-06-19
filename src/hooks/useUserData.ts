@@ -32,70 +32,82 @@ export const useUserData = () => {
         setLoading(true);
         console.log("Fetching user data...");
         
-        // Get all profiles using the secure function
-        const { data: profilesData, error } = await supabase
-          .rpc('get_all_profiles_secure');
+        // Utiliser directement l'Edge Function qui a accès aux vraies données d'auth
+        const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke('list-users');
         
-        if (error) {
-          console.error('Error fetching users:', error.message);
-          toast({
-            title: "Error",
-            description: "Unable to retrieve users",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-        
-        if (profilesData && profilesData.length > 0) {
-          console.log("User profiles loaded:", profilesData);
+        if (edgeFunctionError) {
+          console.error('Error fetching users via Edge Function:', edgeFunctionError);
           
-          // Map the profiles data to match the RealUser interface
-          const mappedUsers: RealUser[] = profilesData.map(profile => ({
-            id: profile.id,
-            email: null, // Email not available in profiles table
-            first_name: profile.first_name || undefined,
-            last_name: profile.last_name || undefined,
-            company: profile.company || undefined,
-            created_at: profile.created_at || new Date().toISOString(),
-            last_sign_in_at: profile.updated_at,
-            avatar_url: profile.avatar_url || undefined,
-            profile: {
+          // Fallback vers les profils si l'Edge Function échoue
+          const { data: profilesData, error: profileError } = await supabase
+            .rpc('get_all_profiles_secure');
+          
+          if (profileError) {
+            toast({
+              title: "Erreur",
+              description: "Impossible de récupérer les utilisateurs",
+              variant: "destructive",
+            });
+            setLoading(false);
+            return;
+          }
+          
+          if (profilesData && profilesData.length > 0) {
+            const mappedUsers: RealUser[] = profilesData.map(profile => ({
+              id: profile.id,
+              email: null,
               first_name: profile.first_name || undefined,
               last_name: profile.last_name || undefined,
               company: profile.company || undefined,
-              is_admin: profile.is_admin || false,
-              avatar_url: profile.avatar_url || undefined
+              created_at: profile.created_at || new Date().toISOString(),
+              last_sign_in_at: undefined, // Pas disponible dans les profils
+              avatar_url: profile.avatar_url || undefined,
+              profile: {
+                first_name: profile.first_name || undefined,
+                last_name: profile.last_name || undefined,
+                company: profile.company || undefined,
+                is_admin: profile.is_admin || false,
+                avatar_url: profile.avatar_url || undefined
+              }
+            }));
+            
+            setRealUsers(mappedUsers);
+          }
+        } else if (edgeFunctionData && edgeFunctionData.users) {
+          console.log("Real users loaded via Edge Function:", edgeFunctionData.users);
+          
+          // Mapper les données de l'Edge Function pour inclure les vraies informations d'auth
+          const mappedUsers: RealUser[] = edgeFunctionData.users.map((user: any) => ({
+            id: user.id,
+            email: user.email || null,
+            first_name: user.profile?.first_name || user.user_metadata?.first_name || '',
+            last_name: user.profile?.last_name || user.user_metadata?.last_name || '',
+            company: user.profile?.company || '',
+            created_at: user.created_at,
+            last_sign_in_at: user.last_sign_in_at, // Vraie donnée de connexion
+            avatar_url: user.profile?.avatar_url || user.user_metadata?.avatar_url,
+            profile: user.profile || {
+              first_name: user.user_metadata?.first_name || '',
+              last_name: user.user_metadata?.last_name || '',
+              company: '',
+              is_admin: false,
+              avatar_url: user.user_metadata?.avatar_url
             }
           }));
           
-          console.log("Mapped users:", mappedUsers);
           setRealUsers(mappedUsers);
         } else {
-          console.log('No user data received from profiles, trying Edge Function');
-          
-          // Fallback to Edge Function if profiles query returns no data
-          try {
-            const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke('list-users');
-            
-            if (edgeFunctionError) {
-              throw edgeFunctionError;
-            }
-            
-            if (edgeFunctionData && edgeFunctionData.users) {
-              console.log("Real users loaded via Edge Function:", edgeFunctionData.users);
-              setRealUsers(edgeFunctionData.users);
-            } else {
-              console.log("No users returned from Edge Function");
-            }
-          } catch (fallbackError) {
-            console.error('Error fetching users via Edge Function:', fallbackError);
-          }
+          console.log("No users returned from Edge Function");
         }
         
         setLoading(false);
       } catch (error: any) {
         console.error('Unexpected error in useUserData:', error);
+        toast({
+          title: "Erreur",
+          description: "Erreur lors de la récupération des utilisateurs",
+          variant: "destructive",
+        });
         setLoading(false);
       }
     };

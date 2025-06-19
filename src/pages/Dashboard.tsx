@@ -9,30 +9,30 @@ import { formatDate } from '@/utils/dateFormatter';
 import { calculateCandidateScore } from '@/services/scoring/candidateScoring';
 import { formatCandidateData } from '@/services/data/candidateService';
 import { aggregateEducationData, aggregateSectorData } from '@/utils/dashboardUtils';
+import { recruitmentAnalyticsService, GlobalRecruitmentStats } from '@/services/analytics/recruitmentAnalyticsService';
 
 // Import our modern components
 import DashboardHeader from '@/components/dashboard/modern/DashboardHeader';
-import ModernKPICards from '@/components/dashboard/modern/ModernKPICards';
+import RecruitmentKPICards from '@/components/dashboard/modern/RecruitmentKPICards';
 import AdvancedAnalytics from '@/components/dashboard/modern/AdvancedAnalytics';
 import RealDataMetrics from '@/components/dashboard/modern/RealDataMetrics';
 import RecentCandidatesTable from '@/components/dashboard/RecentCandidatesTable';
+import RecruitmentUserStats from '@/components/admin/RecruitmentUserStats';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [recentCandidates, setRecentCandidates] = useState([]);
+  const [recruitmentStats, setRecruitmentStats] = useState<GlobalRecruitmentStats | null>(null);
   const { toast } = useToast();
   const { realUsers, loading: usersLoading } = useUserData();
   const [candidatesCount, setCandidatesCount] = useState(0);
   const [resumesCount, setResumesCount] = useState(0);
-  const [topCandidatesCount, setTopCandidatesCount] = useState(0);
   const [candidatesData, setCandidatesData] = useState([]);
   const [educationData, setEducationData] = useState([]);
   const [sectorData, setSectorData] = useState([]);
   
   const handleSearch = (query: string) => {
-    // Implement search functionality here
     console.log('Searching for:', query);
-    // You could filter candidates or redirect to candidates page with search
   };
 
   useEffect(() => {
@@ -45,6 +45,7 @@ const Dashboard = () => {
           throw new Error("User not authenticated");
         }
         
+        // Récupérer les candidats
         const { data: candidatesData, error: candidatesError } = await supabase
           .rpc('get_user_candidates', { user_id_param: user.id });
           
@@ -53,21 +54,16 @@ const Dashboard = () => {
           throw candidatesError;
         }
         
-        // Format candidates data to match CandidateData interface
         const formattedCandidates = (candidatesData || []).map(formatCandidateData);
-        
         setCandidatesData(formattedCandidates);
         setCandidatesCount(formattedCandidates?.length || 0);
         
         setEducationData(aggregateEducationData(formattedCandidates || []));
         setSectorData(aggregateSectorData(formattedCandidates || []));
         
-        // Calculer les candidats excellents avec le nouveau système de scoring
-        const excellentCandidates = formattedCandidates.filter(candidateData => {
-          const score = calculateCandidateScore(candidateData);
-          return score.overall >= 85;
-        });
-        setTopCandidatesCount(excellentCandidates.length);
+        // Récupérer les stats de recrutement
+        const recruitmentStatsData = await recruitmentAnalyticsService.getGlobalStats();
+        setRecruitmentStats(recruitmentStatsData);
         
         const recentCandidatesList = formattedCandidates
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -77,15 +73,16 @@ const Dashboard = () => {
             return {
               id: candidate.id,
               name: `${candidate.first_name || ''} ${candidate.last_name || ''}`.trim(),
-              position: candidate.position || 'Not specified',
+              position: candidate.position || 'Non spécifié',
               score: score.overall,
               date: formatDate(candidate.created_at),
-              status: score.overall >= 85 ? 'high' : (score.overall >= 70 ? 'medium' : 'low')
+              status: candidate.detailed_status || 'initial'
             };
           });
         
         setRecentCandidates(recentCandidatesList);
         
+        // Récupérer les CVs
         const { data: userResumes, error: resumesError } = await supabase
           .rpc('get_user_resumes', { user_id_param: user.id });
           
@@ -99,8 +96,8 @@ const Dashboard = () => {
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         toast({
-          title: "Error loading data",
-          description: "Could not load your dashboard data. Please try again later.",
+          title: "Erreur lors du chargement",
+          description: "Impossible de charger les données du tableau de bord.",
           variant: "destructive",
         });
       } finally {
@@ -118,13 +115,12 @@ const Dashboard = () => {
         {/* Modern Header */}
         <DashboardHeader onSearch={handleSearch} />
         
-        {/* Modern KPI Cards */}
-        <ModernKPICards 
+        {/* Recruitment KPI Cards */}
+        <RecruitmentKPICards 
           loading={loading}
+          stats={recruitmentStats}
           resumesCount={resumesCount}
           candidatesCount={candidatesCount}
-          topCandidatesCount={topCandidatesCount}
-          usersCount={realUsers.length}
         />
         
         {/* Advanced Analytics - Only Real Data */}
@@ -151,10 +147,10 @@ const Dashboard = () => {
               <div className="animate-fade-in">
                 <Card className="border-purple-200/30 dark:border-purple-800/20 overflow-hidden shadow-xl bg-white/70 dark:bg-navy-dark/40 backdrop-blur-xl">
                   <CardHeader className="p-5 border-b border-purple-100/50 dark:border-purple-900/30 backdrop-blur-sm bg-gradient-to-r from-white/80 to-purple-50/80 dark:from-navy-dark/90 dark:to-purple-950/30">
-                    <CardTitle className="text-lg font-semibold text-navy-dark dark:text-sand">Statistiques utilisateurs</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-navy-dark dark:text-sand">Équipe de recrutement</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
-                    <UserStats 
+                    <RecruitmentUserStats 
                       activeUsersCount={realUsers.length}
                       pendingUsersCount={0}
                       recentUsers={realUsers.slice(0, 3).map(user => ({
@@ -166,7 +162,7 @@ const Dashboard = () => {
                         last_sign_in_at: user.last_sign_in_at
                       }))}
                       formatDate={formatDate}
-                      companiesCount={topCandidatesCount}
+                      totalRecruiterCVs={resumesCount}
                     />
                   </CardContent>
                 </Card>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Settings, Shield, Building, RefreshCw, 
-  UserCheck, AlertTriangle, Info as InfoIcon, UserPlus
+  UserCheck, AlertTriangle, Info as InfoIcon, UserPlus, TrendingUp
 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,6 +30,7 @@ import UserStats from '@/components/admin/UserStats';
 import SystemActivities from '@/components/admin/SystemActivities';
 import AppSettings from '@/components/admin/AppSettings';
 import UserManagement from '@/components/admin/UserManagement';
+import RecruitmentUserStats from '@/components/admin/RecruitmentUserStats';
 
 // Mock data pour les utilisateurs en attente
 const pendingUsersData = [
@@ -200,9 +201,9 @@ const Admin = () => {
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-navy-dark mb-4">Administration</h1>
+          <h1 className="text-2xl font-bold text-navy-dark mb-4">Administration ATS</h1>
           <p className="text-muted-foreground mb-2">
-            Gérez les paramètres administratifs de votre espace CVwise.
+            Gérez votre équipe de recrutement et suivez les performances.
           </p>
           
           {/* Bouton de confirmation pour Claire Laurent */}
@@ -211,7 +212,7 @@ const Admin = () => {
           </div>
         </div>
 
-        {/* Interface principale d'administration - toujours affichée, sans vérification des droits */}
+        {/* Interface principale d'administration */}
         <Tabs defaultValue="create-user" className="mb-8">
           <TabsList className="mb-6 bg-background/80 dark:bg-muted/10 w-full flex overflow-x-auto">
             <TabsTrigger 
@@ -219,14 +220,21 @@ const Admin = () => {
               className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
             >
               <UserPlus size={16} />
-              Créer un utilisateur
+              Ajouter un recruteur
             </TabsTrigger>
             <TabsTrigger 
               value="users" 
               className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
             >
               <Users size={16} />
-              Liste des utilisateurs
+              Équipe de recrutement
+            </TabsTrigger>
+            <TabsTrigger 
+              value="analytics" 
+              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
+            >
+              <TrendingUp size={16} />
+              Analytics recrutement
             </TabsTrigger>
             <TabsTrigger 
               value="settings" 
@@ -234,20 +242,6 @@ const Admin = () => {
             >
               <Settings size={16} />
               Paramètres
-            </TabsTrigger>
-            <TabsTrigger 
-              value="system" 
-              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-            >
-              <Shield size={16} />
-              Système
-            </TabsTrigger>
-            <TabsTrigger 
-              value="companies" 
-              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-            >
-              <Building size={16} />
-              Entreprises
             </TabsTrigger>
           </TabsList>
           
@@ -260,12 +254,12 @@ const Admin = () => {
           <TabsContent value="users">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="md:col-span-1">
-                <UserStats 
+                <RecruitmentUserStats 
                   activeUsersCount={realUsers.length}
                   pendingUsersCount={pendingUsers.length}
                   recentUsers={recentUsers}
                   formatDate={formatDate}
-                  companiesCount={companiesCount}
+                  totalRecruiterCVs={0}
                 />
               </div>
               
@@ -286,6 +280,29 @@ const Admin = () => {
             </div>
           </TabsContent>
           
+          <TabsContent value="analytics">
+            <Card className="dark:border-border/10">
+              <CardHeader>
+                <CardTitle>Analytics de recrutement</CardTitle>
+                <CardDescription>
+                  Suivez les performances de votre équipe de recrutement
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-8 text-center">
+                    <p className="text-muted-foreground">
+                      Dashboard des KPI recruteurs en cours de développement.
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Prochaines fonctionnalités : KPI individuels, taux de conversion, suivi temporel
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
           <TabsContent value="settings">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2">
@@ -296,46 +313,6 @@ const Admin = () => {
                 <SystemActivities activities={systemActivitiesData} />
               </div>
             </div>
-          </TabsContent>
-          
-          <TabsContent value="system">
-            <Card className="dark:border-border/10">
-              <CardHeader>
-                <CardTitle>Statut du système</CardTitle>
-                <CardDescription>
-                  Paramètres avancés et informations système
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="p-8 text-center">
-                    <p className="text-muted-foreground">
-                      Cette section est en cours de développement.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="companies">
-            <Card className="dark:border-border/10">
-              <CardHeader>
-                <CardTitle>Gestion des entreprises</CardTitle>
-                <CardDescription>
-                  Ajoutez, modifiez ou supprimez des entreprises
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="p-8 text-center">
-                    <p className="text-muted-foreground">
-                      Cette section est en cours de développement.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </div>
