@@ -3,28 +3,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from '@/services/data/candidateService';
 
 /**
- * Service simplifié pour récupérer les données candidat - contourne les problèmes d'auth RPC
+ * Service optimisé pour récupérer les données candidat - utilise les RLS nettoyées
  */
 export const getSimplifiedCandidateData = async (candidateId: string): Promise<CandidateData | null> => {
   try {
-    console.log('🔍 Fetching candidate data via direct query for ID:', candidateId);
+    console.log('🔍 Fetching candidate data for ID:', candidateId);
     
-    // Vérifier l'authentification côté client
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
-      console.error('❌ User not authenticated:', userError);
-      throw new Error('User not authenticated');
-    }
-    
-    console.log('✅ User authenticated:', user.id);
-    
-    // Récupérer directement depuis la table candidates avec RLS
+    // Récupération directe avec RLS optimisées - plus besoin de vérifications complexes
     const { data: candidateData, error: candidateError } = await supabase
       .from('candidates')
       .select('*')
       .eq('id', candidateId)
-      .eq('user_id', user.id) // S'assurer que le candidat appartient à l'utilisateur
       .single();
 
     if (candidateError) {
