@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { CandidateData } from '@/services/data/candidateService';
 
 export interface RecruiterKPI {
   recruiterId: string;
@@ -33,30 +32,29 @@ export class RecruitmentAnalyticsService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      // Récupérer tous les candidats avec leurs données complètes
-      const { data: candidatesRaw, error } = await supabase
-        .rpc('get_user_candidates', { user_id_param: user.id });
+      // Récupérer tous les candidats directement depuis la table candidates
+      const { data: candidates, error } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('user_id', user.id);
       
       if (error) throw error;
-
-      // Cast properly to CandidateData to access detailed_status
-      const candidates = candidatesRaw?.map(candidate => candidate as any as CandidateData) || [];
 
       const currentMonth = new Date();
       const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
       
       // Filtrer les CVs de ce mois
-      const cvsThisMonth = candidates.filter(candidate => 
+      const cvsThisMonth = candidates?.filter(candidate => 
         new Date(candidate.created_at || '') >= firstDayOfMonth
-      );
+      ) || [];
 
       // Candidats en mission
-      const candidatesInMission = candidates.filter(candidate => 
+      const candidatesInMission = candidates?.filter(candidate => 
         candidate.detailed_status === 'en_mission'
-      );
+      ) || [];
 
       // Calculer le taux de conversion global
-      const totalCandidates = candidates.length;
+      const totalCandidates = candidates?.length || 0;
       const globalConversionRate = totalCandidates > 0 
         ? Math.round((candidatesInMission.length / totalCandidates) * 100)
         : 0;
@@ -75,13 +73,13 @@ export class RecruitmentAnalyticsService {
 
   async getRecruiterKPIs(recruiterId: string, period: 'current_month' | 'last_month' | 'quarter' = 'current_month'): Promise<RecruiterKPI> {
     try {
-      const { data: candidatesRaw, error } = await supabase
-        .rpc('get_user_candidates', { user_id_param: recruiterId });
+      // Récupérer tous les candidats du recruteur directement
+      const { data: candidates, error } = await supabase
+        .from('candidates')
+        .select('*')
+        .eq('user_id', recruiterId);
       
       if (error) throw error;
-
-      // Cast properly to CandidateData to access detailed_status
-      const candidates = candidatesRaw?.map(candidate => candidate as any as CandidateData) || [];
 
       // Calculer la période
       const now = new Date();
@@ -98,9 +96,9 @@ export class RecruitmentAnalyticsService {
           startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       }
 
-      const periodCandidates = candidates.filter(candidate => 
+      const periodCandidates = candidates?.filter(candidate => 
         new Date(candidate.created_at || '') >= startDate
-      );
+      ) || [];
 
       // Compter par statut
       const prequalification = periodCandidates.filter(c => c.detailed_status === 'prequalification').length;

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Settings, Shield, Building, RefreshCw, 
@@ -20,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import ConfirmClaireButton from '@/components/admin/ConfirmClaireButton';
+import { recruitmentAnalyticsService, GlobalRecruitmentStats } from '@/services/analytics/recruitmentAnalyticsService';
 
 // Admin components
 import PendingUsersList from '@/components/admin/PendingUsersList';
@@ -31,6 +32,7 @@ import SystemActivities from '@/components/admin/SystemActivities';
 import AppSettings from '@/components/admin/AppSettings';
 import UserManagement from '@/components/admin/UserManagement';
 import RecruitmentUserStats from '@/components/admin/RecruitmentUserStats';
+import RecruiterKPICard from '@/components/admin/RecruiterKPICard';
 
 // Mock data pour les utilisateurs en attente
 const pendingUsersData = [
@@ -51,59 +53,6 @@ const pendingUsersData = [
     role: 'Responsable RH',
     registrationDate: '24/07/2023',
     avatar: null
-  },
-  {
-    id: 3,
-    name: 'Camille Petit',
-    email: 'camille.petit@example.com',
-    company: 'PME Solutions',
-    role: 'Directrice des Opérations',
-    registrationDate: '23/07/2023',
-    avatar: null
-  }
-];
-
-// Mock data pour les utilisateurs actifs
-const activeUsersData = [
-  {
-    id: 101,
-    name: 'Antoine Leroy',
-    email: 'antoine.leroy@example.com',
-    company: 'ConsultPro',
-    role: 'Administrateur',
-    lastLogin: '26/07/2023 10:45',
-    status: 'online',
-    avatar: null
-  },
-  {
-    id: 102,
-    name: 'Marie Bernard',
-    email: 'marie.bernard@example.com',
-    company: 'TechConsult SA',
-    role: 'Recruteur',
-    lastLogin: '25/07/2023 16:20',
-    status: 'offline',
-    avatar: null
-  },
-  {
-    id: 103,
-    name: 'Thomas Durand',
-    email: 'thomas.durand@example.com',
-    company: 'IndustrieGroup',
-    role: 'Recruteur',
-    lastLogin: '26/07/2023 09:10',
-    status: 'offline',
-    avatar: null
-  },
-  {
-    id: 104,
-    name: 'Julie Lambert',
-    email: 'julie.lambert@example.com',
-    company: 'ConsultPro',
-    role: 'Recruteur',
-    lastLogin: '24/07/2023 14:30',
-    status: 'offline',
-    avatar: null
   }
 ];
 
@@ -122,27 +71,6 @@ const systemActivitiesData = [
     description: 'L\'administrateur a validé l\'inscription de Jean Dupont',
     timestamp: '25/07/2023 15:32',
     icon: <UserCheck size={16} className="text-emerald-500 dark:text-emerald-400" />
-  },
-  {
-    id: 3,
-    action: 'Limite d\'utilisation atteinte',
-    description: 'TechConsult SA a atteint 80% de sa limite mensuelle d\'analyses de CV',
-    timestamp: '25/07/2023 10:15',
-    icon: <AlertTriangle size={16} className="text-amber-500 dark:text-amber-400" />
-  },
-  {
-    id: 4,
-    action: 'Nouvelle entreprise',
-    description: 'L\'entreprise "PME Solutions" a été ajoutée au système',
-    timestamp: '24/07/2023 14:20',
-    icon: <Building size={16} className="text-purple-500 dark:text-purple-400" />
-  },
-  {
-    id: 5,
-    action: 'Tentative de connexion échouée',
-    description: 'Plusieurs tentatives de connexion échouées pour l\'utilisateur marc.dupont@example.com',
-    timestamp: '24/07/2023 09:45',
-    icon: <Shield size={16} className="text-red-500 dark:text-red-400" />
   }
 ];
 
@@ -151,6 +79,8 @@ const Admin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [pendingUsers, setPendingUsers] = useState(pendingUsersData);
+  const [recruitmentStats, setRecruitmentStats] = useState<GlobalRecruitmentStats | null>(null);
+  const [loading, setLoading] = useState(true);
   const { realUsers, loading: usersDataLoading } = useUserData();
 
   // Redirection si l'utilisateur n'est pas connecté
@@ -160,6 +90,22 @@ const Admin = () => {
       return;
     }
   }, [user, navigate]);
+
+  // Charger les stats de recrutement
+  useEffect(() => {
+    const loadRecruitmentStats = async () => {
+      try {
+        const stats = await recruitmentAnalyticsService.getGlobalStats();
+        setRecruitmentStats(stats);
+      } catch (error) {
+        console.error('Error loading recruitment stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRecruitmentStats();
+  }, []);
 
   const handleApproveUser = (userId: number) => {
     const userToApprove = pendingUsers.find(user => user.id === userId);
@@ -205,11 +151,57 @@ const Admin = () => {
           <p className="text-muted-foreground mb-2">
             Gérez votre équipe de recrutement et suivez les performances.
           </p>
+        </div>
+
+        {/* Métriques globales */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Recruteurs actifs</p>
+                  <p className="text-2xl font-bold">{realUsers.length}</p>
+                </div>
+                <Users className="h-8 w-8 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
           
-          {/* Bouton de confirmation pour Claire Laurent */}
-          <div className="mt-4">
-            <ConfirmClaireButton />
-          </div>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">CVs ce mois</p>
+                  <p className="text-2xl font-bold">{recruitmentStats?.totalCVsThisMonth || 0}</p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">En mission</p>
+                  <p className="text-2xl font-bold">{recruitmentStats?.totalCandidatesInMission || 0}</p>
+                </div>
+                <UserCheck className="h-8 w-8 text-purple-500" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Taux conversion</p>
+                  <p className="text-2xl font-bold">{recruitmentStats?.globalConversionRate || 0}%</p>
+                </div>
+                <Shield className="h-8 w-8 text-orange-500" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Interface principale d'administration */}
@@ -234,7 +226,7 @@ const Admin = () => {
               className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
             >
               <TrendingUp size={16} />
-              Analytics recrutement
+              KPI Recruteurs
             </TabsTrigger>
             <TabsTrigger 
               value="settings" 
@@ -259,7 +251,7 @@ const Admin = () => {
                   pendingUsersCount={pendingUsers.length}
                   recentUsers={recentUsers}
                   formatDate={formatDate}
-                  totalRecruiterCVs={0}
+                  totalRecruiterCVs={recruitmentStats?.totalCVsThisMonth || 0}
                 />
               </div>
               
@@ -281,26 +273,41 @@ const Admin = () => {
           </TabsContent>
           
           <TabsContent value="analytics">
-            <Card className="dark:border-border/10">
-              <CardHeader>
-                <CardTitle>Analytics de recrutement</CardTitle>
-                <CardDescription>
-                  Suivez les performances de votre équipe de recrutement
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="p-8 text-center">
-                    <p className="text-muted-foreground">
-                      Dashboard des KPI recruteurs en cours de développement.
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Prochaines fonctionnalités : KPI individuels, taux de conversion, suivi temporel
-                    </p>
+            <div className="space-y-6">
+              <Card className="dark:border-border/10">
+                <CardHeader>
+                  <CardTitle>KPI par recruteur</CardTitle>
+                  <CardDescription>
+                    Performance individuelle de chaque membre de l'équipe
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {realUsers.map(user => (
+                      <RecruiterKPICard
+                        key={user.id}
+                        kpi={{
+                          recruiterId: user.id,
+                          recruiterName: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Recruteur',
+                          recruiterEmail: user.email || '',
+                          totalCVs: 0, // À calculer dynamiquement
+                          candidatesInPrequalification: 0,
+                          candidatesInEC1: 0,
+                          candidatesInEC2: 0,
+                          candidatesInPresentation: 0,
+                          candidatesInMission: 0,
+                          conversionPrequalToEC1: 0,
+                          conversionEC1ToEC2: 0,
+                          conversionEC2ToPresentation: 0,
+                          conversionEC2ToMission: 0,
+                          period: 'current_month'
+                        }}
+                      />
+                    ))}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
           
           <TabsContent value="settings">
