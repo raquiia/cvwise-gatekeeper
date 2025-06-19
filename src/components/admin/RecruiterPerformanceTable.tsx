@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { 
-  TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Users, FileText
+  TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Users, FileText, Info
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNavigate } from 'react-router-dom';
 
 export interface RecruiterPerformance {
@@ -28,6 +29,20 @@ export interface RecruiterPerformance {
   pipelineValue: number;
   lastActivity: string;
   status: 'excellent' | 'good' | 'warning' | 'inactive';
+  // New conversion rates
+  conversionRates: {
+    prequalToEC1: number;
+    ec1ToEC2: number;
+    ec2ToPresentation: number;
+    globalToMission: number;
+  };
+  pipelineCounts: {
+    prequalification: number;
+    ec1: number;
+    ec2: number;
+    presentation: number;
+    mission: number;
+  };
 }
 
 interface RecruiterPerformanceTableProps {
@@ -76,6 +91,47 @@ const RecruiterPerformanceTable: React.FC<RecruiterPerformanceTableProps> = ({
         return 'bg-gray-500';
     }
   };
+
+  const ConversionRatesTooltip = ({ rates, counts }: { rates: RecruiterPerformance['conversionRates'], counts: RecruiterPerformance['pipelineCounts'] }) => (
+    <div className="space-y-2 text-xs">
+      <div className="font-semibold text-foreground">Détail des conversions :</div>
+      <div className="space-y-1">
+        <div className="flex justify-between">
+          <span>Préqual → EC1:</span>
+          <span className={`font-medium ${rates.prequalToEC1 >= 50 ? 'text-green-600' : rates.prequalToEC1 >= 30 ? 'text-amber-600' : 'text-red-600'}`}>
+            {rates.prequalToEC1.toFixed(1)}%
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span>EC1 → EC2:</span>
+          <span className={`font-medium ${rates.ec1ToEC2 >= 60 ? 'text-green-600' : rates.ec1ToEC2 >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
+            {rates.ec1ToEC2.toFixed(1)}%
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span>EC2 → Présent./Mission:</span>
+          <span className={`font-medium ${rates.ec2ToPresentation >= 70 ? 'text-green-600' : rates.ec2ToPresentation >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+            {rates.ec2ToPresentation.toFixed(1)}%
+          </span>
+        </div>
+        <div className="border-t pt-1 mt-1">
+          <div className="flex justify-between">
+            <span>Global → Mission:</span>
+            <span className={`font-medium ${rates.globalToMission >= 15 ? 'text-green-600' : rates.globalToMission >= 10 ? 'text-amber-600' : 'text-red-600'}`}>
+              {rates.globalToMission.toFixed(1)}%
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="border-t pt-1 mt-2">
+        <div className="font-semibold text-foreground mb-1">Pipeline :</div>
+        <div className="text-xs space-y-0.5">
+          <div>Préqual: {counts.prequalification}, EC1: {counts.ec1}, EC2: {counts.ec2}</div>
+          <div>Présent: {counts.presentation}, Mission: {counts.mission}</div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <Card>
@@ -128,65 +184,80 @@ const RecruiterPerformanceTable: React.FC<RecruiterPerformanceTableProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {recruiters.map((recruiter) => (
-                  <tr 
-                    key={recruiter.id} 
-                    className="border-b border-border/20 hover:bg-muted/20 transition-colors cursor-pointer"
-                    onClick={() => handleRowClick(recruiter.id)}
-                  >
-                    <td className="p-3">
-                      <div className="flex items-center">
-                        <Avatar className="h-8 w-8 mr-3">
-                          <AvatarImage src={recruiter.avatar_url} />
-                          <AvatarFallback className="bg-navy/10 text-navy-dark text-xs">
-                            {recruiter.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium text-navy-dark">
-                            {recruiter.name}
+                <TooltipProvider>
+                  {recruiters.map((recruiter) => (
+                    <tr 
+                      key={recruiter.id} 
+                      className="border-b border-border/20 hover:bg-muted/20 transition-colors cursor-pointer"
+                      onClick={() => handleRowClick(recruiter.id)}
+                    >
+                      <td className="p-3">
+                        <div className="flex items-center">
+                          <Avatar className="h-8 w-8 mr-3">
+                            <AvatarImage src={recruiter.avatar_url} />
+                            <AvatarFallback className="bg-navy/10 text-navy-dark text-xs">
+                              {recruiter.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium text-navy-dark">
+                              {recruiter.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{recruiter.email}</div>
                           </div>
-                          <div className="text-xs text-muted-foreground">{recruiter.email}</div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <FileText size={14} className="text-blue-500" />
-                        <span className="font-medium">{recruiter.totalCandidates}</span>
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
-                        {recruiter.candidatesInMission}
-                      </Badge>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <Progress 
-                          value={Math.min(recruiter.conversionRate, 100)} 
-                          className="w-12 h-2" 
-                        />
-                        <span className={`text-sm font-medium ${
-                          recruiter.conversionRate >= 15 ? 'text-green-600' : 
-                          recruiter.conversionRate >= 10 ? 'text-amber-600' : 'text-red-600'
-                        }`}>
-                          {recruiter.conversionRate.toFixed(1)}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-3 text-sm">{recruiter.recentActivity}</td>
-                    <td className="p-3 text-sm text-muted-foreground">
-                      {formatDate(recruiter.lastActivity)}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(recruiter.status)}
-                        <div className={`w-2 h-2 rounded-full ${getStatusColor(recruiter.status)}`}></div>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <FileText size={14} className="text-blue-500" />
+                          <span className="font-medium">{recruiter.totalCandidates}</span>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200">
+                          {recruiter.candidatesInMission}
+                        </Badge>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <Progress 
+                            value={Math.min(recruiter.conversionRate, 100)} 
+                            className="w-12 h-2" 
+                          />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-1 cursor-help">
+                                <span className={`text-sm font-medium ${
+                                  recruiter.conversionRate >= 15 ? 'text-green-600' : 
+                                  recruiter.conversionRate >= 10 ? 'text-amber-600' : 'text-red-600'
+                                }`}>
+                                  {recruiter.conversionRate.toFixed(1)}%
+                                </span>
+                                <Info size={12} className="text-muted-foreground" />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <ConversionRatesTooltip 
+                                rates={recruiter.conversionRates} 
+                                counts={recruiter.pipelineCounts}
+                              />
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </td>
+                      <td className="p-3 text-sm">{recruiter.recentActivity}</td>
+                      <td className="p-3 text-sm text-muted-foreground">
+                        {formatDate(recruiter.lastActivity)}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(recruiter.status)}
+                          <div className={`w-2 h-2 rounded-full ${getStatusColor(recruiter.status)}`}></div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </TooltipProvider>
               </tbody>
             </table>
           </div>

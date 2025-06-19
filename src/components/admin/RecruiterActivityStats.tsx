@@ -1,7 +1,8 @@
 
-import React from 'react';
-import { UserCheck, Clock, FileText, TrendingUp, Users, Target } from 'lucide-react';
+import React, { useState } from 'react';
+import { UserCheck, Clock, FileText, TrendingUp, Users, Target, ChevronDown, ChevronUp } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -15,6 +16,12 @@ interface RecruiterActivityStatsProps {
   candidatesInMission: number;
   recentActivity: number;
   averageConversionRate: number;
+  averageConversionRates?: {
+    prequalToEC1: number;
+    ec1ToEC2: number;
+    ec2ToPresentation: number;
+    globalToMission: number;
+  };
 }
 
 const RecruiterActivityStats: React.FC<RecruiterActivityStatsProps> = ({ 
@@ -22,8 +29,17 @@ const RecruiterActivityStats: React.FC<RecruiterActivityStatsProps> = ({
   totalCandidates,
   candidatesInMission,
   recentActivity,
-  averageConversionRate
+  averageConversionRate,
+  averageConversionRates
 }) => {
+  const [showDetailedRates, setShowDetailedRates] = useState(false);
+
+  const getConversionColor = (rate: number, thresholds: { good: number; warning: number }) => {
+    if (rate >= thresholds.good) return 'text-green-600';
+    if (rate >= thresholds.warning) return 'text-amber-600';
+    return 'text-red-600';
+  };
+
   return (
     <Card className="h-full">
       <CardHeader className="pb-3">
@@ -75,11 +91,50 @@ const RecruiterActivityStats: React.FC<RecruiterActivityStatsProps> = ({
           
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Taux conversion</span>
+              <span className="text-sm font-medium">Taux conversion global</span>
               <span className={`font-semibold ${averageConversionRate >= 15 ? 'text-green-600' : averageConversionRate >= 10 ? 'text-amber-600' : 'text-red-600'}`}>
                 {averageConversionRate.toFixed(1)}%
               </span>
             </div>
+            
+            {averageConversionRates && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-between text-xs h-7 px-2"
+                  onClick={() => setShowDetailedRates(!showDetailedRates)}
+                >
+                  <span>Détail par étape</span>
+                  {showDetailedRates ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                </Button>
+                
+                {showDetailedRates && (
+                  <div className="space-y-2 pt-2 border-t border-border/10">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Préqual → EC1</span>
+                      <span className={`font-medium ${getConversionColor(averageConversionRates.prequalToEC1, { good: 50, warning: 30 })}`}>
+                        {averageConversionRates.prequalToEC1.toFixed(1)}%
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">EC1 → EC2</span>
+                      <span className={`font-medium ${getConversionColor(averageConversionRates.ec1ToEC2, { good: 60, warning: 40 })}`}>
+                        {averageConversionRates.ec1ToEC2.toFixed(1)}%
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">EC2 → Présent./Mission</span>
+                      <span className={`font-medium ${getConversionColor(averageConversionRates.ec2ToPresentation, { good: 70, warning: 50 })}`}>
+                        {averageConversionRates.ec2ToPresentation.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </CardContent>
