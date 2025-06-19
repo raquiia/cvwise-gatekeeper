@@ -37,61 +37,49 @@ const CandidateDetail = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
 
-  // Check authentication and redirect if needed
-  useEffect(() => {
-    if (!authLoading && !user) {
-      console.log("User not authenticated, redirecting to login");
-      toast({
-        title: "Connexion requise",
-        description: "Vous devez être connecté pour voir les détails du candidat",
-        variant: "destructive",
-      });
-      navigate('/login');
-      return;
-    }
-  }, [authLoading, user, navigate]);
-
-  // Stable function that doesn't depend on state
-  const fetchCandidateData = useCallback(async () => {
-    if (!candidateId) {
-      console.error("No candidate ID provided");
+  // Stable function that doesn't depend on changing state
+  const fetchCandidateData = useCallback(async (currentCandidateId: string, currentUser: any) => {
+    if (!currentCandidateId) {
+      console.error("❌ CandidateDetail: No candidate ID provided");
       setError("Identifiant de candidat manquant");
       setLoading(false);
       return;
     }
 
-    if (!user) {
-      console.log("User not authenticated, cannot fetch candidate data");
+    if (!currentUser) {
+      console.log("❌ CandidateDetail: User not authenticated");
       setError("Vous devez être connecté pour voir ce candidat");
       setLoading(false);
       return;
     }
 
     try {
+      console.log("🔄 CandidateDetail: Starting data fetch for ID:", currentCandidateId);
       setLoading(true);
-      console.log("🔄 CandidateDetail: Starting data fetch for ID:", candidateId);
+      setError(null);
       
-      // Utiliser directement le service mis à jour qui récupère les données AI
-      const data = await getCompleteCandidateData(candidateId);
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout: Loading took too long')), 30000)
+      );
+      
+      const dataPromise = getCompleteCandidateData(currentCandidateId);
+      
+      const data = await Promise.race([dataPromise, timeoutPromise]) as CandidateData | null;
       
       if (!data) {
-        console.log("Candidate not found:", candidateId);
+        console.log("📭 CandidateDetail: Candidate not found:", currentCandidateId);
         setError("Candidat non trouvé ou vous n'avez pas accès à ce candidat");
       } else {
-        console.log("🔄 CandidateDetail: Processing candidate data...");
+        console.log("✅ CandidateDetail: Processing candidate data...");
         
         // Process the data to ensure arrays and properties are correctly formatted
         const processedData = processCandidateData(data);
         
-        console.log("📋 CandidateDetail: Data after processCandidateData:", {
+        console.log("📋 CandidateDetail: Data processed successfully:", {
+          id: processedData.id,
           first_name: processedData.first_name,
           last_name: processedData.last_name,
-          address: processedData.address,
-          postal_code: processedData.postal_code,
-          city: processedData.city,
-          country: processedData.country,
-          ai_score: processedData.ai_score,
-          ai_analyzed_at: processedData.ai_analyzed_at,
           hasAIData: !!(processedData.ai_score || processedData.ai_explanation)
         });
         
@@ -105,51 +93,67 @@ const CandidateDetail = () => {
         
         const hasIncompleteData = hasEmptyExperiences || hasEmptyEducation || hasEmptyLanguages;
         
-        console.log("Data completeness check:", {
+        console.log("🔍 CandidateDetail: Data completeness check:", {
           experiences: !hasEmptyExperiences,
           education: !hasEmptyEducation,
           languages: !hasEmptyLanguages,
-          isComplete: !hasIncompleteData,
-          hasAIAnalysis: !!(processedData.ai_score || processedData.ai_explanation)
+          isComplete: !hasIncompleteData
         });
         
         setDataIncompletenessDetected(hasIncompleteData);
-        
-        console.log("💾 CandidateDetail: Setting candidate state with processed data");
         setCandidate(processedData);
         
-        console.log("🎯 CandidateDetail: Final candidate state set:", {
-          first_name: processedData.first_name,
-          last_name: processedData.last_name,
-          address: processedData.address,
-          postal_code: processedData.postal_code,
-          city: processedData.city,
-          country: processedData.country,
-          ai_score: processedData.ai_score,
-          ai_analyzed_at: processedData.ai_analyzed_at
-        });
+        console.log("🎯 CandidateDetail: Successfully set candidate state");
       }
     } catch (err: any) {
-      console.error("Error loading candidate:", err);
+      console.error("❌ CandidateDetail: Error loading candidate:", err);
+      
       // Improve error message based on the error type
-      if (err.message?.includes('not authorized') || err.message?.includes('Access denied')) {
-        setError("Vous n'avez pas accès à ce candidat ou votre session a expiré. Veuillez vous reconnecter.");
+      if (err.message?.includes('Timeout')) {
+        setError("Le chargement prend trop de temps. Veuillez réessayer.");
+      } else if (err.message?.includes('not authorized') || err.message?.includes('Access denied')) {
+        setError("Vous n'avez pas accès à ce candidat ou votre session a expiré.");
       } else if (err.message?.includes('not found')) {
         setError("Ce candidat n'existe pas ou n'est plus disponible.");
       } else {
-        setError(`Une erreur s'est produite lors du chargement des données: ${err.message}`);
+        setError(`Une erreur s'est produite lors du chargement: ${err.message}`);
       }
     } finally {
       setLoading(false);
     }
-  }, [candidateId, user]);
+  }, []);
 
-  // Effect that runs only when candidateId changes and user is authenticated
+  // Separate authentication check effect
   useEffect(() => {
-    if (!authLoading && user && candidateId) {
-      fetchCandidateData();
+    console.log("🔐 CandidateDetail: Auth check - loading:", authLoading, "user:", !!user);
+    
+    if (!authLoading && !user) {
+      console.log("❌ CandidateDetail: User not authenticated, redirecting");
+      toast({
+        title: "Connexion requise",
+        description: "Vous devez être connecté pour voir les détails du candidat",
+        variant: "destructive",
+      });
+      navigate('/login');
     }
-  }, [candidateId, fetchCandidateData, authLoading, user]);
+  }, [authLoading, user, navigate]);
+
+  // Separate data fetching effect
+  useEffect(() => {
+    console.log("🔄 CandidateDetail: Data fetch effect triggered", {
+      authLoading,
+      hasUser: !!user,
+      candidateId
+    });
+    
+    // Only fetch when auth is ready, user is authenticated, and we have a candidate ID
+    if (!authLoading && user && candidateId) {
+      console.log("✅ CandidateDetail: Conditions met, starting fetch");
+      fetchCandidateData(candidateId, user);
+    } else {
+      console.log("⏳ CandidateDetail: Waiting for auth or missing candidateId");
+    }
+  }, [authLoading, user, candidateId, fetchCandidateData]);
 
   // Stable status change handler
   const handleStatusChange = useCallback((newStatus: string) => {
@@ -164,24 +168,18 @@ const CandidateDetail = () => {
     });
   }, []);
 
-  // Enhanced refresh function that also refreshes AI scores
+  // Enhanced refresh function
   const handleRefreshWithAIScore = useCallback(async () => {
     console.log('🔄 CandidateDetail: Enhanced refresh requested');
     
-    // Refresh candidate data
-    await fetchCandidateData();
-    
-    // Force refresh AI scores after a short delay to ensure data is loaded
-    if (candidateId) {
-      setTimeout(() => {
-        console.log('🔄 CandidateDetail: Force refreshing AI scores');
-        // This will be handled by the AI scoring hooks in the components
-      }, 500);
+    if (candidateId && user) {
+      await fetchCandidateData(candidateId, user);
     }
-  }, [fetchCandidateData, candidateId]);
+  }, [candidateId, user, fetchCandidateData]);
 
   // Show loading while checking authentication
   if (authLoading) {
+    console.log("🔄 CandidateDetail: Showing auth loading state");
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
@@ -191,12 +189,14 @@ const CandidateDetail = () => {
     );
   }
 
-  // Don't render anything if user is not authenticated (redirect is handled in useEffect)
+  // Don't render if user is not authenticated (redirect is handled in useEffect)
   if (!user) {
+    console.log("❌ CandidateDetail: No user, not rendering");
     return null;
   }
 
   if (loading) {
+    console.log("🔄 CandidateDetail: Showing candidate loading state");
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
@@ -207,6 +207,7 @@ const CandidateDetail = () => {
   }
 
   if (error || !candidate) {
+    console.log("❌ CandidateDetail: Showing error state:", error);
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
@@ -215,6 +216,8 @@ const CandidateDetail = () => {
       </Layout>
     );
   }
+
+  console.log("✅ CandidateDetail: Rendering candidate details");
 
   return (
     <Layout className="bg-gradient-to-br from-background via-background to-muted/20">
