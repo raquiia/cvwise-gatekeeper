@@ -8,12 +8,12 @@ export const useRecruiterPerformance = () => {
   const [recruiters, setRecruiters] = useState<RecruiterPerformance[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
-    totalRecruiters: 0,
+    totalRecruiters: 1, // Current user only
     totalCandidates: 0,
     candidatesInMission: 0,
     recentActivity: 0,
     averageConversionRate: 0,
-    // New aggregated conversion rates
+    // Simplified conversion rates for current user only
     averageConversionRates: {
       prequalToEC1: 0,
       ec1ToEC2: 0,
@@ -30,7 +30,7 @@ export const useRecruiterPerformance = () => {
     const presentationCandidates = candidates.filter(c => c.detailed_status === 'presentation_client');
     const missionCandidates = candidates.filter(c => c.detailed_status === 'en_mission');
     
-    // Count candidates who reached each stage (including those who went further)
+    // Count candidates who reached each stage
     const reachedEC1 = candidates.filter(c => 
       ['ec1', 'ec2', 'presentation_client', 'en_mission'].includes(c.detailed_status)
     ).length;
@@ -71,109 +71,85 @@ export const useRecruiterPerformance = () => {
     try {
       setLoading(true);
       
-      // Get all profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .rpc('get_all_profiles_secure');
-      
-      if (profilesError) {
-        throw profilesError;
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('No user authenticated');
+        setLoading(false);
+        return;
       }
 
-      // Get candidates with detailed status for each user
+      // Get current user's profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        // Continue without profile data
+      }
+
+      // Get ONLY current user's candidates with detailed status
       const { data: candidates, error: candidatesError } = await supabase
-        .from('candidates')
-        .select('user_id, detailed_status, created_at');
+        .rpc('get_user_candidates', { user_id_param: user.id });
       
       if (candidatesError) {
         throw candidatesError;
       }
 
-      // Process data to calculate performance metrics
-      const recruiterPerformance: RecruiterPerformance[] = [];
-      let totalCandidates = 0;
-      let totalInMission = 0;
-      let totalRecentActivity = 0;
-      let totalConversionRate = 0;
-      let aggregatedConversionRates = {
-        prequalToEC1: 0,
-        ec1ToEC2: 0,
-        ec2ToPresentation: 0,
-        globalToMission: 0
+      const userCandidates = candidates || [];
+      const candidatesInMission = userCandidates.filter(c => c.detailed_status === 'en_mission').length;
+      
+      // Calculate recent activity (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const recentActivity = userCandidates.filter(c => 
+        new Date(c.created_at) >= thirtyDaysAgo
+      ).length;
+
+      // Calculate conversion rates for current user
+      const { conversionRates, pipelineCounts } = calculateConversionRates(userCandidates);
+      
+      // Overall conversion rate
+      const conversionRate = userCandidates.length > 0 ? 
+        (candidatesInMission / userCandidates.length) * 100 : 0;
+
+      // Determine status based on performance
+      let status: 'excellent' | 'good' | 'warning' | 'inactive' = 'inactive';
+      if (conversionRate >= 15 && recentActivity >= 5) status = 'excellent';
+      else if (conversionRate >= 10 || recentActivity >= 3) status = 'good';
+      else if (recentActivity >= 1) status = 'warning';
+
+      // Calculate last activity
+      const lastCandidate = userCandidates
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+      const currentUserPerformance: RecruiterPerformance = {
+        id: user.id,
+        name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Utilisateur' : 'Utilisateur',
+        email: user.email || user.id,
+        avatar_url: profile?.avatar_url,
+        totalCandidates: userCandidates.length,
+        candidatesInMission,
+        recentActivity,
+        conversionRate,
+        pipelineValue: candidatesInMission * 5000, // Estimation 5k€ per mission
+        lastActivity: lastCandidate?.created_at || profile?.created_at || new Date().toISOString(),
+        status,
+        conversionRates,
+        pipelineCounts
       };
 
-      profiles?.forEach(profile => {
-        const userCandidates = candidates?.filter(c => c.user_id === profile.id) || [];
-        const candidatesInMission = userCandidates.filter(c => c.detailed_status === 'en_mission').length;
-        
-        // Calculate recent activity (last 30 days)
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const recentActivity = userCandidates.filter(c => 
-          new Date(c.created_at) >= thirtyDaysAgo
-        ).length;
-
-        // Calculate conversion rates for this recruiter
-        const { conversionRates, pipelineCounts } = calculateConversionRates(userCandidates);
-        
-        // Overall conversion rate (existing logic)
-        const conversionRate = userCandidates.length > 0 ? 
-          (candidatesInMission / userCandidates.length) * 100 : 0;
-
-        // Determine status based on performance
-        let status: 'excellent' | 'good' | 'warning' | 'inactive' = 'inactive';
-        if (conversionRate >= 15 && recentActivity >= 5) status = 'excellent';
-        else if (conversionRate >= 10 || recentActivity >= 3) status = 'good';
-        else if (recentActivity >= 1) status = 'warning';
-
-        // Calculate last activity
-        const lastCandidate = userCandidates
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-
-        recruiterPerformance.push({
-          id: profile.id,
-          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Utilisateur',
-          email: profile.id, // We don't have email in profiles, using ID as placeholder
-          avatar_url: profile.avatar_url,
-          totalCandidates: userCandidates.length,
-          candidatesInMission,
-          recentActivity,
-          conversionRate,
-          pipelineValue: candidatesInMission * 5000, // Estimation 5k€ per mission (kept for table display)
-          lastActivity: lastCandidate?.created_at || profile.created_at,
-          status,
-          conversionRates,
-          pipelineCounts
-        });
-
-        totalCandidates += userCandidates.length;
-        totalInMission += candidatesInMission;
-        totalRecentActivity += recentActivity;
-        totalConversionRate += conversionRate;
-        
-        // Aggregate conversion rates
-        aggregatedConversionRates.prequalToEC1 += conversionRates.prequalToEC1;
-        aggregatedConversionRates.ec1ToEC2 += conversionRates.ec1ToEC2;
-        aggregatedConversionRates.ec2ToPresentation += conversionRates.ec2ToPresentation;
-        aggregatedConversionRates.globalToMission += conversionRates.globalToMission;
-      });
-
-      // Calculate aggregated stats
-      const profileCount = profiles?.length || 0;
-      const avgConversionRate = profileCount > 0 ? totalConversionRate / profileCount : 0;
-
-      setRecruiters(recruiterPerformance);
+      setRecruiters([currentUserPerformance]);
       setStats({
-        totalRecruiters: profileCount,
-        totalCandidates,
-        candidatesInMission: totalInMission,
-        recentActivity: totalRecentActivity,
-        averageConversionRate: avgConversionRate,
-        averageConversionRates: {
-          prequalToEC1: profileCount > 0 ? aggregatedConversionRates.prequalToEC1 / profileCount : 0,
-          ec1ToEC2: profileCount > 0 ? aggregatedConversionRates.ec1ToEC2 / profileCount : 0,
-          ec2ToPresentation: profileCount > 0 ? aggregatedConversionRates.ec2ToPresentation / profileCount : 0,
-          globalToMission: profileCount > 0 ? aggregatedConversionRates.globalToMission / profileCount : 0
-        }
+        totalRecruiters: 1, // Only current user
+        totalCandidates: userCandidates.length,
+        candidatesInMission: candidatesInMission,
+        recentActivity: recentActivity,
+        averageConversionRate: conversionRate,
+        averageConversionRates: conversionRates
       });
 
     } catch (error: any) {

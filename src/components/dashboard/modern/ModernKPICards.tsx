@@ -29,7 +29,7 @@ const ModernKPICards: React.FC<ModernKPICardsProps> = ({
     {
       title: "Candidats Actifs",
       value: candidatesCount,
-      subtitle: "Profils dans la base",
+      subtitle: "Profils dans votre base",
       icon: Users,
       color: 'from-green-500 to-emerald-500'
     },
@@ -42,7 +42,7 @@ const ModernKPICards: React.FC<ModernKPICardsProps> = ({
     },
     {
       title: "Taux de Matching",
-      value: Math.round((topCandidatesCount / candidatesCount) * 100) || 0,
+      value: candidatesCount > 0 ? Math.round((topCandidatesCount / candidatesCount) * 100) : 0,
       subtitle: "Candidats excellents",
       icon: Zap,
       color: 'from-orange-500 to-red-500'

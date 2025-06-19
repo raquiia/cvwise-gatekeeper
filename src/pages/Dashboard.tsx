@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,6 +46,7 @@ const Dashboard = () => {
           throw new Error("User not authenticated");
         }
         
+        // Use the simplified RPC function that only gets current user's candidates
         const { data: candidatesData, error: candidatesError } = await supabase
           .rpc('get_user_candidates', { user_id_param: user.id });
           
@@ -86,6 +88,7 @@ const Dashboard = () => {
         
         setRecentCandidates(recentCandidatesList);
         
+        // Use the simplified RPC function for resumes as well
         const { data: userResumes, error: resumesError } = await supabase
           .rpc('get_user_resumes', { user_id_param: user.id });
           
@@ -124,7 +127,7 @@ const Dashboard = () => {
           resumesCount={resumesCount}
           candidatesCount={candidatesCount}
           topCandidatesCount={topCandidatesCount}
-          usersCount={recruiterStats.totalRecruiters}
+          usersCount={1}
         />
         
         {/* Advanced Analytics - Only Real Data */}
@@ -151,7 +154,7 @@ const Dashboard = () => {
               <div className="animate-fade-in">
                 <Card className="border-purple-200/30 dark:border-purple-800/20 overflow-hidden shadow-xl bg-white/70 dark:bg-navy-dark/40 backdrop-blur-xl">
                   <CardHeader className="p-5 border-b border-purple-100/50 dark:border-purple-900/30 backdrop-blur-sm bg-gradient-to-r from-white/80 to-purple-50/80 dark:from-navy-dark/90 dark:to-purple-950/30">
-                    <CardTitle className="text-lg font-semibold text-navy-dark dark:text-sand">Performance globale</CardTitle>
+                    <CardTitle className="text-lg font-semibold text-navy-dark dark:text-sand">Performance personnelle</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     <RecruiterActivityStats 
