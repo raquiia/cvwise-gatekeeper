@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,33 +57,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    console.log('🔐 AuthContext initializing...');
+    console.log('AuthContext initializing...');
     let mounted = true;
     
-    // Set up auth state listener
+    // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log('🔄 Auth state changed:', event, 'Session exists:', !!newSession);
+      (event, newSession) => {
+        console.log('Auth state changed:', event);
         
         if (!mounted) return;
         
-        if (newSession?.user) {
+        if (newSession) {
           // Update state synchronously
           setSession(newSession);
           setUser(newSession.user);
           
-          // Debug auth state
-          console.log('✅ User authenticated:', {
-            id: newSession.user.id,
-            email: newSession.user.email,
-            accessToken: newSession.access_token ? 'Present' : 'Missing'
-          });
-          
           // Check admin status asynchronously
-          const adminStatus = await checkAdminStatus(newSession.user);
-          if (mounted) {
+          setTimeout(async () => {
+            if (!mounted) return;
+            const adminStatus = await checkAdminStatus(newSession.user);
             setIsAdmin(adminStatus);
-          }
+          }, 0);
           
           // Only show toast for SIGNED_IN event to prevent multiple toasts
           if (event === 'SIGNED_IN') {
@@ -92,7 +87,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
           }
         } else if (event === 'SIGNED_OUT') {
-          console.log('🚪 User signed out');
           setSession(null);
           setUser(null);
           setIsAdmin(false);
@@ -112,39 +106,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for existing session
     const checkSession = async () => {
       try {
-        console.log('🔍 Checking for existing session...');
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('❌ Error getting session:', error);
-        }
+        console.log('Checking for existing session...');
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         if (!mounted) return;
         
-        if (currentSession?.user) {
-          console.log('✅ Existing session found:', {
-            userId: currentSession.user.id,
-            email: currentSession.user.email
-          });
-          
+        if (currentSession) {
           // Update state synchronously
           setSession(currentSession);
           setUser(currentSession.user);
           
           // Check admin status asynchronously
-          const adminStatus = await checkAdminStatus(currentSession.user);
-          if (mounted) {
+          setTimeout(async () => {
+            if (!mounted) return;
+            const adminStatus = await checkAdminStatus(currentSession.user);
             setIsAdmin(adminStatus);
-          }
-        } else {
-          console.log('❌ No existing session found');
+          }, 0);
         }
         
         // Always set loading to false, even if there's no session
-        console.log('🔄 Setting loading to false');
+        console.log('Setting loading to false');
         setLoading(false);
       } catch (error) {
-        console.error('❌ Error checking session:', error);
+        console.error('Error checking session:', error);
         if (mounted) {
           setLoading(false);
         }
@@ -163,34 +147,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
-      
-      // First check if there's a pending registration for this email
-      const { data: pendingData, error: pendingError } = await supabase
-        .from('pending_registrations')
-        .select('status')
-        .eq('email', email)
-        .single();
-
-      if (!pendingError && pendingData) {
-        if (pendingData.status === 'pending') {
-          toast({
-            title: "Compte en attente de validation",
-            description: "Votre compte n'a pas encore été validé par un administrateur",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        } else if (pendingData.status === 'rejected') {
-          toast({
-            title: "Accès refusé",
-            description: "Votre demande d'inscription a été rejetée",
-            variant: "destructive",
-          });
-          setLoading(false);
-          return;
-        }
-      }
-
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       
       if (error) {
@@ -212,41 +168,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string, userData: any) => {
     try {
       setLoading(true);
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: userData.firstName,
+            last_name: userData.lastName,
+            company: userData.company,
+          },
+        },
+      });
       
-      // Hash the password and store in pending_registrations
-      const { data, error } = await supabase
-        .from('pending_registrations')
-        .insert({
-          email,
-          password_hash: password, // In a real app, this should be hashed on the server
-          first_name: userData.firstName,
-          last_name: userData.lastName,
-          company: userData.company || null,
-        })
-        .select()
-        .single();
-
       if (error) {
-        if (error.code === '23505') { // Unique constraint violation
-          toast({
-            title: "Email déjà utilisé",
-            description: "Un compte avec cet email existe déjà ou est en attente de validation",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Échec de l'inscription",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "Échec de l'inscription",
+          description: error.message,
+          variant: "destructive",
+        });
         setLoading(false);
         throw error;
       }
       
       toast({
         title: "Inscription réussie",
-        description: "Votre demande d'inscription a été envoyée et est en attente de validation",
+        description: "Votre demande d'inscription a été envoyée",
       });
       
       navigate('/registration-pending');

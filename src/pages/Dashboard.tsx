@@ -1,30 +1,38 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useRecruiterPerformance } from '@/hooks/useRecruiterPerformance';
+import { useUserData } from '@/hooks/useUserData';
+import UserStats from '@/components/admin/UserStats';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { formatDate } from '@/utils/dateFormatter';
 import { calculateCandidateScore } from '@/services/scoring/candidateScoring';
 import { formatCandidateData } from '@/services/data/candidateService';
+import { aggregateEducationData, aggregateSectorData } from '@/utils/dashboardUtils';
 
 // Import our modern components
 import DashboardHeader from '@/components/dashboard/modern/DashboardHeader';
 import ModernKPICards from '@/components/dashboard/modern/ModernKPICards';
+import AdvancedAnalytics from '@/components/dashboard/modern/AdvancedAnalytics';
+import RealDataMetrics from '@/components/dashboard/modern/RealDataMetrics';
 import RecentCandidatesTable from '@/components/dashboard/RecentCandidatesTable';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [recentCandidates, setRecentCandidates] = useState([]);
   const { toast } = useToast();
-  const { stats: recruiterStats, loading: recruiterLoading } = useRecruiterPerformance();
+  const { realUsers, loading: usersLoading } = useUserData();
   const [candidatesCount, setCandidatesCount] = useState(0);
   const [resumesCount, setResumesCount] = useState(0);
   const [topCandidatesCount, setTopCandidatesCount] = useState(0);
+  const [candidatesData, setCandidatesData] = useState([]);
+  const [educationData, setEducationData] = useState([]);
+  const [sectorData, setSectorData] = useState([]);
   
   const handleSearch = (query: string) => {
+    // Implement search functionality here
     console.log('Searching for:', query);
+    // You could filter candidates or redirect to candidates page with search
   };
 
   useEffect(() => {
@@ -37,7 +45,6 @@ const Dashboard = () => {
           throw new Error("User not authenticated");
         }
         
-        // Get current user's candidates
         const { data: candidatesData, error: candidatesError } = await supabase
           .rpc('get_user_candidates', { user_id_param: user.id });
           
@@ -46,10 +53,16 @@ const Dashboard = () => {
           throw candidatesError;
         }
         
+        // Format candidates data to match CandidateData interface
         const formattedCandidates = (candidatesData || []).map(formatCandidateData);
+        
+        setCandidatesData(formattedCandidates);
         setCandidatesCount(formattedCandidates?.length || 0);
         
-        // Calculate excellent candidates
+        setEducationData(aggregateEducationData(formattedCandidates || []));
+        setSectorData(aggregateSectorData(formattedCandidates || []));
+        
+        // Calculer les candidats excellents avec le nouveau système de scoring
         const excellentCandidates = formattedCandidates.filter(candidateData => {
           const score = calculateCandidateScore(candidateData);
           return score.overall >= 85;
@@ -73,7 +86,6 @@ const Dashboard = () => {
         
         setRecentCandidates(recentCandidatesList);
         
-        // Get user resumes
         const { data: userResumes, error: resumesError } = await supabase
           .rpc('get_user_resumes', { user_id_param: user.id });
           
@@ -103,21 +115,64 @@ const Dashboard = () => {
     <Layout className="min-h-screen bg-gradient-to-br from-purple-50/30 via-white to-blue-50/30 dark:from-navy-dark/90 dark:via-navy-dark dark:to-purple-950/30">
       <div className="container mx-auto px-4 py-6 pb-16 space-y-8">
         
+        {/* Modern Header */}
         <DashboardHeader onSearch={handleSearch} />
         
+        {/* Modern KPI Cards */}
         <ModernKPICards 
           loading={loading}
           resumesCount={resumesCount}
           candidatesCount={candidatesCount}
           topCandidatesCount={topCandidatesCount}
-          usersCount={1}
+          usersCount={realUsers.length}
         />
         
-        <div className="grid grid-cols-1 gap-6">
-          <RecentCandidatesTable 
-            loading={loading}
-            candidates={recentCandidates}
-          />
+        {/* Advanced Analytics - Only Real Data */}
+        <AdvancedAnalytics 
+          candidatesData={candidatesData}
+          educationData={educationData}
+          sectorData={sectorData}
+        />
+        
+        {/* New Real Data Metrics */}
+        <RealDataMetrics candidatesData={candidatesData} />
+        
+        {/* Bottom Grid - Recent Data & User Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <RecentCandidatesTable 
+              loading={loading}
+              candidates={recentCandidates}
+            />
+          </div>
+          
+          <div>
+            {!usersLoading && (
+              <div className="animate-fade-in">
+                <Card className="border-purple-200/30 dark:border-purple-800/20 overflow-hidden shadow-xl bg-white/70 dark:bg-navy-dark/40 backdrop-blur-xl">
+                  <CardHeader className="p-5 border-b border-purple-100/50 dark:border-purple-900/30 backdrop-blur-sm bg-gradient-to-r from-white/80 to-purple-50/80 dark:from-navy-dark/90 dark:to-purple-950/30">
+                    <CardTitle className="text-lg font-semibold text-navy-dark dark:text-sand">Statistiques utilisateurs</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <UserStats 
+                      activeUsersCount={realUsers.length}
+                      pendingUsersCount={0}
+                      recentUsers={realUsers.slice(0, 3).map(user => ({
+                        id: user.id,
+                        email: user.email || '',
+                        first_name: user.profile?.first_name || user.first_name || '',
+                        last_name: user.profile?.last_name || user.last_name || '',
+                        created_at: user.created_at,
+                        last_sign_in_at: user.last_sign_in_at
+                      }))}
+                      formatDate={formatDate}
+                      companiesCount={topCandidatesCount}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Layout>

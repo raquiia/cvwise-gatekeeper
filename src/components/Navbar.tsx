@@ -106,9 +106,9 @@ const Navbar = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48 glass">
                       <DropdownMenuItem asChild>
-                        <Link to="/profile" className="flex items-center">
+                        <Link to="/dashboard" className="flex items-center">
                           <User className="mr-2 h-4 w-4" />
-                          <span>Mon Profil</span>
+                          <span>Profile</span>
                         </Link>
                       </DropdownMenuItem>
                       {isAdmin && (
@@ -193,9 +193,6 @@ const Navbar = () => {
                     Administration
                   </NavLink>
                 )}
-                <NavLink href="/profile" icon={User}>
-                  Mon Profil
-                </NavLink>
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);

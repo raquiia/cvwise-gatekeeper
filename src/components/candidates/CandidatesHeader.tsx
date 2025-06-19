@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
+import ReprocessDataButton from './ReprocessDataButton';
 import { Users, Filter } from 'lucide-react';
 
 interface CandidatesHeaderProps {
@@ -35,6 +36,10 @@ const CandidatesHeader: React.FC<CandidatesHeaderProps> = ({
                 </p>
               </div>
             </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <ReprocessDataButton />
           </div>
         </div>
         

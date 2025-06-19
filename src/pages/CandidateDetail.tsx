@@ -11,7 +11,6 @@ import { processCandidateData } from '@/utils/candidateUtils';
 import { toast } from '@/hooks/use-toast';
 import { getCompleteCandidateData } from '@/services/resume/candidateDataService';
 import { aiDataMigrationService } from '@/services/data/aiDataMigrationService';
-import { useAuth } from '@/context/AuthContext';
 
 // Import the component tabs
 import ProfileTab from '@/components/candidates/detail/ProfileTab';
@@ -30,70 +29,46 @@ import DebugAIScoreButton from '@/components/candidates/detail/DebugAIScoreButto
 const CandidateDetail = () => {
   const { candidateId } = useParams<{ candidateId: string }>();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
   const [candidate, setCandidate] = useState<CandidateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
 
-  // Debug logging pour identifier le problème
-  useEffect(() => {
-    console.log('🔍 CandidateDetail Debug:', {
-      candidateId,
-      candidateIdType: typeof candidateId,
-      candidateIdLength: candidateId?.length,
-      windowLocation: window.location.href,
-      authLoading,
-      hasUser: !!user
-    });
-  }, [candidateId, authLoading, user]);
-
-  // Stable function that doesn't depend on changing state
-  const fetchCandidateData = useCallback(async (currentCandidateId: string, currentUser: any) => {
-    if (!currentCandidateId || currentCandidateId === 'undefined') {
-      console.error("❌ CandidateDetail: Invalid candidate ID:", currentCandidateId);
-      setError("Identifiant de candidat manquant ou invalide");
-      setLoading(false);
-      return;
-    }
-
-    if (!currentUser) {
-      console.log("❌ CandidateDetail: User not authenticated");
-      setError("Vous devez être connecté pour voir ce candidat");
+  // Stable function that doesn't depend on state
+  const fetchCandidateData = useCallback(async () => {
+    if (!candidateId) {
+      console.error("No candidate ID provided");
+      setError("Identifiant de candidat manquant");
       setLoading(false);
       return;
     }
 
     try {
-      console.log("🔄 CandidateDetail: Starting data fetch for ID:", currentCandidateId);
-      console.log("🔐 Current user:", { id: currentUser.id, email: currentUser.email });
-      
       setLoading(true);
-      setError(null);
+      console.log("🔄 CandidateDetail: Starting data fetch for ID:", candidateId);
       
-      // Add timeout to prevent infinite loading
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout: Le chargement prend trop de temps')), 30000)
-      );
-      
-      const dataPromise = getCompleteCandidateData(currentCandidateId);
-      
-      const data = await Promise.race([dataPromise, timeoutPromise]) as CandidateData | null;
+      // Utiliser directement le service mis à jour qui récupère les données AI
+      const data = await getCompleteCandidateData(candidateId);
       
       if (!data) {
-        console.log("📭 CandidateDetail: Candidate not found:", currentCandidateId);
-        setError("Candidat non trouvé ou vous n'avez pas accès à ce candidat");
+        console.log("Candidate not found:", candidateId);
+        setError("Candidat non trouvé");
       } else {
-        console.log("✅ CandidateDetail: Processing candidate data...");
+        console.log("🔄 CandidateDetail: Processing candidate data...");
         
         // Process the data to ensure arrays and properties are correctly formatted
         const processedData = processCandidateData(data);
         
-        console.log("📋 CandidateDetail: Data processed successfully:", {
-          id: processedData.id,
+        console.log("📋 CandidateDetail: Data after processCandidateData:", {
           first_name: processedData.first_name,
           last_name: processedData.last_name,
+          address: processedData.address,
+          postal_code: processedData.postal_code,
+          city: processedData.city,
+          country: processedData.country,
+          ai_score: processedData.ai_score,
+          ai_analyzed_at: processedData.ai_analyzed_at,
           hasAIData: !!(processedData.ai_score || processedData.ai_explanation)
         });
         
@@ -107,70 +82,42 @@ const CandidateDetail = () => {
         
         const hasIncompleteData = hasEmptyExperiences || hasEmptyEducation || hasEmptyLanguages;
         
-        console.log("🔍 CandidateDetail: Data completeness check:", {
+        console.log("Data completeness check:", {
           experiences: !hasEmptyExperiences,
           education: !hasEmptyEducation,
           languages: !hasEmptyLanguages,
-          isComplete: !hasIncompleteData
+          isComplete: !hasIncompleteData,
+          hasAIAnalysis: !!(processedData.ai_score || processedData.ai_explanation)
         });
         
         setDataIncompletenessDetected(hasIncompleteData);
+        
+        console.log("💾 CandidateDetail: Setting candidate state with processed data");
         setCandidate(processedData);
         
-        console.log("🎯 CandidateDetail: Successfully set candidate state");
+        console.log("🎯 CandidateDetail: Final candidate state set:", {
+          first_name: processedData.first_name,
+          last_name: processedData.last_name,
+          address: processedData.address,
+          postal_code: processedData.postal_code,
+          city: processedData.city,
+          country: processedData.country,
+          ai_score: processedData.ai_score,
+          ai_analyzed_at: processedData.ai_analyzed_at
+        });
       }
     } catch (err: any) {
-      console.error("❌ CandidateDetail: Error loading candidate:", err);
-      
-      // Improve error message based on the error type
-      if (err.message?.includes('Timeout')) {
-        setError("Le chargement prend trop de temps. Veuillez réessayer.");
-      } else if (err.message?.includes('not authorized') || err.message?.includes('Access denied')) {
-        setError("Vous n'avez pas accès à ce candidat ou votre session a expiré.");
-      } else if (err.message?.includes('not found')) {
-        setError("Ce candidat n'existe pas ou n'est plus disponible.");
-      } else if (err.message?.includes('not authenticated')) {
-        setError("Votre session a expiré. Veuillez vous reconnecter.");
-      } else {
-        setError(`Erreur lors du chargement: ${err.message}`);
-      }
+      console.error("Error loading candidate:", err);
+      setError(`Une erreur s'est produite lors du chargement des données: ${err.message}`);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [candidateId]);
 
-  // Single effect to handle authentication and data fetching
+  // Effect that runs only when candidateId changes
   useEffect(() => {
-    // Wait for auth to be ready
-    if (authLoading) {
-      console.log("⏳ CandidateDetail: Waiting for auth...");
-      return;
-    }
-
-    // Check authentication
-    if (!user) {
-      console.log("❌ CandidateDetail: User not authenticated, redirecting");
-      toast({
-        title: "Connexion requise",
-        description: "Vous devez être connecté pour voir les détails du candidat",
-        variant: "destructive",
-      });
-      navigate('/login');
-      return;
-    }
-
-    // Check for valid candidate ID
-    if (!candidateId || candidateId === 'undefined') {
-      console.log("❌ CandidateDetail: Invalid candidateId:", candidateId);
-      setError("Identifiant de candidat manquant ou invalide");
-      setLoading(false);
-      return;
-    }
-
-    // All conditions met, fetch data
-    console.log("✅ CandidateDetail: All conditions met, fetching data");
-    fetchCandidateData(candidateId, user);
-  }, [authLoading, user, candidateId, fetchCandidateData, navigate]);
+    fetchCandidateData();
+  }, [candidateId, fetchCandidateData]);
 
   // Stable status change handler
   const handleStatusChange = useCallback((newStatus: string) => {
@@ -185,35 +132,23 @@ const CandidateDetail = () => {
     });
   }, []);
 
-  // Enhanced refresh function
+  // Enhanced refresh function that also refreshes AI scores
   const handleRefreshWithAIScore = useCallback(async () => {
     console.log('🔄 CandidateDetail: Enhanced refresh requested');
     
-    if (candidateId && candidateId !== 'undefined' && user) {
-      await fetchCandidateData(candidateId, user);
+    // Refresh candidate data
+    await fetchCandidateData();
+    
+    // Force refresh AI scores after a short delay to ensure data is loaded
+    if (candidateId) {
+      setTimeout(() => {
+        console.log('🔄 CandidateDetail: Force refreshing AI scores');
+        // This will be handled by the AI scoring hooks in the components
+      }, 500);
     }
-  }, [candidateId, user, fetchCandidateData]);
-
-  // Show loading while checking authentication
-  if (authLoading) {
-    console.log("🔄 CandidateDetail: Showing auth loading state");
-    return (
-      <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <CandidateLoading />
-        </div>
-      </Layout>
-    );
-  }
-
-  // Don't render if user is not authenticated (redirect is handled in useEffect)
-  if (!user) {
-    console.log("❌ CandidateDetail: No user, not rendering");
-    return null;
-  }
+  }, [fetchCandidateData, candidateId]);
 
   if (loading) {
-    console.log("🔄 CandidateDetail: Showing candidate loading state");
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
@@ -224,7 +159,6 @@ const CandidateDetail = () => {
   }
 
   if (error || !candidate) {
-    console.log("❌ CandidateDetail: Showing error state:", error);
     return (
       <Layout>
         <div className="container mx-auto px-4 py-8">
@@ -233,8 +167,6 @@ const CandidateDetail = () => {
       </Layout>
     );
   }
-
-  console.log("✅ CandidateDetail: Rendering candidate details");
 
   return (
     <Layout className="bg-gradient-to-br from-background via-background to-muted/20">
