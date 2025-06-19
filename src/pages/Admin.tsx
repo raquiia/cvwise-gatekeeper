@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Settings, Shield, Building, RefreshCw, 
@@ -78,7 +77,7 @@ const Admin = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [pendingUsers, setPendingUsers] = useState(pendingUsersData);
+  const [pendingUsers, setPendingUsers] = useState([]);
   const [recruitmentStats, setRecruitmentStats] = useState<GlobalRecruitmentStats | null>(null);
   const [loading, setLoading] = useState(true);
   const { realUsers, loading: usersDataLoading } = useUserData();
@@ -90,6 +89,40 @@ const Admin = () => {
       return;
     }
   }, [user, navigate]);
+
+  // Charger les vraies données de demandes en attente
+  useEffect(() => {
+    const loadPendingRegistrations = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('pending_registrations')
+          .select('*')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('Error loading pending registrations:', error);
+        } else {
+          // Mapper les données pour correspondre au format attendu par PendingUsersList
+          const mappedData = data?.map(reg => ({
+            id: reg.id,
+            name: `${reg.first_name} ${reg.last_name}`,
+            email: reg.email,
+            company: reg.company || 'Non spécifiée',
+            role: 'Recruteur',
+            registrationDate: formatDate(reg.created_at),
+            avatar: null
+          })) || [];
+          
+          setPendingUsers(mappedData);
+        }
+      } catch (error) {
+        console.error('Error loading pending registrations:', error);
+      }
+    };
+
+    loadPendingRegistrations();
+  }, []);
 
   // Charger les stats de recrutement
   useEffect(() => {
@@ -107,15 +140,72 @@ const Admin = () => {
     loadRecruitmentStats();
   }, []);
 
-  const handleApproveUser = (userId: number) => {
-    const userToApprove = pendingUsers.find(user => user.id === userId);
-    if (userToApprove) {
+  const handleApproveUser = async (userId: number) => {
+    try {
+      // Mettre à jour le statut dans la base de données
+      const { error } = await supabase
+        .from('pending_registrations')
+        .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+        .eq('id', userId);
+      
+      if (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible d'approuver l'utilisateur",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Retirer de la liste locale
       setPendingUsers(prev => prev.filter(user => user.id !== userId));
+      
+      toast({
+        title: "Utilisateur approuvé",
+        description: "L'utilisateur a été approuvé avec succès",
+      });
+    } catch (error) {
+      console.error('Error approving user:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur s'est produite",
+        variant: "destructive",
+      });
     }
   };
   
-  const handleRejectUser = (userId: number) => {
-    setPendingUsers(prev => prev.filter(user => user.id !== userId));
+  const handleRejectUser = async (userId: number) => {
+    try {
+      // Mettre à jour le statut dans la base de données
+      const { error } = await supabase
+        .from('pending_registrations')
+        .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
+        .eq('id', userId);
+      
+      if (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de rejeter l'utilisateur",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Retirer de la liste locale
+      setPendingUsers(prev => prev.filter(user => user.id !== userId));
+      
+      toast({
+        title: "Utilisateur rejeté",
+        description: "L'utilisateur a été rejeté",
+      });
+    } catch (error) {
+      console.error('Error rejecting user:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur s'est produite",
+        variant: "destructive",
+      });
+    }
   };
   
   // Extraction du nombre d'entreprises uniques
