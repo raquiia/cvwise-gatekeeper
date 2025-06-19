@@ -134,36 +134,41 @@ export class RecruitmentAnalyticsService {
 
           console.log(`User ${profile.id} has ${periodCandidates.length} candidates in period`);
 
+          // NOUVELLE LOGIQUE : Si pas de candidats dans la période, on prend tous les candidats
+          const candidatesToAnalyze = periodCandidates.length > 0 ? periodCandidates : candidates || [];
+          const isUsingAllCandidates = periodCandidates.length === 0 && candidates && candidates.length > 0;
+
+          if (isUsingAllCandidates) {
+            console.log(`User ${profile.id}: No candidates in period, using all ${candidatesToAnalyze.length} candidates for KPI calculation`);
+          }
+
           // Compter par statut détaillé
-          const prequalification = periodCandidates.filter(c => c.detailed_status === 'prequalification').length;
-          const ec1 = periodCandidates.filter(c => c.detailed_status === 'ec1').length;
-          const ec2 = periodCandidates.filter(c => c.detailed_status === 'ec2').length;
-          const presentation = periodCandidates.filter(c => c.detailed_status === 'presentation_client').length;
-          const mission = periodCandidates.filter(c => c.detailed_status === 'en_mission').length;
+          const prequalification = candidatesToAnalyze.filter(c => c.detailed_status === 'prequalification').length;
+          const ec1 = candidatesToAnalyze.filter(c => c.detailed_status === 'ec1').length;
+          const ec2 = candidatesToAnalyze.filter(c => c.detailed_status === 'ec2').length;
+          const presentation = candidatesToAnalyze.filter(c => c.detailed_status === 'presentation_client').length;
+          const mission = candidatesToAnalyze.filter(c => c.detailed_status === 'en_mission').length;
 
           console.log(`User ${profile.id} status breakdown:`, {
             prequalification,
             ec1,
             ec2,
             presentation,
-            mission
+            mission,
+            usingAllCandidates: isUsingAllCandidates
           });
 
-          // LOGIQUE DE CONVERSION CORRIGÉE
-          // Les taux de conversion doivent être calculés de manière logique
-          const totalActive = prequalification + ec1 + ec2 + presentation + mission;
-          
-          // Conversion: candidats ayant progressé par rapport au total actif
-          const conversionPrequalToEC1 = totalActive > 0 ? Math.round(((ec1 + ec2 + presentation + mission) / totalActive) * 100) : 0;
-          const conversionEC1ToEC2 = (ec1 + ec2 + presentation + mission) > 0 ? Math.round(((ec2 + presentation + mission) / (ec1 + ec2 + presentation + mission)) * 100) : 0;
-          const conversionEC2ToPresentation = (ec2 + presentation + mission) > 0 ? Math.round(((presentation + mission) / (ec2 + presentation + mission)) * 100) : 0;
-          const conversionEC2ToMission = (ec2 + presentation + mission) > 0 ? Math.round((mission / (ec2 + presentation + mission)) * 100) : 0;
+          // Calculer les taux de conversion
+          const conversionPrequalToEC1 = prequalification > 0 ? Math.round(((ec1 + ec2 + presentation + mission) / prequalification) * 100) : 0;
+          const conversionEC1ToEC2 = ec1 > 0 ? Math.round(((ec2 + presentation + mission) / ec1) * 100) : 0;
+          const conversionEC2ToPresentation = ec2 > 0 ? Math.round(((presentation + mission) / ec2) * 100) : 0;
+          const conversionEC2ToMission = ec2 > 0 ? Math.round((mission / ec2) * 100) : 0;
 
           recruiterKPIs.push({
             recruiterId: profile.id,
             recruiterName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Recruteur',
             recruiterEmail: '', // L'email n'est pas disponible dans les profils
-            totalCVs: periodCandidates.length,
+            totalCVs: candidatesToAnalyze.length,
             candidatesInPrequalification: prequalification,
             candidatesInEC1: ec1,
             candidatesInEC2: ec2,
@@ -229,29 +234,35 @@ export class RecruitmentAnalyticsService {
 
       console.log(`${periodCandidates.length} candidates in period`);
 
+      // NOUVELLE LOGIQUE : Si pas de candidats dans la période, on prend tous les candidats
+      const candidatesToAnalyze = periodCandidates.length > 0 ? periodCandidates : candidates || [];
+      const isUsingAllCandidates = periodCandidates.length === 0 && candidates && candidates.length > 0;
+
+      if (isUsingAllCandidates) {
+        console.log(`Recruiter ${recruiterId}: No candidates in period, using all ${candidatesToAnalyze.length} candidates for KPI calculation`);
+      }
+
       // Compter par statut détaillé
-      const prequalification = periodCandidates.filter(c => c.detailed_status === 'prequalification').length;
-      const ec1 = periodCandidates.filter(c => c.detailed_status === 'ec1').length;
-      const ec2 = periodCandidates.filter(c => c.detailed_status === 'ec2').length;
-      const presentation = periodCandidates.filter(c => c.detailed_status === 'presentation_client').length;
-      const mission = periodCandidates.filter(c => c.detailed_status === 'en_mission').length;
+      const prequalification = candidatesToAnalyze.filter(c => c.detailed_status === 'prequalification').length;
+      const ec1 = candidatesToAnalyze.filter(c => c.detailed_status === 'ec1').length;
+      const ec2 = candidatesToAnalyze.filter(c => c.detailed_status === 'ec2').length;
+      const presentation = candidatesToAnalyze.filter(c => c.detailed_status === 'presentation_client').length;
+      const mission = candidatesToAnalyze.filter(c => c.detailed_status === 'en_mission').length;
 
       console.log('Status breakdown:', {
         prequalification,
         ec1,
         ec2,
         presentation,
-        mission
+        mission,
+        usingAllCandidates: isUsingAllCandidates
       });
 
-      // LOGIQUE DE CONVERSION CORRIGÉE
-      const totalActive = prequalification + ec1 + ec2 + presentation + mission;
-      
-      // Conversion: candidats ayant progressé par rapport au total actif
-      const conversionPrequalToEC1 = totalActive > 0 ? Math.round(((ec1 + ec2 + presentation + mission) / totalActive) * 100) : 0;
-      const conversionEC1ToEC2 = (ec1 + ec2 + presentation + mission) > 0 ? Math.round(((ec2 + presentation + mission) / (ec1 + ec2 + presentation + mission)) * 100) : 0;
-      const conversionEC2ToPresentation = (ec2 + presentation + mission) > 0 ? Math.round(((presentation + mission) / (ec2 + presentation + mission)) * 100) : 0;
-      const conversionEC2ToMission = (ec2 + presentation + mission) > 0 ? Math.round((mission / (ec2 + presentation + mission)) * 100) : 0;
+      // Calculer les taux de conversion
+      const conversionPrequalToEC1 = prequalification > 0 ? Math.round(((ec1 + ec2 + presentation + mission) / prequalification) * 100) : 0;
+      const conversionEC1ToEC2 = ec1 > 0 ? Math.round(((ec2 + presentation + mission) / ec1) * 100) : 0;
+      const conversionEC2ToPresentation = ec2 > 0 ? Math.round(((presentation + mission) / ec2) * 100) : 0;
+      const conversionEC2ToMission = ec2 > 0 ? Math.round((mission / ec2) * 100) : 0;
 
       // Récupérer les infos du recruteur
       const { data: profile } = await supabase
@@ -264,7 +275,7 @@ export class RecruitmentAnalyticsService {
         recruiterId,
         recruiterName: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : 'Recruteur',
         recruiterEmail: '',
-        totalCVs: periodCandidates.length,
+        totalCVs: candidatesToAnalyze.length,
         candidatesInPrequalification: prequalification,
         candidatesInEC1: ec1,
         candidatesInEC2: ec2,
