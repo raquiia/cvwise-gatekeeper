@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -35,6 +36,17 @@ const CandidateDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
+
+  // Debug logging pour identifier le problème
+  useEffect(() => {
+    console.log('🔍 CandidateDetail Debug:', {
+      candidateId,
+      candidateIdType: typeof candidateId,
+      candidateIdLength: candidateId?.length,
+      windowLocation: window.location.href,
+      params: useParams()
+    });
+  }, [candidateId]);
 
   // Stable function that doesn't depend on changing state
   const fetchCandidateData = useCallback(async (currentCandidateId: string, currentUser: any) => {
@@ -141,20 +153,31 @@ const CandidateDetail = () => {
     }
   }, [authLoading, user, navigate]);
 
-  // Separate data fetching effect
+  // Separate data fetching effect - FIX: Vérifier que candidateId n'est pas undefined
   useEffect(() => {
     console.log("🔄 CandidateDetail: Data fetch effect triggered", {
       authLoading,
       hasUser: !!user,
-      candidateId
+      candidateId,
+      candidateIdValid: !!candidateId && candidateId !== 'undefined'
     });
     
-    // Only fetch when auth is ready, user is authenticated, and we have a candidate ID
-    if (!authLoading && user && candidateId) {
+    // Only fetch when auth is ready, user is authenticated, and we have a VALID candidate ID
+    if (!authLoading && user && candidateId && candidateId !== 'undefined') {
       console.log("✅ CandidateDetail: Conditions met, starting fetch");
       fetchCandidateData(candidateId, user);
     } else {
-      console.log("⏳ CandidateDetail: Waiting for auth or missing candidateId");
+      console.log("⏳ CandidateDetail: Waiting for auth or invalid candidateId", {
+        candidateId,
+        isUndefined: candidateId === 'undefined',
+        isEmpty: !candidateId
+      });
+      
+      // Si candidateId is undefined/invalid, set appropriate error
+      if (!authLoading && user && (!candidateId || candidateId === 'undefined')) {
+        setError("Identifiant de candidat manquant ou invalide");
+        setLoading(false);
+      }
     }
   }, [authLoading, user, candidateId, fetchCandidateData]);
 
@@ -175,7 +198,7 @@ const CandidateDetail = () => {
   const handleRefreshWithAIScore = useCallback(async () => {
     console.log('🔄 CandidateDetail: Enhanced refresh requested');
     
-    if (candidateId && user) {
+    if (candidateId && candidateId !== 'undefined' && user) {
       await fetchCandidateData(candidateId, user);
     }
   }, [candidateId, user, fetchCandidateData]);
