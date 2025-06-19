@@ -34,26 +34,29 @@ export class RecruitmentAnalyticsService {
       if (!user) throw new Error("User not authenticated");
 
       // Récupérer tous les candidats avec leurs données complètes
-      const { data: candidates, error } = await supabase
+      const { data: candidatesRaw, error } = await supabase
         .rpc('get_user_candidates', { user_id_param: user.id });
       
       if (error) throw error;
+
+      // Cast properly to CandidateData to access detailed_status
+      const candidates = candidatesRaw?.map(candidate => candidate as any as CandidateData) || [];
 
       const currentMonth = new Date();
       const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
       
       // Filtrer les CVs de ce mois
-      const cvsThisMonth = candidates?.filter(candidate => 
-        new Date(candidate.created_at) >= firstDayOfMonth
-      ) || [];
+      const cvsThisMonth = candidates.filter(candidate => 
+        new Date(candidate.created_at || '') >= firstDayOfMonth
+      );
 
       // Candidats en mission
-      const candidatesInMission = candidates?.filter(candidate => 
+      const candidatesInMission = candidates.filter(candidate => 
         candidate.detailed_status === 'en_mission'
-      ) || [];
+      );
 
       // Calculer le taux de conversion global
-      const totalCandidates = candidates?.length || 0;
+      const totalCandidates = candidates.length;
       const globalConversionRate = totalCandidates > 0 
         ? Math.round((candidatesInMission.length / totalCandidates) * 100)
         : 0;
@@ -72,10 +75,13 @@ export class RecruitmentAnalyticsService {
 
   async getRecruiterKPIs(recruiterId: string, period: 'current_month' | 'last_month' | 'quarter' = 'current_month'): Promise<RecruiterKPI> {
     try {
-      const { data: candidates, error } = await supabase
+      const { data: candidatesRaw, error } = await supabase
         .rpc('get_user_candidates', { user_id_param: recruiterId });
       
       if (error) throw error;
+
+      // Cast properly to CandidateData to access detailed_status
+      const candidates = candidatesRaw?.map(candidate => candidate as any as CandidateData) || [];
 
       // Calculer la période
       const now = new Date();
@@ -92,9 +98,9 @@ export class RecruitmentAnalyticsService {
           startDate = new Date(now.getFullYear(), now.getMonth(), 1);
       }
 
-      const periodCandidates = candidates?.filter(candidate => 
-        new Date(candidate.created_at) >= startDate
-      ) || [];
+      const periodCandidates = candidates.filter(candidate => 
+        new Date(candidate.created_at || '') >= startDate
+      );
 
       // Compter par statut
       const prequalification = periodCandidates.filter(c => c.detailed_status === 'prequalification').length;
