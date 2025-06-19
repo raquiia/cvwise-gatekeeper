@@ -160,6 +160,7 @@ const Dashboard = () => {
                       candidatesInMission={recruiterStats.candidatesInMission}
                       recentActivity={recruiterStats.recentActivity}
                       averageConversionRate={recruiterStats.averageConversionRate}
+                      averageConversionRates={recruiterStats.averageConversionRates}
                     />
                   </CardContent>
                 </Card>
