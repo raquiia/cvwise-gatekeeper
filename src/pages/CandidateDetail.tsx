@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -44,15 +43,16 @@ const CandidateDetail = () => {
       candidateIdType: typeof candidateId,
       candidateIdLength: candidateId?.length,
       windowLocation: window.location.href,
-      params: useParams()
+      authLoading,
+      hasUser: !!user
     });
-  }, [candidateId]);
+  }, [candidateId, authLoading, user]);
 
   // Stable function that doesn't depend on changing state
   const fetchCandidateData = useCallback(async (currentCandidateId: string, currentUser: any) => {
-    if (!currentCandidateId) {
-      console.error("❌ CandidateDetail: No candidate ID provided");
-      setError("Identifiant de candidat manquant");
+    if (!currentCandidateId || currentCandidateId === 'undefined') {
+      console.error("❌ CandidateDetail: Invalid candidate ID:", currentCandidateId);
+      setError("Identifiant de candidat manquant ou invalide");
       setLoading(false);
       return;
     }
@@ -138,11 +138,16 @@ const CandidateDetail = () => {
     }
   }, []);
 
-  // Separate authentication check effect
+  // Single effect to handle authentication and data fetching
   useEffect(() => {
-    console.log("🔐 CandidateDetail: Auth check - loading:", authLoading, "user:", !!user);
-    
-    if (!authLoading && !user) {
+    // Wait for auth to be ready
+    if (authLoading) {
+      console.log("⏳ CandidateDetail: Waiting for auth...");
+      return;
+    }
+
+    // Check authentication
+    if (!user) {
       console.log("❌ CandidateDetail: User not authenticated, redirecting");
       toast({
         title: "Connexion requise",
@@ -150,36 +155,21 @@ const CandidateDetail = () => {
         variant: "destructive",
       });
       navigate('/login');
+      return;
     }
-  }, [authLoading, user, navigate]);
 
-  // Separate data fetching effect - FIX: Vérifier que candidateId n'est pas undefined
-  useEffect(() => {
-    console.log("🔄 CandidateDetail: Data fetch effect triggered", {
-      authLoading,
-      hasUser: !!user,
-      candidateId,
-      candidateIdValid: !!candidateId && candidateId !== 'undefined'
-    });
-    
-    // Only fetch when auth is ready, user is authenticated, and we have a VALID candidate ID
-    if (!authLoading && user && candidateId && candidateId !== 'undefined') {
-      console.log("✅ CandidateDetail: Conditions met, starting fetch");
-      fetchCandidateData(candidateId, user);
-    } else {
-      console.log("⏳ CandidateDetail: Waiting for auth or invalid candidateId", {
-        candidateId,
-        isUndefined: candidateId === 'undefined',
-        isEmpty: !candidateId
-      });
-      
-      // Si candidateId is undefined/invalid, set appropriate error
-      if (!authLoading && user && (!candidateId || candidateId === 'undefined')) {
-        setError("Identifiant de candidat manquant ou invalide");
-        setLoading(false);
-      }
+    // Check for valid candidate ID
+    if (!candidateId || candidateId === 'undefined') {
+      console.log("❌ CandidateDetail: Invalid candidateId:", candidateId);
+      setError("Identifiant de candidat manquant ou invalide");
+      setLoading(false);
+      return;
     }
-  }, [authLoading, user, candidateId, fetchCandidateData]);
+
+    // All conditions met, fetch data
+    console.log("✅ CandidateDetail: All conditions met, fetching data");
+    fetchCandidateData(candidateId, user);
+  }, [authLoading, user, candidateId, fetchCandidateData, navigate]);
 
   // Stable status change handler
   const handleStatusChange = useCallback((newStatus: string) => {

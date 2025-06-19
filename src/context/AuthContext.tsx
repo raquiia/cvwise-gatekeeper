@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('🔐 AuthContext initializing...');
     let mounted = true;
     
-    // Set up auth state listener first
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log('🔄 Auth state changed:', event, 'Session exists:', !!newSession);
@@ -80,11 +79,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           
           // Check admin status asynchronously
-          setTimeout(async () => {
-            if (!mounted) return;
-            const adminStatus = await checkAdminStatus(newSession.user);
+          const adminStatus = await checkAdminStatus(newSession.user);
+          if (mounted) {
             setIsAdmin(adminStatus);
-          }, 0);
+          }
           
           // Only show toast for SIGNED_IN event to prevent multiple toasts
           if (event === 'SIGNED_IN') {
@@ -134,11 +132,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(currentSession.user);
           
           // Check admin status asynchronously
-          setTimeout(async () => {
-            if (!mounted) return;
-            const adminStatus = await checkAdminStatus(currentSession.user);
+          const adminStatus = await checkAdminStatus(currentSession.user);
+          if (mounted) {
             setIsAdmin(adminStatus);
-          }, 0);
+          }
         } else {
           console.log('❌ No existing session found');
         }
