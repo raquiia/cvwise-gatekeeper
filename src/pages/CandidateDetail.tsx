@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -55,12 +54,14 @@ const CandidateDetail = () => {
 
     try {
       console.log("🔄 CandidateDetail: Starting data fetch for ID:", currentCandidateId);
+      console.log("🔐 Current user:", { id: currentUser.id, email: currentUser.email });
+      
       setLoading(true);
       setError(null);
       
       // Add timeout to prevent infinite loading
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout: Loading took too long')), 30000)
+        setTimeout(() => reject(new Error('Timeout: Le chargement prend trop de temps')), 30000)
       );
       
       const dataPromise = getCompleteCandidateData(currentCandidateId);
@@ -115,8 +116,10 @@ const CandidateDetail = () => {
         setError("Vous n'avez pas accès à ce candidat ou votre session a expiré.");
       } else if (err.message?.includes('not found')) {
         setError("Ce candidat n'existe pas ou n'est plus disponible.");
+      } else if (err.message?.includes('not authenticated')) {
+        setError("Votre session a expiré. Veuillez vous reconnecter.");
       } else {
-        setError(`Une erreur s'est produite lors du chargement: ${err.message}`);
+        setError(`Erreur lors du chargement: ${err.message}`);
       }
     } finally {
       setLoading(false);

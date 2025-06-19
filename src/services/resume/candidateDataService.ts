@@ -1,50 +1,51 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { CandidateData } from '@/services/data/candidateService';
+import { getSimplifiedCandidateData } from './simplifiedCandidateDataService';
 
 /**
- * Service pour récupérer les données complètes d'un candidat - SIMPLIFIÉ
- * Maintenant que les données AI sont dans la table candidates, plus besoin de jointures complexes
+ * Service pour récupérer les données complètes d'un candidat - CORRIGÉ
+ * Utilise d'abord l'approche simplifiée, puis essaie les RPC en fallback
  */
 export const getCompleteCandidateData = async (candidateId: string): Promise<CandidateData | null> => {
   try {
-    console.log('🔍 Fetching candidate data (including AI) for ID:', candidateId);
+    console.log('🔍 Starting candidate data fetch for ID:', candidateId);
     
-    // Récupérer TOUTES les données du candidat en une seule requête, y compris les données AI
+    // Essayer d'abord l'approche simplifiée (direct table query)
+    console.log('🔄 Trying simplified approach first...');
+    const simplifiedData = await getSimplifiedCandidateData(candidateId);
+    
+    if (simplifiedData) {
+      console.log('✅ Successfully retrieved data via simplified approach');
+      return simplifiedData;
+    }
+    
+    console.log('⚠️ Simplified approach failed, trying RPC fallback...');
+    
+    // Fallback vers l'approche RPC (si l'approche simplifiée échoue)
     const { data: candidateData, error: candidateError } = await supabase.rpc('get_candidate_by_id_bypassing_rls', {
       candidate_id_param: candidateId
     });
 
     if (candidateError) {
-      console.error('❌ Error fetching candidate:', candidateError);
+      console.error('❌ RPC Error:', candidateError);
       throw candidateError;
     }
 
     if (!candidateData || candidateData.length === 0) {
-      console.log('📭 No candidate found with ID:', candidateId);
+      console.log('📭 No candidate found via RPC');
       return null;
     }
 
     const completeCandidate = candidateData[0];
     
-    console.log('✅ Complete candidate data retrieved (including AI):', {
+    console.log('✅ Complete candidate data retrieved via RPC:', {
       id: completeCandidate.id,
       first_name: completeCandidate.first_name,
       last_name: completeCandidate.last_name,
-      address: completeCandidate.address,
-      postal_code: completeCandidate.postal_code,
-      city: completeCandidate.city,
-      country: completeCandidate.country,
-      ai_score: completeCandidate.ai_score,
-      ai_explanation: completeCandidate.ai_explanation ? 'Present' : 'Missing',
-      ai_analyzed_at: completeCandidate.ai_analyzed_at,
-      hasAIData: !!(completeCandidate.ai_score || completeCandidate.ai_explanation),
-      strengthsCount: Array.isArray(completeCandidate.ai_strengths) ? completeCandidate.ai_strengths.length : 0,
-      weaknessesCount: Array.isArray(completeCandidate.ai_weaknesses) ? completeCandidate.ai_weaknesses.length : 0,
-      recommendationsCount: Array.isArray(completeCandidate.ai_recommendations) ? completeCandidate.ai_recommendations.length : 0
+      hasAIData: !!(completeCandidate.ai_score || completeCandidate.ai_explanation)
     });
 
-    // Les données sont déjà complètes, pas besoin de les traiter davantage
     return completeCandidate;
 
   } catch (error: any) {

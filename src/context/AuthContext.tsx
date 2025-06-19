@@ -57,20 +57,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    console.log('AuthContext initializing...');
+    console.log('🔐 AuthContext initializing...');
     let mounted = true;
     
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
-        console.log('Auth state changed:', event);
+      async (event, newSession) => {
+        console.log('🔄 Auth state changed:', event, 'Session exists:', !!newSession);
         
         if (!mounted) return;
         
-        if (newSession) {
+        if (newSession?.user) {
           // Update state synchronously
           setSession(newSession);
           setUser(newSession.user);
+          
+          // Debug auth state
+          console.log('✅ User authenticated:', {
+            id: newSession.user.id,
+            email: newSession.user.email,
+            accessToken: newSession.access_token ? 'Present' : 'Missing'
+          });
           
           // Check admin status asynchronously
           setTimeout(async () => {
@@ -87,6 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
           }
         } else if (event === 'SIGNED_OUT') {
+          console.log('🚪 User signed out');
           setSession(null);
           setUser(null);
           setIsAdmin(false);
@@ -106,12 +114,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for existing session
     const checkSession = async () => {
       try {
-        console.log('Checking for existing session...');
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        console.log('🔍 Checking for existing session...');
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Error getting session:', error);
+        }
         
         if (!mounted) return;
         
-        if (currentSession) {
+        if (currentSession?.user) {
+          console.log('✅ Existing session found:', {
+            userId: currentSession.user.id,
+            email: currentSession.user.email
+          });
+          
           // Update state synchronously
           setSession(currentSession);
           setUser(currentSession.user);
@@ -122,13 +139,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const adminStatus = await checkAdminStatus(currentSession.user);
             setIsAdmin(adminStatus);
           }, 0);
+        } else {
+          console.log('❌ No existing session found');
         }
         
         // Always set loading to false, even if there's no session
-        console.log('Setting loading to false');
+        console.log('🔄 Setting loading to false');
         setLoading(false);
       } catch (error) {
-        console.error('Error checking session:', error);
+        console.error('❌ Error checking session:', error);
         if (mounted) {
           setLoading(false);
         }
