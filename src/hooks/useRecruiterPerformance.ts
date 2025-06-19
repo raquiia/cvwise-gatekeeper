@@ -24,23 +24,26 @@ export const useRecruiterPerformance = () => {
   const { toast } = useToast();
 
   const calculateConversionRates = (candidates: any[]) => {
-    const prequalCandidates = candidates.filter(c => c.detailed_status === 'prequalification');
-    const ec1Candidates = candidates.filter(c => c.detailed_status === 'ec1');
-    const ec2Candidates = candidates.filter(c => c.detailed_status === 'ec2');
-    const presentationCandidates = candidates.filter(c => c.detailed_status === 'presentation_client');
-    const missionCandidates = candidates.filter(c => c.detailed_status === 'en_mission');
+    // Utiliser un fallback pour detailed_status s'il n'existe pas
+    const getStatus = (candidate: any) => candidate.detailed_status || candidate.status || 'initial';
+    
+    const prequalCandidates = candidates.filter(c => getStatus(c) === 'prequalification');
+    const ec1Candidates = candidates.filter(c => getStatus(c) === 'ec1');
+    const ec2Candidates = candidates.filter(c => getStatus(c) === 'ec2');
+    const presentationCandidates = candidates.filter(c => getStatus(c) === 'presentation_client');
+    const missionCandidates = candidates.filter(c => getStatus(c) === 'en_mission');
     
     // Count candidates who reached each stage
     const reachedEC1 = candidates.filter(c => 
-      ['ec1', 'ec2', 'presentation_client', 'en_mission'].includes(c.detailed_status)
+      ['ec1', 'ec2', 'presentation_client', 'en_mission'].includes(getStatus(c))
     ).length;
     
     const reachedEC2 = candidates.filter(c => 
-      ['ec2', 'presentation_client', 'en_mission'].includes(c.detailed_status)
+      ['ec2', 'presentation_client', 'en_mission'].includes(getStatus(c))
     ).length;
     
     const reachedPresentationOrMission = candidates.filter(c => 
-      ['presentation_client', 'en_mission'].includes(c.detailed_status)
+      ['presentation_client', 'en_mission'].includes(getStatus(c))
     ).length;
 
     // Calculate conversion rates
@@ -100,7 +103,10 @@ export const useRecruiterPerformance = () => {
       }
 
       const userCandidates = candidates || [];
-      const candidatesInMission = userCandidates.filter(c => c.detailed_status === 'en_mission').length;
+      
+      // Utiliser un fallback pour detailed_status
+      const getStatus = (candidate: any) => candidate.detailed_status || candidate.status || 'initial';
+      const candidatesInMission = userCandidates.filter(c => getStatus(c) === 'en_mission').length;
       
       // Calculate recent activity (last 30 days)
       const thirtyDaysAgo = new Date();
