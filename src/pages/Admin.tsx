@@ -81,6 +81,9 @@ const Admin = () => {
   const [pendingUsers, setPendingUsers] = useState([]);
   const [recruitmentStats, setRecruitmentStats] = useState<GlobalRecruitmentStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recruiterKPIs, setRecruiterKPIs] = useState<RecruiterKPI[]>([]);
+  const [selectedRecruiter, setSelectedRecruiter] = useState<{id: string, name: string, email: string} | null>(null);
+  const [selectedRecruiterKPI, setSelectedRecruiterKPI] = useState<RecruiterKPI | null>(null);
   const { realUsers, loading: usersDataLoading } = useUserData();
 
   // Redirection si l'utilisateur n'est pas connecté
@@ -139,6 +142,20 @@ const Admin = () => {
     };
 
     loadRecruitmentStats();
+  }, []);
+
+  // Load recruiter KPIs
+  useEffect(() => {
+    const loadRecruiterKPIs = async () => {
+      try {
+        const kpis = await recruitmentAnalyticsService.getAllRecruitersKPIs('current_month');
+        setRecruiterKPIs(kpis);
+      } catch (error) {
+        console.error('Error loading recruiter KPIs:', error);
+      }
+    };
+
+    loadRecruiterKPIs();
   }, []);
 
   const handleApproveUser = async (userId: string) => {
@@ -233,6 +250,26 @@ const Admin = () => {
       last_sign_in_at: user.last_sign_in_at
     }));
   
+  const handleRecruiterClick = async (recruiter: {id: string, name: string, email: string}) => {
+    try {
+      const kpi = await recruitmentAnalyticsService.getRecruiterKPIs(recruiter.id, 'current_month');
+      setSelectedRecruiter(recruiter);
+      setSelectedRecruiterKPI(kpi);
+    } catch (error) {
+      console.error('Error loading recruiter detailed KPI:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les KPI du recruteur",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBackToOverview = () => {
+    setSelectedRecruiter(null);
+    setSelectedRecruiterKPI(null);
+  };
+
   return (
     <Layout className="py-8 bg-sand/30">
       <div className="container mx-auto px-4">
@@ -365,39 +402,43 @@ const Admin = () => {
           
           <TabsContent value="analytics">
             <div className="space-y-6">
-              <Card className="dark:border-border/10">
-                <CardHeader>
-                  <CardTitle>KPI par recruteur</CardTitle>
-                  <CardDescription>
-                    Performance individuelle de chaque membre de l'équipe
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {realUsers.map(user => (
-                      <RecruiterKPI
-                        key={user.id}
-                        kpi={{
-                          recruiterId: user.id,
-                          recruiterName: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Recruteur',
-                          recruiterEmail: user.email || '',
-                          totalCVs: 0, // À calculer dynamiquement
-                          candidatesInPrequalification: 0,
-                          candidatesInEC1: 0,
-                          candidatesInEC2: 0,
-                          candidatesInPresentation: 0,
-                          candidatesInMission: 0,
-                          conversionPrequalToEC1: 0,
-                          conversionEC1ToEC2: 0,
-                          conversionEC2ToPresentation: 0,
-                          conversionEC2ToMission: 0,
-                          period: 'current_month'
-                        }}
-                      />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              {selectedRecruiter && selectedRecruiterKPI ? (
+                <RecruiterDetailedKPI
+                  recruiter={selectedRecruiter}
+                  kpi={selectedRecruiterKPI}
+                  onBack={handleBackToOverview}
+                />
+              ) : (
+                <Card className="dark:border-border/10">
+                  <CardHeader>
+                    <CardTitle>Vue globale des recruteurs</CardTitle>
+                    <CardDescription>
+                      Cliquez sur un recruteur pour voir ses KPI détaillés
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {realUsers.map(user => {
+                        const recruiterKPI = recruiterKPIs.find(kpi => kpi.recruiterId === user.id);
+                        const recruiterInfo = {
+                          id: user.id,
+                          name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Recruteur',
+                          email: user.email || '',
+                        };
+
+                        return (
+                          <RecruiterOverviewCard
+                            key={user.id}
+                            recruiter={recruiterInfo}
+                            kpi={recruiterKPI || null}
+                            onClick={() => handleRecruiterClick(recruiterInfo)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
           
