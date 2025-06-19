@@ -41,9 +41,13 @@ export const useRecruiterPerformance = () => {
       }
 
       const userCandidates = candidates || [];
-      const candidatesInMission = userCandidates.filter(c => 
-        (c.detailed_status || c.status) === 'en_mission'
-      ).length;
+      
+      // Safely access detailed_status with type assertion
+      const candidatesInMission = userCandidates.filter(c => {
+        const candidate = c as any;
+        const status = candidate.detailed_status || candidate.status;
+        return status === 'en_mission';
+      }).length;
       
       // Calculate recent activity (last 30 days)
       const thirtyDaysAgo = new Date();
