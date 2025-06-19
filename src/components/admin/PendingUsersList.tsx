@@ -14,7 +14,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface PendingUser {
-  id: number;
+  id: string;
   name: string;
   email: string;
   company: string;
@@ -25,8 +25,8 @@ interface PendingUser {
 
 interface PendingUsersListProps {
   pendingUsers: PendingUser[];
-  onApproveUser: (userId: number) => void;
-  onRejectUser: (userId: number) => void;
+  onApproveUser: (userId: string) => void;
+  onRejectUser: (userId: string) => void;
 }
 
 const PendingUsersList: React.FC<PendingUsersListProps> = ({ 

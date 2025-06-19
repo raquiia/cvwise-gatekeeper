@@ -140,7 +140,7 @@ const Admin = () => {
     loadRecruitmentStats();
   }, []);
 
-  const handleApproveUser = async (userId: number) => {
+  const handleApproveUser = async (userId: string) => {
     try {
       // Mettre à jour le statut dans la base de données
       const { error } = await supabase
@@ -174,7 +174,7 @@ const Admin = () => {
     }
   };
   
-  const handleRejectUser = async (userId: number) => {
+  const handleRejectUser = async (userId: string) => {
     try {
       // Mettre à jour le statut dans la base de données
       const { error } = await supabase
