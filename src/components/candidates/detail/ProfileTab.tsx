@@ -6,10 +6,10 @@ import { Eye, EyeOff } from 'lucide-react';
 import type { CandidateData } from '@/services/data/candidateService';
 
 // Import des nouveaux composants optimisés
-import HeroSection from './profile/HeroSection';
 import CompactSkillsSection from './profile/CompactSkillsSection';
 import ProfileSidebar from './profile/ProfileSidebar';
 import PersonalNotesSection from './profile/PersonalNotesSection';
+import CompactExperienceSection from './profile/CompactExperienceSection';
 
 // Import des composants existants pour les sections détaillées
 import ProjectsSection from './profile/ProjectsSection';
@@ -26,24 +26,17 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
   const [isDetailedView, setIsDetailedView] = useState(false);
 
   return (
-    <div className="space-y-6 bg-gradient-to-br from-background/80 via-background to-muted/20 min-h-full p-6">
-      {/* Section Hero */}
-      <HeroSection 
-        candidate={candidate} 
-        isLoading={isLoading}
-        onRefresh={onRefresh}
-      />
-
+    <div className="space-y-8 p-8">
       {/* Toggle de vue */}
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-foreground">
+        <h2 className="text-2xl font-semibold bg-gradient-to-r from-navy to-navy-dark bg-clip-text text-transparent">
           Profil détaillé
         </h2>
         <Button 
           variant="outline" 
           size="sm"
           onClick={() => setIsDetailedView(!isDetailedView)}
-          className="btn-modern border-border/60 text-foreground hover:border-primary/30 hover:bg-accent/80"
+          className="bg-white/80 border-border/60 text-foreground hover:border-primary/30 hover:bg-accent/80 transition-all duration-300"
         >
           {isDetailedView ? (
             <>
@@ -60,29 +53,32 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
       </div>
 
       {/* Layout principal */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
         {/* Colonne principale (3/4) */}
-        <div className="xl:col-span-3 space-y-6">
+        <div className="xl:col-span-3 space-y-8">
           {/* Notes personnelles - Toujours visible */}
           {candidate.id && <PersonalNotesSection candidateId={candidate.id} />}
           
-          {/* Vue compacte vs détaillée pour les compétences uniquement */}
+          {/* Expériences récentes */}
+          <CompactExperienceSection candidate={candidate} />
+          
+          {/* Vue compacte vs détaillée pour les compétences */}
           {!isDetailedView ? (
             <CompactSkillsSection candidate={candidate} />
           ) : (
             <SkillsEducationSection candidate={candidate} />
           )}
           
-          {/* Sections contextuelles - Uniquement projets et objectifs */}
+          {/* Sections contextuelles */}
           <Separator className="bg-gradient-to-r from-transparent via-border/50 to-transparent" />
           
-          <div className="space-y-6">
+          <div className="space-y-8">
             <ProjectsSection candidate={candidate} />
             <PreferencesObjectivesSection candidate={candidate} />
           </div>
         </div>
 
-        {/* Sidebar droite (1/4) - Simplifiée */}
+        {/* Sidebar droite (1/4) */}
         <div className="xl:col-span-1">
           <ProfileSidebar candidate={candidate} />
         </div>
