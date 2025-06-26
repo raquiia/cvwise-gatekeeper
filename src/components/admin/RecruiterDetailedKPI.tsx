@@ -3,7 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, TrendingUp, Target, Users, Award, Calendar, Info } from 'lucide-react';
+import { ArrowLeft, User, TrendingUp, Target, Users, Award, Calendar, Info, AlertTriangle } from 'lucide-react';
 import { RecruiterKPI } from '@/services/analytics/recruitmentAnalyticsService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -44,6 +44,10 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
 
   const globalConversion = Math.round((kpi.candidatesInMission / (kpi.totalCVs || 1)) * 100);
 
+  // Vérifier si des ajustements ont été appliqués
+  const hasAdjustments = kpi.adjustedNumbers?.adjustmentsApplied || false;
+  const adjustmentDetails = kpi.adjustedNumbers?.adjustmentDetails || [];
+
   return (
     <div className="space-y-6">
       {/* Header avec retour */}
@@ -59,6 +63,23 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
         </Button>
       </div>
 
+      {/* Alert pour les ajustements si nécessaire */}
+      {hasAdjustments && (
+        <Alert className="border-orange-200 bg-orange-50/50">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Ajustements appliqués au pipeline :</strong>
+            <br />
+            Des candidats semblent avoir sauté des étapes. Les nombres ont été ajustés pour des calculs cohérents :
+            <ul className="mt-2 ml-4 space-y-1">
+              {adjustmentDetails.map((detail, index) => (
+                <li key={index} className="text-sm">• {detail}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Alert explicatif */}
       <Alert className="border-blue-200 bg-blue-50/50">
         <Info className="h-4 w-4" />
@@ -68,6 +89,13 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
           <br />• EC1 → EC2 : Pourcentage de candidats EC1 qui passent en EC2
           <br />• EC2 → Présentation : Pourcentage de candidats EC2 qui passent en présentation client
           <br />• EC2 → Mission : Pourcentage de candidats EC2 qui arrivent directement en mission
+          {hasAdjustments && (
+            <>
+              <br /><br />
+              <strong>Note :</strong> Les taux ci-dessous sont calculés après ajustement automatique 
+              pour assurer la cohérence du pipeline.
+            </>
+          )}
         </AlertDescription>
       </Alert>
 
@@ -81,10 +109,18 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
             <div className="flex-1">
               <CardTitle className="text-xl">{recruiter.name}</CardTitle>
               <p className="text-muted-foreground">{recruiter.email}</p>
-              <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700">
-                <Calendar className="w-3 h-3 mr-1" />
-                {getPeriodLabel(kpi.period)}
-              </Badge>
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                  <Calendar className="w-3 h-3 mr-1" />
+                  {getPeriodLabel(kpi.period)}
+                </Badge>
+                {hasAdjustments && (
+                  <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    Pipeline ajusté
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -146,26 +182,55 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Pipeline de candidats</CardTitle>
+            {hasAdjustments && (
+              <p className="text-sm text-muted-foreground">
+                * Nombres affichés après ajustement automatique
+              </p>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                 <span className="font-medium">Préqualification</span>
-                <Badge variant="outline" className="font-semibold">
-                  {kpi.candidatesInPrequalification}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="font-semibold">
+                    {kpi.candidatesInPrequalification}
+                  </Badge>
+                  {hasAdjustments && kpi.adjustedNumbers && 
+                   kpi.candidatesInPrequalification !== kpi.adjustedNumbers.originalPrequalification && (
+                    <span className="text-xs text-muted-foreground">
+                      (était {kpi.adjustedNumbers.originalPrequalification})
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
                 <span className="font-medium">Entretien Client 1 (EC1)</span>
-                <Badge variant="outline" className="font-semibold">
-                  {kpi.candidatesInEC1}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="font-semibold">
+                    {kpi.candidatesInEC1}
+                  </Badge>
+                  {hasAdjustments && kpi.adjustedNumbers && 
+                   kpi.candidatesInEC1 !== kpi.adjustedNumbers.originalEC1 && (
+                    <span className="text-xs text-muted-foreground">
+                      (était {kpi.adjustedNumbers.originalEC1})
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
                 <span className="font-medium">Entretien Client 2 (EC2)</span>
-                <Badge variant="outline" className="font-semibold">
-                  {kpi.candidatesInEC2}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="font-semibold">
+                    {kpi.candidatesInEC2}
+                  </Badge>
+                  {hasAdjustments && kpi.adjustedNumbers && 
+                   kpi.candidatesInEC2 !== kpi.adjustedNumbers.originalEC2 && (
+                    <span className="text-xs text-muted-foreground">
+                      (était {kpi.adjustedNumbers.originalEC2})
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg">
                 <span className="font-medium">Présentation client</span>
@@ -186,6 +251,11 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Taux de conversion directs</CardTitle>
+            {hasAdjustments && (
+              <p className="text-sm text-muted-foreground">
+                * Calculés après ajustement du pipeline
+              </p>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
