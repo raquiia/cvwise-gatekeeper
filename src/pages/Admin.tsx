@@ -26,13 +26,13 @@ import { recruitmentAnalyticsService, GlobalRecruitmentStats, RecruiterKPI } fro
 import AdminDashboardHeader from '@/components/admin/modern/AdminDashboardHeader';
 import PremiumTabs from '@/components/admin/modern/PremiumTabs';
 import ModernUserTable from '@/components/admin/modern/ModernUserTable';
+import ModernUserManagement from '@/components/admin/modern/ModernUserManagement';
 
 // Import des composants existants
 import PendingUsersList from '@/components/admin/PendingUsersList';
 import UserStats from '@/components/admin/UserStats';
 import SystemActivities from '@/components/admin/SystemActivities';
 import AppSettings from '@/components/admin/AppSettings';
-import UserManagement from '@/components/admin/UserManagement';
 import RecruitmentUserStats from '@/components/admin/RecruitmentUserStats';
 import RecruiterOverviewCard from '@/components/admin/RecruiterOverviewCard';
 import RecruiterDetailedKPI from '@/components/admin/RecruiterDetailedKPI';
@@ -292,8 +292,8 @@ const Admin = () => {
             pendingUsersCount={pendingUsers.length}
           >
             <TabsContent value="create-user" className="mt-6">
-              <div className="max-w-2xl mx-auto">
-                <UserManagement />
+              <div className="max-w-4xl mx-auto">
+                <ModernUserManagement activeUsersCount={realUsers.length} />
               </div>
             </TabsContent>
             
