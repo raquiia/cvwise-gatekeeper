@@ -4,7 +4,7 @@ import {
   UserCheck, AlertTriangle, Info as InfoIcon, UserPlus, TrendingUp
 } from 'lucide-react';
 import Layout from '@/components/Layout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabsContent } from '@/components/ui/tabs';
 import {
   Card,
   CardContent,
@@ -22,10 +22,13 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { recruitmentAnalyticsService, GlobalRecruitmentStats, RecruiterKPI } from '@/services/analytics/recruitmentAnalyticsService';
 
-// Admin components
+// Import des nouveaux composants modernes
+import AdminDashboardHeader from '@/components/admin/modern/AdminDashboardHeader';
+import PremiumTabs from '@/components/admin/modern/PremiumTabs';
+import ModernUserTable from '@/components/admin/modern/ModernUserTable';
+
+// Import des composants existants
 import PendingUsersList from '@/components/admin/PendingUsersList';
-import ActiveUsersList from '@/components/admin/ActiveUsersList';
-import ExampleUsersList from '@/components/admin/ExampleUsersList';
 import UserStats from '@/components/admin/UserStats';
 import SystemActivities from '@/components/admin/SystemActivities';
 import AppSettings from '@/components/admin/AppSettings';
@@ -271,189 +274,120 @@ const Admin = () => {
   };
 
   return (
-    <Layout className="py-8 bg-sand/30">
-      <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-navy-dark mb-4">Administration ATS</h1>
-          <p className="text-muted-foreground mb-2">
-            Gérez votre équipe de recrutement et suivez les performances.
-          </p>
-        </div>
+    <Layout className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
+      <div className="space-y-8">
+        {/* Header Premium */}
+        <AdminDashboardHeader 
+          activeUsersCount={realUsers.length}
+          totalCVsThisMonth={recruitmentStats?.totalCVsThisMonth || 0}
+          totalCandidatesInMission={recruitmentStats?.totalCandidatesInMission || 0}
+          globalConversionRate={recruitmentStats?.globalConversionRate || 0}
+          pendingUsersCount={pendingUsers.length}
+        />
 
-        {/* Métriques globales */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Recruteurs actifs</p>
-                  <p className="text-2xl font-bold">{realUsers.length}</p>
+        {/* Contenu principal */}
+        <div className="container mx-auto px-4 pb-8">
+          <PremiumTabs 
+            defaultValue="create-user" 
+            pendingUsersCount={pendingUsers.length}
+          >
+            <TabsContent value="create-user" className="mt-6">
+              <div className="max-w-2xl mx-auto">
+                <UserManagement />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="users" className="mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="md:col-span-1">
+                  <RecruitmentUserStats 
+                    activeUsersCount={realUsers.length}
+                    pendingUsersCount={pendingUsers.length}
+                    recentUsers={recentUsers}
+                    formatDate={formatDate}
+                    totalRecruiterCVs={recruitmentStats?.totalCVsThisMonth || 0}
+                  />
                 </div>
-                <Users className="h-8 w-8 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">CVs ce mois</p>
-                  <p className="text-2xl font-bold">{recruitmentStats?.totalCVsThisMonth || 0}</p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">En mission</p>
-                  <p className="text-2xl font-bold">{recruitmentStats?.totalCandidatesInMission || 0}</p>
-                </div>
-                <UserCheck className="h-8 w-8 text-purple-500" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Taux conversion</p>
-                  <p className="text-2xl font-bold">{recruitmentStats?.globalConversionRate || 0}%</p>
-                </div>
-                <Shield className="h-8 w-8 text-orange-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Interface principale d'administration */}
-        <Tabs defaultValue="create-user" className="mb-8">
-          <TabsList className="mb-6 bg-background/80 dark:bg-muted/10 w-full flex overflow-x-auto">
-            <TabsTrigger 
-              value="create-user" 
-              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-            >
-              <UserPlus size={16} />
-              Ajouter un recruteur
-            </TabsTrigger>
-            <TabsTrigger 
-              value="users" 
-              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-            >
-              <Users size={16} />
-              Équipe de recrutement
-            </TabsTrigger>
-            <TabsTrigger 
-              value="analytics" 
-              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-            >
-              <TrendingUp size={16} />
-              KPI Recruteurs
-            </TabsTrigger>
-            <TabsTrigger 
-              value="settings" 
-              className="flex-shrink-0 flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-navy/50"
-            >
-              <Settings size={16} />
-              Paramètres
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="create-user" className="mt-4">
-            <div className="max-w-2xl mx-auto">
-              <UserManagement />
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="users">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="md:col-span-1">
-                <RecruitmentUserStats 
-                  activeUsersCount={realUsers.length}
-                  pendingUsersCount={pendingUsers.length}
-                  recentUsers={recentUsers}
-                  formatDate={formatDate}
-                  totalRecruiterCVs={recruitmentStats?.totalCVsThisMonth || 0}
-                />
-              </div>
-              
-              <div className="md:col-span-3 space-y-6">
-                <PendingUsersList 
-                  pendingUsers={pendingUsers}
-                  onApproveUser={handleApproveUser}
-                  onRejectUser={handleRejectUser}
-                />
                 
-                <ActiveUsersList 
-                  users={realUsers}
-                  loading={usersDataLoading}
-                  currentUserId={user?.id}
-                  formatDate={formatDate}
-                />
+                <div className="md:col-span-3 space-y-6">
+                  <PendingUsersList 
+                    pendingUsers={pendingUsers}
+                    onApproveUser={handleApproveUser}
+                    onRejectUser={handleRejectUser}
+                  />
+                  
+                  <ModernUserTable
+                    users={realUsers}
+                    loading={usersDataLoading}
+                    currentUserId={user?.id}
+                    formatDate={formatDate}
+                    title="Équipe de Recrutement Active"
+                    emptyMessage="Aucun recruteur trouvé"
+                  />
+                </div>
               </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="analytics">
-            <div className="space-y-6">
-              {selectedRecruiter && selectedRecruiterKPI ? (
-                <RecruiterDetailedKPI
-                  recruiter={selectedRecruiter}
-                  kpi={selectedRecruiterKPI}
-                  onBack={handleBackToOverview}
-                />
-              ) : (
-                <Card className="dark:border-border/10">
-                  <CardHeader>
-                    <CardTitle>Vue globale des recruteurs</CardTitle>
-                    <CardDescription>
-                      Cliquez sur un recruteur pour voir ses KPI détaillés
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {realUsers.map(user => {
-                        const recruiterKPI = recruiterKPIs.find(kpi => kpi.recruiterId === user.id);
-                        const recruiterInfo = {
-                          id: user.id,
-                          name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Recruteur',
-                          email: user.email || '',
-                        };
+            </TabsContent>
+            
+            <TabsContent value="analytics" className="mt-6">
+              <div className="space-y-6">
+                {selectedRecruiter && selectedRecruiterKPI ? (
+                  <RecruiterDetailedKPI
+                    recruiter={selectedRecruiter}
+                    kpi={selectedRecruiterKPI}
+                    onBack={handleBackToOverview}
+                  />
+                ) : (
+                  <Card className="bg-white/70 dark:bg-navy-dark/40 backdrop-blur-xl border border-navy/10 shadow-xl">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
+                          <TrendingUp className="w-5 h-5" />
+                        </div>
+                        Vue globale des recruteurs
+                      </CardTitle>
+                      <CardDescription>
+                        Cliquez sur un recruteur pour voir ses KPI détaillés
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {realUsers.map(user => {
+                          const recruiterKPI = recruiterKPIs.find(kpi => kpi.recruiterId === user.id);
+                          const recruiterInfo = {
+                            id: user.id,
+                            name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Recruteur',
+                            email: user.email || '',
+                          };
 
-                        return (
-                          <RecruiterOverviewCard
-                            key={user.id}
-                            recruiter={recruiterInfo}
-                            kpi={recruiterKPI || null}
-                            onClick={() => handleRecruiterClick(recruiterInfo)}
-                          />
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="settings">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2">
-                <AppSettings />
+                          return (
+                            <RecruiterOverviewCard
+                              key={user.id}
+                              recruiter={recruiterInfo}
+                              kpi={recruiterKPI || null}
+                              onClick={() => handleRecruiterClick(recruiterInfo)}
+                            />
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-              
-              <div>
-                <SystemActivities activities={systemActivitiesData} />
+            </TabsContent>
+            
+            <TabsContent value="settings" className="mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2">
+                  <AppSettings />
+                </div>
+                
+                <div>
+                  <SystemActivities activities={systemActivitiesData} />
+                </div>
               </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+            </TabsContent>
+          </PremiumTabs>
+        </div>
       </div>
     </Layout>
   );
