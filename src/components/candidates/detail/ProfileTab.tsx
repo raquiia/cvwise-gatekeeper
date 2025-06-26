@@ -9,7 +9,6 @@ import type { CandidateData } from '@/services/data/candidateService';
 import CompactSkillsSection from './profile/CompactSkillsSection';
 import ProfileSidebar from './profile/ProfileSidebar';
 import PersonalNotesSection from './profile/PersonalNotesSection';
-import CompactExperienceSection from './profile/CompactExperienceSection';
 
 // Import des composants existants pour les sections détaillées
 import ProjectsSection from './profile/ProjectsSection';
@@ -58,9 +57,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
         <div className="xl:col-span-3 space-y-8">
           {/* Notes personnelles - Toujours visible */}
           {candidate.id && <PersonalNotesSection candidateId={candidate.id} />}
-          
-          {/* Expériences récentes */}
-          <CompactExperienceSection candidate={candidate} />
           
           {/* Vue compacte vs détaillée pour les compétences */}
           {!isDetailedView ? (

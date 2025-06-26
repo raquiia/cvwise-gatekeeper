@@ -38,6 +38,25 @@ const ModernCandidateHeader: React.FC<ModernCandidateHeaderProps> = ({
 
   const initials = `${candidate.first_name?.charAt(0) || ''}${candidate.last_name?.charAt(0) || ''}`;
 
+  // Construire l'adresse complète
+  const getFullAddress = () => {
+    const addressParts = [
+      candidate.address?.trim(),
+      candidate.postal_code?.trim(),
+      candidate.city?.trim(),
+      candidate.country?.trim()
+    ].filter(Boolean);
+    
+    if (addressParts.length > 0) {
+      return addressParts.join(', ');
+    }
+    
+    // Fallback sur location si pas d'adresse structurée
+    return candidate.location?.trim() || '';
+  };
+
+  const fullAddress = getFullAddress();
+
   return (
     <div className="relative">
       {/* Background avec gradient */}
@@ -100,10 +119,10 @@ const ModernCandidateHeader: React.FC<ModernCandidateHeaderProps> = ({
                       <span>{candidate.phone}</span>
                     </div>
                   )}
-                  {(candidate.city || candidate.location) && (
+                  {fullAddress && (
                     <div className="flex items-center gap-2 text-navy-dark">
                       <MapPin className="w-4 h-4" />
-                      <span>{candidate.city || candidate.location}</span>
+                      <span>{fullAddress}</span>
                     </div>
                   )}
                 </div>
