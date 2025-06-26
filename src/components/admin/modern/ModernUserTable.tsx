@@ -20,7 +20,8 @@ import {
   Building,
   Clock,
   CheckCircle,
-  XCircle
+  XCircle,
+  Users
 } from 'lucide-react';
 
 interface User {
