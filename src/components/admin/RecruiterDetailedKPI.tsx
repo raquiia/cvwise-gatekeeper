@@ -3,8 +3,9 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, TrendingUp, Target, Users, Award, Calendar } from 'lucide-react';
+import { ArrowLeft, User, TrendingUp, Target, Users, Award, Calendar, Info } from 'lucide-react';
 import { RecruiterKPI } from '@/services/analytics/recruitmentAnalyticsService';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface RecruiterDetailedKPIProps {
   recruiter: {
@@ -57,6 +58,18 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
           Retour à la vue globale
         </Button>
       </div>
+
+      {/* Alert explicatif */}
+      <Alert className="border-blue-200 bg-blue-50/50">
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          <strong>Taux de conversion expliqués :</strong>
+          <br />• Préqual → EC1 : Pourcentage de candidats en préqualification qui passent en EC1
+          <br />• EC1 → EC2 : Pourcentage de candidats EC1 qui passent en EC2
+          <br />• EC2 → Présentation : Pourcentage de candidats EC2 qui passent en présentation client
+          <br />• EC2 → Mission : Pourcentage de candidats EC2 qui arrivent directement en mission
+        </AlertDescription>
+      </Alert>
 
       {/* Profil du recruteur */}
       <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/40 backdrop-blur-xl">
@@ -172,30 +185,50 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Taux de conversion</CardTitle>
+            <CardTitle className="text-lg">Taux de conversion directs</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                <span className="text-sm">Préqualification → EC1</span>
+                <div>
+                  <span className="text-sm font-medium">Préqualification → EC1</span>
+                  <div className="text-xs text-muted-foreground">
+                    {kpi.candidatesInEC1} sur {kpi.candidatesInPrequalification} candidats
+                  </div>
+                </div>
                 <Badge className={`${getConversionColor(kpi.conversionPrequalToEC1)} font-semibold`}>
                   {kpi.conversionPrequalToEC1}%
                 </Badge>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                <span className="text-sm">EC1 → EC2</span>
+                <div>
+                  <span className="text-sm font-medium">EC1 → EC2</span>
+                  <div className="text-xs text-muted-foreground">
+                    {kpi.candidatesInEC2} sur {kpi.candidatesInEC1} candidats
+                  </div>
+                </div>
                 <Badge className={`${getConversionColor(kpi.conversionEC1ToEC2)} font-semibold`}>
                   {kpi.conversionEC1ToEC2}%
                 </Badge>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                <span className="text-sm">EC2 → Présentation</span>
+                <div>
+                  <span className="text-sm font-medium">EC2 → Présentation</span>
+                  <div className="text-xs text-muted-foreground">
+                    {kpi.candidatesInPresentation} sur {kpi.candidatesInEC2} candidats
+                  </div>
+                </div>
                 <Badge className={`${getConversionColor(kpi.conversionEC2ToPresentation)} font-semibold`}>
                   {kpi.conversionEC2ToPresentation}%
                 </Badge>
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                <span className="text-sm">EC2 → Mission</span>
+                <div>
+                  <span className="text-sm font-medium">EC2 → Mission</span>
+                  <div className="text-xs text-muted-foreground">
+                    {kpi.candidatesInMission} sur {kpi.candidatesInEC2} candidats
+                  </div>
+                </div>
                 <Badge className={`${getConversionColor(kpi.conversionEC2ToMission)} font-semibold`}>
                   {kpi.conversionEC2ToMission}%
                 </Badge>

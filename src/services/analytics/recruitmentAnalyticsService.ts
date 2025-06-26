@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface RecruiterKPI {
@@ -80,6 +79,50 @@ export class RecruitmentAnalyticsService {
     }
   }
 
+  private calculateConversionRates(
+    prequalification: number,
+    ec1: number,
+    ec2: number,
+    presentation: number,
+    mission: number
+  ) {
+    // Calcul des taux de conversion directs (pas cumulatifs)
+    const conversionPrequalToEC1 = prequalification > 0 
+      ? Math.round((ec1 / prequalification) * 100) 
+      : 0;
+    
+    const conversionEC1ToEC2 = ec1 > 0 
+      ? Math.round((ec2 / ec1) * 100) 
+      : 0;
+    
+    const conversionEC2ToPresentation = ec2 > 0 
+      ? Math.round((presentation / ec2) * 100) 
+      : 0;
+    
+    const conversionEC2ToMission = ec2 > 0 
+      ? Math.round((mission / ec2) * 100) 
+      : 0;
+
+    console.log('Conversion rates calculated:', {
+      prequalification,
+      ec1,
+      ec2,
+      presentation,
+      mission,
+      conversionPrequalToEC1,
+      conversionEC1ToEC2,
+      conversionEC2ToPresentation,
+      conversionEC2ToMission
+    });
+
+    return {
+      conversionPrequalToEC1,
+      conversionEC1ToEC2,
+      conversionEC2ToPresentation,
+      conversionEC2ToMission
+    };
+  }
+
   async getAllRecruitersKPIs(period: 'current_month' | 'last_month' | 'quarter' = 'current_month'): Promise<RecruiterKPI[]> {
     try {
       // Récupérer tous les profils (recruteurs) avec leurs infos auth
@@ -158,11 +201,14 @@ export class RecruitmentAnalyticsService {
             usingAllCandidates: isUsingAllCandidates
           });
 
-          // Calculer les taux de conversion
-          const conversionPrequalToEC1 = prequalification > 0 ? Math.round(((ec1 + ec2 + presentation + mission) / prequalification) * 100) : 0;
-          const conversionEC1ToEC2 = ec1 > 0 ? Math.round(((ec2 + presentation + mission) / ec1) * 100) : 0;
-          const conversionEC2ToPresentation = ec2 > 0 ? Math.round(((presentation + mission) / ec2) * 100) : 0;
-          const conversionEC2ToMission = ec2 > 0 ? Math.round((mission / ec2) * 100) : 0;
+          // Calculer les taux de conversion avec la nouvelle méthode
+          const conversionRates = this.calculateConversionRates(
+            prequalification,
+            ec1,
+            ec2,
+            presentation,
+            mission
+          );
 
           recruiterKPIs.push({
             recruiterId: profile.id,
@@ -174,10 +220,7 @@ export class RecruitmentAnalyticsService {
             candidatesInEC2: ec2,
             candidatesInPresentation: presentation,
             candidatesInMission: mission,
-            conversionPrequalToEC1,
-            conversionEC1ToEC2,
-            conversionEC2ToPresentation,
-            conversionEC2ToMission,
+            ...conversionRates,
             period
           });
         } catch (userError) {
@@ -258,11 +301,14 @@ export class RecruitmentAnalyticsService {
         usingAllCandidates: isUsingAllCandidates
       });
 
-      // Calculer les taux de conversion
-      const conversionPrequalToEC1 = prequalification > 0 ? Math.round(((ec1 + ec2 + presentation + mission) / prequalification) * 100) : 0;
-      const conversionEC1ToEC2 = ec1 > 0 ? Math.round(((ec2 + presentation + mission) / ec1) * 100) : 0;
-      const conversionEC2ToPresentation = ec2 > 0 ? Math.round(((presentation + mission) / ec2) * 100) : 0;
-      const conversionEC2ToMission = ec2 > 0 ? Math.round((mission / ec2) * 100) : 0;
+      // Calculer les taux de conversion avec la nouvelle méthode
+      const conversionRates = this.calculateConversionRates(
+        prequalification,
+        ec1,
+        ec2,
+        presentation,
+        mission
+      );
 
       // Récupérer les infos du recruteur
       const { data: profile } = await supabase
@@ -281,10 +327,7 @@ export class RecruitmentAnalyticsService {
         candidatesInEC2: ec2,
         candidatesInPresentation: presentation,
         candidatesInMission: mission,
-        conversionPrequalToEC1,
-        conversionEC1ToEC2,
-        conversionEC2ToPresentation,
-        conversionEC2ToMission,
+        ...conversionRates,
         period
       };
 
