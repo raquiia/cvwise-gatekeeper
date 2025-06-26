@@ -1,11 +1,12 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, User, TrendingUp, Target, Users, Award, Calendar, Info, AlertTriangle } from 'lucide-react';
-import { RecruiterKPI } from '@/services/analytics/recruitmentAnalyticsService';
+import { RecruiterKPI, recruitmentAnalyticsService } from '@/services/analytics/recruitmentAnalyticsService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import CustomPeriodSelector from './CustomPeriodSelector';
+import { format } from 'date-fns';
 
 interface RecruiterDetailedKPIProps {
   recruiter: {
@@ -20,9 +21,15 @@ interface RecruiterDetailedKPIProps {
 
 const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({ 
   recruiter, 
-  kpi, 
+  kpi: initialKpi, 
   onBack 
 }) => {
+  const [kpi, setKpi] = useState(initialKpi);
+  const [loading, setLoading] = useState(false);
+  const [currentPeriod, setCurrentPeriod] = useState<string>(initialKpi.period);
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(initialKpi.customPeriod?.startDate);
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(initialKpi.customPeriod?.endDate);
+
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
@@ -33,12 +40,44 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
     return 'text-red-600 bg-red-50 border-red-200';
   };
 
-  const getPeriodLabel = (period: string) => {
+  const getPeriodLabel = (period: string, customStart?: Date, customEnd?: Date) => {
     switch (period) {
       case 'current_month': return 'Ce mois';
       case 'last_month': return 'Mois dernier';
       case 'quarter': return 'Ce trimestre';
+      case 'custom': 
+        if (customStart && customEnd) {
+          return `Du ${format(customStart, 'dd/MM/yyyy')} au ${format(customEnd, 'dd/MM/yyyy')}`;
+        }
+        return 'Période personnalisée';
       default: return 'Période';
+    }
+  };
+
+  const handlePeriodChange = async (periodData: { type: 'preset' | 'custom', value: string, startDate?: Date, endDate?: Date }) => {
+    setLoading(true);
+    try {
+      const newKpi = await recruitmentAnalyticsService.getRecruiterKPIs(
+        recruiter.id,
+        periodData.value as any,
+        periodData.startDate,
+        periodData.endDate
+      );
+      
+      setKpi(newKpi);
+      setCurrentPeriod(periodData.value);
+      
+      if (periodData.type === 'custom') {
+        setCustomStartDate(periodData.startDate);
+        setCustomEndDate(periodData.endDate);
+      } else {
+        setCustomStartDate(undefined);
+        setCustomEndDate(undefined);
+      }
+    } catch (error) {
+      console.error('Error updating KPIs:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -62,6 +101,14 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
           Retour à la vue globale
         </Button>
       </div>
+
+      {/* Sélecteur de période personnalisé */}
+      <CustomPeriodSelector
+        onPeriodChange={handlePeriodChange}
+        currentPeriod={currentPeriod}
+        customStartDate={customStartDate}
+        customEndDate={customEndDate}
+      />
 
       {/* Alert pour les ajustements si nécessaire */}
       {hasAdjustments && (
@@ -99,8 +146,8 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
         </AlertDescription>
       </Alert>
 
-      {/* Profil du recruteur */}
-      <Card className="border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/40 backdrop-blur-xl">
+      {/* Profil du recruteur avec overlay de chargement */}
+      <Card className={`border-purple-200/30 dark:border-purple-800/20 bg-white/70 dark:bg-navy-dark/40 backdrop-blur-xl ${loading ? 'opacity-50' : ''}`}>
         <CardHeader>
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
@@ -112,12 +159,17 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
               <div className="flex items-center gap-2 mt-2">
                 <Badge variant="outline" className="bg-blue-50 text-blue-700">
                   <Calendar className="w-3 h-3 mr-1" />
-                  {getPeriodLabel(kpi.period)}
+                  {getPeriodLabel(currentPeriod, customStartDate, customEndDate)}
                 </Badge>
                 {hasAdjustments && (
                   <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
                     <AlertTriangle className="w-3 h-3 mr-1" />
                     Pipeline ajusté
+                  </Badge>
+                )}
+                {loading && (
+                  <Badge variant="outline" className="bg-gray-50 text-gray-700">
+                    Mise à jour...
                   </Badge>
                 )}
               </div>
@@ -127,7 +179,7 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
       </Card>
 
       {/* Métriques principales */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className={`grid grid-cols-1 md:grid-cols-4 gap-6 ${loading ? 'opacity-50' : ''}`}>
         <Card className="border-blue-200/50 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30">
           <CardContent className="p-6 text-center">
             <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
@@ -178,7 +230,7 @@ const RecruiterDetailedKPI: React.FC<RecruiterDetailedKPIProps> = ({
       </div>
 
       {/* Pipeline détaillé */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${loading ? 'opacity-50' : ''}`}>
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Pipeline de candidats</CardTitle>

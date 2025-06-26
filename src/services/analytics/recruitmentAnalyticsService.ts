@@ -14,7 +14,11 @@ export interface RecruiterKPI {
   conversionEC1ToEC2: number;
   conversionEC2ToPresentation: number;
   conversionEC2ToMission: number;
-  period: 'current_month' | 'last_month' | 'quarter';
+  period: 'current_month' | 'last_month' | 'quarter' | 'custom';
+  customPeriod?: {
+    startDate: Date;
+    endDate: Date;
+  };
   adjustedNumbers?: {
     originalPrequalification: number;
     originalEC1: number;
@@ -88,10 +92,35 @@ export class RecruitmentAnalyticsService {
     }
   }
 
-  /**
-   * Ajuste les nombres du pipeline pour assurer la cohérence logique
-   * Si un candidat est à une étape N+1, on s'assure qu'il y ait au moins autant de candidats à l'étape N
-   */
+  private calculatePeriodDates(period: 'current_month' | 'last_month' | 'quarter' | 'custom', customStartDate?: Date, customEndDate?: Date): { startDate: Date, endDate?: Date } {
+    const now = new Date();
+    
+    if (period === 'custom' && customStartDate && customEndDate) {
+      return { startDate: customStartDate, endDate: customEndDate };
+    }
+    
+    switch (period) {
+      case 'last_month':
+        return { startDate: new Date(now.getFullYear(), now.getMonth() - 1, 1) };
+      case 'quarter':
+        return { startDate: new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1) };
+      default:
+        return { startDate: new Date(now.getFullYear(), now.getMonth(), 1) };
+    }
+  }
+
+  private filterCandidatesByPeriod(candidates: any[], period: 'current_month' | 'last_month' | 'quarter' | 'custom', customStartDate?: Date, customEndDate?: Date) {
+    const { startDate, endDate } = this.calculatePeriodDates(period, customStartDate, customEndDate);
+    
+    return candidates.filter(candidate => {
+      const candidateDate = new Date(candidate.created_at || '');
+      if (endDate) {
+        return candidateDate >= startDate && candidateDate <= endDate;
+      }
+      return candidateDate >= startDate;
+    });
+  }
+
   private adjustPipelineNumbers(
     prequalification: number,
     ec1: number,
@@ -216,7 +245,7 @@ export class RecruitmentAnalyticsService {
     };
   }
 
-  async getAllRecruitersKPIs(period: 'current_month' | 'last_month' | 'quarter' = 'current_month'): Promise<RecruiterKPI[]> {
+  async getAllRecruitersKPIs(period: 'current_month' | 'last_month' | 'quarter' | 'custom' = 'current_month', customStartDate?: Date, customEndDate?: Date): Promise<RecruiterKPI[]> {
     try {
       // Récupérer tous les profils (recruteurs) avec leurs infos auth
       const { data: profiles, error: profilesError } = await supabase
@@ -228,23 +257,7 @@ export class RecruitmentAnalyticsService {
       }
 
       console.log(`Found ${profiles?.length || 0} profiles`);
-
-      // Calculer la période
-      const now = new Date();
-      let startDate: Date;
-      
-      switch (period) {
-        case 'last_month':
-          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-          break;
-        case 'quarter':
-          startDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-          break;
-        default:
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      }
-
-      console.log(`Calculating KPIs from ${startDate.toISOString()}`);
+      console.log(`Calculating KPIs for period: ${period}`, { customStartDate, customEndDate });
 
       const recruiterKPIs: RecruiterKPI[] = [];
 
@@ -264,9 +277,7 @@ export class RecruitmentAnalyticsService {
 
           console.log(`User ${profile.id} has ${candidates?.length || 0} candidates`);
 
-          const periodCandidates = candidates?.filter(candidate => 
-            new Date(candidate.created_at || '') >= startDate
-          ) || [];
+          const periodCandidates = this.filterCandidatesByPeriod(candidates || [], period, customStartDate, customEndDate);
 
           console.log(`User ${profile.id} has ${periodCandidates.length} candidates in period`);
 
@@ -302,7 +313,7 @@ export class RecruitmentAnalyticsService {
             mission
           );
 
-          recruiterKPIs.push({
+          const kpi: RecruiterKPI = {
             recruiterId: profile.id,
             recruiterName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Recruteur',
             recruiterEmail: '',
@@ -318,7 +329,13 @@ export class RecruitmentAnalyticsService {
             conversionEC2ToMission: conversionResults.conversionEC2ToMission,
             adjustedNumbers: conversionResults.adjustedNumbers,
             period
-          });
+          };
+
+          if (period === 'custom' && customStartDate && customEndDate) {
+            kpi.customPeriod = { startDate: customStartDate, endDate: customEndDate };
+          }
+
+          recruiterKPIs.push(kpi);
         } catch (userError) {
           console.error(`Error processing KPIs for user ${profile.id}:`, userError);
           continue;
@@ -333,9 +350,9 @@ export class RecruitmentAnalyticsService {
     }
   }
 
-  async getRecruiterKPIs(recruiterId: string, period: 'current_month' | 'last_month' | 'quarter' = 'current_month'): Promise<RecruiterKPI> {
+  async getRecruiterKPIs(recruiterId: string, period: 'current_month' | 'last_month' | 'quarter' | 'custom' = 'current_month', customStartDate?: Date, customEndDate?: Date): Promise<RecruiterKPI> {
     try {
-      console.log(`Getting KPIs for recruiter ${recruiterId}, period: ${period}`);
+      console.log(`Getting KPIs for recruiter ${recruiterId}, period: ${period}`, { customStartDate, customEndDate });
 
       // Récupérer tous les candidats du recruteur directement
       const { data: candidates, error } = await supabase
@@ -350,26 +367,7 @@ export class RecruitmentAnalyticsService {
 
       console.log(`Found ${candidates?.length || 0} candidates for recruiter ${recruiterId}`);
 
-      // Calculer la période
-      const now = new Date();
-      let startDate: Date;
-      
-      switch (period) {
-        case 'last_month':
-          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-          break;
-        case 'quarter':
-          startDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-          break;
-        default:
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      }
-
-      console.log(`Period start date: ${startDate.toISOString()}`);
-
-      const periodCandidates = candidates?.filter(candidate => 
-        new Date(candidate.created_at || '') >= startDate
-      ) || [];
+      const periodCandidates = this.filterCandidatesByPeriod(candidates || [], period, customStartDate, customEndDate);
 
       console.log(`${periodCandidates.length} candidates in period`);
 
@@ -429,6 +427,10 @@ export class RecruitmentAnalyticsService {
         adjustedNumbers: conversionResults.adjustedNumbers,
         period
       };
+
+      if (period === 'custom' && customStartDate && customEndDate) {
+        result.customPeriod = { startDate: customStartDate, endDate: customEndDate };
+      }
 
       console.log('Final KPI result:', result);
       return result;
