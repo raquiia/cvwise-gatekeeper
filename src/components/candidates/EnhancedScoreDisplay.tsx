@@ -64,7 +64,7 @@ const EnhancedScoreDisplay: React.FC<EnhancedScoreDisplayProps> = ({
 
   // Générer des suggestions d'amélioration
   const suggestions = isJobSpecific && candidateSkills.length > 0 ? 
-    getSkillsSuggestions(candidateSkills, jobRequiredSkills, jobPreferredSkills) : 
+    getSkillsSuggestions(candidateSkills, [...jobRequiredSkills, ...jobPreferredSkills]) : 
     null;
 
   return (
@@ -169,48 +169,20 @@ const EnhancedScoreDisplay: React.FC<EnhancedScoreDisplayProps> = ({
         )}
 
         {/* Suggestions d'amélioration */}
-        {suggestions && suggestions.suggestions.length > 0 && (
+        {suggestions && suggestions.length > 0 && (
           <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <h4 className="font-medium text-blue-900 flex items-center gap-2">
               <Lightbulb size={16} />
               Suggestions d'amélioration
             </h4>
             <ul className="space-y-2">
-              {suggestions.suggestions.map((suggestion, index) => (
+              {suggestions.map((suggestion, index) => (
                 <li key={index} className="text-sm text-blue-800 flex items-start gap-2">
                   <span className="text-blue-500 mt-1">•</span>
                   <span>{suggestion}</span>
                 </li>
               ))}
             </ul>
-          </div>
-        )}
-
-        {/* Compétences manquantes critiques */}
-        {suggestions && suggestions.missingRequired.length > 0 && (
-          <div className="space-y-3 p-4 bg-red-50 rounded-lg border border-red-200">
-            <h4 className="font-medium text-red-900">Compétences requises manquantes</h4>
-            <div className="flex flex-wrap gap-2">
-              {suggestions.missingRequired.map((skill, index) => (
-                <Badge key={index} variant="destructive" className="text-xs">
-                  {skill}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Compétences préférées à acquérir */}
-        {suggestions && suggestions.missingPreferred.length > 0 && (
-          <div className="space-y-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
-            <h4 className="font-medium text-amber-900">Compétences préférées à acquérir</h4>
-            <div className="flex flex-wrap gap-2">
-              {suggestions.missingPreferred.slice(0, 6).map((skill, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
-                  {skill}
-                </Badge>
-              ))}
-            </div>
           </div>
         )}
       </CardContent>

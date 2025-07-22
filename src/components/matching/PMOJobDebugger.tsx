@@ -56,7 +56,7 @@ const PMOJobDebugger: React.FC<PMOJobDebuggerProps> = ({ jobOfferId, jobTitle })
       await handleClearJobCache();
       
       // Activer le mode debug verbose
-      window.DEBUG_MATCHING = true;
+      (window as any).DEBUG_MATCHING = true;
       
       const logs: string[] = [];
       const originalConsoleLog = console.log;
@@ -75,7 +75,7 @@ const PMOJobDebugger: React.FC<PMOJobDebuggerProps> = ({ jobOfferId, jobTitle })
       
       // Restaurer console.log
       console.log = originalConsoleLog;
-      window.DEBUG_MATCHING = false;
+      (window as any).DEBUG_MATCHING = false;
       
       console.log(`✅ Debug recalculation completed. Found ${matches.length} matches`);
       

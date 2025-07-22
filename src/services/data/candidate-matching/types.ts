@@ -102,6 +102,32 @@ export interface SkillsMatchDetails {
 // Skills details (for backward compatibility)
 export interface SkillsDetails extends SkillsMatchDetails {}
 
+// Additional skill matching types
+export interface MatchedSkill {
+  skill: string;
+  score?: number;
+  category?: string;
+  candidate?: string;
+  job?: string;
+  type?: 'required' | 'preferred';
+  matchStrength?: number;
+}
+
+export interface MissingSkill {
+  skill: string;
+  importance?: number;
+  suggestions?: string[];
+  type?: 'required' | 'preferred';
+}
+
+export interface SkillsMatchResult {
+  matched: MatchedSkill[];
+  missing: MissingSkill[];
+  additional?: string[];
+  score?: number;
+  totalSkills?: number;
+}
+
 // Options for calculating match scores
 export interface MatchingOptions {
   weights?: {

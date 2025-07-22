@@ -120,6 +120,7 @@ export const findSkillMatches = (
     for (const candidateSkill of candidateSkills) {
       if (skillsMatch(candidateSkill, jobSkill)) {
         matched.push({
+          skill: candidateSkill,
           candidate: candidateSkill,
           job: jobSkill,
           type: 'required',
@@ -152,6 +153,7 @@ export const findSkillMatches = (
         // Éviter les doublons
         if (!matched.some(m => m.candidate === candidateSkill && m.job === jobSkill)) {
           matched.push({
+            skill: candidateSkill,
             candidate: candidateSkill,
             job: jobSkill,
             type: 'preferred',
@@ -210,7 +212,7 @@ export const calculateSkillsMatchScore = (
   // Calcul du score pour les compétences requises
   if (requiredSkillsCount > 0) {
     const matchedRequiredSkills = matchedSkills.filter(skill => skill.type === 'required');
-    requiredScore = (matchedRequiredSkills.reduce((acc, skill) => acc + skill.matchStrength, 0) / requiredSkillsCount) * 100;
+    requiredScore = (matchedRequiredSkills.reduce((acc, skill) => acc + (skill.matchStrength || 1), 0) / requiredSkillsCount) * 100;
   } else {
     requiredScore = 70; // Si pas de compétences requises, score par défaut élevé
   }
@@ -218,7 +220,7 @@ export const calculateSkillsMatchScore = (
   // Calcul du score pour les compétences préférées
   if (preferredSkillsCount > 0) {
     const matchedPreferredSkills = matchedSkills.filter(skill => skill.type === 'preferred');
-    preferredScore = (matchedPreferredSkills.reduce((acc, skill) => acc + skill.matchStrength, 0) / preferredSkillsCount) * 100;
+    preferredScore = (matchedPreferredSkills.reduce((acc, skill) => acc + (skill.matchStrength || 1), 0) / preferredSkillsCount) * 100;
   } else {
     preferredScore = 30; // Si pas de compétences préférées, score par défaut moyen
   }
@@ -236,4 +238,32 @@ export const calculateSkillsMatchScore = (
     required: Math.round(requiredScore),
     preferred: Math.round(preferredScore)
   };
+};
+
+// Export missing functions and constants
+export const SKILLS_MAPPING = PMO_SKILLS_EQUIVALENTS;
+export const SKILL_DOMAINS = PMO_SKILLS_EQUIVALENTS;
+export { normalizeSkill };
+
+export const getSkillsSuggestions = (candidateSkills: string[], jobSkills: string[]): string[] => {
+  const suggestions: string[] = [];
+  const normalizedCandidateSkills = candidateSkills.map(normalizeSkill);
+  
+  jobSkills.forEach(jobSkill => {
+    const normalized = normalizeSkill(jobSkill);
+    if (!normalizedCandidateSkills.includes(normalized)) {
+      // Find similar skills or suggest exact match
+      const equivalents = Object.entries(PMO_SKILLS_EQUIVALENTS).find(([key, values]) => 
+        values.includes(normalized) || key === normalized
+      );
+      
+      if (equivalents) {
+        suggestions.push(equivalents[0]);
+      } else {
+        suggestions.push(jobSkill);
+      }
+    }
+  });
+  
+  return [...new Set(suggestions)];
 };
