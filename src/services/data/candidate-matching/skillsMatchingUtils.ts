@@ -1,10 +1,44 @@
-
 /**
  * Utilitaires pour améliorer la correspondance des compétences
  */
 
-// Mapping de compétences similaires pour améliorer les correspondances
+// Mapping de compétences similaires pour améliorer les correspondances - AMÉLIORÉ POUR PMO
 export const SKILLS_MAPPING: Record<string, string[]> = {
+  // PMO & Project Management - SECTION PRIORITAIRE
+  'project management': ['gestion de projet', 'management de projet', 'chef de projet', 'pmo', 'project manager', 'scrum master', 'agile project management'],
+  'gestion de projet': ['project management', 'management de projet', 'chef de projet', 'pmo', 'project manager', 'pilotage de projet'],
+  'pmo': ['project management office', 'project management', 'gestion de projet', 'chef de projet', 'project manager'],
+  'chef de projet': ['project manager', 'project management', 'gestion de projet', 'pmo', 'responsable projet'],
+  'project manager': ['chef de projet', 'project management', 'gestion de projet', 'pmo', 'responsable projet'],
+  'scrum master': ['agile', 'scrum', 'project management', 'gestion de projet', 'agile coach'],
+  'planification': ['planning', 'project planning', 'scheduling', 'gestion planning'],
+  'planning': ['planification', 'project planning', 'scheduling', 'gestion planning'],
+  'risk management': ['gestion des risques', 'management des risques', 'analyse des risques'],
+  'gestion des risques': ['risk management', 'management des risques', 'analyse des risques'],
+  'budget management': ['gestion budgétaire', 'suivi budgétaire', 'contrôle budgétaire'],
+  'gestion budgétaire': ['budget management', 'suivi budgétaire', 'contrôle budgétaire'],
+  'stakeholder management': ['gestion des parties prenantes', 'management stakeholders'],
+  'gestion des parties prenantes': ['stakeholder management', 'management stakeholders'],
+  
+  // Outils PMO
+  'ms project': ['microsoft project', 'project', 'msp'],
+  'microsoft project': ['ms project', 'project', 'msp'],
+  'jira': ['atlassian jira', 'jira software', 'issue tracking'],
+  'confluence': ['atlassian confluence', 'documentation', 'wiki'],
+  'trello': ['kanban', 'task management', 'project tracking'],
+  'asana': ['task management', 'project management tool'],
+  'monday': ['monday.com', 'project management tool'],
+  'smartsheet': ['project management tool', 'collaborative work'],
+  
+  // Méthodologies PMO
+  'prince2': ['project management methodology', 'prince 2'],
+  'pmp': ['project management professional', 'pmi'],
+  'agile': ['scrum', 'kanban', 'project management', 'user stories'],
+  'scrum': ['agile', 'sprint planning', 'scrum master'],
+  'kanban': ['lean', 'continuous flow', 'agile'],
+  'waterfall': ['cascade', 'traditional project management'],
+  'lean': ['lean management', 'continuous improvement'],
+  
   // Frontend Frameworks
   'react': ['react.js', 'reactjs', 'react js', 'react native', 'nextjs', 'next.js'],
   'vue': ['vue.js', 'vuejs', 'vue js', 'nuxt', 'nuxt.js', 'nuxtjs'],
@@ -73,11 +107,13 @@ export const SKILLS_MAPPING: Record<string, string[]> = {
   'git': ['version control', 'github', 'gitlab', 'bitbucket'],
   'svn': ['subversion', 'version control'],
   
-  // Methodologies
-  'agile': ['scrum', 'kanban', 'sprint', 'user stories'],
-  'scrum': ['agile', 'sprint planning', 'scrum master'],
-  'kanban': ['lean', 'continuous flow'],
-  'devops': ['dev ops', 'ci/cd', 'automation'],
+  // Secteurs spécifiques
+  'finance': ['fintech', 'banking', 'insurance', 'trading'],
+  'santé': ['healthcare', 'medical', 'pharma', 'biotech'],
+  'ecommerce': ['e-commerce', 'retail', 'marketplace'],
+  'transport': ['logistics', 'supply chain', 'mobility'],
+  'energie': ['energy', 'renewable', 'utilities'],
+  'education': ['edtech', 'e-learning', 'training'],
   
   // Data & AI
   'machine learning': ['ml', 'artificial intelligence', 'ai', 'deep learning'],
@@ -93,27 +129,16 @@ export const SKILLS_MAPPING: Record<string, string[]> = {
   'ionic': ['hybrid mobile', 'cordova'],
   'xamarin': ['cross platform mobile'],
   
-  // Secteurs spécifiques
-  'finance': ['fintech', 'banking', 'insurance', 'trading'],
-  'santé': ['healthcare', 'medical', 'pharma', 'biotech'],
-  'ecommerce': ['e-commerce', 'retail', 'marketplace'],
-  'transport': ['logistics', 'supply chain', 'mobility'],
-  'energie': ['energy', 'renewable', 'utilities'],
-  'education': ['edtech', 'e-learning', 'training'],
-  
-  // Project Management
-  'project management': ['pmp', 'prince2', 'agile pm', 'scrum master'],
-  'jira': ['atlassian', 'issue tracking', 'project tracking'],
-  'confluence': ['documentation', 'wiki'],
-  'trello': ['kanban board', 'task management'],
-  'asana': ['project planning', 'task management'],
-  'notion': ['workspace', 'documentation'],
+  // Communication & Collaboration
   'slack': ['team communication', 'collaboration'],
-  'teams': ['microsoft teams', 'collaboration']
+  'teams': ['microsoft teams', 'collaboration'],
+  'zoom': ['video conferencing', 'remote meetings'],
+  'notion': ['workspace', 'documentation']
 };
 
-// Domaines de compétences pour le matching sémantique
+// Domaines de compétences pour le matching sémantique - AMÉLIORÉ POUR PMO
 export const SKILL_DOMAINS: Record<string, string[]> = {
+  'pmo': ['project management', 'gestion de projet', 'pmo', 'chef de projet', 'scrum master', 'planification', 'risk management', 'budget management'],
   'frontend': ['react', 'vue', 'angular', 'html', 'css', 'javascript', 'typescript', 'tailwind', 'bootstrap'],
   'backend': ['node', 'python', 'java', 'c#', 'php', 'ruby', 'go', 'rust'],
   'database': ['postgresql', 'mongodb', 'mysql', 'redis', 'elasticsearch'],
@@ -122,7 +147,7 @@ export const SKILL_DOMAINS: Record<string, string[]> = {
   'data': ['machine learning', 'data science', 'tensorflow', 'pytorch', 'pandas'],
   'devops': ['docker', 'kubernetes', 'jenkins', 'terraform', 'ci/cd'],
   'testing': ['jest', 'cypress', 'selenium', 'junit'],
-  'management': ['project management', 'agile', 'scrum', 'jira']
+  'management': ['project management', 'agile', 'scrum', 'jira', 'pmo']
 };
 
 /**
@@ -195,7 +220,7 @@ export function findSkillMatches(
     }
   }
   
-  // Correspondances avec variations/synonymes (score: 85)
+  // Correspondances avec variations/synonymes (score: 90 pour PMO, 85 pour autres)
   for (const candidateSkill of normalizedCandidateSkills) {
     if (matchedCandidateSkills.has(candidateSkill.original)) continue;
     
@@ -205,12 +230,16 @@ export function findSkillMatches(
       const isRelated = isSkillsRelated(candidateSkill.normalized, jobSkill.normalized);
       
       if (isRelated) {
+        // Bonus pour les correspondances PMO
+        const isPMOMatch = isPMOSkill(candidateSkill.normalized) && isPMOSkill(jobSkill.normalized);
+        const score = isPMOMatch ? 90 : 85;
+        
         matched.push({
           candidate: candidateSkill.original,
           job: jobSkill.original,
           exact: false,
           required: jobSkill.required,
-          score: 85
+          score: score
         });
         matchedJobSkills.add(jobSkill.original);
         matchedCandidateSkills.add(candidateSkill.original);
@@ -219,7 +248,7 @@ export function findSkillMatches(
     }
   }
   
-  // Correspondances de domaine (score: 70)
+  // Correspondances de domaine (score: 60 pour PMO, 45 pour autres - RÉDUIT)
   for (const candidateSkill of normalizedCandidateSkills) {
     if (matchedCandidateSkills.has(candidateSkill.original)) continue;
     
@@ -229,12 +258,16 @@ export function findSkillMatches(
       const sameDomain = areSkillsInSameDomain(candidateSkill.normalized, jobSkill.normalized);
       
       if (sameDomain) {
+        // Bonus pour le domaine PMO
+        const isPMODomain = isPMOSkill(candidateSkill.normalized) && isPMOSkill(jobSkill.normalized);
+        const score = isPMODomain ? 60 : 45;
+        
         matched.push({
           candidate: candidateSkill.original,
           job: jobSkill.original,
           exact: false,
           required: jobSkill.required,
-          score: 70
+          score: score
         });
         matchedJobSkills.add(jobSkill.original);
         matchedCandidateSkills.add(candidateSkill.original);
@@ -284,6 +317,17 @@ export function findSkillMatches(
   overallScore = Math.max(0, Math.min(100, Math.round(overallScore)));
   
   return { matched, missing, additional, overallScore };
+}
+
+/**
+ * Vérifie si une compétence est liée au PMO
+ */
+function isPMOSkill(skill: string): boolean {
+  const pmoSkills = ['project management', 'gestion de projet', 'pmo', 'chef de projet', 'project manager', 
+                    'scrum master', 'planification', 'planning', 'risk management', 'gestion des risques',
+                    'budget management', 'gestion budgétaire', 'stakeholder management', 'prince2', 'pmp'];
+  
+  return pmoSkills.some(pmoSkill => skill.includes(pmoSkill) || pmoSkill.includes(skill));
 }
 
 /**

@@ -88,52 +88,69 @@ export const calculateCandidateJobMatch = async (
   
   console.log(`[Match Utils] Experience: ${candidateExp} years vs required ${minExp}${maxExp ? `-${maxExp}` : '+'} (${experienceScore}%)`);
   
-  // 3. Correspondance de poste/rôle (impact multiplicateur crucial)
-  let roleMatchScore = 30; // Score par défaut plus sévère
+  // 3. Correspondance de poste/rôle (impact multiplicateur crucial) - AMÉLIORÉ POUR PMO
+  let roleMatchScore = 20; // Score par défaut plus sévère
   let roleMatchExplanation = 'Correspondance de rôle à évaluer';
   
   const candidatePosition = (candidate.position || '').toLowerCase().trim();
   const jobTitle = (jobOffer.title || '').toLowerCase().trim();
   
-  // Détection de rôles techniques vs management
-  const isTechnicalJob = jobTitle.includes('développeur') || jobTitle.includes('ingénieur') || 
+  // Détection PMO/Project Management améliorée
+  const isPMOJob = jobTitle.includes('pmo') || jobTitle.includes('project manager') || 
+                  jobTitle.includes('chef de projet') || jobTitle.includes('ingénieur projet') ||
+                  jobTitle.includes('directeur de projet') || jobTitle.includes('responsable projet') ||
+                  jobRequiredSkills.some(skill => 
+                    ['project management', 'gestion de projet', 'pmp', 'prince2', 'scrum master'].includes(skill.toLowerCase())
+                  );
+  
+  const candidateIsPMO = candidatePosition.includes('pmo') || candidatePosition.includes('project manager') ||
+                        candidatePosition.includes('chef de projet') || candidatePosition.includes('ingénieur projet') ||
+                        candidatePosition.includes('directeur de projet') || candidatePosition.includes('responsable projet') ||
+                        candidatePosition.includes('project management') || candidatePosition.includes('gestion de projet');
+  
+  // Détection de rôles techniques vs management (mise à jour)
+  const isTechnicalJob = jobTitle.includes('développeur') || jobTitle.includes('ingénieur logiciel') || 
                         jobTitle.includes('analyst') || jobTitle.includes('architect') ||
                         jobRequiredSkills.some(skill => 
-                          ['javascript', 'python', 'java', 'react', 'vue', 'angular', 'sql', 'aws'].includes(skill.toLowerCase())
+                          ['javascript', 'python', 'java', 'react', 'vue', 'angular', 'sql', 'aws', 'docker'].includes(skill.toLowerCase())
                         );
   
-  const isManagementJob = jobTitle.includes('manager') || jobTitle.includes('chef') || 
-                         jobTitle.includes('directeur') || jobTitle.includes('pmo') ||
-                         jobTitle.includes('project management');
+  const candidateIsTechnical = candidatePosition.includes('développeur') || candidatePosition.includes('ingénieur logiciel') ||
+                              candidatePosition.includes('analyst') || candidatePosition.includes('architect') ||
+                              candidatePosition.includes('software engineer');
   
-  const candidateIsTechnical = candidatePosition.includes('développeur') || candidatePosition.includes('ingénieur') ||
-                              candidatePosition.includes('analyst') || candidatePosition.includes('architect');
-  
-  const candidateIsManagement = candidatePosition.includes('manager') || candidatePosition.includes('chef') ||
-                               candidatePosition.includes('directeur') || candidatePosition.includes('pmo');
-  
-  // Correspondances exactes ou très proches
-  if (candidatePosition.includes('pmo') && jobTitle.includes('pmo')) {
+  // Correspondances spécifiques PMO (PRIORITÉ ABSOLUE)
+  if (candidateIsPMO && isPMOJob) {
+    roleMatchScore = 95;
+    roleMatchExplanation = 'Correspondance excellente - PMO/Project Management';
+  } else if (candidatePosition.includes('pmo') && jobTitle.includes('pmo')) {
     roleMatchScore = 100;
     roleMatchExplanation = 'Correspondance parfaite - PMO';
   } else if (candidatePosition.includes('project manager') && jobTitle.includes('project manager')) {
     roleMatchScore = 95;
     roleMatchExplanation = 'Correspondance excellente - Project Manager';
-  } else if (candidatePosition.includes('fullstack') && jobTitle.includes('fullstack')) {
+  } else if (candidatePosition.includes('chef de projet') && (jobTitle.includes('chef de projet') || jobTitle.includes('ingénieur projet'))) {
+    roleMatchScore = 90;
+    roleMatchExplanation = 'Correspondance excellente - Chef de projet';
+  } else if (candidatePosition.includes('ingénieur projet') && jobTitle.includes('ingénieur projet')) {
+    roleMatchScore = 95;
+    roleMatchExplanation = 'Correspondance excellente - Ingénieur projet';
+  } 
+  // Correspondances techniques
+  else if (candidatePosition.includes('fullstack') && jobTitle.includes('fullstack')) {
     roleMatchScore = 100;
     roleMatchExplanation = 'Correspondance parfaite - Développeur fullstack';
   } else if (candidateIsTechnical && isTechnicalJob) {
     roleMatchScore = 80;
     roleMatchExplanation = 'Correspondance technique solide';
-  } else if (candidateIsManagement && isManagementJob) {
-    roleMatchScore = 85;
-    roleMatchExplanation = 'Correspondance management solide';
-  } else if (candidateIsManagement && isTechnicalJob) {
-    roleMatchScore = 15; // Forte pénalité management -> technique
-    roleMatchExplanation = 'Rôle incompatible - Management vers technique';
-  } else if (candidateIsTechnical && isManagementJob) {
-    roleMatchScore = 25; // Pénalité technique -> management (possible évolution)
-    roleMatchExplanation = 'Transition technique vers management';
+  } 
+  // Incompatibilités majeures
+  else if (candidateIsTechnical && isPMOJob) {
+    roleMatchScore = 15; // Très forte pénalité technique -> PMO
+    roleMatchExplanation = 'Rôle incompatible - Technique vers PMO/Management';
+  } else if (candidateIsPMO && isTechnicalJob) {
+    roleMatchScore = 25; // Pénalité PMO -> technique (possible mais rare)
+    roleMatchExplanation = 'Transition PMO vers technique';
   } else if (candidatePosition && jobTitle) {
     // Correspondance générale basée sur les mots-clés
     const positionWords = candidatePosition.split(/\s+/).filter(w => w.length > 2);
@@ -143,15 +160,33 @@ export const calculateCandidateJobMatch = async (
     );
     
     if (commonWords.length > 0) {
-      roleMatchScore = 50 + (commonWords.length * 10);
+      roleMatchScore = 40 + (commonWords.length * 10);
       roleMatchExplanation = `Correspondance partielle - ${commonWords.length} mot(s) commun(s)`;
+    }
+  }
+  
+  // Bonus pour expertise PMO (certifications, etc.)
+  if (isPMOJob && candidateIsPMO) {
+    const candidateDescription = (candidate.career_objectives || '').toLowerCase() + ' ' + 
+                                (candidate.summary || '').toLowerCase();
+    
+    if (candidateDescription.includes('pmp') || candidateDescription.includes('prince2') || 
+        candidateDescription.includes('scrum master') || candidateDescription.includes('project management professional')) {
+      roleMatchScore = Math.min(100, roleMatchScore + 10);
+      roleMatchExplanation += ' + Certification PMO';
+    }
+    
+    if (candidateDescription.includes('migso') || candidateDescription.includes('pcubed') || 
+        candidateDescription.includes('conseil') || candidateDescription.includes('consulting')) {
+      roleMatchScore = Math.min(100, roleMatchScore + 5);
+      roleMatchExplanation += ' + Expérience conseil';
     }
   }
   
   console.log(`[Match Utils] Role match: "${candidatePosition}" vs "${jobTitle}" (${roleMatchScore}%) - ${roleMatchExplanation}`);
   
   // 4. Correspondance de localisation (5% du score global - fortement réduit)
-  let locationScore = 10; // Score par défaut très sévère
+  let locationScore = 5; // Score par défaut très sévère
   let needsRelocation = false;
   const candidateLocation = candidate.location?.toLowerCase().trim() || '';
   const jobLocation = jobOffer.location?.toLowerCase().trim() || '';
@@ -172,29 +207,36 @@ export const calculateCandidateJobMatch = async (
   console.log(`[Match Utils] Location: "${candidateLocation}" vs "${jobLocation}" (${locationScore}%) - Relocation needed: ${needsRelocation}`);
   
   // 5. Correspondance d'éducation (5% du score global - fortement réduit)
-  let educationScore = 10; // Score par défaut très sévère
+  let educationScore = 5; // Score par défaut très sévère
   const candidateEducation = candidate.education;
   const jobEducationLevel = jobOffer.education_level;
   
   if (candidateEducation && Array.isArray(candidateEducation) && candidateEducation.length > 0) {
-    educationScore = 40; // Bonus pour avoir des informations d'éducation
+    educationScore = 30; // Bonus pour avoir des informations d'éducation
     
     const educationLevels = candidateEducation.map((edu: any) => (edu.degree || '').toLowerCase());
+    const educationFields = candidateEducation.map((edu: any) => (edu.field || edu.field_of_study || '').toLowerCase());
     
     if (jobEducationLevel) {
       const requiredLevel = jobEducationLevel.toLowerCase();
       
-      // Correspondances spécifiques
-      if (educationLevels.some(level => level.includes('master') || level.includes('mba')) && 
-          requiredLevel.includes('master')) {
+      // Correspondances spécifiques avec bonus pour ingénieur/PMO
+      if (educationLevels.some(level => level.includes('ingénieur') || level.includes('engineer')) && 
+          (jobTitle.includes('ingénieur') || isPMOJob)) {
+        educationScore = 95; // Bonus élevé pour diplôme d'ingénieur sur poste ingénieur/PMO
+      } else if (educationLevels.some(level => level.includes('master') || level.includes('mba')) && 
+                 requiredLevel.includes('master')) {
         educationScore = 90;
+      } else if (educationFields.some(field => field.includes('gestion') || field.includes('management') || 
+                                             field.includes('projet') || field.includes('project')) && isPMOJob) {
+        educationScore = 85; // Bonus pour formation en gestion/management sur poste PMO
       } else if (educationLevels.some(level => level.includes('bachelor') || level.includes('license')) && 
                  requiredLevel.includes('bachelor')) {
-        educationScore = 85;
+        educationScore = 75;
       } else if (educationLevels.some(level => level.includes('phd') || level.includes('doctorat'))) {
-        educationScore = 95; // Bonus pour niveau élevé
+        educationScore = 90; // Bonus pour niveau élevé
       } else {
-        educationScore = 60; // Éducation présente mais pas parfaitement alignée
+        educationScore = 50; // Éducation présente mais pas parfaitement alignée
       }
     }
   }
