@@ -38,7 +38,7 @@ export const semanticMatchingService = {
       'chef de projet': ['project manager', 'gestionnaire de projet', 'responsable projet', 'directeur de projet', 'chef de projet pmo', 'pmo', 'coordination', 'gestion projet'],
       'développeur': ['ingénieur logiciel', 'software engineer', 'programmeur', 'fullstack', 'développeur web', 'coder', 'dev', 'software developer'],
       'pmo': ['project management office', 'chef de projet', 'project manager', 'gestion de projet', 'coordination projet'],
-      'ingénieur': ['engineer', 'ingénierie', 'technique', 'technical', 'développeur', 'architecte'],
+      'ingénieur': ['engineer', 'ingénierie', 'technique', 'technical', 'développeur', 'architecte', 'bac+5', 'master', 'école d\'ingénieur', 'engineering degree'],
       
       // Industry mappings
       'santé': ['hôpital', 'clinique', 'médical', 'pharmaceutique', 'médecin', 'soins', 'healthcare', 'health'],
@@ -73,8 +73,7 @@ export const semanticMatchingService = {
       
       // Education mappings
       'bac+5': ['master', 'diplôme d\'ingénieur', 'école d\'ingénieur', 'ingénieur', 'msc', 'master of science', 'mba'],
-      'master': ['bac+5', 'diplôme d\'ingénieur', 'msc', 'master of science', 'mba'],
-      'ingénieur': ['bac+5', 'master', 'école d\'ingénieur', 'engineer', 'engineering degree']
+      'master': ['bac+5', 'diplôme d\'ingénieur', 'msc', 'master of science', 'mba']
     };
     
     // Split query into keywords for more flexible matching
