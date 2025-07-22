@@ -19,7 +19,20 @@ const ReprocessDataButton = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [candidateCount, setCandidateCount] = useState<number | null>(null);
   const { toast } = useToast();
-  const { activeJobOfferId, activeJobOfferTitle } = useActiveJob();
+  
+  // Safe access to ActiveJob context with fallback
+  const activeJobContext = React.useContext(React.createContext<any>(undefined));
+  let activeJobOfferId: string | null = null;
+  let activeJobOfferTitle: string | null = null;
+  
+  try {
+    const { activeJobOfferId: jobId, activeJobOfferTitle: jobTitle } = useActiveJob();
+    activeJobOfferId = jobId;
+    activeJobOfferTitle = jobTitle;
+  } catch (error) {
+    // Context not available, use defaults
+    console.warn('ActiveJobProvider not available, using defaults');
+  }
 
   const fetchCandidatesToProcess = async () => {
     try {
