@@ -5,8 +5,7 @@ import { RefreshCw, Calculator, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useActiveJob } from '@/context/ActiveJobContext';
 import { candidateService } from '@/services/data/candidateService';
-import { matchDbService } from '@/services/data/candidate-matching/matchDbService';
-import { intelligentCache } from '@/services/cache/intelligentCacheService';
+import { localMatchingService } from '@/services/data/candidate-matching/localMatchingService';
 import {
   Dialog,
   DialogContent,
@@ -65,14 +64,14 @@ const ReprocessDataButton = () => {
 
     setIsLoading(true);
     try {
-      console.log('🔄 Actualisation intelligente des scores...');
+      console.log('🔄 Actualisation intelligente des scores (local)...');
       
-      // Recalcul intelligent (utilise le cache quand possible)
-      const matches = await matchDbService.calculateMatchesForJobOffer(activeJobOfferId, false);
+      // Calcul local instantané
+      const matches = await localMatchingService.calculateMatchesForJobOffer(activeJobOfferId);
       
       toast({
         title: "✅ Actualisation terminée",
-        description: `${matches.length} candidats traités avec cache intelligent`,
+        description: `${matches.length} candidats traités instantanément (scoring local)`,
       });
     } catch (error) {
       console.error('Erreur lors de l\'actualisation intelligente:', error);
@@ -99,18 +98,14 @@ const ReprocessDataButton = () => {
 
     setIsLoading(true);
     try {
-      console.log('⚡ Recalcul complet forcé...');
+      console.log('⚡ Recalcul complet forcé (local)...');
       
-      // Vider les caches liés à cette offre
-      intelligentCache.invalidatePattern(`*${activeJobOfferId}*`);
-      console.log('🗑️ Cache intelligent vidé');
-      
-      // Force le recalcul complet
-      const matches = await matchDbService.forceRecalculateAllScores(activeJobOfferId, false);
+      // Force le recalcul local (instantané)
+      const matches = await localMatchingService.forceRecalculateAllScores(activeJobOfferId);
       
       toast({
         title: "✅ Recalcul complet terminé",
-        description: `${matches.length} candidats recalculés entièrement`,
+        description: `${matches.length} candidats recalculés instantanément`,
       });
     } catch (error) {
       console.error('Erreur lors du recalcul forcé:', error);
@@ -154,7 +149,7 @@ const ReprocessDataButton = () => {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5 text-purple-600" />
-            Actualisation des scores de matching
+            Actualisation des scores de matching (Local)
           </DialogTitle>
           <DialogDescription>
             <div className="space-y-4">
@@ -170,13 +165,14 @@ const ReprocessDataButton = () => {
                     </p>
                   )}
                   
-                  <div className="bg-blue-50 p-3 rounded-lg mt-3">
-                    <p className="text-sm text-blue-700 font-medium mb-2">
-                      💡 Choisissez le type d'actualisation :
+                  <div className="bg-green-50 p-3 rounded-lg mt-3">
+                    <p className="text-sm text-green-700 font-medium mb-2">
+                      ✨ Nouveau : Scoring algorithmique local
                     </p>
-                    <ul className="text-sm text-blue-600 space-y-1">
-                      <li>• <strong>Intelligente</strong> : Utilise le cache pour optimiser les performances</li>
-                      <li>• <strong>Complète</strong> : Recalcule tout depuis zéro (plus lent mais à jour)</li>
+                    <ul className="text-sm text-green-600 space-y-1">
+                      <li>• <strong>Instantané</strong> : Résultats en < 1 seconde</li>
+                      <li>• <strong>Gratuit</strong> : Aucun token OpenAI consommé</li>
+                      <li>• <strong>Optimisé PMO</strong> : Détection spécialisée des profils</li>
                     </ul>
                   </div>
                 </div>
@@ -202,27 +198,27 @@ const ReprocessDataButton = () => {
               <Button 
                 onClick={handleIntelligentRefresh}
                 disabled={isLoading}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-green-600 hover:bg-green-700"
               >
                 {isLoading ? (
                   <RefreshCw className="h-4 w-4 animate-spin mr-2" />
                 ) : (
                   <RefreshCw className="h-4 w-4 mr-2" />
                 )}
-                Actualisation intelligente
+                Calcul instantané
               </Button>
               
               <Button 
                 onClick={handleForceRecalculate}
                 disabled={isLoading}
-                className="bg-red-600 hover:bg-red-700"
+                className="bg-blue-600 hover:bg-blue-700"
               >
                 {isLoading ? (
                   <RefreshCw className="h-4 w-4 animate-spin mr-2" />
                 ) : (
                   <Zap className="h-4 w-4 mr-2" />
                 )}
-                Recalcul complet
+                Recalcul forcé
               </Button>
             </>
           )}

@@ -1,198 +1,115 @@
 
 import { useState, useEffect } from 'react';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
-import { matchDbService } from '@/services/data/candidate-matching/matchDbService';
-import { supabase } from '@/integrations/supabase/client';
-import { processCandidateData } from '@/utils/candidateUtils';
+import { localMatchingService } from '@/services/data/candidate-matching/localMatchingService';
+import { useActiveJob } from '@/context/ActiveJobContext';
 import type { JobOffer } from '@/services/data/job-offers/types';
 import type { ExtendedCandidateMatch } from '@/pages/types/candidateTypes';
 
-export function useJobOfferDetails(jobOfferId: string | undefined) {
+export const useJobOfferDetails = (jobOfferId: string | undefined) => {
   const [jobOffer, setJobOffer] = useState<JobOffer | null>(null);
   const [candidateMatches, setCandidateMatches] = useState<ExtendedCandidateMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [matchLoading, setMatchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isGlobalMode, setIsGlobalMode] = useState(false);
+  const { toast } = useToast();
+  const { setActiveJobOffer } = useActiveJob();
 
-  const fetchJobOffer = async () => {
-    if (!jobOfferId) {
-      setError("ID d'offre d'emploi manquant");
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const data = await jobOfferService.getJobOfferById(jobOfferId);
-      
-      if (!data) {
-        setError("Offre d'emploi non trouvée");
-        setLoading(false);
-        return;
-      }
-      
-      setJobOffer(data);
-      
-      // Phase 1: Properly set active job context for scoring
-      console.log('[Job Offer Details] 🎯 PHASE 1 - Setting active job context for PMO scoring:', jobOfferId, data.title);
-      
-      // Set the job context in the matching service directly
-      try {
-        await matchDbService.setActiveJobContext(jobOfferId, data.title || '');
-        console.log('[Job Offer Details] ✅ Active job context set successfully');
-      } catch (contextError) {
-        console.warn('[Job Offer Details] ⚠️ Could not set active job context, continuing without:', contextError);
-      }
-      
-      await fetchCandidateMatches(false); // Commencer en mode privé
-      
-      setLoading(false);
-    } catch (error: any) {
-      console.error('[Job Offer Details] Error fetching job offer:', error);
-      setError(error?.message || "Impossible de récupérer l'offre d'emploi");
-      
-      toast({
-        title: "Erreur",
-        description: error?.message || "Impossible de récupérer l'offre d'emploi",
-        variant: "destructive",
-      });
-      
-      setLoading(false);
-    }
-  };
-
-  const fetchCandidateMatches = async (globalMode: boolean = isGlobalMode) => {
+  const loadJobOffer = async () => {
     if (!jobOfferId) return;
     
     try {
-      console.log(`[Job Offer Details] 🔄 PHASE 2 - Using force recalculation for job: ${jobOfferId} (Global mode: ${globalMode})`);
+      setLoading(true);
+      console.log(`[Job Offer Details] 📋 Loading job offer: ${jobOfferId}`);
       
-      // Force complete recalculation with version bump to bypass all caches
-      const matches = await matchDbService.forceRecalculateAllScores(jobOfferId, globalMode);
-      
-      console.log(`[Job Offer Details] ✅ PHASE 2 - Received ${matches?.length || 0} matches with force recalculation (${globalMode ? 'global' : 'private'} mode)`);
-      
-      if (matches && matches.length > 0) {
-        const processedMatches = matches.map((match) => {
-          console.log(`[Job Offer Details] 📊 Processing match: ${match.firstName} ${match.lastName} with scores: Local=${match.local_score}%, Global=${match.global_score}%, Skills=${match.skills_only_score}%${globalMode && !match.isOwnCandidate ? ' (Externe)' : ''}`);
-          
-          return {
-            candidateId: match.candidateId,
-            firstName: match.firstName || '',
-            lastName: match.lastName || '',
-            position: match.position || '',
-            company: match.company || '',
-            score: match.local_score || match.score || 0, // Utiliser local_score comme score principal
-            globalScore: match.global_score || 0,
-            localScore: match.local_score || 0,
-            skillsOnlyScore: match.skills_only_score || 0,
-            // Propriétés pour le mode global
-            isOwnCandidate: match.isOwnCandidate,
-            ownerFirstName: match.ownerFirstName,
-            ownerLastName: match.ownerLastName,
-            details: match.details || {
-              skills: { matched: [], missing: [], additional: [], matchPercentage: 0 },
-              experienceLevel: { required: 0, candidate: 0, match: false },
-              location: { required: '', candidate: '', match: false },
-              educationLevel: { required: '', candidate: '', match: false },
-              overall: 0
-            },
-            candidate: {
-              id: match.candidateId,
-              first_name: match.firstName,
-              last_name: match.lastName,
-              position: match.position,
-              company: match.company,
-              location: match.details?.location?.candidate || '',
-              years_experience: match.details?.experienceLevel?.candidate || 0,
-              // Propriétés pour le mode global
-              owner_first_name: match.ownerFirstName,
-              owner_last_name: match.ownerLastName,
-              is_own_candidate: match.isOwnCandidate
-            },
-            match: {
-              match_score: match.local_score || match.score || 0,
-              global_score: match.global_score || 0,
-              local_score: match.local_score || 0,
-              skills_only_score: match.skills_only_score || 0,
-              skills_match_score: match.details?.skills?.matchPercentage || 0,
-              experience_match_score: match.details?.experienceLevel?.score || 0,
-              education_match_score: match.details?.educationLevel?.score || 0,
-              location_match_score: match.details?.location?.score || 0,
-              match_details: match.details || {}
-            }
-          } as ExtendedCandidateMatch;
-        });
-        
-        // Trier par score décroissant (score local par défaut)
-        const sortedMatches = processedMatches.sort((a, b) => b.score - a.score);
-        setCandidateMatches(sortedMatches);
-        
-        console.log(`[Job Offer Details] 🎯 PHASE 3 - Processed ${sortedMatches.length} matches with force recalculation. Top scores:`, 
-          sortedMatches.slice(0, 5).map(m => `${m.firstName} ${m.lastName}: Local=${m.localScore}%/Global=${m.globalScore}%/Skills=${m.skillsOnlyScore}%${globalMode && !m.isOwnCandidate ? ' (Externe)' : ''}`));
-      } else {
-        console.log(`[Job Offer Details] 📭 No matches returned from force recalculation (${globalMode ? 'global' : 'private'} mode)`);
-        setCandidateMatches([]);
+      const offer = await jobOfferService.getJobOfferById(jobOfferId);
+      if (!offer) {
+        throw new Error('Offre d\'emploi non trouvée');
       }
       
-    } catch (error) {
-      console.error('[Job Offer Details] ❌ Error fetching candidate matches with force recalculation:', error);
-      setCandidateMatches([]);
+      setJobOffer(offer);
       
-      toast({
-        title: "Problème de récupération des correspondances",
-        description: "Une erreur s'est produite lors de la récupération des correspondances. Veuillez réessayer.",
-        variant: "destructive",
-      });
+      // Set active job context immediately
+      setActiveJobOffer(jobOfferId, offer.title);
+      console.log(`[Job Offer Details] 🎯 Active job context set: ${offer.title}`);
+      
+    } catch (err: any) {
+      console.error('[Job Offer Details] ❌ Error loading job offer:', err);
+      setError(err.message || 'Erreur lors du chargement de l\'offre');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleRecalculateMatches = async (globalMode: boolean = isGlobalMode, forceRecalculation: boolean = true) => {
+  const loadCandidateMatches = async (forceRecalculate: boolean = false) => {
     if (!jobOfferId) return;
     
     try {
       setMatchLoading(true);
-      setIsGlobalMode(globalMode);
+      console.log(`[Job Offer Details] 🔄 Loading matches (force: ${forceRecalculate})`);
       
-      console.log(`[Job Offer Details] 🚀 FORCED RECALCULATION for job: ${jobOfferId} (Global mode: ${globalMode})`);
+      // Use local instant matching
+      const matches = forceRecalculate 
+        ? await localMatchingService.forceRecalculateAllScores(jobOfferId)
+        : await localMatchingService.calculateMatchesForJobOffer(jobOfferId);
       
-      // Always force recalculation with version bump for PMO jobs
-      const matches = await matchDbService.forceRecalculateAllScores(jobOfferId, globalMode);
-      console.log(`[Job Offer Details] ✅ Force recalculation completed. Found ${matches.length} matches`);
+      // Convert to ExtendedCandidateMatch format
+      const extendedMatches: ExtendedCandidateMatch[] = matches.map(match => ({
+        id: match.candidateId,
+        candidateId: match.candidateId,
+        firstName: match.firstName,
+        lastName: match.lastName,
+        position: match.position,
+        company: match.company,
+        score: match.score,
+        matchedSkills: [], // Will be populated by skills renderer
+        missingSkills: [], // Will be populated by skills renderer
+        details: {
+          skills: { matchPercentage: match.details.skills, matchedSkills: [], missingSkills: [] },
+          experienceLevel: { score: match.details.experience, explanation: '' },
+          roleMatch: { score: match.details.roleMatch, explanation: match.explanation },
+          location: { score: match.details.location, explanation: '' }
+        },
+        explanation: match.explanation
+      }));
+      
+      setCandidateMatches(extendedMatches);
+      
+      console.log(`[Job Offer Details] ✅ Loaded ${extendedMatches.length} matches instantly`);
       
       toast({
-        title: "🎯 Recalcul PMO terminé",
-        description: `${matches.length} correspondances recalculées avec détection PMO améliorée`,
+        title: "✅ Correspondances calculées",
+        description: `${extendedMatches.length} candidats analysés instantanément`,
       });
       
-      // Rafraîchir les données avec le mode sélectionné
-      await fetchCandidateMatches(globalMode);
-      
-    } catch (error: any) {
-      console.error('[Job Offer Details] ❌ Error recalculating matches:', error);
-      
+    } catch (err: any) {
+      console.error('[Job Offer Details] ❌ Error loading matches:', err);
+      setError(err.message || 'Erreur lors du calcul des correspondances');
       toast({
         title: "Erreur",
-        description: error?.message || "Impossible de recalculer les correspondances",
-        variant: "destructive",
+        description: "Impossible de calculer les correspondances",
+        variant: "destructive"
       });
     } finally {
       setMatchLoading(false);
     }
   };
 
+  const handleRecalculateMatches = async (includeGlobalCandidates: boolean = false) => {
+    console.log(`[Job Offer Details] ⚡ Force recalculating matches (global: ${includeGlobalCandidates})`);
+    await loadCandidateMatches(true);
+  };
+
   useEffect(() => {
-    if (jobOfferId) {
-      fetchJobOffer();
-    } else {
-      setError("ID d'offre d'emploi manquant");
-      setLoading(false);
-    }
+    loadJobOffer();
   }, [jobOfferId]);
+
+  useEffect(() => {
+    if (jobOffer) {
+      loadCandidateMatches();
+    }
+  }, [jobOffer]);
 
   return {
     jobOffer,
@@ -200,8 +117,6 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
     loading,
     matchLoading,
     error,
-    isGlobalMode,
-    fetchCandidateMatches,
     handleRecalculateMatches
   };
-}
+};
