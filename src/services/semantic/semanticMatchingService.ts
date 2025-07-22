@@ -1,4 +1,3 @@
-
 /**
  * A simple service to handle semantic matching between search queries and candidate data
  */
@@ -33,6 +32,10 @@ export const semanticMatchingService = {
       'ferroviaire': ['sncf', 'train', 'rail', 'chemin de fer', 'tgv', 'ter', 'transport ferroviaire', 'ferroviaire', 'railway'],
       'sncf': ['ferroviaire', 'train', 'rail', 'chemin de fer', 'tgv', 'ter', 'transport ferroviaire', 'railway'],
       'transport': ['sncf', 'ratp', 'aéroport', 'avion', 'métro', 'bus', 'tramway', 'logistique', 'mobilité'],
+      
+      // Company mappings - Add Alstom here
+      'alstom': ['ferroviaire', 'train', 'rail', 'transport ferroviaire', 'railway', 'tgv', 'metro', 'tramway', 'signalisation'],
+      'sncf': ['ferroviaire', 'train', 'rail', 'chemin de fer', 'tgv', 'ter', 'transport ferroviaire', 'railway', 'alstom'],
       
       // Job title mappings
       'chef de projet': ['project manager', 'gestionnaire de projet', 'responsable projet', 'directeur de projet', 'chef de projet pmo', 'pmo', 'coordination', 'gestion projet'],
@@ -127,7 +130,25 @@ export const semanticMatchingService = {
       }
     }
     
-    // For longer text, try fuzzy word matching
+    // Known company names that should only match exactly (no fuzzy matching)
+    const exactMatchCompanies = [
+      'alstom', 'sncf', 'ratp', 'airbus', 'thales', 'safran', 'bouygues', 'edf', 'engie', 'total',
+      'orange', 'free', 'sfr', 'carrefour', 'auchan', 'fnac', 'peugeot', 'renault', 'michelin',
+      'valeo', 'bosch', 'schneider', 'legrand', 'veolia', 'suez', 'danone', 'nestlé', 'unilever',
+      'google', 'microsoft', 'apple', 'amazon', 'facebook', 'meta', 'ibm', 'oracle', 'salesforce'
+    ];
+    
+    // For company queries, skip fuzzy matching
+    const isCompanyQuery = queryKeywords.some(keyword => 
+      exactMatchCompanies.includes(keyword)
+    );
+    
+    if (isCompanyQuery) {
+      // Company names already checked above, no fuzzy matching for companies
+      return false;
+    }
+    
+    // For longer text, try fuzzy word matching (but more strict)
     // This helps with partial matches and minor typos
     for (const keyword of queryKeywords) {
       if (keyword.length < 4) continue; // Skip very short words
@@ -137,22 +158,19 @@ export const semanticMatchingService = {
       for (const word of candidateWords) {
         if (word.length < 4) continue;
         
-        // Partial word matching
+        // Partial word matching (more strict)
         if (word.includes(keyword) || keyword.includes(word)) {
-          if (Math.abs(word.length - keyword.length) <= 3) { // Avoid too different lengths
+          if (Math.abs(word.length - keyword.length) <= 2) { // More strict length difference
             console.log(`✅ Fuzzy word match found: "${keyword}" ~ "${word}"`);
             return true;
           }
         }
         
-        // Add Levenshtein distance calculation for typo tolerance (simple version)
-        // If words are of similar length and share at least 70% of the same characters
-        if (Math.abs(word.length - keyword.length) <= 2 && keyword.length >= 4) {
-          const commonChars = [...keyword].filter(char => word.includes(char)).length;
-          const maxLength = Math.max(word.length, keyword.length);
-          const similarity = commonChars / maxLength;
+        // Improved similarity calculation with stricter threshold
+        if (Math.abs(word.length - keyword.length) <= 2 && keyword.length >= 5) {
+          const similarity = semanticMatchingService.calculateImprovedSimilarity(keyword, word);
           
-          if (similarity > 0.7) {
+          if (similarity > 0.85) { // Much more strict threshold (was 0.7)
             console.log(`✅ Fuzzy similarity match found: "${keyword}" ~ "${word}" (${Math.round(similarity * 100)}% similar)`);
             return true;
           }
@@ -209,6 +227,42 @@ export const semanticMatchingService = {
     }
     
     return false;
+  },
+  
+  /**
+   * Calculate improved similarity between two strings
+   * Uses a combination of character overlap and positional similarity
+   */
+  calculateImprovedSimilarity: (str1: string, str2: string): number => {
+    if (str1 === str2) return 1.0;
+    if (str1.length === 0 || str2.length === 0) return 0.0;
+    
+    // Check if one string is a substring of the other
+    if (str1.includes(str2) || str2.includes(str1)) {
+      const shorterLength = Math.min(str1.length, str2.length);
+      const longerLength = Math.max(str1.length, str2.length);
+      return shorterLength / longerLength;
+    }
+    
+    // Calculate character overlap
+    const chars1 = [...str1];
+    const chars2 = [...str2];
+    const commonChars = chars1.filter(char => chars2.includes(char)).length;
+    const maxLength = Math.max(str1.length, str2.length);
+    const charOverlap = commonChars / maxLength;
+    
+    // Calculate positional similarity (bonus for characters in similar positions)
+    let positionalScore = 0;
+    const minLength = Math.min(str1.length, str2.length);
+    for (let i = 0; i < minLength; i++) {
+      if (str1[i] === str2[i]) {
+        positionalScore += 1;
+      }
+    }
+    const positionalSimilarity = positionalScore / maxLength;
+    
+    // Combine both scores (weighted average)
+    return (charOverlap * 0.6) + (positionalSimilarity * 0.4);
   },
   
   /**
