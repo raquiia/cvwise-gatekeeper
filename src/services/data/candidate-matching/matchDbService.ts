@@ -3,9 +3,9 @@ import { candidateService } from '../candidateService';
 import { jobOfferService } from '../job-offers/jobOfferService';
 import { calculateCandidateJobMatch } from './matchUtils';
 import { intelligentCache } from '@/services/cache/intelligentCacheService';
-import type { CandidateJobMatch, ExtendedCandidateMatch } from './types';
+import type { CandidateJobMatch, CandidateMatch } from './types';
 
-interface MatchData {
+interface MatchData extends CandidateMatch {
   candidateId: string;
   firstName: string;
   lastName: string;
@@ -95,6 +95,10 @@ class MatchDbService {
           
           // Store the match with enhanced version tracking
           const matchData: MatchData = {
+            id: `${jobOfferId}-${candidate.id}`,
+            candidate_id: candidate.id!,
+            job_offer_id: jobOfferId,
+            match_score: matchResult.score,
             candidateId: candidate.id!,
             firstName: candidate.first_name || '',
             lastName: candidate.last_name || '',
@@ -105,9 +109,9 @@ class MatchDbService {
             global_score: matchResult.globalScore,
             skills_only_score: matchResult.skillsOnlyScore,
             details: matchResult.details,
-            isOwnCandidate: includeGlobalCandidates ? candidate.is_own_candidate : true,
-            ownerFirstName: includeGlobalCandidates ? candidate.owner_first_name : undefined,
-            ownerLastName: includeGlobalCandidates ? candidate.owner_last_name : undefined
+            isOwnCandidate: includeGlobalCandidates ? (candidate as any).is_own_candidate : true,
+            ownerFirstName: includeGlobalCandidates ? (candidate as any).owner_first_name : undefined,
+            ownerLastName: includeGlobalCandidates ? (candidate as any).owner_last_name : undefined
           };
 
           // Save to database with new version
@@ -177,7 +181,7 @@ class MatchDbService {
 
   async calculateMatchesForJobOffer(jobOfferId: string, includeGlobalCandidates: boolean = false): Promise<MatchData[]> {
     const cacheKey = `match-calculation-${jobOfferId}-${includeGlobalCandidates}-${MatchDbService.CALCULATION_VERSION}`;
-    const cachedMatches = intelligentCache.get<MatchData[]>(cacheKey);
+    const cachedMatches = intelligentCache.get([cacheKey]) as MatchData[] | null;
 
     if (cachedMatches) {
       console.log(`[Match DB Service] ✅ Returning cached matches for job offer: ${jobOfferId} (version ${MatchDbService.CALCULATION_VERSION})`);
@@ -202,6 +206,10 @@ class MatchDbService {
         const matchResult = await calculateCandidateJobMatch(candidate, jobOffer);
 
         const matchData: MatchData = {
+          id: `${jobOfferId}-${candidate.id}`,
+          candidate_id: candidate.id!,
+          job_offer_id: jobOfferId,
+          match_score: matchResult.score,
           candidateId: candidate.id!,
           firstName: candidate.first_name || '',
           lastName: candidate.last_name || '',
@@ -212,9 +220,9 @@ class MatchDbService {
           global_score: matchResult.globalScore,
           skills_only_score: matchResult.skillsOnlyScore,
           details: matchResult.details,
-          isOwnCandidate: includeGlobalCandidates ? candidate.is_own_candidate : true,
-          ownerFirstName: includeGlobalCandidates ? candidate.owner_first_name : undefined,
-          ownerLastName: includeGlobalCandidates ? candidate.owner_last_name : undefined
+          isOwnCandidate: includeGlobalCandidates ? (candidate as any).is_own_candidate : true,
+          ownerFirstName: includeGlobalCandidates ? (candidate as any).owner_first_name : undefined,
+          ownerLastName: includeGlobalCandidates ? (candidate as any).owner_last_name : undefined
         };
 
         matches.push(matchData);
@@ -225,20 +233,14 @@ class MatchDbService {
       }
     }
 
-    intelligentCache.set(cacheKey, matches);
+    intelligentCache.set([cacheKey], matches);
     return matches;
   }
 
   private async getAllCandidatesGlobally() {
     const { data, error } = await supabase
       .from('candidates')
-      .select(`
-        *,
-        profiles!candidates_user_id_fkey (
-          first_name as owner_first_name,
-          last_name as owner_last_name
-        )
-      `);
+      .select('*');
 
     if (error) {
       throw error;
@@ -247,8 +249,8 @@ class MatchDbService {
     return data.map(candidate => ({
       ...candidate,
       is_own_candidate: false,
-      owner_first_name: candidate.profiles?.owner_first_name,
-      owner_last_name: candidate.profiles?.owner_last_name
+      owner_first_name: '',
+      owner_last_name: ''
     }));
   }
 
@@ -266,15 +268,25 @@ class MatchDbService {
         experience_match_score: matchResult.details.experienceLevel?.score || 0,
         education_match_score: matchResult.details.educationLevel?.score || 0,
         location_match_score: matchResult.details.location?.score || 0,
-        match_details: matchResult.details,
-        is_global_match: isGlobal,
-        calculation_version: MatchDbService.CALCULATION_VERSION,
-        calculated_at: new Date().toISOString()
+        match_details: matchResult.details as any,
+        calculation_version: MatchDbService.CALCULATION_VERSION
       });
 
     if (error) {
       console.error('[Match DB Service] Error saving match to database:', error);
     }
+  }
+
+  // Add missing methods for backward compatibility
+  async getTopCandidatesForJobOffer(jobOfferId: string, limit: number = 10): Promise<MatchData[]> {
+    const matches = await this.calculateMatchesForJobOffer(jobOfferId);
+    return matches
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+  }
+
+  async getMatchesForJobOffer(jobOfferId: string): Promise<MatchData[]> {
+    return this.calculateMatchesForJobOffer(jobOfferId);
   }
 }
 
