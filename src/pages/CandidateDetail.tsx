@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { candidateService } from '@/services/data/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
@@ -21,15 +20,22 @@ import DataMissingAlert from '@/components/candidates/detail/DataMissingAlert';
 import ModernCandidateHeader from '@/components/candidates/detail/ModernCandidateHeader';
 import ModernTabsContainer from '@/components/candidates/detail/ModernTabsContainer';
 import ModernTabContent from '@/components/candidates/detail/ModernTabContent';
+import BackToSearchButton from '@/components/candidates/detail/BackToSearchButton';
 
 const CandidateDetail = () => {
   const { candidateId } = useParams<{ candidateId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [candidate, setCandidate] = useState<CandidateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
+
+  // Check if there's an active search in the referrer URL
+  const referrerSearch = new URLSearchParams(window.location.search);
+  const hasActiveSearch = referrerSearch.has('search') || referrerSearch.has('status');
+  const searchQuery = referrerSearch.get('search') || '';
 
   // Stable function that doesn't depend on state
   const fetchCandidateData = useCallback(async () => {
@@ -167,6 +173,15 @@ const CandidateDetail = () => {
   return (
     <Layout className="bg-gradient-to-br from-background via-background to-muted/10 min-h-screen">
       <div className="container mx-auto px-4 py-8 space-y-8">
+        
+        {/* Back to Search Button */}
+        <div className="flex justify-start">
+          <BackToSearchButton
+            hasActiveSearch={hasActiveSearch}
+            searchQuery={searchQuery}
+          />
+        </div>
+        
         {/* Header modernisé */}
         <ModernCandidateHeader
           candidate={candidate}

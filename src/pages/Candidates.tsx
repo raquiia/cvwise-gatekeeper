@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -10,12 +9,14 @@ import CandidatesAnalyticsView from '@/components/candidates/analytics/Candidate
 import CandidatesFilters from '@/components/candidates/CandidatesFilters';
 import CandidateStats from '@/components/candidates/CandidateStats';
 import ViewSelector from '@/components/candidates/ViewSelector';
+import SearchBreadcrumb from '@/components/candidates/SearchBreadcrumb';
 import { candidateService } from '@/services/data/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
 import { semanticMatchingService } from '@/services/semantic/semanticMatchingService';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useURLFilters } from '@/hooks/use-url-filters';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
 import { Button } from '@/components/ui/button';
 import { Filter, Upload, FileText, UserPlus } from 'lucide-react';
@@ -78,16 +79,21 @@ const CandidatesContent = () => {
   const [filteredCandidates, setFilteredCandidates] = useState<CandidateData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [currentView, setCurrentView] = useState<'table' | 'cards' | 'kanban' | 'analytics'>('table');
-  
-  // États pour la recherche sémantique
-  const [semanticSearchQuery, setSemanticSearchQuery] = useState('');
   const [isSemanticSearching, setIsSemanticSearching] = useState(false);
   
-  // Debounce la recherche sémantique pour éviter trop de calculs
-  const debouncedSemanticQuery = useDebounce(semanticSearchQuery, 500);
+  // Use URL filters hook instead of local state
+  const { 
+    filters, 
+    updateSemanticSearch, 
+    updateSelectedStatus, 
+    clearFilters, 
+    hasActiveFilters 
+  } = useURLFilters();
+  
+  // Debounce the semantic search
+  const debouncedSemanticQuery = useDebounce(filters.semanticSearch, 500);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -147,7 +153,7 @@ const CandidatesContent = () => {
     fetchCandidates();
   }, [user]);
 
-  // Effet pour filtrer les candidats (statut + recherche sémantique)
+  // Effect to filter candidates (status + semantic search)
   useEffect(() => {
     if (!candidates || candidates.length === 0) {
       setFilteredCandidates([]);
@@ -156,15 +162,15 @@ const CandidatesContent = () => {
     
     let result = [...candidates];
     
-    // Filtre par statut
-    if (selectedStatus) {
+    // Filter by status
+    if (filters.selectedStatus) {
       result = result.filter(candidate => {
         const candidateStatus = candidate.detailed_status || 'initial';
-        return candidateStatus === selectedStatus;
+        return candidateStatus === filters.selectedStatus;
       });
     }
     
-    // Filtre sémantique
+    // Semantic filter
     if (debouncedSemanticQuery.trim()) {
       setIsSemanticSearching(true);
       console.log(`🔍 Recherche sémantique pour: "${debouncedSemanticQuery}"`);
@@ -174,7 +180,7 @@ const CandidatesContent = () => {
         const isMatch = semanticMatchingService.isSemanticMatch({
           query: debouncedSemanticQuery,
           candidateText: candidateText,
-          threshold: 0.3 // Seuil assez bas pour être inclusif
+          threshold: 0.3
         });
         
         if (isMatch) {
@@ -190,7 +196,7 @@ const CandidatesContent = () => {
     }
     
     setFilteredCandidates(result);
-  }, [selectedStatus, candidates, debouncedSemanticQuery]);
+  }, [filters.selectedStatus, candidates, debouncedSemanticQuery]);
 
   // Calculate stats
   const totalCandidates = candidates.length;
@@ -210,7 +216,7 @@ const CandidatesContent = () => {
   }).length;
 
   const handleStatusChange = (status: string | null) => {
-    setSelectedStatus(status);
+    updateSelectedStatus(status);
   };
 
   const handleToggleFilters = () => {
@@ -225,15 +231,14 @@ const CandidatesContent = () => {
     setCurrentView(view);
   };
 
-  // Handler pour la recherche sémantique
+  // Handler for semantic search
   const handleSemanticSearchChange = (query: string) => {
-    setSemanticSearchQuery(query);
+    updateSemanticSearch(query);
   };
 
-  // Handler pour réinitialiser les filtres
+  // Handler to reset filters
   const handleResetFilters = () => {
-    setSemanticSearchQuery('');
-    setSelectedStatus(null);
+    clearFilters();
   };
 
   // Fonction corrigée pour gérer la suppression
@@ -281,7 +286,7 @@ const CandidatesContent = () => {
           </p>
           <Button 
             variant="outline" 
-            onClick={() => setSemanticSearchQuery('')}
+            onClick={() => updateSemanticSearch('')}
           >
             Effacer la recherche
           </Button>
@@ -294,7 +299,7 @@ const CandidatesContent = () => {
         return (
           <CandidatesTable 
             candidates={filteredCandidates}
-            selectedStatus={selectedStatus}
+            selectedStatus={filters.selectedStatus}
             onStatusChange={handleStatusChange}
             onViewCandidate={handleViewCandidate}
             onCandidateDeleted={handleCandidateDeleted}
@@ -326,7 +331,7 @@ const CandidatesContent = () => {
         return (
           <CandidatesTable 
             candidates={filteredCandidates}
-            selectedStatus={selectedStatus}
+            selectedStatus={filters.selectedStatus}
             onStatusChange={handleStatusChange}
             onViewCandidate={handleViewCandidate}
             onCandidateDeleted={handleCandidateDeleted}
@@ -398,10 +403,18 @@ const CandidatesContent = () => {
           topCandidates={topCandidates}
         />
 
+        {/* Search Breadcrumb */}
+        <SearchBreadcrumb
+          semanticSearch={filters.semanticSearch}
+          selectedStatus={filters.selectedStatus}
+          onClearFilters={clearFilters}
+          resultsCount={filteredCandidates.length}
+        />
+
         {/* Status Filter Header */}
         <CandidatesHeader
           onStatusChange={handleStatusChange}
-          selectedStatus={selectedStatus}
+          selectedStatus={filters.selectedStatus}
           candidateCount={totalCandidates}
         />
 
@@ -440,7 +453,7 @@ const CandidatesContent = () => {
                 company=""
                 previousCompany=""
                 experience="all"
-                semanticSearch={semanticSearchQuery}
+                semanticSearch={filters.semanticSearch}
                 selectedSkills={[]}
               />
             </div>
