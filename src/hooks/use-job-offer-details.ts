@@ -37,8 +37,16 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
       
       setJobOffer(data);
       
-      // Set active job offer in context - we'll skip this for now to avoid context errors
-      console.log('[Job Offer Details] Setting active job offer for scoring context:', jobOfferId, data.title);
+      // Phase 1: Properly set active job context for scoring
+      console.log('[Job Offer Details] 🎯 PHASE 1 - Setting active job context for PMO scoring:', jobOfferId, data.title);
+      
+      // Set the job context in the matching service directly
+      try {
+        await matchDbService.setActiveJobContext(jobOfferId, data.title || '');
+        console.log('[Job Offer Details] ✅ Active job context set successfully');
+      } catch (contextError) {
+        console.warn('[Job Offer Details] ⚠️ Could not set active job context, continuing without:', contextError);
+      }
       
       await fetchCandidateMatches(false); // Commencer en mode privé
       
@@ -61,16 +69,16 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
     if (!jobOfferId) return;
     
     try {
-      console.log(`[Job Offer Details] Using intelligent caching for job offer: ${jobOfferId} (Global mode: ${globalMode})`);
+      console.log(`[Job Offer Details] 🔄 PHASE 2 - Using force recalculation for job: ${jobOfferId} (Global mode: ${globalMode})`);
       
-      // Utiliser le nouveau service optimisé avec cache intelligent
-      const matches = await matchDbService.calculateMatchesForJobOffer(jobOfferId, globalMode);
+      // Force complete recalculation with version bump to bypass all caches
+      const matches = await matchDbService.forceRecalculateAllScores(jobOfferId, globalMode);
       
-      console.log(`[Job Offer Details] Received ${matches?.length || 0} matches with intelligent caching (${globalMode ? 'global' : 'private'} mode)`);
+      console.log(`[Job Offer Details] ✅ PHASE 2 - Received ${matches?.length || 0} matches with force recalculation (${globalMode ? 'global' : 'private'} mode)`);
       
       if (matches && matches.length > 0) {
         const processedMatches = matches.map((match) => {
-          console.log(`[Job Offer Details] Processing cached/calculated match: ${match.firstName} ${match.lastName} with scores: Local=${match.local_score}%, Global=${match.global_score}%, Skills=${match.skills_only_score}%${globalMode && !match.isOwnCandidate ? ' (Externe)' : ''}`);
+          console.log(`[Job Offer Details] 📊 Processing match: ${match.firstName} ${match.lastName} with scores: Local=${match.local_score}%, Global=${match.global_score}%, Skills=${match.skills_only_score}%${globalMode && !match.isOwnCandidate ? ' (Externe)' : ''}`);
           
           return {
             candidateId: match.candidateId,
@@ -124,15 +132,15 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
         const sortedMatches = processedMatches.sort((a, b) => b.score - a.score);
         setCandidateMatches(sortedMatches);
         
-        console.log(`[Job Offer Details] Processed ${sortedMatches.length} matches with intelligent caching. Top scores:`, 
-          sortedMatches.slice(0, 3).map(m => `${m.firstName} ${m.lastName}: Local=${m.localScore}%/Global=${m.globalScore}%/Skills=${m.skillsOnlyScore}%${globalMode && !m.isOwnCandidate ? ' (Externe)' : ''}`));
+        console.log(`[Job Offer Details] 🎯 PHASE 3 - Processed ${sortedMatches.length} matches with force recalculation. Top scores:`, 
+          sortedMatches.slice(0, 5).map(m => `${m.firstName} ${m.lastName}: Local=${m.localScore}%/Global=${m.globalScore}%/Skills=${m.skillsOnlyScore}%${globalMode && !m.isOwnCandidate ? ' (Externe)' : ''}`));
       } else {
-        console.log(`[Job Offer Details] No matches returned from intelligent caching (${globalMode ? 'global' : 'private'} mode)`);
+        console.log(`[Job Offer Details] 📭 No matches returned from force recalculation (${globalMode ? 'global' : 'private'} mode)`);
         setCandidateMatches([]);
       }
       
     } catch (error) {
-      console.error('[Job Offer Details] Error fetching candidate matches with intelligent caching:', error);
+      console.error('[Job Offer Details] ❌ Error fetching candidate matches with force recalculation:', error);
       setCandidateMatches([]);
       
       toast({
@@ -143,41 +151,29 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
     }
   };
 
-  const handleRecalculateMatches = async (globalMode: boolean = isGlobalMode, forceRecalculation: boolean = false) => {
+  const handleRecalculateMatches = async (globalMode: boolean = isGlobalMode, forceRecalculation: boolean = true) => {
     if (!jobOfferId) return;
     
     try {
       setMatchLoading(true);
       setIsGlobalMode(globalMode);
       
-      console.log(`[Job Offer Details] ${forceRecalculation ? 'Force recalculating' : 'Smart recalculating'} matches for job offer: ${jobOfferId} (Global mode: ${globalMode})`);
+      console.log(`[Job Offer Details] 🚀 FORCED RECALCULATION for job: ${jobOfferId} (Global mode: ${globalMode})`);
       
-      let matches;
-      if (forceRecalculation) {
-        // Forcer le recalcul complet (ignorer le cache)
-        matches = await matchDbService.forceRecalculateAllScores(jobOfferId, globalMode);
-        console.log(`[Job Offer Details] Force recalculation completed. Found ${matches.length} matches`);
-        
-        toast({
-          title: "Recalcul forcé terminé",
-          description: `${matches.length} correspondances ont été entièrement recalculées`,
-        });
-      } else {
-        // Utiliser le cache intelligent (par défaut)
-        matches = await matchDbService.calculateMatchesForJobOffer(jobOfferId, globalMode);
-        console.log(`[Job Offer Details] Smart recalculation completed. Found ${matches.length} matches`);
-        
-        toast({
-          title: "Actualisation terminée",
-          description: `${matches.length} correspondances actualisées avec cache intelligent`,
-        });
-      }
+      // Always force recalculation with version bump for PMO jobs
+      const matches = await matchDbService.forceRecalculateAllScores(jobOfferId, globalMode);
+      console.log(`[Job Offer Details] ✅ Force recalculation completed. Found ${matches.length} matches`);
+      
+      toast({
+        title: "🎯 Recalcul PMO terminé",
+        description: `${matches.length} correspondances recalculées avec détection PMO améliorée`,
+      });
       
       // Rafraîchir les données avec le mode sélectionné
       await fetchCandidateMatches(globalMode);
       
     } catch (error: any) {
-      console.error('[Job Offer Details] Error recalculating matches:', error);
+      console.error('[Job Offer Details] ❌ Error recalculating matches:', error);
       
       toast({
         title: "Erreur",
