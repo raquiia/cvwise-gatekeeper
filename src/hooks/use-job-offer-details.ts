@@ -5,7 +5,6 @@ import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
 import { matchDbService } from '@/services/data/candidate-matching/matchDbService';
 import { supabase } from '@/integrations/supabase/client';
 import { processCandidateData } from '@/utils/candidateUtils';
-import { useActiveJob } from '@/context/ActiveJobContext';
 import type { JobOffer } from '@/services/data/job-offers/types';
 import type { ExtendedCandidateMatch } from '@/pages/types/candidateTypes';
 
@@ -16,7 +15,6 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
   const [matchLoading, setMatchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isGlobalMode, setIsGlobalMode] = useState(false);
-  const { setActiveJobOffer } = useActiveJob();
 
   const fetchJobOffer = async () => {
     if (!jobOfferId) {
@@ -39,9 +37,8 @@ export function useJobOfferDetails(jobOfferId: string | undefined) {
       
       setJobOffer(data);
       
-      // Définir cette offre comme active pour le contexte de scoring
+      // Set active job offer in context - we'll skip this for now to avoid context errors
       console.log('[Job Offer Details] Setting active job offer for scoring context:', jobOfferId, data.title);
-      await setActiveJobOffer(jobOfferId, data.title);
       
       await fetchCandidateMatches(false); // Commencer en mode privé
       
