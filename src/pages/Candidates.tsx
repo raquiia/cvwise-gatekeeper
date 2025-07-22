@@ -20,7 +20,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { useURLFilters } from '@/hooks/use-url-filters';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
 import { Button } from '@/components/ui/button';
-import { Filter, Upload, FileText, UserPlus } from 'lucide-react';
+import { Filter, Upload, FileText, UserPlus, Briefcase, Hash } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ReprocessDataButton from '@/components/candidates/ReprocessDataButton';
 
@@ -106,8 +106,8 @@ const CandidatesContent = () => {
     
     // Extract unique companies
     const companies = [...new Set(candidates
-      .filter(c => c.current_company)
-      .map(c => c.current_company)
+      .filter(c => c.company && typeof c.company === 'string')
+      .map(c => c.company as string)
       .slice(0, 5)
     )];
     
@@ -116,13 +116,14 @@ const CandidatesContent = () => {
         type: 'company' as const,
         value: company,
         label: company,
-        icon: require('lucide-react').Briefcase
+        icon: Briefcase
       });
     });
 
-    // Extract unique skills
+    // Extract unique skills  
     const skills = [...new Set(candidates
-      .flatMap(c => c.skills || [])
+      .filter(c => Array.isArray(c.skills))
+      .flatMap(c => c.skills as string[])
       .slice(0, 10)
     )];
     
@@ -131,7 +132,7 @@ const CandidatesContent = () => {
         type: 'skill' as const,
         value: skill,
         label: skill,
-        icon: require('lucide-react').Hash
+        icon: Hash
       });
     });
 
