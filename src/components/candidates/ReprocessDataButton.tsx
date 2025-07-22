@@ -170,7 +170,7 @@ const ReprocessDataButton = () => {
                       ✨ Nouveau : Scoring algorithmique local
                     </p>
                     <ul className="text-sm text-green-600 space-y-1">
-                      <li>• <strong>Instantané</strong> : Résultats en < 1 seconde</li>
+                      <li>• <strong>Instantané</strong> : Résultats en &lt; 1 seconde</li>
                       <li>• <strong>Gratuit</strong> : Aucun token OpenAI consommé</li>
                       <li>• <strong>Optimisé PMO</strong> : Détection spécialisée des profils</li>
                     </ul>

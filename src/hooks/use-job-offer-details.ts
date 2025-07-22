@@ -56,22 +56,43 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
       
       // Convert to ExtendedCandidateMatch format
       const extendedMatches: ExtendedCandidateMatch[] = matches.map(match => ({
-        id: match.candidateId,
         candidateId: match.candidateId,
         firstName: match.firstName,
         lastName: match.lastName,
         position: match.position,
         company: match.company,
         score: match.score,
-        matchedSkills: [], // Will be populated by skills renderer
-        missingSkills: [], // Will be populated by skills renderer
         details: {
-          skills: { matchPercentage: match.details.skills, matchedSkills: [], missingSkills: [] },
-          experienceLevel: { score: match.details.experience, explanation: '' },
-          roleMatch: { score: match.details.roleMatch, explanation: match.explanation },
-          location: { score: match.details.location, explanation: '' }
-        },
-        explanation: match.explanation
+          skills: {
+            matched: [],
+            missing: [],
+            additional: [],
+            matchPercentage: match.details.skills,
+          },
+          experienceLevel: {
+            required: 0,
+            candidate: 0,
+            match: true,
+            score: match.details.experience,
+          },
+          location: {
+            required: '',
+            candidate: '',
+            match: true,
+            score: match.details.location,
+          },
+          educationLevel: {
+            required: '',
+            candidate: '',
+            match: true,
+            score: 100,
+          },
+          overall: match.score,
+          roleMatch: {
+            score: match.details.roleMatch,
+            explanation: match.explanation
+          }
+        }
       }));
       
       setCandidateMatches(extendedMatches);

@@ -43,7 +43,7 @@ export class LocalAlgorithmicScoringService {
    */
   private isPMOCandidate(candidate: CandidateData): boolean {
     const position = (candidate.position || '').toLowerCase();
-    const skills = (candidate.skills || []).map(s => s.toLowerCase());
+    const skills = Array.isArray(candidate.skills) ? candidate.skills.map(s => typeof s === 'string' ? s.toLowerCase() : String(s).toLowerCase()) : [];
     const company = (candidate.company || '').toLowerCase();
     
     // Vérifier le poste
@@ -210,7 +210,7 @@ export class LocalAlgorithmicScoringService {
     
     // Scores de base
     const skillsScore = this.calculateSkillsScore(
-      candidate.skills || [],
+      Array.isArray(candidate.skills) ? candidate.skills.map(s => String(s)) : [],
       [...(job.required_skills || []), ...(job.preferred_skills || [])]
     );
     
