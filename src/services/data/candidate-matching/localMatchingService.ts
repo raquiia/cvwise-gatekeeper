@@ -1,3 +1,4 @@
+
 import { candidateService } from '../candidateService';
 import { jobOfferService } from '../job-offers/jobOfferService';
 import { localAlgorithmicScoringService } from '@/services/scoring/localAlgorithmicScoringService';
@@ -35,8 +36,8 @@ class LocalMatchingService {
   /**
    * Calcule les correspondances pour une offre d'emploi
    */
-  async calculateMatchesForJobOffer(jobOfferId: string): Promise<LocalMatchResult[]> {
-    console.log(`[Local Matching] 🚀 Starting instant matching for job: ${jobOfferId}`);
+  async calculateMatchesForJobOffer(jobOfferId: string, includeGlobalCandidates: boolean = false): Promise<LocalMatchResult[]> {
+    console.log(`[Local Matching] 🚀 Starting instant matching for job: ${jobOfferId} (global: ${includeGlobalCandidates})`);
     
     try {
       // Récupérer l'offre d'emploi
@@ -47,9 +48,12 @@ class LocalMatchingService {
       
       console.log(`[Local Matching] 📋 Job: "${jobOffer.title}"`);
       
-      // Récupérer tous les candidats de l'utilisateur
-      const candidates = await candidateService.getUserCandidates();
-      console.log(`[Local Matching] 👥 Processing ${candidates.length} candidates`);
+      // Récupérer les candidats selon le mode
+      const candidates = includeGlobalCandidates 
+        ? await candidateService.getAllCandidates()
+        : await candidateService.getUserCandidates();
+      
+      console.log(`[Local Matching] 👥 Processing ${candidates.length} candidates (mode: ${includeGlobalCandidates ? 'global' : 'user only'})`);
       
       const results: LocalMatchResult[] = [];
       
@@ -108,18 +112,18 @@ class LocalMatchingService {
   }
   
   /**
-   * Recalcul forcé (identique au calcul normal puisque c'est instantané)
+   * Recalcul forcé
    */
-  async forceRecalculateAllScores(jobOfferId: string): Promise<LocalMatchResult[]> {
-    console.log(`[Local Matching] ⚡ Force recalculation (instant) for job: ${jobOfferId}`);
-    return this.calculateMatchesForJobOffer(jobOfferId);
+  async forceRecalculateAllScores(jobOfferId: string, includeGlobalCandidates: boolean = false): Promise<LocalMatchResult[]> {
+    console.log(`[Local Matching] ⚡ Force recalculation (instant) for job: ${jobOfferId} (global: ${includeGlobalCandidates})`);
+    return this.calculateMatchesForJobOffer(jobOfferId, includeGlobalCandidates);
   }
   
   /**
    * Obtenir les meilleurs candidats
    */
-  async getTopCandidatesForJobOffer(jobOfferId: string, limit: number = 10): Promise<LocalMatchResult[]> {
-    const matches = await this.calculateMatchesForJobOffer(jobOfferId);
+  async getTopCandidatesForJobOffer(jobOfferId: string, limit: number = 10, includeGlobalCandidates: boolean = false): Promise<LocalMatchResult[]> {
+    const matches = await this.calculateMatchesForJobOffer(jobOfferId, includeGlobalCandidates);
     return matches.slice(0, limit);
   }
 }

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
@@ -41,17 +42,17 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
     }
   };
 
-  const loadCandidateMatches = async (forceRecalculate: boolean = false) => {
+  const loadCandidateMatches = async (forceRecalculate: boolean = false, includeGlobalCandidates: boolean = false) => {
     if (!jobOfferId) return;
     
     try {
       setMatchLoading(true);
-      console.log(`[Job Offer Details] 🔄 Loading matches (force: ${forceRecalculate})`);
+      console.log(`[Job Offer Details] 🔄 Loading matches (force: ${forceRecalculate}, global: ${includeGlobalCandidates})`);
       
-      // Use local instant matching
+      // Use local instant matching with global mode support
       const matches = forceRecalculate 
-        ? await localMatchingService.forceRecalculateAllScores(jobOfferId)
-        : await localMatchingService.calculateMatchesForJobOffer(jobOfferId);
+        ? await localMatchingService.forceRecalculateAllScores(jobOfferId, includeGlobalCandidates)
+        : await localMatchingService.calculateMatchesForJobOffer(jobOfferId, includeGlobalCandidates);
       
       // Convert to ExtendedCandidateMatch format with proper skills mapping
       const extendedMatches: ExtendedCandidateMatch[] = matches.map(match => ({
@@ -91,12 +92,15 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
             score: match.details.roleMatch,
             explanation: match.explanation
           }
-        }
+        },
+        // Marquer si c'est un candidat propre ou global (pour l'instant tous sont considérés comme propres en mode local)
+        isOwnCandidate: !includeGlobalCandidates || true // TODO: Implémenter la logique de propriété réelle
       }));
       
       setCandidateMatches(extendedMatches);
       
-      console.log(`[Job Offer Details] ✅ Loaded ${extendedMatches.length} matches instantly`);
+      const modeText = includeGlobalCandidates ? 'global' : 'user-only';
+      console.log(`[Job Offer Details] ✅ Loaded ${extendedMatches.length} matches instantly (${modeText})`);
       
       // Log compétences pour les premiers candidats
       extendedMatches.slice(0, 3).forEach(match => {
@@ -107,7 +111,7 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
       
       toast({
         title: "✅ Correspondances calculées",
-        description: `${extendedMatches.length} candidats analysés instantanément`,
+        description: `${extendedMatches.length} candidats analysés instantanément (${includeGlobalCandidates ? 'mode global' : 'vos candidats'})`,
       });
       
     } catch (err: any) {
@@ -123,9 +127,9 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
     }
   };
 
-  const handleRecalculateMatches = async (includeGlobalCandidates: boolean = false) => {
-    console.log(`[Job Offer Details] ⚡ Force recalculating matches (global: ${includeGlobalCandidates})`);
-    await loadCandidateMatches(true);
+  const handleRecalculateMatches = async (includeGlobalCandidates: boolean = false, forceRecalculation: boolean = false) => {
+    console.log(`[Job Offer Details] ⚡ Recalculating matches (global: ${includeGlobalCandidates}, force: ${forceRecalculation})`);
+    await loadCandidateMatches(forceRecalculation, includeGlobalCandidates);
   };
 
   useEffect(() => {

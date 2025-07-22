@@ -56,8 +56,9 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
   }, [activeJobOfferId, jobOffer, setActiveJobOffer]);
 
   const handleModeChange = (globalMode: boolean) => {
+    console.log(`[CandidatesMatchingSection] 🔄 Mode change: ${globalMode ? 'global' : 'local'}`);
     setIsGlobalMode(globalMode);
-    // Recalculer automatiquement avec le nouveau mode (cache intelligent)
+    // Recalculer automatiquement avec le nouveau mode
     onRecalculateMatches(globalMode, false);
   };
 
