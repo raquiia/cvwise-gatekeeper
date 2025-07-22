@@ -339,10 +339,11 @@ class IntelligentMatchingEngine {
     // Analyse de la pertinence des expériences
     if (Array.isArray(experiences)) {
       for (const exp of experiences) {
-        const expTitle = (exp.title || exp.position || '').toLowerCase();
-        const expDescription = (exp.description || '').toLowerCase();
-        const jobTitle = jobOffer.title?.toLowerCase() || '';
-        const jobDescription = jobOffer.description?.toLowerCase() || '';
+        const expData = exp as any;
+        const expTitle = String(expData?.title || expData?.position || '').toLowerCase();
+        const expDescription = String(expData?.description || '').toLowerCase();
+        const jobTitle = String(jobOffer.title || '').toLowerCase();
+        const jobDescription = String(jobOffer.description || '').toLowerCase();
         
         const isRelevant = this.isExperienceRelevant(
           expTitle, expDescription, jobTitle, jobDescription, 
@@ -388,7 +389,7 @@ class IntelligentMatchingEngine {
       relevantYears: relevantExperienceYears,
       totalYears: candidateYears,
       relevantCount: relevantExperienceCount,
-      totalCount: experiences.length,
+      totalCount: Array.isArray(experiences) ? experiences.length : 0,
       relevantExperiences,
       meetsMinimum: relevantExperienceYears >= requiredMinYears,
       isOverqualified: relevantExperienceYears > requiredMaxYears + 3
@@ -485,6 +486,29 @@ class IntelligentMatchingEngine {
     this.metrics.processedCandidates++;
     this.metrics.totalProcessingTime += processingTime;
     this.metrics.averageProcessingTime = this.metrics.totalProcessingTime / this.metrics.processedCandidates;
+  }
+
+  /**
+   * Obtenir les métriques de performance
+   */
+  getMetrics() {
+    return {
+      cacheHitRate: this.metrics.cacheHits / (this.metrics.cacheHits + this.metrics.cacheMisses) || 0,
+      avgProcessingTime: this.metrics.averageProcessingTime,
+      totalMatches: this.metrics.processedCandidates
+    };
+  }
+
+  /**
+   * Optimiser le cache
+   */
+  async optimizeCache() {
+    try {
+      return Promise.resolve(); // Simplified cache optimization
+    } catch (error) {
+      console.error('Error optimizing cache:', error);
+      return Promise.resolve();
+    }
   }
 
   /**

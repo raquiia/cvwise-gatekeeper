@@ -241,10 +241,10 @@ export class OptimizedScoringService {
       );
       
       console.log(`📊 REVISED Completeness breakdown for ${candidate.first_name}:`, {
-        skills: `${skillsScore}% (${skills?.length || 0} skills)`,
+        skills: `${skillsScore}% (${Array.isArray(skills) ? skills.length : 0} skills)`,
         experience: `${experienceScore}% (${totalExpYears}y, ${relevantExpCount} detailed)`,
-        education: `${educationScore}% (${education?.length || 0} entries)`,
-        languages: `${languagesScore}% (${languages?.length || 0} languages)`,
+        education: `${educationScore}% (${Array.isArray(education) ? education.length : 0} entries)`,
+        languages: `${languagesScore}% (${Array.isArray(languages) ? languages.length : 0} languages)`,
         location: `${locationScore}%`,
         profile: `${profileScore}%`,
         structure: `${structureScore}%`,
@@ -341,15 +341,15 @@ export class OptimizedScoringService {
       let partialMatches = 0;
       
       // Normalize skills for comparison
-      const normalizedCandidateSkills = candidateSkills.map((skill: any) => 
+      const normalizedCandidateSkills = Array.isArray(candidateSkills) ? candidateSkills.map((skill: any) => 
         String(skill).toLowerCase().trim()
-      );
-      const normalizedRequiredSkills = requiredSkills.map((skill: any) => 
+      ) : [];
+      const normalizedRequiredSkills = Array.isArray(requiredSkills) ? requiredSkills.map((skill: any) => 
         String(skill).toLowerCase().trim()
-      );
-      const normalizedPreferredSkills = preferredSkills.map((skill: any) => 
+      ) : [];
+      const normalizedPreferredSkills = Array.isArray(preferredSkills) ? preferredSkills.map((skill: any) => 
         String(skill).toLowerCase().trim()
-      );
+      ) : [];
       
       // Check required skills matches
       for (const reqSkill of normalizedRequiredSkills) {
