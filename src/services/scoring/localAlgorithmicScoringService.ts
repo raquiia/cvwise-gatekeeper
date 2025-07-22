@@ -1,4 +1,3 @@
-
 import type { CandidateData } from '@/services/data/candidateService';
 import type { JobOffer } from '@/services/data/job-offers/types';
 
@@ -14,6 +13,11 @@ interface LocalScoringResult {
   explanation: string;
   isPMOCandidate: boolean;
   isPMOJob: boolean;
+  skillsDetails: {
+    matched: string[];
+    missing: string[];
+    additional: string[];
+  };
 }
 
 /**
@@ -37,6 +41,131 @@ export class LocalAlgorithmicScoringService {
       'gestion budgétaire', 'stakeholder management', 'reporting', 'dashboard'
     ]
   };
+
+  /**
+   * Dictionnaire d'équivalences de compétences FR/EN pour PMO
+   */
+  private static readonly SKILLS_EQUIVALENCES = {
+    'project management': ['gestion de projet', 'management de projet', 'chef de projet'],
+    'gestion de projet': ['project management', 'project manager'],
+    'planning': ['planification', 'planification stratégique', 'planification projet'],
+    'planification': ['planning', 'project planning'],
+    'agile': ['méthode agile', 'agilité', 'scrum'],
+    'scrum': ['agile', 'méthode agile'],
+    'prince2': ['prince 2', 'methodology prince2'],
+    'pmp': ['project management professional', 'certification pmp'],
+    'ms project': ['microsoft project', 'project'],
+    'microsoft project': ['ms project', 'project'],
+    'risk management': ['gestion des risques', 'gestion risques'],
+    'gestion des risques': ['risk management'],
+    'budget management': ['gestion budgétaire', 'contrôle budgétaire'],
+    'gestion budgétaire': ['budget management'],
+    'stakeholder management': ['gestion des parties prenantes'],
+    'reporting': ['rapport', 'rapports', 'tableau de bord'],
+    'dashboard': ['tableau de bord', 'reporting']
+  };
+
+  /**
+   * Normalise une compétence
+   */
+  private normalizeSkill(skill: string): string {
+    return skill.toLowerCase().trim();
+  }
+
+  /**
+   * Vérifie si deux compétences correspondent (avec équivalences)
+   */
+  private skillsMatch(candidateSkill: string, jobSkill: string): boolean {
+    const normalizedCandidate = this.normalizeSkill(candidateSkill);
+    const normalizedJob = this.normalizeSkill(jobSkill);
+    
+    // Correspondance exacte
+    if (normalizedCandidate === normalizedJob) return true;
+    
+    // Correspondance partielle
+    if (normalizedCandidate.includes(normalizedJob) || normalizedJob.includes(normalizedCandidate)) {
+      return true;
+    }
+    
+    // Vérifier les équivalences
+    const candidateEquivalents = LocalAlgorithmicScoringService.SKILLS_EQUIVALENCES[normalizedCandidate] || [];
+    const jobEquivalents = LocalAlgorithmicScoringService.SKILLS_EQUIVALENCES[normalizedJob] || [];
+    
+    // Candidat correspond aux équivalents du job
+    if (candidateEquivalents.includes(normalizedJob)) return true;
+    
+    // Job correspond aux équivalents du candidat  
+    if (jobEquivalents.includes(normalizedCandidate)) return true;
+    
+    // Équivalents croisés
+    for (const candEquiv of candidateEquivalents) {
+      if (jobEquivalents.includes(candEquiv)) return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Calcule les détails de correspondance des compétences
+   */
+  private calculateDetailedSkillsMatch(candidateSkills: string[], jobSkills: string[]): {
+    matched: string[];
+    missing: string[];
+    additional: string[];
+    score: number;
+  } {
+    const matched: string[] = [];
+    const missing: string[] = [];
+    const additional: string[] = [];
+    
+    if (!candidateSkills.length) {
+      return { matched, missing: jobSkills, additional, score: 0 };
+    }
+    
+    if (!jobSkills.length) {
+      return { matched, missing, additional: candidateSkills, score: 70 };
+    }
+    
+    // Trouver les compétences correspondantes et manquantes
+    for (const jobSkill of jobSkills) {
+      let found = false;
+      
+      for (const candidateSkill of candidateSkills) {
+        if (this.skillsMatch(candidateSkill, jobSkill)) {
+          if (!matched.includes(candidateSkill)) {
+            matched.push(candidateSkill);
+          }
+          found = true;
+          break;
+        }
+      }
+      
+      if (!found) {
+        missing.push(jobSkill);
+      }
+    }
+    
+    // Trouver les compétences supplémentaires du candidat
+    for (const candidateSkill of candidateSkills) {
+      let isMatched = false;
+      
+      for (const jobSkill of jobSkills) {
+        if (this.skillsMatch(candidateSkill, jobSkill)) {
+          isMatched = true;
+          break;
+        }
+      }
+      
+      if (!isMatched && !additional.includes(candidateSkill)) {
+        additional.push(candidateSkill);
+      }
+    }
+    
+    // Calculer le score
+    const matchPercentage = jobSkills.length > 0 ? (matched.length / jobSkills.length) * 100 : 0;
+    
+    return { matched, missing, additional, score: Math.round(matchPercentage) };
+  }
 
   /**
    * Détecte si un candidat est PMO
@@ -85,31 +214,8 @@ export class LocalAlgorithmicScoringService {
    * Calcule le score de correspondance des compétences
    */
   private calculateSkillsScore(candidateSkills: string[], jobSkills: string[]): number {
-    if (!candidateSkills.length || !jobSkills.length) return 0;
-    
-    const normalizedCandidateSkills = candidateSkills.map(s => s.toLowerCase().trim());
-    const normalizedJobSkills = jobSkills.map(s => s.toLowerCase().trim());
-    
-    let matches = 0;
-    
-    for (const jobSkill of normalizedJobSkills) {
-      const hasMatch = normalizedCandidateSkills.some(candidateSkill => {
-        // Correspondance exacte
-        if (candidateSkill === jobSkill) return true;
-        
-        // Correspondance partielle
-        if (candidateSkill.includes(jobSkill) || jobSkill.includes(candidateSkill)) return true;
-        
-        // Équivalences PMO spécifiques
-        if (this.areEquivalentSkills(candidateSkill, jobSkill)) return true;
-        
-        return false;
-      });
-      
-      if (hasMatch) matches++;
-    }
-    
-    return Math.round((matches / normalizedJobSkills.length) * 100);
+    const details = this.calculateDetailedSkillsMatch(candidateSkills, jobSkills);
+    return details.score;
   }
 
   /**
@@ -208,11 +314,11 @@ export class LocalAlgorithmicScoringService {
     const isPMOCand = this.isPMOCandidate(candidate);
     const isPMOJob = this.isPMOJob(job);
     
-    // Scores de base
-    const skillsScore = this.calculateSkillsScore(
-      Array.isArray(candidate.skills) ? candidate.skills.map(s => String(s)) : [],
-      [...(job.required_skills || []), ...(job.preferred_skills || [])]
-    );
+    const candidateSkills = Array.isArray(candidate.skills) ? candidate.skills.map(s => String(s)) : [];
+    const jobSkills = [...(job.required_skills || []), ...(job.preferred_skills || [])];
+    
+    // Calcul détaillé des compétences
+    const skillsDetails = this.calculateDetailedSkillsMatch(candidateSkills, jobSkills);
     
     const experienceScore = this.calculateExperienceScore(
       candidate.years_experience || 0,
@@ -233,7 +339,7 @@ export class LocalAlgorithmicScoringService {
     
     // Calcul du score final (pondéré)
     const baseScore = (
-      skillsScore * 0.4 +
+      skillsDetails.score * 0.4 +
       experienceScore * 0.25 +
       locationScore * 0.15 +
       roleMatchScore * 0.2
@@ -242,7 +348,7 @@ export class LocalAlgorithmicScoringService {
     const finalScore = Math.max(0, Math.min(100, baseScore + pmoBonus));
     
     const breakdown = {
-      skills: skillsScore,
+      skills: skillsDetails.score,
       experience: experienceScore,
       location: locationScore,
       roleMatch: roleMatchScore,
@@ -252,13 +358,15 @@ export class LocalAlgorithmicScoringService {
     const explanation = this.generateExplanation(candidate, job, breakdown, isPMOCand, isPMOJob);
     
     console.log(`[Local Scoring] ✅ ${candidate.first_name} ${candidate.last_name}: ${Math.round(finalScore)}% (PMO: ${isPMOCand})`);
+    console.log(`[Local Scoring] 📊 Skills: ${skillsDetails.matched.length} matched, ${skillsDetails.missing.length} missing`);
     
     return {
       score: Math.round(finalScore),
       breakdown,
       explanation,
       isPMOCandidate: isPMOCand,
-      isPMOJob
+      isPMOJob,
+      skillsDetails
     };
   }
 

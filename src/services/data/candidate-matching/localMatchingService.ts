@@ -1,4 +1,3 @@
-
 import { candidateService } from '../candidateService';
 import { jobOfferService } from '../job-offers/jobOfferService';
 import { localAlgorithmicScoringService } from '@/services/scoring/localAlgorithmicScoringService';
@@ -18,6 +17,11 @@ interface LocalMatchResult {
     location: number;
     roleMatch: number;
     pmoBonus: number;
+  };
+  skillsDetails: {
+    matched: string[];
+    missing: string[];
+    additional: string[];
   };
   explanation: string;
   isPMOCandidate: boolean;
@@ -61,6 +65,7 @@ class LocalMatchingService {
           company: candidate.company || '',
           score: scoringResult.score,
           details: scoringResult.breakdown,
+          skillsDetails: scoringResult.skillsDetails,
           explanation: scoringResult.explanation,
           isPMOCandidate: scoringResult.isPMOCandidate
         });
@@ -70,7 +75,14 @@ class LocalMatchingService {
       const filteredResults = localAlgorithmicScoringService.filterCandidates(
         results.map(r => ({ 
           candidate: candidates.find(c => c.id === r.candidateId)!, 
-          score: { score: r.score, breakdown: r.details, explanation: r.explanation, isPMOCandidate: r.isPMOCandidate, isPMOJob: false } 
+          score: { 
+            score: r.score, 
+            breakdown: r.details, 
+            explanation: r.explanation, 
+            isPMOCandidate: r.isPMOCandidate, 
+            isPMOJob: false,
+            skillsDetails: r.skillsDetails
+          } 
         }))
       );
       
@@ -80,10 +92,11 @@ class LocalMatchingService {
       
       console.log(`[Local Matching] ✅ Completed: ${finalResults.length} matches (filtered from ${results.length})`);
       
-      // Log des meilleurs résultats
+      // Log des meilleurs résultats avec détails de compétences
       finalResults.slice(0, 5).forEach((result, index) => {
         const pmoTag = result.isPMOCandidate ? '🎯 PMO' : '📋 Non-PMO';
         console.log(`[Local Matching] ${index + 1}. ${result.firstName} ${result.lastName} (${result.position}): ${result.score}% ${pmoTag}`);
+        console.log(`[Local Matching]    Skills: ${result.skillsDetails.matched.length} matched, ${result.skillsDetails.missing.length} missing`);
       });
       
       return finalResults;

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { jobOfferService } from '@/services/data/job-offers/jobOfferService';
@@ -54,7 +53,7 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
         ? await localMatchingService.forceRecalculateAllScores(jobOfferId)
         : await localMatchingService.calculateMatchesForJobOffer(jobOfferId);
       
-      // Convert to ExtendedCandidateMatch format
+      // Convert to ExtendedCandidateMatch format with proper skills mapping
       const extendedMatches: ExtendedCandidateMatch[] = matches.map(match => ({
         candidateId: match.candidateId,
         firstName: match.firstName,
@@ -64,9 +63,9 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
         score: match.score,
         details: {
           skills: {
-            matched: [],
-            missing: [],
-            additional: [],
+            matched: match.skillsDetails.matched,
+            missing: match.skillsDetails.missing,
+            additional: match.skillsDetails.additional,
             matchPercentage: match.details.skills,
           },
           experienceLevel: {
@@ -98,6 +97,13 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
       setCandidateMatches(extendedMatches);
       
       console.log(`[Job Offer Details] ✅ Loaded ${extendedMatches.length} matches instantly`);
+      
+      // Log compétences pour les premiers candidats
+      extendedMatches.slice(0, 3).forEach(match => {
+        console.log(`[Job Offer Details] 🎯 ${match.firstName} ${match.lastName}:`);
+        console.log(`[Job Offer Details]    Matched skills: ${match.details?.skills?.matched?.join(', ') || 'none'}`);
+        console.log(`[Job Offer Details]    Missing skills: ${match.details?.skills?.missing?.join(', ') || 'none'}`);
+      });
       
       toast({
         title: "✅ Correspondances calculées",
