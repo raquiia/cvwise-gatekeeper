@@ -168,7 +168,7 @@ export const calculateCandidateJobMatch = async (
   // Bonus pour expertise PMO (certifications, etc.)
   if (isPMOJob && candidateIsPMO) {
     const candidateDescription = (candidate.career_objectives || '').toLowerCase() + ' ' + 
-                                (candidate.summary || '').toLowerCase();
+                                (candidate.professional_values || '').toLowerCase();
     
     if (candidateDescription.includes('pmp') || candidateDescription.includes('prince2') || 
         candidateDescription.includes('scrum master') || candidateDescription.includes('project management professional')) {
