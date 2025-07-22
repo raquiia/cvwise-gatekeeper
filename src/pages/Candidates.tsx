@@ -10,6 +10,7 @@ import CandidatesFilters from '@/components/candidates/CandidatesFilters';
 import CandidateStats from '@/components/candidates/CandidateStats';
 import ViewSelector from '@/components/candidates/ViewSelector';
 import SearchBreadcrumb from '@/components/candidates/SearchBreadcrumb';
+import EnhancedSearch from '@/components/candidates/EnhancedSearch';
 import { candidateService } from '@/services/data/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
 import { semanticMatchingService } from '@/services/semantic/semanticMatchingService';
@@ -98,6 +99,67 @@ const CandidatesContent = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Generate suggestions based on existing candidates
+  const generateSearchSuggestions = () => {
+    const suggestions = [];
+    
+    // Extract unique companies
+    const companies = [...new Set(candidates
+      .filter(c => c.current_company)
+      .map(c => c.current_company)
+      .slice(0, 5)
+    )];
+    
+    companies.forEach(company => {
+      suggestions.push({
+        type: 'company' as const,
+        value: company,
+        label: company,
+        icon: require('lucide-react').Briefcase
+      });
+    });
+
+    // Extract unique skills
+    const skills = [...new Set(candidates
+      .flatMap(c => c.skills || [])
+      .slice(0, 10)
+    )];
+    
+    skills.forEach(skill => {
+      suggestions.push({
+        type: 'skill' as const,
+        value: skill,
+        label: skill,
+        icon: require('lucide-react').Hash
+      });
+    });
+
+    return suggestions;
+  };
+
+  // Generate recent searches from localStorage
+  const getRecentSearches = () => {
+    try {
+      const recent = localStorage.getItem('candidateSearchHistory');
+      return recent ? JSON.parse(recent).slice(0, 5) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  // Save search to history
+  const saveSearchToHistory = (query: string) => {
+    if (!query.trim()) return;
+    
+    try {
+      const recent = getRecentSearches();
+      const updated = [query, ...recent.filter(s => s !== query)].slice(0, 10);
+      localStorage.setItem('candidateSearchHistory', JSON.stringify(updated));
+    } catch {
+      // Ignore localStorage errors
+    }
+  };
 
   const fetchCandidates = async () => {
     if (!user?.id) {
@@ -231,9 +293,12 @@ const CandidatesContent = () => {
     setCurrentView(view);
   };
 
-  // Handler for semantic search
+  // Enhanced handler for semantic search with history
   const handleSemanticSearchChange = (query: string) => {
     updateSemanticSearch(query);
+    if (query.trim()) {
+      saveSearchToHistory(query.trim());
+    }
   };
 
   // Handler to reset filters
@@ -392,6 +457,44 @@ const CandidatesContent = () => {
               <UserPlus size={16} />
               Ajouter
             </Button>
+          </div>
+        </div>
+
+        {/* Prominent Enhanced Search Bar */}
+        <div className="mb-8">
+          <div className="bg-card/70 dark:bg-card/40 backdrop-blur-xl border border-border/50 rounded-2xl shadow-xl p-6">
+            <div className="max-w-2xl mx-auto">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-foreground mb-2">
+                  Recherche intelligente IA
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Recherchez par nom, compétences, entreprise, ou décrivez le profil recherché
+                </p>
+              </div>
+              
+              <EnhancedSearch
+                searchQuery={filters.semanticSearch}
+                onSearchChange={handleSemanticSearchChange}
+                suggestions={generateSearchSuggestions()}
+                recentSearches={getRecentSearches()}
+              />
+              
+              {!filters.semanticSearch && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="text-xs text-muted-foreground">Exemples :</span>
+                  {['développeur React', 'chef de projet SNCF', 'Alstom', 'ingénieur Python'].map((example) => (
+                    <button
+                      key={example}
+                      onClick={() => handleSemanticSearchChange(example)}
+                      className="text-xs px-2 py-1 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
