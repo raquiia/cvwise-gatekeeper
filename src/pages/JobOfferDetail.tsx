@@ -13,6 +13,8 @@ import NoMatchesAlert from '@/components/job-offers/detail/NoMatchesAlert';
 import CandidatesMatchingSection from '@/components/job-offers/detail/CandidatesMatchingSection';
 import ErrorState from '@/components/job-offers/detail/ErrorState';
 import LoadingState from '@/components/job-offers/detail/LoadingState';
+import PMOJobDebugger from '@/components/matching/PMOJobDebugger';
+import CacheDebugInfo from '@/components/matching/CacheDebugInfo';
 import type { ExtendedCandidateMatch } from '@/pages/types/candidateTypes';
 
 const JobOfferDetail = () => {
@@ -67,6 +69,11 @@ const JobOfferDetail = () => {
     );
   }
   
+  // Déterminer si c'est un job PMO pour afficher le debug spécialisé
+  const isPMOJob = jobOffer.title?.toLowerCase().includes('pmo') || 
+                  jobOffer.title?.toLowerCase().includes('project') ||
+                  jobOffer.title?.toLowerCase().includes('ingénieur projet');
+  
   return (
     <Layout className="py-8 bg-gradient-to-br from-purple-50/50 to-white dark:from-navy-dark/90 dark:to-navy-dark">
       <div className="container mx-auto px-4">
@@ -76,6 +83,17 @@ const JobOfferDetail = () => {
           onRecalculateMatches={() => handleRecalculateMatches(false)}
           matchLoading={matchLoading}
         />
+        
+        {/* Debug Tools pour les jobs PMO */}
+        {isPMOJob && jobOfferId && (
+          <div className="mb-6 space-y-4">
+            <PMOJobDebugger 
+              jobOfferId={jobOfferId} 
+              jobTitle={jobOffer.title}
+            />
+            <CacheDebugInfo />
+          </div>
+        )}
         
         {candidateMatches.length === 0 && <NoMatchesAlert />}
         
