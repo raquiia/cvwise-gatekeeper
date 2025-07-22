@@ -30,12 +30,11 @@ export const semanticMatchingService = {
     const domainMappings: Record<string, string[]> = {
       // Railway industry mappings
       'ferroviaire': ['sncf', 'train', 'rail', 'chemin de fer', 'tgv', 'ter', 'transport ferroviaire', 'ferroviaire', 'railway'],
-      'sncf': ['ferroviaire', 'train', 'rail', 'chemin de fer', 'tgv', 'ter', 'transport ferroviaire', 'railway'],
+      'sncf': ['ferroviaire', 'train', 'rail', 'chemin de fer', 'tgv', 'ter', 'transport ferroviaire', 'railway', 'alstom'],
       'transport': ['sncf', 'ratp', 'aéroport', 'avion', 'métro', 'bus', 'tramway', 'logistique', 'mobilité'],
       
-      // Company mappings - Add Alstom here
+      // Company mappings
       'alstom': ['ferroviaire', 'train', 'rail', 'transport ferroviaire', 'railway', 'tgv', 'metro', 'tramway', 'signalisation'],
-      'sncf': ['ferroviaire', 'train', 'rail', 'chemin de fer', 'tgv', 'ter', 'transport ferroviaire', 'railway', 'alstom'],
       
       // Job title mappings
       'chef de projet': ['project manager', 'gestionnaire de projet', 'responsable projet', 'directeur de projet', 'chef de projet pmo', 'pmo', 'coordination', 'gestion projet'],
