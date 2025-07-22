@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.131.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.8.0';
 import { corsHeaders } from '../_shared/cors.ts';
@@ -257,7 +256,6 @@ function calculateCompletenessScore(
   );
   
   // Normaliser les scores en pourcentage pour le breakdown
-  const totalMaxScore = 100;
   const skillsPercent = Math.round((skillsScore / 25) * 100);
   const experiencePercent = Math.round((experienceScore / 25) * 100);
   const educationPercent = Math.round((educationScore / 15) * 100);
@@ -283,140 +281,344 @@ function calculateCompletenessScore(
 }
 
 /**
- * Calculate job matching score
+ * Calculate job matching score - COMPLETELY REVISED ALGORITHM
  */
 function calculateJobMatchingScore(
   candidate: any, 
   jobOffer: any, 
   notes: any[]
 ): ScoringResult {
-  // --------- SCORE 1: COMPÉTENCES (40 points) ---------
+  console.log(`🔍 Calculating match for candidate ${candidate.first_name} ${candidate.last_name} vs job "${jobOffer.title}"`);
+  
+  // --------- PHASE 1: COMPÉTENCES (75% du score - CRITIQUE) ---------
   let skillsScore = 0;
   const candidateSkills = new Set(
     (candidate.skills || [])
-      .map((s: any) => typeof s === 'string' ? s.toLowerCase() : 
-           (typeof s === 'object' && s !== null && s.name ? s.name.toLowerCase() : null))
+      .map((s: any) => typeof s === 'string' ? s.toLowerCase().trim() : 
+           (typeof s === 'object' && s !== null && s.name ? s.name.toLowerCase().trim() : null))
       .filter(Boolean)
   );
   
   const requiredSkills = new Set(
     (jobOffer.required_skills || [])
-      .map((s: any) => typeof s === 'string' ? s.toLowerCase() : 
-           (typeof s === 'object' && s !== null && s.name ? s.name.toLowerCase() : null))
+      .map((s: any) => typeof s === 'string' ? s.toLowerCase().trim() : 
+           (typeof s === 'object' && s !== null && s.name ? s.name.toLowerCase().trim() : null))
       .filter(Boolean)
   );
   
   const preferredSkills = new Set(
     (jobOffer.preferred_skills || [])
-      .map((s: any) => typeof s === 'string' ? s.toLowerCase() : 
-           (typeof s === 'object' && s !== null && s.name ? s.name.toLowerCase() : null))
+      .map((s: any) => typeof s === 'string' ? s.toLowerCase().trim() : 
+           (typeof s === 'object' && s !== null && s.name ? s.name.toLowerCase().trim() : null))
       .filter(Boolean)
   );
   
-  // Calculer le score des compétences requises (30 points max)
+  console.log(`👤 Candidate skills:`, Array.from(candidateSkills));
+  console.log(`🎯 Required skills:`, Array.from(requiredSkills));
+  console.log(`⭐ Preferred skills:`, Array.from(preferredSkills));
+  
+  // Calculer le score des compétences requises (60 points max)
   let matchedRequiredSkills = 0;
-  requiredSkills.forEach(skill => {
-    if (candidateSkills.has(skill)) matchedRequiredSkills++;
+  let partialMatchedRequired = 0;
+  
+  requiredSkills.forEach(reqSkill => {
+    let hasExactMatch = false;
+    let hasPartialMatch = false;
+    
+    candidateSkills.forEach(candSkill => {
+      if (candSkill === reqSkill) {
+        hasExactMatch = true;
+      } else if (isSkillRelated(candSkill, reqSkill)) {
+        hasPartialMatch = true;
+      }
+    });
+    
+    if (hasExactMatch) {
+      matchedRequiredSkills++;
+    } else if (hasPartialMatch) {
+      partialMatchedRequired++;
+    }
   });
   
+  // Score des compétences requises
   const requiredSkillsScore = requiredSkills.size > 0
-    ? Math.round((matchedRequiredSkills / requiredSkills.size) * 30)
-    : 15; // Score moyen si aucune compétence requise
+    ? Math.round((matchedRequiredSkills * 60 + partialMatchedRequired * 30) / requiredSkills.size)
+    : 30; // Score moyen si aucune compétence requise
   
-  // Calculer le score des compétences préférées (10 points max)
+  // Calculer le score des compétences préférées (15 points max)
   let matchedPreferredSkills = 0;
-  preferredSkills.forEach(skill => {
-    if (candidateSkills.has(skill)) matchedPreferredSkills++;
+  preferredSkills.forEach(prefSkill => {
+    if (candidateSkills.has(prefSkill) || 
+        Array.from(candidateSkills).some(candSkill => isSkillRelated(candSkill, prefSkill))) {
+      matchedPreferredSkills++;
+    }
   });
   
   const preferredSkillsScore = preferredSkills.size > 0
-    ? Math.round((matchedPreferredSkills / preferredSkills.size) * 10)
-    : 5; // Score moyen si aucune compétence préférée
+    ? Math.round((matchedPreferredSkills / preferredSkills.size) * 15)
+    : 0;
   
   skillsScore = requiredSkillsScore + preferredSkillsScore;
   
-  // --------- SCORE 2: EXPÉRIENCE (30 points) ---------
+  // SEUIL CRITIQUE: Si moins de 30% des compétences requises, score maximum de 25
+  const skillsMatchPercentage = requiredSkills.size > 0 ? 
+    (matchedRequiredSkills + partialMatchedRequired * 0.5) / requiredSkills.size : 0.5;
+  
+  if (skillsMatchPercentage < 0.3) {
+    skillsScore = Math.min(skillsScore, 25);
+    console.log(`⚠️ Critical skills threshold not met: ${Math.round(skillsMatchPercentage * 100)}%`);
+  }
+  
+  console.log(`🎯 Skills analysis: ${matchedRequiredSkills}/${requiredSkills.size} exact + ${partialMatchedRequired} partial required, ${matchedPreferredSkills}/${preferredSkills.size} preferred`);
+  console.log(`📊 Skills score: ${skillsScore}/75`);
+  
+  // --------- PHASE 2: EXPÉRIENCE PERTINENTE (15% du score) ---------
   let experienceScore = 0;
   const candidateYears = candidate.years_experience || 0;
   const minYears = jobOffer.experience_years_min || 0;
   const maxYears = jobOffer.experience_years_max || minYears + 5;
   
-  if (candidateYears >= minYears) {
-    // Candidat atteint le minimum requis
-    if (maxYears === minYears || candidateYears <= maxYears) {
-      // Correspondance parfaite avec la fourchette
-      experienceScore = 30;
-    } else if (candidateYears <= maxYears + 5) {
-      // Légèrement au-dessus de la fourchette
-      experienceScore = 25;
-    } else {
-      // Beaucoup trop d'expérience
-      experienceScore = 20;
-    }
-  } else if (candidateYears >= minYears * 0.75) {
-    // Presque le minimum requis
-    experienceScore = 15;
-  } else if (candidateYears >= minYears * 0.5) {
-    // Moitié du minimum requis
-    experienceScore = 10;
-  } else {
-    // Trop peu d'expérience
-    experienceScore = 5;
+  // Analyser la pertinence de l'expérience
+  const candidateExperiences = candidate.experiences || [];
+  const jobTitle = jobOffer.title?.toLowerCase() || '';
+  const jobDescription = jobOffer.description?.toLowerCase() || '';
+  
+  let relevantExperienceYears = 0;
+  let hasRelevantExperience = false;
+  
+  if (Array.isArray(candidateExperiences)) {
+    candidateExperiences.forEach((exp: any) => {
+      const expTitle = (exp.title || exp.position || '').toLowerCase();
+      const expDescription = (exp.description || '').toLowerCase();
+      const expCompany = (exp.company || '').toLowerCase();
+      
+      // Vérifier la pertinence de l'expérience
+      if (isExperienceRelevant(expTitle, expDescription, jobTitle, jobDescription, requiredSkills)) {
+        hasRelevantExperience = true;
+        const expDuration = calculateExperienceDuration(exp);
+        relevantExperienceYears += expDuration;
+      }
+    });
   }
   
-  // --------- SCORE 3: ÉDUCATION (20 points) ---------
-  let educationScore = 0;
-  // Par défaut, attribuer un score moyen car l'éducation est difficile à évaluer
-  // sans analyse sémantique avancée
-  educationScore = 10;
+  // Score basé sur l'expérience pertinente
+  if (hasRelevantExperience && relevantExperienceYears >= minYears) {
+    if (relevantExperienceYears <= maxYears) {
+      experienceScore = 15; // Expérience parfaite
+    } else if (relevantExperienceYears <= maxYears + 3) {
+      experienceScore = 12; // Légèrement surqualifié
+    } else {
+      experienceScore = 8; // Très surqualifié
+    }
+  } else if (hasRelevantExperience && relevantExperienceYears >= minYears * 0.7) {
+    experienceScore = 10; // Presque suffisant
+  } else if (candidateYears >= minYears && minYears > 0) {
+    experienceScore = 6; // Expérience générale mais pas pertinente
+  } else if (candidateYears > 0) {
+    experienceScore = 3; // Peu d'expérience
+  } else {
+    experienceScore = 0; // Aucune expérience
+  }
   
-  // --------- SCORE 4: LOCALISATION (10 points) ---------
+  console.log(`💼 Experience analysis: ${relevantExperienceYears}y relevant vs ${minYears}-${maxYears}y required`);
+  console.log(`📊 Experience score: ${experienceScore}/15`);
+  
+  // --------- PHASE 3: ÉDUCATION PERTINENTE (5% du score) ---------
+  let educationScore = 0;
+  const candidateEducation = candidate.education || [];
+  const requiredEducation = jobOffer.education_level || '';
+  
+  if (Array.isArray(candidateEducation) && candidateEducation.length > 0) {
+    let hasRelevantEducation = false;
+    
+    candidateEducation.forEach((edu: any) => {
+      const degree = (edu.degree || '').toLowerCase();
+      const field = (edu.field || edu.field_of_study || '').toLowerCase();
+      
+      if (isEducationRelevant(degree, field, jobTitle, jobDescription, requiredSkills)) {
+        hasRelevantEducation = true;
+      }
+    });
+    
+    if (hasRelevantEducation) {
+      educationScore = 5;
+    } else {
+      educationScore = 2; // Éducation mais pas pertinente
+    }
+  } else {
+    educationScore = 1; // Aucune éducation renseignée
+  }
+  
+  console.log(`🎓 Education score: ${educationScore}/5`);
+  
+  // --------- PHASE 4: LOCALISATION (5% du score) ---------
   let locationScore = 0;
   const candidateLocation = candidate.location?.toLowerCase() || '';
   const jobLocation = jobOffer.location?.toLowerCase() || '';
   
   if (candidateLocation && jobLocation) {
     if (candidateLocation.includes(jobLocation) || jobLocation.includes(candidateLocation)) {
-      locationScore = 10; // Même ville ou région
+      locationScore = 5; // Même localisation
+    } else if (candidate.mobility && candidate.mobility.toLowerCase().includes('oui')) {
+      locationScore = 3; // Candidat mobile
     } else {
-      // Vérifier la mobilité du candidat
-      if (candidate.mobility && candidate.mobility.toLowerCase().includes('oui')) {
-        locationScore = 5; // Candidat mobile
-      } else {
-        locationScore = 0; // Pas mobile et localisations différentes
-      }
+      locationScore = 1; // Localisations différentes, pas mobile
     }
   } else {
-    locationScore = 5; // Informations manquantes, score moyen
+    locationScore = 2; // Informations manquantes
   }
   
-  // --------- SCORE 5: LANGUES (0 bonus points) ---------
-  // Bonus pour les langues si le job en spécifie
-  let languagesScore = 0;
+  console.log(`📍 Location score: ${locationScore}/5`);
   
-  // Calculer le score total (max 100)
+  // --------- CALCUL FINAL ---------
+  // Pondération: Compétences 75%, Expérience 15%, Éducation 5%, Localisation 5%
   const totalScore = Math.min(
-    Math.round(skillsScore + experienceScore + educationScore + locationScore + languagesScore),
+    Math.round(skillsScore * 0.75 + experienceScore * 0.15 + educationScore * 0.05 + locationScore * 0.05),
     100
   );
   
-  // Générer l'explication du score
-  let explanation = `Match de ${totalScore}% avec l'offre "${jobOffer.title || 'Sans titre'}". `;
-  explanation += `Compétences: ${matchedRequiredSkills}/${requiredSkills.size} requises, ${matchedPreferredSkills}/${preferredSkills.size} préférées. `;
-  explanation += `Expérience: ${candidate.years_experience || 0} ans (requis: ${minYears}-${maxYears}). `;
-  if (candidateLocation && jobLocation) {
-    explanation += `Localisation: ${locationScore === 10 ? 'Correspondance' : 'Différente'}.`;
-  }
+  // Générer l'explication détaillée
+  let explanation = `Match ${totalScore}% avec "${jobOffer.title}" - `;
+  explanation += `Compétences: ${matchedRequiredSkills}/${requiredSkills.size} requises (${Math.round(skillsMatchPercentage * 100)}%), `;
+  explanation += `Exp. pertinente: ${relevantExperienceYears}/${minYears}+ ans, `;
+  explanation += `Éducation: ${educationScore > 3 ? 'pertinente' : 'limitée'}, `;
+  explanation += `Localisation: ${locationScore > 3 ? 'compatible' : 'à vérifier'}`;
+  
+  console.log(`🏆 Final score: ${totalScore}% - ${explanation}`);
   
   return {
     score: totalScore,
     explanation,
     breakdown: {
-      skills: skillsScore / 0.4,
-      experience: experienceScore / 0.3,
-      education: educationScore / 0.2,
-      location: locationScore / 0.1,
-      languages: languagesScore || 0
+      skills: Math.round(skillsScore / 0.75), // Reconvertir en pourcentage
+      experience: Math.round(experienceScore / 0.15),
+      education: Math.round(educationScore / 0.05),
+      location: Math.round(locationScore / 0.05),
+      languages: 0
     }
   };
+}
+
+/**
+ * Vérifier si deux compétences sont liées
+ */
+function isSkillRelated(skill1: string, skill2: string): boolean {
+  const s1 = skill1.toLowerCase();
+  const s2 = skill2.toLowerCase();
+  
+  // Mapping des compétences similaires étendu
+  const skillsMap: Record<string, string[]> = {
+    'javascript': ['js', 'node.js', 'nodejs', 'react', 'vue', 'angular'],
+    'typescript': ['ts', 'javascript', 'js'],
+    'react': ['reactjs', 'react.js', 'javascript', 'frontend'],
+    'vue': ['vuejs', 'vue.js', 'javascript', 'frontend'],
+    'angular': ['angularjs', 'javascript', 'frontend'],
+    'python': ['py', 'django', 'flask', 'fastapi'],
+    'java': ['spring', 'springboot', 'hibernate'],
+    'csharp': ['c#', '.net', 'dotnet', 'asp.net'],
+    'sql': ['mysql', 'postgresql', 'oracle', 'mssql'],
+    'nosql': ['mongodb', 'cassandra', 'redis'],
+    'aws': ['amazon web services', 'ec2', 's3', 'lambda'],
+    'azure': ['microsoft azure', 'azure cloud'],
+    'docker': ['containerization', 'kubernetes'],
+    'kubernetes': ['k8s', 'docker', 'orchestration'],
+    'devops': ['ci/cd', 'jenkins', 'gitlab', 'automation'],
+    'machine learning': ['ml', 'ai', 'data science', 'tensorflow', 'pytorch'],
+    'data science': ['data analysis', 'statistics', 'python', 'r'],
+    'project management': ['gestion de projet', 'pmp', 'agile', 'scrum'],
+    'agile': ['scrum', 'kanban', 'project management'],
+    'scrum': ['agile', 'project management', 'scrum master']
+  };
+  
+  // Vérification des correspondances
+  for (const [key, variants] of Object.entries(skillsMap)) {
+    if ((s1.includes(key) && variants.some(v => s2.includes(v))) ||
+        (s2.includes(key) && variants.some(v => s1.includes(v)))) {
+      return true;
+    }
+  }
+  
+  // Vérification de similarité basique
+  return s1.includes(s2) || s2.includes(s1);
+}
+
+/**
+ * Vérifier si l'expérience est pertinente pour le poste
+ */
+function isExperienceRelevant(
+  expTitle: string, 
+  expDescription: string, 
+  jobTitle: string, 
+  jobDescription: string,
+  requiredSkills: Set<string>
+): boolean {
+  // Vérifier les titres similaires
+  const titleKeywords = ['ingénieur', 'engineer', 'développeur', 'developer', 'chef de projet', 'project manager', 
+                         'consultant', 'analyste', 'analyst', 'lead', 'senior', 'junior'];
+  
+  const expTitleMatch = titleKeywords.some(keyword => 
+    expTitle.includes(keyword) && jobTitle.includes(keyword)
+  );
+  
+  // Vérifier les compétences dans la description d'expérience
+  const skillsInDescription = Array.from(requiredSkills).some(skill => 
+    expDescription.includes(skill) || expTitle.includes(skill)
+  );
+  
+  // Vérifier les domaines similaires
+  const domains = ['informatique', 'it', 'software', 'logiciel', 'web', 'mobile', 'data', 'cloud'];
+  const domainMatch = domains.some(domain => 
+    (expDescription.includes(domain) || expTitle.includes(domain)) &&
+    (jobDescription.includes(domain) || jobTitle.includes(domain))
+  );
+  
+  return expTitleMatch || skillsInDescription || domainMatch;
+}
+
+/**
+ * Calculer la durée d'une expérience
+ */
+function calculateExperienceDuration(exp: any): number {
+  if (exp.duration_years) return exp.duration_years;
+  if (exp.start_date && exp.end_date) {
+    const start = new Date(exp.start_date);
+    const end = new Date(exp.end_date);
+    return Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 365));
+  }
+  return 1; // Durée par défaut si pas d'info
+}
+
+/**
+ * Vérifier si l'éducation est pertinente
+ */
+function isEducationRelevant(
+  degree: string, 
+  field: string, 
+  jobTitle: string, 
+  jobDescription: string,
+  requiredSkills: Set<string>
+): boolean {
+  const techFields = ['informatique', 'computer science', 'ingénieur', 'engineering', 'software', 
+                     'mathematics', 'mathématiques', 'data', 'statistics', 'statistiques'];
+  
+  const managementFields = ['management', 'gestion', 'business', 'administration', 'mba'];
+  
+  const isTechJob = jobTitle.includes('ingénieur') || jobTitle.includes('développeur') || 
+                   jobTitle.includes('engineer') || jobTitle.includes('developer') ||
+                   Array.from(requiredSkills).some(skill => 
+                     ['javascript', 'python', 'java', 'react', 'sql'].includes(skill)
+                   );
+  
+  const isManagementJob = jobTitle.includes('manager') || jobTitle.includes('chef') || 
+                         jobTitle.includes('directeur') || jobTitle.includes('lead');
+  
+  if (isTechJob && techFields.some(tf => field.includes(tf) || degree.includes(tf))) {
+    return true;
+  }
+  
+  if (isManagementJob && managementFields.some(mf => field.includes(mf) || degree.includes(mf))) {
+    return true;
+  }
+  
+  return false;
 }
