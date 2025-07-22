@@ -10,7 +10,7 @@ export const calculateCandidateJobMatch = async (
 ): Promise<CandidateJobMatch> => {
   console.log(`[Match Utils] Calculating match for candidate ${candidate.first_name} ${candidate.last_name} against job ${jobOffer.title}`);
   
-  // 1. Correspondance des compétences (60% du score global)
+  // 1. Correspondance des compétences (70% du score global - augmenté)
   const candidateSkills = ensureStringArray(candidate.skills);
   const jobRequiredSkills = ensureStringArray(jobOffer.required_skills);
   const jobPreferredSkills = ensureStringArray(jobOffer.preferred_skills);
@@ -26,54 +26,132 @@ export const calculateCandidateJobMatch = async (
   
   console.log(`[Match Utils] Skills match: ${skillsMatch.matched.length}/${jobRequiredSkills.length + jobPreferredSkills.length} (${skillsScore}%)`);
   
-  // 2. Correspondance d'expérience (25% du score global)
-  let experienceScore = 30; // Score par défaut plus réaliste
+  // SEUIL CRITIQUE : Si moins de 20% de correspondance skills ET aucune compétence requise, score max 20%
+  if (skillsScore < 20 && jobRequiredSkills.length > 0) {
+    console.warn(`⚠️ CRITICAL: Skills score too low (${skillsScore}%) - capping overall match`);
+    
+    const criticalDetails: MatchDetails = {
+      skills: {
+        matched: skillsMatch.matched.map(m => m.candidate),
+        missing: skillsMatch.missing.map(m => m.skill),
+        additional: skillsMatch.additional,
+        matchPercentage: skillsScore
+      },
+      experienceLevel: { required: 0, candidate: 0, match: false, score: 0 },
+      location: { required: '', candidate: '', match: false, score: 0, needsRelocation: false },
+      educationLevel: { required: '', candidate: '', match: false, score: 0 },
+      roleMatch: { score: 10, explanation: 'Compétences insuffisantes' },
+      overall: Math.min(20, skillsScore)
+    };
+    
+    return {
+      score: Math.min(20, skillsScore),
+      globalScore: Math.min(20, skillsScore),
+      localScore: Math.min(20, skillsScore),
+      skillsOnlyScore: skillsScore,
+      details: criticalDetails
+    };
+  }
+  
+  // 2. Correspondance d'expérience (20% du score global - réduit)
+  let experienceScore = 5; // Score par défaut très bas
   const candidateExp = candidate.years_experience || 0;
   const minExp = jobOffer.experience_years_min || 0;
   const maxExp = jobOffer.experience_years_max;
   
   if (minExp > 0) {
+    const expRatio = candidateExp / minExp;
+    
     if (candidateExp >= minExp && (!maxExp || candidateExp <= maxExp)) {
       experienceScore = 100; // Expérience parfaitement dans la fourchette
     } else if (candidateExp >= minExp * 0.8) {
-      experienceScore = 80; // Proche de l'expérience minimum
-    } else if (candidateExp >= minExp * 0.5) {
-      experienceScore = 50; // Au moins la moitié de l'expérience requise
+      experienceScore = 85; // Très proche de l'expérience minimum
+    } else if (candidateExp >= minExp * 0.6) {
+      experienceScore = 60; // Acceptable mais en dessous
+    } else if (candidateExp >= minExp * 0.4) {
+      experienceScore = 35; // Insuffisant mais pas catastrophique
     } else if (candidateExp > 0) {
-      experienceScore = Math.max(20, (candidateExp / minExp) * 40); // Proportionnel mais limité
+      experienceScore = Math.max(10, expRatio * 25); // Proportionnel mais faible
     } else {
-      experienceScore = 10; // Aucune expérience
+      experienceScore = 5; // Aucune expérience vs expérience requise
     }
+    
+    // Pénalité pour surqualification excessive (>200% de l'expérience max)
+    if (maxExp && candidateExp > maxExp * 2) {
+      experienceScore = 40; // Pénalité surqualification
+      console.log(`[Match Utils] Overqualification penalty applied: ${candidateExp} >> ${maxExp}`);
+    }
+  } else {
+    // Pas d'expérience requise
+    experienceScore = candidateExp > 0 ? 80 : 50;
   }
   
   console.log(`[Match Utils] Experience: ${candidateExp} years vs required ${minExp}${maxExp ? `-${maxExp}` : '+'} (${experienceScore}%)`);
   
-  // 3. Correspondance de poste/rôle (bonus/malus selon la correspondance)
-  let roleMatchScore = 50;
-  let roleMatchExplanation = 'Correspondance de rôle standard';
+  // 3. Correspondance de poste/rôle (impact multiplicateur crucial)
+  let roleMatchScore = 30; // Score par défaut plus sévère
+  let roleMatchExplanation = 'Correspondance de rôle à évaluer';
   
-  const candidatePosition = (candidate.position || '').toLowerCase();
-  const jobTitle = (jobOffer.title || '').toLowerCase();
+  const candidatePosition = (candidate.position || '').toLowerCase().trim();
+  const jobTitle = (jobOffer.title || '').toLowerCase().trim();
+  
+  // Détection de rôles techniques vs management
+  const isTechnicalJob = jobTitle.includes('développeur') || jobTitle.includes('ingénieur') || 
+                        jobTitle.includes('analyst') || jobTitle.includes('architect') ||
+                        jobRequiredSkills.some(skill => 
+                          ['javascript', 'python', 'java', 'react', 'vue', 'angular', 'sql', 'aws'].includes(skill.toLowerCase())
+                        );
+  
+  const isManagementJob = jobTitle.includes('manager') || jobTitle.includes('chef') || 
+                         jobTitle.includes('directeur') || jobTitle.includes('pmo') ||
+                         jobTitle.includes('project management');
+  
+  const candidateIsTechnical = candidatePosition.includes('développeur') || candidatePosition.includes('ingénieur') ||
+                              candidatePosition.includes('analyst') || candidatePosition.includes('architect');
+  
+  const candidateIsManagement = candidatePosition.includes('manager') || candidatePosition.includes('chef') ||
+                               candidatePosition.includes('directeur') || candidatePosition.includes('pmo');
   
   // Correspondances exactes ou très proches
-  if (candidatePosition.includes('fullstack') && jobTitle.includes('fullstack')) {
+  if (candidatePosition.includes('pmo') && jobTitle.includes('pmo')) {
+    roleMatchScore = 100;
+    roleMatchExplanation = 'Correspondance parfaite - PMO';
+  } else if (candidatePosition.includes('project manager') && jobTitle.includes('project manager')) {
+    roleMatchScore = 95;
+    roleMatchExplanation = 'Correspondance excellente - Project Manager';
+  } else if (candidatePosition.includes('fullstack') && jobTitle.includes('fullstack')) {
     roleMatchScore = 100;
     roleMatchExplanation = 'Correspondance parfaite - Développeur fullstack';
-  } else if (candidatePosition.includes('développeur') && jobTitle.includes('développeur')) {
-    roleMatchScore = 90;
-    roleMatchExplanation = 'Correspondance excellente - Même domaine de développement';
-  } else if (candidatePosition.includes('project manager') && !jobTitle.includes('manager') && !jobTitle.includes('chef')) {
-    roleMatchScore = 20;
-    roleMatchExplanation = 'Rôle différent - Manager vs poste technique';
-  } else if (candidatePosition.includes('manager') && jobTitle.includes('développeur')) {
-    roleMatchScore = 25;
-    roleMatchExplanation = 'Rôle très différent - Management vs développement';
+  } else if (candidateIsTechnical && isTechnicalJob) {
+    roleMatchScore = 80;
+    roleMatchExplanation = 'Correspondance technique solide';
+  } else if (candidateIsManagement && isManagementJob) {
+    roleMatchScore = 85;
+    roleMatchExplanation = 'Correspondance management solide';
+  } else if (candidateIsManagement && isTechnicalJob) {
+    roleMatchScore = 15; // Forte pénalité management -> technique
+    roleMatchExplanation = 'Rôle incompatible - Management vers technique';
+  } else if (candidateIsTechnical && isManagementJob) {
+    roleMatchScore = 25; // Pénalité technique -> management (possible évolution)
+    roleMatchExplanation = 'Transition technique vers management';
+  } else if (candidatePosition && jobTitle) {
+    // Correspondance générale basée sur les mots-clés
+    const positionWords = candidatePosition.split(/\s+/).filter(w => w.length > 2);
+    const jobWords = jobTitle.split(/\s+/).filter(w => w.length > 2);
+    const commonWords = positionWords.filter(word => 
+      jobWords.some(jobWord => jobWord.includes(word) || word.includes(jobWord))
+    );
+    
+    if (commonWords.length > 0) {
+      roleMatchScore = 50 + (commonWords.length * 10);
+      roleMatchExplanation = `Correspondance partielle - ${commonWords.length} mot(s) commun(s)`;
+    }
   }
   
   console.log(`[Match Utils] Role match: "${candidatePosition}" vs "${jobTitle}" (${roleMatchScore}%) - ${roleMatchExplanation}`);
   
-  // 4. Correspondance de localisation (pour le score local)
-  let locationScore = 30; // Score par défaut plus sévère
+  // 4. Correspondance de localisation (5% du score global - fortement réduit)
+  let locationScore = 10; // Score par défaut très sévère
   let needsRelocation = false;
   const candidateLocation = candidate.location?.toLowerCase().trim() || '';
   const jobLocation = jobOffer.location?.toLowerCase().trim() || '';
@@ -82,81 +160,96 @@ export const calculateCandidateJobMatch = async (
     if (candidateLocation === jobLocation) {
       locationScore = 100;
     } else if (candidateLocation.includes(jobLocation) || jobLocation.includes(candidateLocation)) {
-      locationScore = 80;
+      locationScore = 70;
     } else {
-      locationScore = 10; // Forte pénalité pour mauvaise localisation
+      locationScore = 5; // Très forte pénalité pour mauvaise localisation
       needsRelocation = true;
     }
+  } else if (!jobLocation) {
+    locationScore = 80; // Pas de contrainte de localisation
   }
   
   console.log(`[Match Utils] Location: "${candidateLocation}" vs "${jobLocation}" (${locationScore}%) - Relocation needed: ${needsRelocation}`);
   
-  // 5. Correspondance d'éducation (15% du score global)
-  let educationScore = 40; // Score par défaut plus réaliste
+  // 5. Correspondance d'éducation (5% du score global - fortement réduit)
+  let educationScore = 10; // Score par défaut très sévère
   const candidateEducation = candidate.education;
   const jobEducationLevel = jobOffer.education_level;
   
   if (candidateEducation && Array.isArray(candidateEducation) && candidateEducation.length > 0) {
-    educationScore = 60; // Bonus pour avoir des informations d'éducation
+    educationScore = 40; // Bonus pour avoir des informations d'éducation
+    
+    const educationLevels = candidateEducation.map((edu: any) => (edu.degree || '').toLowerCase());
+    
     if (jobEducationLevel) {
-      educationScore = 75; // Bonus supplémentaire si les deux sont renseignés
+      const requiredLevel = jobEducationLevel.toLowerCase();
+      
+      // Correspondances spécifiques
+      if (educationLevels.some(level => level.includes('master') || level.includes('mba')) && 
+          requiredLevel.includes('master')) {
+        educationScore = 90;
+      } else if (educationLevels.some(level => level.includes('bachelor') || level.includes('license')) && 
+                 requiredLevel.includes('bachelor')) {
+        educationScore = 85;
+      } else if (educationLevels.some(level => level.includes('phd') || level.includes('doctorat'))) {
+        educationScore = 95; // Bonus pour niveau élevé
+      } else {
+        educationScore = 60; // Éducation présente mais pas parfaitement alignée
+      }
     }
   }
   
   console.log(`[Match Utils] Education score: ${educationScore}%`);
   
-  // Calcul des différents scores
+  // Calcul des différents scores avec nouveaux poids
   
   // Score basé uniquement sur les compétences (pour voir les vrais talents)
   const skillsOnlyScore = skillsScore;
   
-  // Score global sans pénalité de localisation (pondération: Skills 60%, Exp 25%, Edu 15%)
-  const globalScore = Math.round(
-    skillsScore * 0.6 +           // 60% pour les compétences
-    experienceScore * 0.25 +      // 25% pour l'expérience
-    educationScore * 0.15         // 15% pour l'éducation
+  // Score global avec nouveaux poids: Skills 70%, Exp 20%, Edu 5%, Location 5%
+  let globalScore = Math.round(
+    skillsScore * 0.70 +           // 70% pour les compétences (augmenté)
+    experienceScore * 0.20 +       // 20% pour l'expérience (réduit)
+    educationScore * 0.05 +        // 5% pour l'éducation (fortement réduit)
+    locationScore * 0.05           // 5% pour la localisation (fortement réduit)
   );
   
-  // Ajustement du score global selon la correspondance de rôle
-  const adjustedGlobalScore = Math.round(globalScore * (roleMatchScore / 100));
+  // Ajustement multiplicateur selon la correspondance de rôle (CRITIQUE)
+  const roleMultiplier = roleMatchScore / 100;
+  const adjustedGlobalScore = Math.round(globalScore * roleMultiplier);
   
-  // Score local avec pénalité de localisation (même base + 10% localisation)
-  const localScore = Math.round(
-    skillsScore * 0.55 +          // 55% pour les compétences  
-    experienceScore * 0.2 +       // 20% pour l'expérience
-    educationScore * 0.15 +       // 15% pour l'éducation
-    locationScore * 0.1           // 10% pour la localisation
-  );
+  // Score local identique au global (simplification)
+  const localScore = adjustedGlobalScore;
   
-  // Score final affiché (le score local pour compatibilité)
-  const overallScore = localScore;
+  // Score final affiché
+  const overallScore = adjustedGlobalScore;
   
-  console.log(`[Match Utils] Scores - Skills Only: ${skillsOnlyScore}%, Global: ${adjustedGlobalScore}%, Local: ${localScore}%, Overall: ${overallScore}%`);
+  console.log(`[Match Utils] Scores - Skills Only: ${skillsOnlyScore}%, Pre-role: ${globalScore}%, Role Multiplier: ${roleMultiplier}, Final: ${overallScore}%`);
   
   const details: MatchDetails = {
     skills: {
       matched: skillsMatch.matched.map(m => m.candidate),
-      missing: skillsMatch.missing.map(m => m.skill), // Extraire juste le nom de la compétence
+      missing: skillsMatch.missing.map(m => m.skill),
       additional: skillsMatch.additional,
       matchPercentage: skillsScore
     },
     experienceLevel: {
       required: minExp,
       candidate: candidateExp,
-      match: experienceScore >= 70,
+      match: experienceScore >= 60,
       score: experienceScore
     },
     location: {
       required: jobOffer.location || '',
       candidate: candidate.location || '',
-      match: locationScore >= 70,
+      match: locationScore >= 50,
       score: locationScore,
       needsRelocation: needsRelocation
     },
     educationLevel: {
       required: jobEducationLevel || '',
       candidate: candidateEducation ? 'Renseigné' : 'Non renseigné',
-      match: educationScore >= 60,
+      match: educationScore >= 40,
       score: educationScore
     },
     roleMatch: {
