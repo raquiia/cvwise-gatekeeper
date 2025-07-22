@@ -25,6 +25,26 @@ export const semanticMatchingService = {
       console.log(`🔍 Checking match for query: "${query}"`);
       console.log(`📄 Candidate text sample: "${candidateText.substring(0, 100)}..."`);
     }
+
+    // CORRECTION 1: Entreprises connues qui doivent être matchées exactement (priorité absolue)
+    const exactMatchCompanies = [
+      'alstom', 'sncf', 'ratp', 'airbus', 'thales', 'safran', 'bouygues', 'edf', 'engie', 'total',
+      'orange', 'free', 'sfr', 'carrefour', 'auchan', 'fnac', 'peugeot', 'renault', 'michelin',
+      'valeo', 'bosch', 'schneider', 'legrand', 'veolia', 'suez', 'danone', 'nestlé', 'unilever',
+      'google', 'microsoft', 'apple', 'amazon', 'facebook', 'meta', 'ibm', 'oracle', 'salesforce',
+      'breiton' // AJOUT : Breiton doit être matchée exactement
+    ];
+
+    // PRIORITÉ 1: Vérification exacte des entreprises (score: 1.0)
+    if (exactMatchCompanies.includes(normalizedQuery)) {
+      if (normalizedCandidateText.includes(normalizedQuery)) {
+        console.log(`✅ Exact company match found for "${query}"`);
+        return true;
+      }
+      // Pour les entreprises, on ne fait PAS de matching flou - retourner false directement
+      console.log(`❌ Company "${query}" not found - no fuzzy matching for companies`);
+      return false;
+    }
     
     // Domain-specific keyword mapping (this would be much more extensive in a real implementation)
     const domainMappings: Record<string, string[]> = {
@@ -129,24 +149,6 @@ export const semanticMatchingService = {
       }
     }
     
-    // Known company names that should only match exactly (no fuzzy matching)
-    const exactMatchCompanies = [
-      'alstom', 'sncf', 'ratp', 'airbus', 'thales', 'safran', 'bouygues', 'edf', 'engie', 'total',
-      'orange', 'free', 'sfr', 'carrefour', 'auchan', 'fnac', 'peugeot', 'renault', 'michelin',
-      'valeo', 'bosch', 'schneider', 'legrand', 'veolia', 'suez', 'danone', 'nestlé', 'unilever',
-      'google', 'microsoft', 'apple', 'amazon', 'facebook', 'meta', 'ibm', 'oracle', 'salesforce'
-    ];
-    
-    // For company queries, skip fuzzy matching
-    const isCompanyQuery = queryKeywords.some(keyword => 
-      exactMatchCompanies.includes(keyword)
-    );
-    
-    if (isCompanyQuery) {
-      // Company names already checked above, no fuzzy matching for companies
-      return false;
-    }
-    
     // For longer text, try fuzzy word matching (but more strict)
     // This helps with partial matches and minor typos
     for (const keyword of queryKeywords) {
@@ -195,7 +197,7 @@ export const semanticMatchingService = {
       }
     }
     
-    // Try to match skill abbreviations and their full forms
+    // CORRECTION 2: Abréviations avec délimiteurs de mots pour éviter les correspondances partielles
     const abbreviations: Record<string, string[]> = {
       "pmo": ["project management office", "program management office"],
       "ms": ["microsoft", "ms project", "management system"],
@@ -207,7 +209,10 @@ export const semanticMatchingService = {
     };
     
     for (const [abbr, fullForms] of Object.entries(abbreviations)) {
-      if (normalizedQuery.includes(abbr)) {
+      // CORRECTION: Utiliser des délimiteurs de mots pour éviter les correspondances partielles
+      const abbrRegex = new RegExp(`\\b${abbr}\\b`, 'i');
+      
+      if (abbrRegex.test(normalizedQuery)) {
         for (const form of fullForms) {
           if (normalizedCandidateText.includes(form)) {
             console.log(`✅ Abbreviation match found: "${abbr}" ~ "${form}"`);
@@ -216,9 +221,9 @@ export const semanticMatchingService = {
         }
       }
       
-      // Check the reverse
+      // Check the reverse - mais aussi avec des délimiteurs
       if (fullForms.some(form => normalizedQuery.includes(form))) {
-        if (normalizedCandidateText.includes(abbr)) {
+        if (abbrRegex.test(normalizedCandidateText)) {
           console.log(`✅ Reverse abbreviation match found: "${fullForms.join(' or ')}" ~ "${abbr}"`);
           return true;
         }
