@@ -477,7 +477,7 @@ const CandidatesContent = () => {
               <EnhancedSearch
                 searchQuery={filters.semanticSearch}
                 onSearchChange={handleSemanticSearchChange}
-                suggestions={generateSearchSuggestions()}
+                suggestions={[]}
                 recentSearches={getRecentSearches()}
               />
               
