@@ -12,8 +12,10 @@ import CandidateStats from '@/components/candidates/CandidateStats';
 import ViewSelector from '@/components/candidates/ViewSelector';
 import { candidateService } from '@/services/data/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
+import { semanticMatchingService } from '@/services/semantic/semanticMatchingService';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
+import { useDebounce } from '@/hooks/use-debounce';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
 import { Button } from '@/components/ui/button';
 import { Filter, Upload, FileText, UserPlus } from 'lucide-react';
@@ -80,6 +82,13 @@ const CandidatesContent = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [currentView, setCurrentView] = useState<'table' | 'cards' | 'kanban' | 'analytics'>('table');
   
+  // États pour la recherche sémantique
+  const [semanticSearchQuery, setSemanticSearchQuery] = useState('');
+  const [isSemanticSearching, setIsSemanticSearching] = useState(false);
+  
+  // Debounce la recherche sémantique pour éviter trop de calculs
+  const debouncedSemanticQuery = useDebounce(semanticSearchQuery, 500);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -115,11 +124,9 @@ const CandidatesContent = () => {
         );
         
         setCandidates(candidatesWithCorrectStatus);
-        setFilteredCandidates(candidatesWithCorrectStatus);
       } else {
         console.error("Candidates data is not an array:", data);
         setCandidates([]);
-        setFilteredCandidates([]);
         setError("Format de données incorrect");
       }
     } catch (error: any) {
@@ -140,11 +147,16 @@ const CandidatesContent = () => {
     fetchCandidates();
   }, [user]);
 
+  // Effet pour filtrer les candidats (statut + recherche sémantique)
   useEffect(() => {
-    if (!candidates || candidates.length === 0) return;
+    if (!candidates || candidates.length === 0) {
+      setFilteredCandidates([]);
+      return;
+    }
     
     let result = [...candidates];
     
+    // Filtre par statut
     if (selectedStatus) {
       result = result.filter(candidate => {
         const candidateStatus = candidate.detailed_status || 'initial';
@@ -152,8 +164,33 @@ const CandidatesContent = () => {
       });
     }
     
+    // Filtre sémantique
+    if (debouncedSemanticQuery.trim()) {
+      setIsSemanticSearching(true);
+      console.log(`🔍 Recherche sémantique pour: "${debouncedSemanticQuery}"`);
+      
+      const semanticResults = result.filter(candidate => {
+        const candidateText = semanticMatchingService.getCandidateSearchableText(candidate);
+        const isMatch = semanticMatchingService.isSemanticMatch({
+          query: debouncedSemanticQuery,
+          candidateText: candidateText,
+          threshold: 0.3 // Seuil assez bas pour être inclusif
+        });
+        
+        if (isMatch) {
+          console.log(`✅ Match trouvé pour ${candidate.first_name} ${candidate.last_name}`);
+        }
+        
+        return isMatch;
+      });
+      
+      result = semanticResults;
+      console.log(`🎯 ${result.length} candidats trouvés pour "${debouncedSemanticQuery}"`);
+      setIsSemanticSearching(false);
+    }
+    
     setFilteredCandidates(result);
-  }, [selectedStatus, candidates]);
+  }, [selectedStatus, candidates, debouncedSemanticQuery]);
 
   // Calculate stats
   const totalCandidates = candidates.length;
@@ -188,6 +225,17 @@ const CandidatesContent = () => {
     setCurrentView(view);
   };
 
+  // Handler pour la recherche sémantique
+  const handleSemanticSearchChange = (query: string) => {
+    setSemanticSearchQuery(query);
+  };
+
+  // Handler pour réinitialiser les filtres
+  const handleResetFilters = () => {
+    setSemanticSearchQuery('');
+    setSelectedStatus(null);
+  };
+
   // Fonction corrigée pour gérer la suppression
   const handleCandidateDeleted = async (candidateId: string) => {
     console.log('Candidate deleted, refreshing list...');
@@ -214,6 +262,29 @@ const CandidatesContent = () => {
       return (
         <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 text-destructive backdrop-blur-sm">
           {error}
+        </div>
+      );
+    }
+
+    // Message informatif quand aucun résultat pour la recherche sémantique
+    if (debouncedSemanticQuery.trim() && filteredCandidates.length === 0 && candidates.length > 0) {
+      return (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-50 flex items-center justify-center">
+            <Filter className="w-8 h-8 text-blue-500" />
+          </div>
+          <h3 className="text-lg font-medium text-foreground mb-2">
+            Aucun candidat trouvé
+          </h3>
+          <p className="text-muted-foreground mb-4">
+            Aucun candidat ne correspond à votre recherche "{debouncedSemanticQuery}"
+          </p>
+          <Button 
+            variant="outline" 
+            onClick={() => setSemanticSearchQuery('')}
+          >
+            Effacer la recherche
+          </Button>
         </div>
       );
     }
@@ -277,6 +348,15 @@ const CandidatesContent = () => {
             <p className="text-muted-foreground text-lg">
               Gérez vos talents avec l'intelligence artificielle
             </p>
+            {debouncedSemanticQuery.trim() && (
+              <p className="text-sm text-blue-600 mt-1">
+                {isSemanticSearching ? (
+                  <>Recherche en cours...</>
+                ) : (
+                  <>{filteredCandidates.length} résultat{filteredCandidates.length > 1 ? 's' : ''} pour "{debouncedSemanticQuery}"</>
+                )}
+              </p>
+            )}
           </div>
           
           <div className="flex gap-3">
@@ -353,14 +433,14 @@ const CandidatesContent = () => {
                 onRemotePreferenceChange={() => {}}
                 onMobilityChange={() => {}}
                 onReset={() => setFilteredCandidates(candidates)}
-                onSemanticSearchChange={() => {}}
+                onSemanticSearchChange={handleSemanticSearchChange}
                 onApplyFilters={() => {}}
-                onResetFilters={() => {}}
+                onResetFilters={handleResetFilters}
                 location=""
                 company=""
                 previousCompany=""
                 experience="all"
-                semanticSearch=""
+                semanticSearch={semanticSearchQuery}
                 selectedSkills={[]}
               />
             </div>
