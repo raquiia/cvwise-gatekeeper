@@ -1,4 +1,3 @@
-
 /**
  * Service de cache intelligent unifié pour l'ATS
  * Optimise les performances et réduit les coûts d'API
@@ -100,6 +99,7 @@ export class IntelligentCacheService {
     };
 
     this.cache.set(key, entry);
+    console.log(`[Cache] SET ${key} (TTL: ${Math.round(ttl/1000/60)}min)`);
   }
 
   /**
@@ -113,6 +113,7 @@ export class IntelligentCacheService {
     
     if (!entry) {
       this.stats.misses++;
+      console.log(`[Cache] MISS ${key}`);
       return null;
     }
 
@@ -120,6 +121,7 @@ export class IntelligentCacheService {
     if (Date.now() - entry.timestamp > entry.ttl) {
       this.cache.delete(key);
       this.stats.misses++;
+      console.log(`[Cache] EXPIRED ${key}`);
       return null;
     }
 
@@ -127,6 +129,7 @@ export class IntelligentCacheService {
     entry.hitCount++;
     entry.lastAccessed = Date.now();
     this.stats.hits++;
+    console.log(`[Cache] HIT ${key} (accessed ${entry.hitCount} times)`);
 
     return this.decompress(entry.data);
   }
@@ -150,6 +153,8 @@ export class IntelligentCacheService {
       this.cache.delete(entries[i][0]);
       this.stats.evictions++;
     }
+    
+    console.log(`[Cache] Evicted ${toRemove} entries`);
   }
 
   /**
@@ -166,6 +171,7 @@ export class IntelligentCacheService {
       }
     }
     
+    console.log(`[Cache] Invalidated ${invalidated} entries matching pattern: ${pattern}`);
     return invalidated;
   }
 
@@ -206,6 +212,24 @@ export class IntelligentCacheService {
   }
 
   /**
+   * Vide spécifiquement le cache des correspondances job
+   */
+  clearJobMatchCache(jobOfferId?: string): number {
+    if (jobOfferId) {
+      return this.invalidatePattern(`*${jobOfferId}*`);
+    } else {
+      return this.invalidatePattern('*match*');
+    }
+  }
+
+  /**
+   * Force l'expiration des entrées liées aux scores
+   */
+  expireScoreCache(): number {
+    return this.invalidatePattern('*score*');
+  }
+
+  /**
    * Statistiques du cache pour monitoring
    */
   getStats() {
@@ -217,8 +241,21 @@ export class IntelligentCacheService {
       hitRate: Math.round(hitRate * 100) / 100,
       cacheSize: this.cache.size,
       maxSize: this.config.maxSize,
-      memoryUsage: this.estimateMemoryUsage()
+      memoryUsage: this.estimateMemoryUsage(),
+      entriesDetails: this.getEntriesDebugInfo()
     };
+  }
+
+  /**
+   * Info de debug sur les entrées en cache
+   */
+  private getEntriesDebugInfo(): Array<{key: string, age: number, hits: number}> {
+    const now = Date.now();
+    return Array.from(this.cache.entries()).map(([key, entry]) => ({
+      key: key.substring(0, 20) + '...',
+      age: Math.round((now - entry.timestamp) / 1000 / 60), // minutes
+      hits: entry.hitCount
+    }));
   }
 
   /**
@@ -241,28 +278,30 @@ export class IntelligentCacheService {
    * Nettoyage du cache
    */
   clear(): void {
+    const oldSize = this.cache.size;
     this.cache.clear();
     this.stats = { hits: 0, misses: 0, evictions: 0, totalRequests: 0 };
+    console.log(`[Cache] Cleared ${oldSize} entries`);
   }
 }
 
-// Instance globale du cache
+// Instance globale du cache avec TTL réduit pour les scores
 export const intelligentCache = new IntelligentCacheService({
   maxSize: 2000,
-  defaultTTL: 1000 * 60 * 45, // 45 minutes
+  defaultTTL: 1000 * 60 * 15, // 15 minutes au lieu de 45 pour plus de réactivité
   compressionEnabled: true
 });
 
-// Cache spécialisé pour les scores AI
+// Cache spécialisé pour les scores AI avec TTL encore plus court
 export const aiScoreCache = new IntelligentCacheService({
   maxSize: 500,
-  defaultTTL: 1000 * 60 * 60 * 2, // 2 heures pour les scores
+  defaultTTL: 1000 * 60 * 30, // 30 minutes pour les scores
   compressionEnabled: false // Les scores sont déjà petits
 });
 
-// Cache pour les correspondances de compétences
+// Cache pour les correspondances de compétences avec TTL réduit
 export const skillsMatchCache = new IntelligentCacheService({
   maxSize: 1000,
-  defaultTTL: 1000 * 60 * 60 * 4, // 4 heures pour les matches
+  defaultTTL: 1000 * 60 * 60, // 1 heure pour les matches
   compressionEnabled: true
 });
