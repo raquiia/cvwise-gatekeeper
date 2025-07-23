@@ -410,9 +410,36 @@ export class LocalAlgorithmicScoringService {
    * Filtre les candidats selon le seuil
    */
   filterCandidates(results: Array<{ candidate: CandidateData; score: LocalScoringResult }>): Array<{ candidate: CandidateData; score: LocalScoringResult }> {
-    return results
-      .filter(result => result.score.score >= 30) // Seuil minimum
-      .sort((a, b) => b.score.score - a.score.score); // Tri par score décroissant
+    const MINIMUM_SCORE = 20; // Seuil abaissé de 30% à 20%
+    
+    console.log(`[Local Filtering] 📊 Filtering ${results.length} candidates with minimum score ${MINIMUM_SCORE}%`);
+    
+    // Analyser la distribution des scores avant filtrage
+    const scoreDistribution = results.map(r => r.score.score).sort((a, b) => b - a);
+    console.log(`[Local Filtering] 📈 Score distribution:`, {
+      total: scoreDistribution.length,
+      max: scoreDistribution[0] || 0,
+      min: scoreDistribution[scoreDistribution.length - 1] || 0,
+      above_30: scoreDistribution.filter(s => s >= 30).length,
+      above_20: scoreDistribution.filter(s => s >= 20).length,
+      below_20: scoreDistribution.filter(s => s < 20).length
+    });
+    
+    const filtered = results.filter(result => result.score.score >= MINIMUM_SCORE);
+    const excluded = results.filter(result => result.score.score < MINIMUM_SCORE);
+    
+    console.log(`[Local Filtering] ✅ Kept ${filtered.length} candidates (score >= ${MINIMUM_SCORE}%)`);
+    console.log(`[Local Filtering] ❌ Excluded ${excluded.length} candidates (score < ${MINIMUM_SCORE}%)`);
+    
+    // Logs détaillés des candidats exclus
+    if (excluded.length > 0) {
+      console.log(`[Local Filtering] 🚫 Excluded candidates:`);
+      excluded.forEach(result => {
+        console.log(`[Local Filtering]   - ${result.candidate.first_name} ${result.candidate.last_name}: ${result.score.score}%`);
+      });
+    }
+    
+    return filtered.sort((a, b) => b.score.score - a.score.score); // Tri par score décroissant
   }
 }
 
