@@ -26,6 +26,10 @@ interface LocalMatchResult {
   };
   explanation: string;
   isPMOCandidate: boolean;
+  // Nouvelles propriétés pour la gestion globale
+  isOwnCandidate: boolean;
+  ownerFirstName: string;
+  ownerLastName: string;
 }
 
 /**
@@ -37,7 +41,8 @@ class LocalMatchingService {
    * Calcule les correspondances pour une offre d'emploi
    */
   async calculateMatchesForJobOffer(jobOfferId: string, includeGlobalCandidates: boolean = false): Promise<LocalMatchResult[]> {
-    console.log(`[Local Matching] 🚀 Starting instant matching for job: ${jobOfferId} (global: ${includeGlobalCandidates})`);
+    console.log(`[Local Matching] 🚀 Starting matching for job: ${jobOfferId}`);
+    console.log(`[Local Matching] 🔄 Mode: ${includeGlobalCandidates ? 'GLOBAL (all candidates)' : 'LOCAL (user candidates only)'}`);
     
     try {
       // Récupérer l'offre d'emploi
@@ -48,12 +53,19 @@ class LocalMatchingService {
       
       console.log(`[Local Matching] 📋 Job: "${jobOffer.title}"`);
       
-      // Récupérer les candidats selon le mode
+      // Récupérer les candidats selon le mode sélectionné
       const candidates = includeGlobalCandidates 
         ? await candidateService.getAllCandidates()
         : await candidateService.getUserCandidates();
       
-      console.log(`[Local Matching] 👥 Processing ${candidates.length} candidates (mode: ${includeGlobalCandidates ? 'global' : 'user only'})`);
+      console.log(`[Local Matching] 📊 Retrieved ${candidates.length} candidates`);
+      
+      // Vérifier la répartition des candidats
+      const ownCandidates = candidates.filter(c => c.isOwnCandidate);
+      const otherCandidates = candidates.filter(c => !c.isOwnCandidate);
+      
+      console.log(`[Local Matching] 👤 Own candidates: ${ownCandidates.length}`);
+      console.log(`[Local Matching] 🌍 Other candidates: ${otherCandidates.length}`);
       
       const results: LocalMatchResult[] = [];
       
@@ -71,7 +83,11 @@ class LocalMatchingService {
           details: scoringResult.breakdown,
           skillsDetails: scoringResult.skillsDetails,
           explanation: scoringResult.explanation,
-          isPMOCandidate: scoringResult.isPMOCandidate
+          isPMOCandidate: scoringResult.isPMOCandidate,
+          // Nouvelles propriétés pour la distinction
+          isOwnCandidate: candidate.isOwnCandidate || false,
+          ownerFirstName: candidate.owner_first_name || '',
+          ownerLastName: candidate.owner_last_name || ''
         });
       }
       
@@ -94,13 +110,15 @@ class LocalMatchingService {
         results.find(r => r.candidateId === fr.candidate.id!)!
       );
       
-      console.log(`[Local Matching] ✅ Completed: ${finalResults.length} matches (filtered from ${results.length})`);
+      console.log(`[Local Matching] ✅ Final results: ${finalResults.length} matches`);
+      console.log(`[Local Matching] 📊 Own candidates in results: ${finalResults.filter(r => r.isOwnCandidate).length}`);
+      console.log(`[Local Matching] 📊 Other candidates in results: ${finalResults.filter(r => !r.isOwnCandidate).length}`);
       
-      // Log des meilleurs résultats avec détails de compétences
+      // Log des meilleurs résultats
       finalResults.slice(0, 5).forEach((result, index) => {
+        const ownerTag = result.isOwnCandidate ? '👤 Own' : `🌍 ${result.ownerFirstName} ${result.ownerLastName}`;
         const pmoTag = result.isPMOCandidate ? '🎯 PMO' : '📋 Non-PMO';
-        console.log(`[Local Matching] ${index + 1}. ${result.firstName} ${result.lastName} (${result.position}): ${result.score}% ${pmoTag}`);
-        console.log(`[Local Matching]    Skills: ${result.skillsDetails.matched.length} matched, ${result.skillsDetails.missing.length} missing`);
+        console.log(`[Local Matching] ${index + 1}. ${result.firstName} ${result.lastName} (${result.position}): ${result.score}% ${ownerTag} ${pmoTag}`);
       });
       
       return finalResults;
@@ -115,7 +133,7 @@ class LocalMatchingService {
    * Recalcul forcé
    */
   async forceRecalculateAllScores(jobOfferId: string, includeGlobalCandidates: boolean = false): Promise<LocalMatchResult[]> {
-    console.log(`[Local Matching] ⚡ Force recalculation (instant) for job: ${jobOfferId} (global: ${includeGlobalCandidates})`);
+    console.log(`[Local Matching] ⚡ Force recalculation for job: ${jobOfferId} (global: ${includeGlobalCandidates})`);
     return this.calculateMatchesForJobOffer(jobOfferId, includeGlobalCandidates);
   }
   

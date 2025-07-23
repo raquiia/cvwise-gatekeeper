@@ -56,7 +56,7 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
   }, [activeJobOfferId, jobOffer, setActiveJobOffer]);
 
   const handleModeChange = (globalMode: boolean) => {
-    console.log(`[CandidatesMatchingSection] 🔄 Mode change: ${globalMode ? 'global' : 'local'}`);
+    console.log(`[CandidatesMatchingSection] 🔄 Mode change: ${globalMode ? 'GLOBAL' : 'LOCAL'}`);
     setIsGlobalMode(globalMode);
     // Recalculer automatiquement avec le nouveau mode
     onRecalculateMatches(globalMode, false);
@@ -70,10 +70,23 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
     onRecalculateMatches(isGlobalMode, true); // Forcer le recalcul complet
   };
 
-  // Filtrer les candidats selon le mode
-  const filteredMatches = isGlobalMode ? candidateMatches : candidateMatches.filter(match => match.isOwnCandidate !== false);
-  const ownCandidatesCount = candidateMatches.filter(match => match.isOwnCandidate !== false).length;
+  // Calculer les statistiques correctement
+  const ownCandidatesCount = candidateMatches.filter(match => match.isOwnCandidate).length;
   const totalCandidatesCount = candidateMatches.length;
+  const otherCandidatesCount = totalCandidatesCount - ownCandidatesCount;
+
+  console.log(`[CandidatesMatchingSection] 📊 Current statistics:`);
+  console.log(`[CandidatesMatchingSection]    Total: ${totalCandidatesCount}`);
+  console.log(`[CandidatesMatchingSection]    Own: ${ownCandidatesCount}`);
+  console.log(`[CandidatesMatchingSection]    Other: ${otherCandidatesCount}`);
+  console.log(`[CandidatesMatchingSection]    Mode: ${isGlobalMode ? 'GLOBAL' : 'LOCAL'}`);
+
+  // Filtrer les candidats selon le mode - CORRECTION DE LA LOGIQUE
+  const filteredMatches = isGlobalMode 
+    ? candidateMatches // En mode global, on affiche tous les candidats
+    : candidateMatches.filter(match => match.isOwnCandidate); // En mode local, seulement les nôtres
+
+  console.log(`[CandidatesMatchingSection] 📋 Filtered matches: ${filteredMatches.length}`);
 
   const renderCandidateList = (matches: ExtendedCandidateMatch[], sortKey: 'local' | 'global' | 'skills') => {
     if (matches.length === 0) {
@@ -131,11 +144,11 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
             </CardTitle>
             <CardDescription>
               {isGlobalMode 
-                ? `${totalCandidatesCount} candidat${totalCandidatesCount !== 1 ? 's' : ''} évalué${totalCandidatesCount !== 1 ? 's' : ''} (${ownCandidatesCount} vôtre${ownCandidatesCount !== 1 ? 's' : ''})`
-                : `${ownCandidatesCount} candidat${ownCandidatesCount !== 1 ? 's' : ''} évalué${ownCandidatesCount !== 1 ? 's' : ''}`
+                ? `${filteredMatches.length} candidat${filteredMatches.length !== 1 ? 's' : ''} affiché${filteredMatches.length !== 1 ? 's' : ''} (${ownCandidatesCount} vôtre${ownCandidatesCount !== 1 ? 's' : ''}, ${otherCandidatesCount} autre${otherCandidatesCount !== 1 ? 's' : ''})`
+                : `${filteredMatches.length} candidat${filteredMatches.length !== 1 ? 's' : ''} affiché${filteredMatches.length !== 1 ? 's' : ''} (vos candidats uniquement)`
               }
               <span className="text-xs text-muted-foreground ml-2">
-                • Scores en cache permanent pour performances optimales
+                • Total disponible: {totalCandidatesCount} candidats
               </span>
             </CardDescription>
           </div>

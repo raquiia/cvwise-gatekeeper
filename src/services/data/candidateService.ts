@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
 
@@ -56,6 +55,10 @@ export interface CandidateData {
   ai_weaknesses?: Json;
   ai_recommendations?: Json;
   ai_analyzed_at?: string;
+  // Propriétés pour la détection de propriété
+  isOwnCandidate?: boolean;
+  owner_first_name?: string;
+  owner_last_name?: string;
 }
 
 export interface UpdateCandidateOptions {
@@ -63,42 +66,84 @@ export interface UpdateCandidateOptions {
 }
 
 export const candidateService = {
-  // Get all candidates
+  // Get ALL candidates from the platform (global mode)
   getAllCandidates: async (): Promise<CandidateData[]> => {
     try {
+      console.log('🌍 [candidateService] Fetching ALL candidates from platform...');
+      
+      // Utiliser une requête qui récupère tous les candidats avec les infos de propriétaire
       const { data: candidates, error } = await supabase
         .from('candidates')
-        .select('*')
+        .select(`
+          *,
+          profiles!candidates_user_id_fkey (
+            first_name,
+            last_name
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Supabase error:', error);
-        throw new Error(`Erreur lors de la récupération des candidats: ${error.message}`);
+        console.error('❌ [candidateService] Supabase error in getAllCandidates:', error);
+        throw new Error(`Erreur lors de la récupération de tous les candidats: ${error.message}`);
       }
 
-      return candidates || [];
+      const currentUserId = (await supabase.auth.getUser()).data.user?.id;
+      
+      // Enrichir avec les informations de propriété
+      const enrichedCandidates = (candidates || []).map(candidate => ({
+        ...candidate,
+        isOwnCandidate: candidate.user_id === currentUserId,
+        owner_first_name: candidate.profiles?.first_name || '',
+        owner_last_name: candidate.profiles?.last_name || ''
+      }));
+
+      console.log(`✅ [candidateService] Retrieved ${enrichedCandidates.length} candidates globally`);
+      console.log(`📊 [candidateService] Own candidates: ${enrichedCandidates.filter(c => c.isOwnCandidate).length}`);
+      console.log(`📊 [candidateService] Other candidates: ${enrichedCandidates.filter(c => !c.isOwnCandidate).length}`);
+
+      return enrichedCandidates;
     } catch (error: any) {
-      console.error('Error fetching candidates:', error);
+      console.error('❌ [candidateService] Error fetching all candidates:', error);
       throw error;
     }
   },
 
-  // Get user candidates
+  // Get user candidates ONLY (local mode)
   getUserCandidates: async (): Promise<CandidateData[]> => {
     try {
+      console.log('👤 [candidateService] Fetching USER candidates only...');
+      
       const { data: candidates, error } = await supabase
         .from('candidates')
-        .select('*')
+        .select(`
+          *,
+          profiles!candidates_user_id_fkey (
+            first_name,
+            last_name
+          )
+        `)
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Supabase error:', error);
-        throw new Error(`Erreur lors de la récupération des candidats: ${error.message}`);
+        console.error('❌ [candidateService] Supabase error in getUserCandidates:', error);
+        throw new Error(`Erreur lors de la récupération des candidats utilisateur: ${error.message}`);
       }
 
-      return candidates || [];
+      // Tous les candidats retournés sont des candidats propres
+      const enrichedCandidates = (candidates || []).map(candidate => ({
+        ...candidate,
+        isOwnCandidate: true,
+        owner_first_name: candidate.profiles?.first_name || '',
+        owner_last_name: candidate.profiles?.last_name || ''
+      }));
+
+      console.log(`✅ [candidateService] Retrieved ${enrichedCandidates.length} user candidates`);
+
+      return enrichedCandidates;
     } catch (error: any) {
-      console.error('Error fetching user candidates:', error);
+      console.error('❌ [candidateService] Error fetching user candidates:', error);
       throw error;
     }
   },
@@ -166,7 +211,6 @@ export const candidateService = {
           phone: candidateData.phone,
           position: candidateData.position,
           location: candidateData.location,
-          // Explicitly include address fields in the update
           address: candidateData.address,
           postal_code: candidateData.postal_code,
           city: candidateData.city,
@@ -195,7 +239,6 @@ export const candidateService = {
           industries: candidateData.industries,
           projects: candidateData.projects,
           notes: candidateData.notes,
-          // Inclure les nouvelles colonnes AI
           ai_score: candidateData.ai_score,
           ai_explanation: candidateData.ai_explanation,
           ai_breakdown: candidateData.ai_breakdown,
@@ -262,10 +305,13 @@ export const formatCandidateData = (candidate: any): CandidateData => {
     special_permits: candidate.special_permits || [],
     industries: candidate.industries || [],
     projects: candidate.projects || [],
-    // Formater les nouvelles données AI
     ai_strengths: candidate.ai_strengths || [],
     ai_weaknesses: candidate.ai_weaknesses || [],
     ai_recommendations: candidate.ai_recommendations || [],
     ai_breakdown: candidate.ai_breakdown || {},
+    // Conserver les informations de propriété
+    isOwnCandidate: candidate.isOwnCandidate || false,
+    owner_first_name: candidate.owner_first_name || '',
+    owner_last_name: candidate.owner_last_name || ''
   };
 };

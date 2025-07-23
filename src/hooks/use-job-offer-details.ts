@@ -54,7 +54,7 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
         ? await localMatchingService.forceRecalculateAllScores(jobOfferId, includeGlobalCandidates)
         : await localMatchingService.calculateMatchesForJobOffer(jobOfferId, includeGlobalCandidates);
       
-      // Convert to ExtendedCandidateMatch format with proper skills mapping
+      // Convert to ExtendedCandidateMatch format with enhanced ownership info
       const extendedMatches: ExtendedCandidateMatch[] = matches.map(match => ({
         candidateId: match.candidateId,
         firstName: match.firstName,
@@ -93,25 +93,36 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
             explanation: match.explanation
           }
         },
-        // Marquer si c'est un candidat propre ou global (pour l'instant tous sont considérés comme propres en mode local)
-        isOwnCandidate: !includeGlobalCandidates || true // TODO: Implémenter la logique de propriété réelle
+        // Propriétés enrichies pour la distinction des candidats
+        isOwnCandidate: match.isOwnCandidate,
+        ownerFirstName: match.ownerFirstName,
+        ownerLastName: match.ownerLastName
       }));
       
       setCandidateMatches(extendedMatches);
       
-      const modeText = includeGlobalCandidates ? 'global' : 'user-only';
-      console.log(`[Job Offer Details] ✅ Loaded ${extendedMatches.length} matches instantly (${modeText})`);
+      // Stats détaillées pour debug
+      const ownCount = extendedMatches.filter(m => m.isOwnCandidate).length;
+      const otherCount = extendedMatches.filter(m => !m.isOwnCandidate).length;
+      const totalCount = extendedMatches.length;
+      
+      console.log(`[Job Offer Details] 📊 Match statistics:`);
+      console.log(`[Job Offer Details]    Total matches: ${totalCount}`);
+      console.log(`[Job Offer Details]    Own candidates: ${ownCount}`);
+      console.log(`[Job Offer Details]    Other candidates: ${otherCount}`);
+      console.log(`[Job Offer Details]    Mode: ${includeGlobalCandidates ? 'GLOBAL' : 'LOCAL'}`);
       
       // Log compétences pour les premiers candidats
       extendedMatches.slice(0, 3).forEach(match => {
-        console.log(`[Job Offer Details] 🎯 ${match.firstName} ${match.lastName}:`);
+        const ownerInfo = match.isOwnCandidate ? 'Own' : `${match.ownerFirstName} ${match.ownerLastName}`;
+        console.log(`[Job Offer Details] 🎯 ${match.firstName} ${match.lastName} (${ownerInfo}):`);
         console.log(`[Job Offer Details]    Matched skills: ${match.details?.skills?.matched?.join(', ') || 'none'}`);
         console.log(`[Job Offer Details]    Missing skills: ${match.details?.skills?.missing?.join(', ') || 'none'}`);
       });
       
       toast({
         title: "✅ Correspondances calculées",
-        description: `${extendedMatches.length} candidats analysés instantanément (${includeGlobalCandidates ? 'mode global' : 'vos candidats'})`,
+        description: `${totalCount} candidats analysés (${ownCount} vôtres, ${otherCount} autres)`,
       });
       
     } catch (err: any) {

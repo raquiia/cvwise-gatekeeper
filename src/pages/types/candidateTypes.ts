@@ -13,8 +13,8 @@ export interface ExtendedCandidateMatch {
   localScore?: number;       // Score avec localisation
   skillsOnlyScore?: number;  // Score compétences pures
   details?: MatchDetails;
-  // Nouvelles propriétés pour le mode global
-  isOwnCandidate?: boolean;  // True si le candidat appartient à l'utilisateur connecté
+  // Propriétés enrichies pour la gestion des candidats globaux
+  isOwnCandidate: boolean;   // True si le candidat appartient à l'utilisateur connecté
   ownerFirstName?: string;   // Prénom du propriétaire du candidat
   ownerLastName?: string;    // Nom du propriétaire du candidat
   candidate?: {
