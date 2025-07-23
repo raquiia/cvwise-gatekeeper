@@ -20,7 +20,7 @@ import type { ExtendedCandidateMatch } from '@/pages/types/candidateTypes';
 interface EnhancedCandidateMatchItemProps {
   match: ExtendedCandidateMatch;
   onViewCandidate: (candidateId: string) => void;
-  sortKey: 'local' | 'global' | 'skills';
+  sortKey: 'local' | 'distant';
   renderMatchedSkills: (candidateId: string, jobOfferId: string) => React.ReactNode;
   renderMissingSkills: (candidateId: string, jobOfferId: string) => React.ReactNode;
   jobId: string;
@@ -41,10 +41,8 @@ const EnhancedCandidateMatchItem: React.FC<EnhancedCandidateMatchItemProps> = ({
     switch (sortKey) {
       case 'local':
         return match.localScore || match.score;
-      case 'global':
+      case 'distant':
         return match.globalScore || match.score;
-      case 'skills':
-        return match.skillsOnlyScore || match.score;
       default:
         return match.score;
     }
@@ -61,10 +59,8 @@ const EnhancedCandidateMatchItem: React.FC<EnhancedCandidateMatchItemProps> = ({
     switch (sortKey) {
       case 'local':
         return <MapPin className="h-4 w-4" />;
-      case 'global':
+      case 'distant':
         return <Target className="h-4 w-4" />;
-      case 'skills':
-        return <Zap className="h-4 w-4" />;
       default:
         return <Target className="h-4 w-4" />;
     }
@@ -120,7 +116,7 @@ const EnhancedCandidateMatchItem: React.FC<EnhancedCandidateMatchItemProps> = ({
               </div>
               
               <div className="flex items-center gap-2">
-                {needsRelocation && sortKey === 'global' && (
+                {needsRelocation && sortKey === 'distant' && (
                   <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 bg-amber-50">
                     <AlertTriangle className="h-3 w-3 mr-1" />
                     Relocalisation
@@ -159,8 +155,8 @@ const EnhancedCandidateMatchItem: React.FC<EnhancedCandidateMatchItemProps> = ({
                 </div>
               )}
 
-              {/* Scores détaillés pour l'onglet global */}
-              {sortKey === 'global' && (
+              {/* Scores détaillés pour l'onglet distant */}
+              {sortKey === 'distant' && (
                 <div className="flex gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Zap className="h-3 w-3" />
