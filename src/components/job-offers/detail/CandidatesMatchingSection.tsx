@@ -70,7 +70,7 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
     onRecalculateMatches(isGlobalMode, true); // Forcer le recalcul complet
   };
 
-  // Calculer les statistiques correctement
+  // Calculer les statistiques correctement selon le mode
   const ownCandidatesCount = candidateMatches.filter(match => match.isOwnCandidate).length;
   const totalCandidatesCount = candidateMatches.length;
   const otherCandidatesCount = totalCandidatesCount - ownCandidatesCount;
@@ -80,19 +80,22 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
   const distantCandidatesCount = candidateMatches.filter(match => match.details?.location?.needsRelocation).length;
 
   console.log(`[CandidatesMatchingSection] 📊 Current statistics:`);
-  console.log(`[CandidatesMatchingSection]    Total: ${totalCandidatesCount}`);
+  console.log(`[CandidatesMatchingSection]    Total from service: ${totalCandidatesCount}`);
   console.log(`[CandidatesMatchingSection]    Own: ${ownCandidatesCount}`);
   console.log(`[CandidatesMatchingSection]    Other: ${otherCandidatesCount}`);
   console.log(`[CandidatesMatchingSection]    Local: ${localCandidatesCount}`);
   console.log(`[CandidatesMatchingSection]    Distant: ${distantCandidatesCount}`);
   console.log(`[CandidatesMatchingSection]    Mode: ${isGlobalMode ? 'GLOBAL' : 'LOCAL'}`);
 
-  // Filtrer les candidats selon le mode - CORRECTION DE LA LOGIQUE
-  const filteredMatches = isGlobalMode 
-    ? candidateMatches // En mode global, on affiche tous les candidats
-    : candidateMatches.filter(match => match.isOwnCandidate); // En mode local, seulement les nôtres
+  // Déterminer les compteurs à afficher selon le mode
+  const displayedCandidatesCount = isGlobalMode ? totalCandidatesCount : ownCandidatesCount;
+  const toggleOwnCount = ownCandidatesCount;  // Toujours afficher le nombre de candidats propres
+  const toggleTotalCount = totalCandidatesCount; // Toujours afficher le nombre total
 
-  console.log(`[CandidatesMatchingSection] 📋 Filtered matches: ${filteredMatches.length}`);
+  // Filtrer les candidats selon le mode - Les candidateMatches viennent déjà du bon service
+  const filteredMatches = candidateMatches; // Pas de filtrage supplémentaire car le service retourne déjà les bons candidats
+
+  console.log(`[CandidatesMatchingSection] 📋 Displaying ${displayedCandidatesCount} candidates (filtered: ${filteredMatches.length})`);
 
   const renderCandidateList = (matches: ExtendedCandidateMatch[], sortKey: 'local' | 'distant') => {
     if (matches.length === 0) {
@@ -150,8 +153,8 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
             </CardTitle>
             <CardDescription>
               {isGlobalMode 
-                ? `${filteredMatches.length} candidat${filteredMatches.length !== 1 ? 's' : ''} affiché${filteredMatches.length !== 1 ? 's' : ''} (${ownCandidatesCount} vôtre${ownCandidatesCount !== 1 ? 's' : ''}, ${otherCandidatesCount} autre${otherCandidatesCount !== 1 ? 's' : ''})`
-                : `${filteredMatches.length} candidat${filteredMatches.length !== 1 ? 's' : ''} affiché${filteredMatches.length !== 1 ? 's' : ''} (vos candidats uniquement)`
+                ? `${displayedCandidatesCount} candidat${displayedCandidatesCount !== 1 ? 's' : ''} au total (${ownCandidatesCount} vôtre${ownCandidatesCount !== 1 ? 's' : ''}, ${otherCandidatesCount} autre${otherCandidatesCount !== 1 ? 's' : ''})`
+                : `${displayedCandidatesCount} candidat${displayedCandidatesCount !== 1 ? 's' : ''} (vos candidats uniquement)`
               }
               <span className="text-xs text-muted-foreground ml-2">
                 • {localCandidatesCount} locaux • {distantCandidatesCount} distants
@@ -204,8 +207,8 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
         <MatchingModeToggle
           isGlobalMode={isGlobalMode}
           onModeChange={handleModeChange}
-          totalCandidates={totalCandidatesCount}
-          ownCandidates={ownCandidatesCount}
+          totalCandidates={toggleTotalCount}
+          ownCandidates={toggleOwnCount}
         />
 
         {filteredMatches.length > 0 ? (

@@ -55,19 +55,35 @@ class LocalMatchingService {
       
       console.log(`[Local Matching] 📋 Job: "${jobOffer.title}"`);
       
-      // Récupérer les candidats selon le mode sélectionné
+      // Récupérer les candidats selon le mode sélectionné - DÉBOGAGE DÉTAILLÉ
+      console.log(`[Local Matching] 🔍 Fetching candidates with mode: ${includeGlobalCandidates ? 'getAllCandidates' : 'getUserCandidates'}`);
+      
       const candidates = includeGlobalCandidates 
         ? await candidateService.getAllCandidates()
         : await candidateService.getUserCandidates();
       
-      console.log(`[Local Matching] 📊 Retrieved ${candidates.length} candidates`);
+      console.log(`[Local Matching] 📊 RAW candidates retrieved: ${candidates.length}`);
       
-      // Vérifier la répartition des candidats
+      // Vérifier la répartition des candidats avec debug détaillé
       const ownCandidates = candidates.filter(c => c.isOwnCandidate);
       const otherCandidates = candidates.filter(c => !c.isOwnCandidate);
       
       console.log(`[Local Matching] 👤 Own candidates: ${ownCandidates.length}`);
       console.log(`[Local Matching] 🌍 Other candidates: ${otherCandidates.length}`);
+      
+      // Vérifier les propriétés des premiers candidats
+      candidates.slice(0, 5).forEach((candidate, index) => {
+        console.log(`[Local Matching] 📝 Candidate ${index + 1}: ${candidate.first_name} ${candidate.last_name} (isOwnCandidate: ${candidate.isOwnCandidate}, user_id: ${candidate.user_id})`);
+      });
+      
+      // Vérifier la cohérence du mode
+      if (!includeGlobalCandidates && otherCandidates.length > 0) {
+        console.warn(`[Local Matching] ⚠️ WARNING: In LOCAL mode but found ${otherCandidates.length} other candidates! This should not happen.`);
+      }
+      
+      if (includeGlobalCandidates && otherCandidates.length === 0) {
+        console.warn(`[Local Matching] ⚠️ WARNING: In GLOBAL mode but found no other candidates! This might indicate a data issue.`);
+      }
       
       const results: LocalMatchResult[] = [];
       
@@ -118,6 +134,21 @@ class LocalMatchingService {
       console.log(`[Local Matching] ✅ Final results: ${finalResults.length} matches`);
       console.log(`[Local Matching] 📊 Own candidates in results: ${finalResults.filter(r => r.isOwnCandidate).length}`);
       console.log(`[Local Matching] 📊 Other candidates in results: ${finalResults.filter(r => !r.isOwnCandidate).length}`);
+      
+      // Vérification finale de cohérence
+      const finalOwnCount = finalResults.filter(r => r.isOwnCandidate).length;
+      const finalOtherCount = finalResults.filter(r => !r.isOwnCandidate).length;
+      const finalTotalCount = finalResults.length;
+      
+      console.log(`[Local Matching] 🔍 FINAL VERIFICATION:`);
+      console.log(`[Local Matching]    Expected mode: ${includeGlobalCandidates ? 'GLOBAL' : 'LOCAL'}`);
+      console.log(`[Local Matching]    Final own count: ${finalOwnCount}`);
+      console.log(`[Local Matching]    Final other count: ${finalOtherCount}`);
+      console.log(`[Local Matching]    Final total count: ${finalTotalCount}`);
+      
+      if (!includeGlobalCandidates && finalOtherCount > 0) {
+        console.error(`[Local Matching] ❌ ERROR: In LOCAL mode but returning ${finalOtherCount} other candidates!`);
+      }
       
       // Statistiques de localisation
       const localCandidates = finalResults.filter(r => !r.needsRelocation);

@@ -54,6 +54,10 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
         ? await localMatchingService.forceRecalculateAllScores(jobOfferId, includeGlobalCandidates)
         : await localMatchingService.calculateMatchesForJobOffer(jobOfferId, includeGlobalCandidates);
       
+      console.log(`[Job Offer Details] 📊 Raw matches from service: ${matches.length}`);
+      console.log(`[Job Offer Details] 📊 Own matches: ${matches.filter(m => m.isOwnCandidate).length}`);
+      console.log(`[Job Offer Details] 📊 Other matches: ${matches.filter(m => !m.isOwnCandidate).length}`);
+      
       // Convert to ExtendedCandidateMatch format with enhanced ownership info
       const extendedMatches: ExtendedCandidateMatch[] = matches.map(match => ({
         candidateId: match.candidateId,
@@ -102,20 +106,33 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
       
       setCandidateMatches(extendedMatches);
       
-      // Stats détaillées pour debug
+      // Stats détaillées pour debug avec vérification de cohérence
       const ownCount = extendedMatches.filter(m => m.isOwnCandidate).length;
       const otherCount = extendedMatches.filter(m => !m.isOwnCandidate).length;
       const totalCount = extendedMatches.length;
       const localCount = extendedMatches.filter(m => !m.details?.location?.needsRelocation).length;
       const distantCount = extendedMatches.filter(m => m.details?.location?.needsRelocation).length;
       
-      console.log(`[Job Offer Details] 📊 Match statistics:`);
+      console.log(`[Job Offer Details] 📊 FINAL Match statistics:`);
+      console.log(`[Job Offer Details]    Mode requested: ${includeGlobalCandidates ? 'GLOBAL' : 'LOCAL'}`);
       console.log(`[Job Offer Details]    Total matches: ${totalCount}`);
       console.log(`[Job Offer Details]    Own candidates: ${ownCount}`);
       console.log(`[Job Offer Details]    Other candidates: ${otherCount}`);
       console.log(`[Job Offer Details]    Local candidates: ${localCount}`);
       console.log(`[Job Offer Details]    Distant candidates: ${distantCount}`);
-      console.log(`[Job Offer Details]    Mode: ${includeGlobalCandidates ? 'GLOBAL' : 'LOCAL'}`);
+      
+      // Vérification de cohérence
+      if (!includeGlobalCandidates && otherCount > 0) {
+        console.error(`[Job Offer Details] ❌ COHÉRENCE ERROR: Mode LOCAL mais ${otherCount} autres candidats retournés!`);
+        console.error(`[Job Offer Details] 📝 Détails des candidats autres:`);
+        extendedMatches.filter(m => !m.isOwnCandidate).forEach(m => {
+          console.error(`[Job Offer Details]    - ${m.firstName} ${m.lastName} (owner: ${m.ownerFirstName} ${m.ownerLastName})`);
+        });
+      }
+      
+      if (includeGlobalCandidates && otherCount === 0 && totalCount > 0) {
+        console.warn(`[Job Offer Details] ⚠️ Mode GLOBAL mais aucun autre candidat trouvé (${totalCount} candidats au total)`);
+      }
       
       // Log compétences pour les premiers candidats
       extendedMatches.slice(0, 3).forEach(match => {
@@ -126,9 +143,13 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
         console.log(`[Job Offer Details]    Missing skills: ${match.details?.skills?.missing?.join(', ') || 'none'}`);
       });
       
+      // Message de toast adapté au mode
+      const modeText = includeGlobalCandidates ? 'global' : 'local';
       toast({
-        title: "✅ Correspondances calculées",
-        description: `${totalCount} candidats analysés (${localCount} locaux, ${distantCount} distants)`,
+        title: `✅ Correspondances calculées (mode ${modeText})`,
+        description: includeGlobalCandidates 
+          ? `${totalCount} candidats analysés (${ownCount} vôtres, ${otherCount} autres) • ${localCount} locaux, ${distantCount} distants`
+          : `${totalCount} candidats analysés (vos candidats) • ${localCount} locaux, ${distantCount} distants`,
       });
       
     } catch (err: any) {
