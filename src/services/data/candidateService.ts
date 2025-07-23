@@ -71,16 +71,10 @@ export const candidateService = {
     try {
       console.log('🌍 [candidateService] Fetching ALL candidates from platform...');
       
-      // Utiliser une requête qui récupère tous les candidats avec les infos de propriétaire
+      // Récupérer tous les candidats
       const { data: candidates, error } = await supabase
         .from('candidates')
-        .select(`
-          *,
-          profiles!candidates_user_id_fkey (
-            first_name,
-            last_name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -88,15 +82,41 @@ export const candidateService = {
         throw new Error(`Erreur lors de la récupération de tous les candidats: ${error.message}`);
       }
 
+      if (!candidates || candidates.length === 0) {
+        console.log('📭 [candidateService] No candidates found');
+        return [];
+      }
+
+      // Récupérer les profils des propriétaires
+      const userIds = [...new Set(candidates.map(c => c.user_id))];
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('❌ [candidateService] Error fetching profiles:', profilesError);
+        // Continue sans les profils si erreur
+      }
+
       const currentUserId = (await supabase.auth.getUser()).data.user?.id;
       
+      // Créer un map des profils pour un accès rapide
+      const profilesMap = new Map();
+      (profiles || []).forEach(profile => {
+        profilesMap.set(profile.id, profile);
+      });
+
       // Enrichir avec les informations de propriété
-      const enrichedCandidates = (candidates || []).map(candidate => ({
-        ...candidate,
-        isOwnCandidate: candidate.user_id === currentUserId,
-        owner_first_name: candidate.profiles?.first_name || '',
-        owner_last_name: candidate.profiles?.last_name || ''
-      }));
+      const enrichedCandidates = candidates.map(candidate => {
+        const ownerProfile = profilesMap.get(candidate.user_id);
+        return {
+          ...candidate,
+          isOwnCandidate: candidate.user_id === currentUserId,
+          owner_first_name: ownerProfile?.first_name || '',
+          owner_last_name: ownerProfile?.last_name || ''
+        };
+      });
 
       console.log(`✅ [candidateService] Retrieved ${enrichedCandidates.length} candidates globally`);
       console.log(`📊 [candidateService] Own candidates: ${enrichedCandidates.filter(c => c.isOwnCandidate).length}`);
@@ -114,16 +134,15 @@ export const candidateService = {
     try {
       console.log('👤 [candidateService] Fetching USER candidates only...');
       
+      const currentUserId = (await supabase.auth.getUser()).data.user?.id;
+      if (!currentUserId) {
+        throw new Error('Utilisateur non authentifié');
+      }
+
       const { data: candidates, error } = await supabase
         .from('candidates')
-        .select(`
-          *,
-          profiles!candidates_user_id_fkey (
-            first_name,
-            last_name
-          )
-        `)
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .select('*')
+        .eq('user_id', currentUserId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -131,12 +150,28 @@ export const candidateService = {
         throw new Error(`Erreur lors de la récupération des candidats utilisateur: ${error.message}`);
       }
 
+      if (!candidates || candidates.length === 0) {
+        console.log('📭 [candidateService] No user candidates found');
+        return [];
+      }
+
+      // Récupérer le profil de l'utilisateur actuel
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', currentUserId)
+        .single();
+
+      if (profileError) {
+        console.error('❌ [candidateService] Error fetching user profile:', profileError);
+      }
+
       // Tous les candidats retournés sont des candidats propres
-      const enrichedCandidates = (candidates || []).map(candidate => ({
+      const enrichedCandidates = candidates.map(candidate => ({
         ...candidate,
         isOwnCandidate: true,
-        owner_first_name: candidate.profiles?.first_name || '',
-        owner_last_name: candidate.profiles?.last_name || ''
+        owner_first_name: userProfile?.first_name || '',
+        owner_last_name: userProfile?.last_name || ''
       }));
 
       console.log(`✅ [candidateService] Retrieved ${enrichedCandidates.length} user candidates`);
