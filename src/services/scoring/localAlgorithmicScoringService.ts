@@ -1,3 +1,4 @@
+
 import type { CandidateData } from '@/services/data/candidateService';
 import type { JobOffer } from '@/services/data/job-offers/types';
 
@@ -18,6 +19,8 @@ interface LocalScoringResult {
     missing: string[];
     additional: string[];
   };
+  // Nouvelle propriété pour identifier les candidats nécessitant une relocalisation
+  needsRelocation: boolean;
 }
 
 /**
@@ -219,29 +222,6 @@ export class LocalAlgorithmicScoringService {
   }
 
   /**
-   * Vérifie les équivalences entre compétences
-   */
-  private areEquivalentSkills(skill1: string, skill2: string): boolean {
-    const equivalences = [
-      ['project management', 'gestion de projet', 'chef de projet'],
-      ['pmo', 'project management office'],
-      ['planning', 'planification', 'gantt'],
-      ['agile', 'scrum', 'méthode agile'],
-      ['ms project', 'microsoft project', 'project'],
-      ['risk management', 'gestion des risques'],
-      ['budget management', 'gestion budgétaire']
-    ];
-    
-    for (const group of equivalences) {
-      if (group.includes(skill1) && group.includes(skill2)) {
-        return true;
-      }
-    }
-    
-    return false;
-  }
-
-  /**
    * Calcule le score d'expérience
    */
   private calculateExperienceScore(candidateYears: number, minYears: number, maxYears: number): number {
@@ -259,25 +239,52 @@ export class LocalAlgorithmicScoringService {
   }
 
   /**
-   * Calcule le score de localisation
+   * Calcule le score de localisation et détermine si une relocalisation est nécessaire
    */
-  private calculateLocationScore(candidateLocation: string, jobLocation: string): number {
-    if (!candidateLocation || !jobLocation) return 50; // Score neutre si pas d'info
+  private calculateLocationScore(candidateLocation: string, jobLocation: string): { score: number; needsRelocation: boolean } {
+    if (!candidateLocation || !jobLocation) return { score: 50, needsRelocation: false }; // Score neutre si pas d'info
     
     const candLoc = candidateLocation.toLowerCase();
     const jobLoc = jobLocation.toLowerCase();
     
-    if (candLoc === jobLoc) return 100;
-    if (candLoc.includes(jobLoc) || jobLoc.includes(candLoc)) return 80;
+    // Correspondance exacte
+    if (candLoc === jobLoc) return { score: 100, needsRelocation: false };
     
-    // Vérifier les grandes villes françaises
-    const majorCities = ['paris', 'lyon', 'marseille', 'toulouse', 'nice', 'bordeaux'];
-    const candInMajor = majorCities.some(city => candLoc.includes(city));
-    const jobInMajor = majorCities.some(city => jobLoc.includes(city));
+    // Correspondance partielle (même ville/région)
+    if (candLoc.includes(jobLoc) || jobLoc.includes(candLoc)) {
+      return { score: 80, needsRelocation: false };
+    }
     
-    if (candInMajor && jobInMajor) return 60;
+    // Vérifier les grandes villes françaises proches
+    const majorCities = {
+      'paris': ['ile-de-france', 'region parisienne', 'boulogne', 'neuilly', 'levallois'],
+      'lyon': ['rhone', 'villeurbanne', 'rhone-alpes'],
+      'marseille': ['bouches-du-rhone', 'aix-en-provence', 'paca'],
+      'toulouse': ['haute-garonne', 'occitanie'],
+      'nice': ['alpes-maritimes', 'cannes', 'antibes', 'paca'],
+      'bordeaux': ['gironde', 'nouvelle-aquitaine']
+    };
     
-    return 40;
+    // Vérifier si les deux localisations sont dans la même grande région
+    for (const [city, variants] of Object.entries(majorCities)) {
+      const candInRegion = candLoc.includes(city) || variants.some(v => candLoc.includes(v));
+      const jobInRegion = jobLoc.includes(city) || variants.some(v => jobLoc.includes(v));
+      
+      if (candInRegion && jobInRegion) {
+        return { score: 70, needsRelocation: false };
+      }
+    }
+    
+    // Vérifier si les deux sont dans des grandes villes (relocalisation possible mais difficile)
+    const candInMajorCity = Object.keys(majorCities).some(city => candLoc.includes(city));
+    const jobInMajorCity = Object.keys(majorCities).some(city => jobLoc.includes(city));
+    
+    if (candInMajorCity && jobInMajorCity) {
+      return { score: 40, needsRelocation: true };
+    }
+    
+    // Différentes régions - relocalisation nécessaire
+    return { score: 30, needsRelocation: true };
   }
 
   /**
@@ -326,7 +333,8 @@ export class LocalAlgorithmicScoringService {
       job.experience_years_max || 10
     );
     
-    const locationScore = this.calculateLocationScore(
+    // Calcul de localisation avec détection de relocalisation
+    const locationResult = this.calculateLocationScore(
       candidate.location || '',
       job.location || ''
     );
@@ -341,7 +349,7 @@ export class LocalAlgorithmicScoringService {
     const baseScore = (
       skillsDetails.score * 0.4 +
       experienceScore * 0.25 +
-      locationScore * 0.15 +
+      locationResult.score * 0.15 +
       roleMatchScore * 0.2
     );
     
@@ -350,14 +358,14 @@ export class LocalAlgorithmicScoringService {
     const breakdown = {
       skills: skillsDetails.score,
       experience: experienceScore,
-      location: locationScore,
+      location: locationResult.score,
       roleMatch: roleMatchScore,
       pmoBonus
     };
     
     const explanation = this.generateExplanation(candidate, job, breakdown, isPMOCand, isPMOJob);
     
-    console.log(`[Local Scoring] ✅ ${candidate.first_name} ${candidate.last_name}: ${Math.round(finalScore)}% (PMO: ${isPMOCand})`);
+    console.log(`[Local Scoring] ✅ ${candidate.first_name} ${candidate.last_name}: ${Math.round(finalScore)}% (PMO: ${isPMOCand}, Relocation: ${locationResult.needsRelocation})`);
     console.log(`[Local Scoring] 📊 Skills: ${skillsDetails.matched.length} matched, ${skillsDetails.missing.length} missing`);
     
     return {
@@ -366,7 +374,8 @@ export class LocalAlgorithmicScoringService {
       explanation,
       isPMOCandidate: isPMOCand,
       isPMOJob,
-      skillsDetails
+      skillsDetails,
+      needsRelocation: locationResult.needsRelocation
     };
   }
 

@@ -80,6 +80,7 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
             candidate: '',
             match: true,
             score: match.details.location,
+            needsRelocation: match.needsRelocation, // Nouvelle propriété
           },
           educationLevel: {
             required: '',
@@ -105,24 +106,29 @@ export const useJobOfferDetails = (jobOfferId: string | undefined) => {
       const ownCount = extendedMatches.filter(m => m.isOwnCandidate).length;
       const otherCount = extendedMatches.filter(m => !m.isOwnCandidate).length;
       const totalCount = extendedMatches.length;
+      const localCount = extendedMatches.filter(m => !m.details?.location?.needsRelocation).length;
+      const distantCount = extendedMatches.filter(m => m.details?.location?.needsRelocation).length;
       
       console.log(`[Job Offer Details] 📊 Match statistics:`);
       console.log(`[Job Offer Details]    Total matches: ${totalCount}`);
       console.log(`[Job Offer Details]    Own candidates: ${ownCount}`);
       console.log(`[Job Offer Details]    Other candidates: ${otherCount}`);
+      console.log(`[Job Offer Details]    Local candidates: ${localCount}`);
+      console.log(`[Job Offer Details]    Distant candidates: ${distantCount}`);
       console.log(`[Job Offer Details]    Mode: ${includeGlobalCandidates ? 'GLOBAL' : 'LOCAL'}`);
       
       // Log compétences pour les premiers candidats
       extendedMatches.slice(0, 3).forEach(match => {
         const ownerInfo = match.isOwnCandidate ? 'Own' : `${match.ownerFirstName} ${match.ownerLastName}`;
-        console.log(`[Job Offer Details] 🎯 ${match.firstName} ${match.lastName} (${ownerInfo}):`);
+        const locationInfo = match.details?.location?.needsRelocation ? 'Distant' : 'Local';
+        console.log(`[Job Offer Details] 🎯 ${match.firstName} ${match.lastName} (${ownerInfo}, ${locationInfo}):`);
         console.log(`[Job Offer Details]    Matched skills: ${match.details?.skills?.matched?.join(', ') || 'none'}`);
         console.log(`[Job Offer Details]    Missing skills: ${match.details?.skills?.missing?.join(', ') || 'none'}`);
       });
       
       toast({
         title: "✅ Correspondances calculées",
-        description: `${totalCount} candidats analysés (${ownCount} vôtres, ${otherCount} autres)`,
+        description: `${totalCount} candidats analysés (${localCount} locaux, ${distantCount} distants)`,
       });
       
     } catch (err: any) {

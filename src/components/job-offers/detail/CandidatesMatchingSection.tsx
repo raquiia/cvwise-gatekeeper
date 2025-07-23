@@ -74,11 +74,17 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
   const ownCandidatesCount = candidateMatches.filter(match => match.isOwnCandidate).length;
   const totalCandidatesCount = candidateMatches.length;
   const otherCandidatesCount = totalCandidatesCount - ownCandidatesCount;
+  
+  // Calculer les statistiques de localisation
+  const localCandidatesCount = candidateMatches.filter(match => !match.details?.location?.needsRelocation).length;
+  const distantCandidatesCount = candidateMatches.filter(match => match.details?.location?.needsRelocation).length;
 
   console.log(`[CandidatesMatchingSection] 📊 Current statistics:`);
   console.log(`[CandidatesMatchingSection]    Total: ${totalCandidatesCount}`);
   console.log(`[CandidatesMatchingSection]    Own: ${ownCandidatesCount}`);
   console.log(`[CandidatesMatchingSection]    Other: ${otherCandidatesCount}`);
+  console.log(`[CandidatesMatchingSection]    Local: ${localCandidatesCount}`);
+  console.log(`[CandidatesMatchingSection]    Distant: ${distantCandidatesCount}`);
   console.log(`[CandidatesMatchingSection]    Mode: ${isGlobalMode ? 'GLOBAL' : 'LOCAL'}`);
 
   // Filtrer les candidats selon le mode - CORRECTION DE LA LOGIQUE
@@ -88,14 +94,14 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
 
   console.log(`[CandidatesMatchingSection] 📋 Filtered matches: ${filteredMatches.length}`);
 
-  const renderCandidateList = (matches: ExtendedCandidateMatch[], sortKey: 'local' | 'global' | 'skills') => {
+  const renderCandidateList = (matches: ExtendedCandidateMatch[], sortKey: 'local' | 'distant') => {
     if (matches.length === 0) {
       return (
         <div className="text-center py-8">
           <p className="text-muted-foreground">
-            {isGlobalMode 
-              ? "Aucun candidat trouvé dans la base de données globale" 
-              : "Aucun candidat correspondant trouvé parmi vos candidats"
+            {sortKey === 'local' 
+              ? "Aucun candidat local trouvé" 
+              : "Aucun candidat distant trouvé"
             }
           </p>
           <Button
@@ -148,7 +154,7 @@ const CandidatesMatchingSection: React.FC<CandidatesMatchingSectionProps> = ({
                 : `${filteredMatches.length} candidat${filteredMatches.length !== 1 ? 's' : ''} affiché${filteredMatches.length !== 1 ? 's' : ''} (vos candidats uniquement)`
               }
               <span className="text-xs text-muted-foreground ml-2">
-                • Total disponible: {totalCandidatesCount} candidats
+                • {localCandidatesCount} locaux • {distantCandidatesCount} distants
               </span>
             </CardDescription>
           </div>

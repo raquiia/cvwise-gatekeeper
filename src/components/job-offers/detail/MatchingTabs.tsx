@@ -2,62 +2,59 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Target, Users, Zap } from 'lucide-react';
+import { MapPin, Globe } from 'lucide-react';
 import type { ExtendedCandidateMatch } from '@/pages/types/candidateTypes';
 
 interface MatchingTabsProps {
   candidateMatches: ExtendedCandidateMatch[];
-  children: (matches: ExtendedCandidateMatch[], sortKey: 'local' | 'global' | 'skills') => React.ReactNode;
+  children: (matches: ExtendedCandidateMatch[], sortKey: 'local' | 'distant') => React.ReactNode;
 }
 
 const MatchingTabs: React.FC<MatchingTabsProps> = ({ candidateMatches, children }) => {
-  const [activeTab, setActiveTab] = useState<'local' | 'global' | 'skills'>('local');
+  const [activeTab, setActiveTab] = useState<'local' | 'distant'>('local');
+
+  // Séparer les candidats selon leur besoin de relocalisation
+  const localMatches = candidateMatches.filter(match => {
+    // Un candidat est considéré comme local s'il n'a pas besoin de relocalisation
+    return !match.details?.location?.needsRelocation;
+  }).sort((a, b) => b.score - a.score);
+
+  const distantMatches = candidateMatches.filter(match => {
+    // Un candidat est considéré comme distant s'il a besoin de relocalisation
+    return match.details?.location?.needsRelocation;
+  }).sort((a, b) => b.score - a.score);
 
   // Calculer les statistiques pour chaque onglet
-  const localMatches = [...candidateMatches].sort((a, b) => (b.localScore || b.score) - (a.localScore || a.score));
-  const globalMatches = [...candidateMatches].sort((a, b) => (b.globalScore || b.score) - (a.globalScore || a.score));
-  const skillsMatches = [...candidateMatches].sort((a, b) => (b.skillsOnlyScore || b.score) - (a.skillsOnlyScore || a.score));
-
-  const localExcellent = localMatches.filter(m => (m.localScore || m.score) >= 70).length;
-  const globalExcellent = globalMatches.filter(m => (m.globalScore || m.score) >= 70).length;
-  const skillsExcellent = skillsMatches.filter(m => (m.skillsOnlyScore || m.score) >= 70).length;
-
-  const relocationCandidates = candidateMatches.filter(m => 
-    m.details?.location?.needsRelocation && (m.globalScore || m.score) >= 60
-  ).length;
+  const localExcellent = localMatches.filter(m => m.score >= 70).length;
+  const distantExcellent = distantMatches.filter(m => m.score >= 70).length;
 
   return (
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="w-full">
-      <TabsList className="grid w-full grid-cols-3 bg-white/70 dark:bg-navy-dark/40 backdrop-blur-sm border border-purple-200/30">
+      <TabsList className="grid w-full grid-cols-2 bg-white/70 dark:bg-navy-dark/40 backdrop-blur-sm border border-purple-200/30">
         <TabsTrigger value="local" className="flex items-center gap-2 data-[state=active]:bg-purple-600 data-[state=active]:text-white">
           <MapPin className="h-4 w-4" />
-          <span className="hidden sm:inline">Correspondances locales</span>
-          <span className="sm:hidden">Local</span>
+          <span className="hidden sm:inline">Candidats locaux</span>
+          <span className="sm:hidden">Locaux</span>
+          <Badge variant="secondary" className="ml-1 bg-green-100 text-green-800 text-xs">
+            {localMatches.length}
+          </Badge>
           {localExcellent > 0 && (
             <Badge variant="secondary" className="ml-1 bg-green-100 text-green-800 text-xs">
-              {localExcellent}
+              {localExcellent} excellent{localExcellent > 1 ? 's' : ''}
             </Badge>
           )}
         </TabsTrigger>
         
-        <TabsTrigger value="global" className="flex items-center gap-2 data-[state=active]:bg-purple-600 data-[state=active]:text-white">
-          <Target className="h-4 w-4" />
-          <span className="hidden sm:inline">Talents globaux</span>
-          <span className="sm:hidden">Global</span>
-          {globalExcellent > 0 && (
+        <TabsTrigger value="distant" className="flex items-center gap-2 data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+          <Globe className="h-4 w-4" />
+          <span className="hidden sm:inline">Candidats distants</span>
+          <span className="sm:hidden">Distants</span>
+          <Badge variant="secondary" className="ml-1 bg-blue-100 text-blue-800 text-xs">
+            {distantMatches.length}
+          </Badge>
+          {distantExcellent > 0 && (
             <Badge variant="secondary" className="ml-1 bg-blue-100 text-blue-800 text-xs">
-              {globalExcellent}
-            </Badge>
-          )}
-        </TabsTrigger>
-        
-        <TabsTrigger value="skills" className="flex items-center gap-2 data-[state=active]:bg-purple-600 data-[state=active]:text-white">
-          <Zap className="h-4 w-4" />
-          <span className="hidden sm:inline">Compétences pures</span>
-          <span className="sm:hidden">Skills</span>
-          {skillsExcellent > 0 && (
-            <Badge variant="secondary" className="ml-1 bg-orange-100 text-orange-800 text-xs">
-              {skillsExcellent}
+              {distantExcellent} excellent{distantExcellent > 1 ? 's' : ''}
             </Badge>
           )}
         </TabsTrigger>
@@ -71,36 +68,19 @@ const MatchingTabs: React.FC<MatchingTabsProps> = ({ candidateMatches, children 
               <span className="font-medium">Candidats disponibles localement</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Score incluant la localisation. Candidats immédiatement disponibles sans déménagement.
+              Candidats dans la même région ou ville que l'offre d'emploi. Pas de relocalisation nécessaire.
             </p>
           </div>
         )}
         
-        {activeTab === 'global' && (
+        {activeTab === 'distant' && (
           <div className="text-sm text-blue-700 dark:text-blue-300">
             <div className="flex items-center gap-2 mb-2">
-              <Target className="h-4 w-4" />
-              <span className="font-medium">Tous les talents qualifiés</span>
-              {relocationCandidates > 0 && (
-                <Badge variant="outline" className="ml-2 text-xs border-amber-300 text-amber-700">
-                  {relocationCandidates} candidat{relocationCandidates > 1 ? 's' : ''} à relocaliser
-                </Badge>
-              )}
+              <Globe className="h-4 w-4" />
+              <span className="font-medium">Candidats nécessitant une relocalisation</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Score sans pénalité de localisation. Affiche les meilleurs profils même s'ils nécessitent un déménagement.
-            </p>
-          </div>
-        )}
-        
-        {activeTab === 'skills' && (
-          <div className="text-sm text-orange-700 dark:text-orange-300">
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="h-4 w-4" />
-              <span className="font-medium">Correspondance technique pure</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Score basé uniquement sur les compétences techniques. Idéal pour identifier les experts du domaine.
+              Candidats qualifiés mais situés dans une région différente. Relocalisation nécessaire.
             </p>
           </div>
         )}
@@ -110,12 +90,8 @@ const MatchingTabs: React.FC<MatchingTabsProps> = ({ candidateMatches, children 
         {children(localMatches, 'local')}
       </TabsContent>
       
-      <TabsContent value="global" className="mt-0">
-        {children(globalMatches, 'global')}
-      </TabsContent>
-      
-      <TabsContent value="skills" className="mt-0">
-        {children(skillsMatches, 'skills')}
+      <TabsContent value="distant" className="mt-0">
+        {children(distantMatches, 'distant')}
       </TabsContent>
     </Tabs>
   );

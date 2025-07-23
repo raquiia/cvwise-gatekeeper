@@ -30,6 +30,8 @@ interface LocalMatchResult {
   isOwnCandidate: boolean;
   ownerFirstName: string;
   ownerLastName: string;
+  // Nouvelle propriété pour la relocalisation
+  needsRelocation: boolean;
 }
 
 /**
@@ -87,7 +89,9 @@ class LocalMatchingService {
           // Nouvelles propriétés pour la distinction
           isOwnCandidate: candidate.isOwnCandidate || false,
           ownerFirstName: candidate.owner_first_name || '',
-          ownerLastName: candidate.owner_last_name || ''
+          ownerLastName: candidate.owner_last_name || '',
+          // Nouvelle propriété pour la relocalisation
+          needsRelocation: scoringResult.needsRelocation
         });
       }
       
@@ -101,7 +105,8 @@ class LocalMatchingService {
             explanation: r.explanation, 
             isPMOCandidate: r.isPMOCandidate, 
             isPMOJob: false,
-            skillsDetails: r.skillsDetails
+            skillsDetails: r.skillsDetails,
+            needsRelocation: r.needsRelocation
           } 
         }))
       );
@@ -114,11 +119,19 @@ class LocalMatchingService {
       console.log(`[Local Matching] 📊 Own candidates in results: ${finalResults.filter(r => r.isOwnCandidate).length}`);
       console.log(`[Local Matching] 📊 Other candidates in results: ${finalResults.filter(r => !r.isOwnCandidate).length}`);
       
+      // Statistiques de localisation
+      const localCandidates = finalResults.filter(r => !r.needsRelocation);
+      const distantCandidates = finalResults.filter(r => r.needsRelocation);
+      
+      console.log(`[Local Matching] 📍 Local candidates: ${localCandidates.length}`);
+      console.log(`[Local Matching] 🌍 Distant candidates: ${distantCandidates.length}`);
+      
       // Log des meilleurs résultats
       finalResults.slice(0, 5).forEach((result, index) => {
         const ownerTag = result.isOwnCandidate ? '👤 Own' : `🌍 ${result.ownerFirstName} ${result.ownerLastName}`;
         const pmoTag = result.isPMOCandidate ? '🎯 PMO' : '📋 Non-PMO';
-        console.log(`[Local Matching] ${index + 1}. ${result.firstName} ${result.lastName} (${result.position}): ${result.score}% ${ownerTag} ${pmoTag}`);
+        const locationTag = result.needsRelocation ? '🚚 Relocation' : '📍 Local';
+        console.log(`[Local Matching] ${index + 1}. ${result.firstName} ${result.lastName} (${result.position}): ${result.score}% ${ownerTag} ${pmoTag} ${locationTag}`);
       });
       
       return finalResults;
