@@ -3,34 +3,9 @@ import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Brain, 
-  TrendingUp, 
-  Users, 
-  FileText, 
-  Briefcase, 
-  BarChart3, 
-  Search, 
-  Target, 
-  Zap, 
-  Globe, 
-  Database, 
-  Cpu, 
-  MessageSquare, 
-  Shield, 
-  Clock,
-  Euro,
-  CheckCircle,
-  ArrowRight,
-  Rocket,
-  Settings,
-  UserCheck,
-  BrainCircuit
-} from 'lucide-react';
-
+import { Brain, TrendingUp, Users, FileText, Briefcase, BarChart3, Search, Target, Zap, Globe, Database, Cpu, MessageSquare, Shield, Clock, Euro, CheckCircle, ArrowRight, Rocket, Settings, UserCheck, BrainCircuit } from 'lucide-react';
 const BusinessPresentation = () => {
-  return (
-    <Layout className="bg-gradient-to-br from-slate-50 to-blue-50 dark:from-background dark:to-muted/20">
+  return <Layout className="bg-gradient-to-br from-slate-50 to-blue-50 dark:from-background dark:to-muted/20">
       <div className="container mx-auto py-12 px-6 max-w-6xl">
         {/* Header */}
         <div className="text-center mb-16">
@@ -122,7 +97,7 @@ const BusinessPresentation = () => {
                   <li>• Matching intelligent candidats-postes</li>
                   <li>• Modes local/global pour recherche</li>
                   <li>• Analytics de correspondance</li>
-                  <li>• Suivi complet candidatures</li>
+                  
                 </ul>
               </CardContent>
             </Card>
@@ -154,7 +129,7 @@ const BusinessPresentation = () => {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Transcription automatique entretiens</li>
+                  <li>• Intégration via API de Sembly ou Teams</li>
                   <li>• Enrichissement IA des notes</li>
                   <li>• Analyse sentiment et compétences</li>
                   <li>• Historique complet interactions</li>
@@ -612,8 +587,6 @@ const BusinessPresentation = () => {
           </CardContent>
         </Card>
       </div>
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default BusinessPresentation;
