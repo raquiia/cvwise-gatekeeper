@@ -23,6 +23,7 @@ import AllUsers from "./pages/AllUsers";
 import NotFound from "./pages/NotFound";
 import UseCases from "./pages/UseCases";
 import Docs from "./pages/Docs";
+import BusinessPresentation from "./pages/BusinessPresentation";
 
 // Loading component avec nouveau design
 const Loading = () => (
@@ -143,6 +144,7 @@ const App = () => (
           {/* Public routes */}
           <Route path="/usecases" element={<UseCases />} />
           <Route path="/docs" element={<Docs />} />
+          <Route path="/business-presentation" element={<BusinessPresentation />} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>
