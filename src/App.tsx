@@ -22,6 +22,7 @@ import Admin from "./pages/Admin";
 import AllUsers from "./pages/AllUsers";
 import NotFound from "./pages/NotFound";
 import UseCases from "./pages/UseCases";
+import Docs from "./pages/Docs";
 
 // Loading component avec nouveau design
 const Loading = () => (
@@ -141,6 +142,7 @@ const App = () => (
 
           {/* Public routes */}
           <Route path="/usecases" element={<UseCases />} />
+          <Route path="/docs" element={<Docs />} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>
