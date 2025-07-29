@@ -309,27 +309,15 @@ const BusinessPresentation = () => {
                 <ul className="space-y-3">
                   <li className="flex items-start">
                     <Zap className="w-4 h-4 mt-1 mr-2 text-green-500 flex-shrink-0" />
-                    <span className="text-sm"><strong>Identification prospects :</strong> Trouvez instantanément les candidats ayant travaillé chez vos cibles commerciales pour faciliter l'approche commerciale</span>
+                    <span className="text-sm"><strong>Identification prospects :</strong> Trouvez instantanément les candidats ayant travaillé chez vos cibles commerciales</span>
                   </li>
                   <li className="flex items-start">
                     <Zap className="w-4 h-4 mt-1 mr-2 text-green-500 flex-shrink-0" />
-                    <span className="text-sm"><strong>Mapping concurrentiel :</strong> Cartographie complète des talents par secteur, entreprise et fonction pour identifier les opportunités de marché</span>
+                    <span className="text-sm"><strong>Mapping concurrentiel :</strong> Cartographie complète des talents par secteur et entreprise</span>
                   </li>
                   <li className="flex items-start">
                     <Zap className="w-4 h-4 mt-1 mr-2 text-green-500 flex-shrink-0" />
-                    <span className="text-sm"><strong>Intelligence sectorielle :</strong> Analyse des mouvements de talents entre entreprises pour anticiper les besoins du marché</span>
-                  </li>
-                  <li className="flex items-start">
-                    <Zap className="w-4 h-4 mt-1 mr-2 text-green-500 flex-shrink-0" />
-                    <span className="text-sm"><strong>Veille concurrentielle :</strong> Identification des stratégies de recrutement et des profils recherchés par vos concurrents</span>
-                  </li>
-                  <li className="flex items-start">
-                    <Zap className="w-4 h-4 mt-1 mr-2 text-green-500 flex-shrink-0" />
-                    <span className="text-sm"><strong>Approche consultative :</strong> Données enrichies et insights sectoriels pour argumenter vos propositions commerciales avec précision</span>
-                  </li>
-                  <li className="flex items-start">
-                    <Zap className="w-4 h-4 mt-1 mr-2 text-green-500 flex-shrink-0" />
-                    <span className="text-sm"><strong>Détection d'opportunités :</strong> Alertes automatiques sur les mouvements de talents stratégiques dans votre écosystème</span>
+                    <span className="text-sm"><strong>Approche consultative :</strong> Données enrichies pour argumenter vos propositions commerciales</span>
                   </li>
                 </ul>
               </CardContent>
