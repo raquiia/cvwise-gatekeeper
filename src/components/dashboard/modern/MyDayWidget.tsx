@@ -35,90 +35,100 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
 
-  // Génération des éléments de la journée
+  // Génération des éléments de la journée basés sur les vraies données
   const generateDayItems = (): DayItem[] => {
     const items: DayItem[] = [];
+    const now = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
-    // Entretiens du jour
-    const interviews: DayItem[] = [
-      {
-        id: 'int-1',
-        type: 'interview',
-        title: 'Entretien Sarah Martin',
-        time: '09:00',
-        description: 'Développeuse React Senior - Entretien technique',
-        priority: 'high',
-        status: 'pending',
-        candidateId: 'sarah-martin',
-        interviewType: 'video',
-        location: 'Google Meet'
-      },
-      {
-        id: 'int-2',
-        type: 'interview',
-        title: 'Entretien Kevin Dubois',
-        time: '14:30',
-        description: 'Product Manager - Entretien final',
-        priority: 'high',
-        status: 'pending',
-        candidateId: 'kevin-dubois',
-        interviewType: 'onsite',
-        location: 'Salle de réunion A'
-      },
-      {
-        id: 'int-3',
-        type: 'interview',
-        title: 'Entretien Marie Rousseau',
-        time: '16:00',
-        description: 'UX Designer - Premier entretien',
-        priority: 'medium',
-        status: 'pending',
-        candidateId: 'marie-rousseau',
-        interviewType: 'phone',
-        location: 'Appel téléphonique'
-      }
-    ];
+    // Entretiens du jour - candidats en phase d'entretien
+    const interviewCandidates = candidatesData.filter(candidate => 
+      ['ec1', 'ec2', 'presentation_client'].includes(candidate.detailed_status)
+    ).slice(0, 3);
 
-    // Tâches prioritaires
-    const tasks: DayItem[] = [
-      {
-        id: 'task-1',
+    const interviews: DayItem[] = interviewCandidates.map((candidate, index) => {
+      const times = ['09:00', '14:30', '16:00'];
+      const types = ['video', 'onsite', 'phone'];
+      const locations = ['Google Meet', 'Salle de réunion A', 'Appel téléphonique'];
+      
+      return {
+        id: `int-${candidate.id}`,
+        type: 'interview',
+        title: `Entretien ${candidate.first_name} ${candidate.last_name}`,
+        time: times[index] || '15:00',
+        description: `${candidate.position} - ${candidate.detailed_status === 'ec1' ? 'Premier entretien' : candidate.detailed_status === 'ec2' ? 'Entretien technique' : 'Présentation client'}`,
+        priority: candidate.detailed_status === 'presentation_client' ? 'high' : 'medium',
+        status: 'pending',
+        candidateId: candidate.id,
+        interviewType: types[index % 3] as 'phone' | 'video' | 'onsite',
+        location: locations[index % 3]
+      };
+    });
+
+    // Tâches prioritaires - candidats nécessitant un suivi
+    const candidatesNeedingFollowUp = candidatesData.filter(candidate => {
+      const updatedAt = new Date(candidate.updated_at);
+      return candidate.detailed_status === 'contact' && updatedAt < sevenDaysAgo;
+    });
+
+    const candidatesWithHighScore = candidatesData.filter(candidate => 
+      candidate.ai_score > 80 && candidate.detailed_status === 'initial'
+    );
+
+    const tasks: DayItem[] = [];
+    
+    if (candidatesNeedingFollowUp.length > 0) {
+      tasks.push({
+        id: 'task-followup',
         type: 'task',
-        title: 'Relancer 3 candidats',
-        description: 'Candidats sans réponse depuis 5 jours',
+        title: `Relancer ${candidatesNeedingFollowUp.length} candidat${candidatesNeedingFollowUp.length > 1 ? 's' : ''}`,
+        description: `Candidats sans réponse depuis plus de 7 jours`,
         priority: 'high',
         status: 'pending'
-      },
-      {
-        id: 'task-2',
+      });
+    }
+
+    if (candidatesWithHighScore.length > 0) {
+      tasks.push({
+        id: 'task-highscore',
         type: 'task',
-        title: 'Finaliser offre Tech Lead',
-        description: 'Validation finale avec le manager',
+        title: `Contacter ${candidatesWithHighScore.length} candidat${candidatesWithHighScore.length > 1 ? 's' : ''} prometteur${candidatesWithHighScore.length > 1 ? 's' : ''}`,
+        description: `Score IA élevé (>80%) - action prioritaire`,
         priority: 'medium',
         status: 'pending'
-      }
-    ];
+      });
+    }
 
-    // Alertes urgentes
-    const alerts: DayItem[] = [
-      {
-        id: 'alert-1',
+    // Alertes urgentes basées sur les vraies données
+    const alerts: DayItem[] = [];
+    
+    const topCandidate = candidatesData
+      .filter(c => c.ai_score && c.detailed_status === 'initial')
+      .sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0))[0];
+
+    if (topCandidate && topCandidate.ai_score > 85) {
+      alerts.push({
+        id: `alert-top-${topCandidate.id}`,
         type: 'alert',
         title: 'Candidat très prometteur',
-        description: 'Score IA 95% - Alexandre Petit disponible immédiatement',
+        description: `Score IA ${topCandidate.ai_score}% - ${topCandidate.first_name} ${topCandidate.last_name} (${topCandidate.position})`,
         priority: 'high',
         status: 'urgent',
-        candidateId: 'alexandre-petit'
-      },
-      {
-        id: 'alert-2',
+        candidateId: topCandidate.id
+      });
+    }
+
+    if (candidatesNeedingFollowUp.length > 2) {
+      alerts.push({
+        id: 'alert-delays',
         type: 'alert',
-        title: 'Délai de réponse dépassé',
-        description: '2 candidats attendent une réponse depuis 7 jours',
+        title: 'Délais de réponse dépassés',
+        description: `${candidatesNeedingFollowUp.length} candidats attendent une réponse depuis >7 jours`,
         priority: 'medium',
         status: 'urgent'
-      }
-    ];
+      });
+    }
 
     return [...interviews, ...tasks, ...alerts].sort((a, b) => {
       // Priorité par type et urgence
@@ -129,7 +139,8 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
 
   const dayItems = generateDayItems();
   const todayInterviews = dayItems.filter(item => item.type === 'interview');
-  const urgentTasks = dayItems.filter(item => item.type === 'task' || item.type === 'alert');
+  const urgentTasks = dayItems.filter(item => item.type === 'task');
+  const urgentAlerts = dayItems.filter(item => item.type === 'alert');
 
   const getItemIcon = (item: DayItem) => {
     if (item.type === 'interview') {
@@ -190,7 +201,7 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
             <div className="text-xs text-muted-foreground">Tâches</div>
           </div>
           <div className="text-center">
-            <div className="text-lg font-semibold text-destructive">2</div>
+            <div className="text-lg font-semibold text-destructive">{urgentAlerts.length}</div>
             <div className="text-xs text-muted-foreground">Urgences</div>
           </div>
         </div>

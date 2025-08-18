@@ -32,57 +32,98 @@ export const RecruitmentPipeline: React.FC<RecruitmentPipelineProps> = ({
   candidatesData = [] 
 }) => {
   const pipelineData = useMemo(() => {
-    // Données mockées réalistes pour le pipeline
+    if (!candidatesData || candidatesData.length === 0) {
+      return [];
+    }
+
+    // Calculer les vrais nombres par statut
+    const statusCounts = candidatesData.reduce((acc, candidate) => {
+      const status = candidate.detailed_status || 'initial';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Calculer les tendances (comparaison avec les 30 derniers jours)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const recentCounts = candidatesData
+      .filter(c => new Date(c.created_at) > thirtyDaysAgo)
+      .reduce((acc, candidate) => {
+        const status = candidate.detailed_status || 'initial';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+    // Mapping des statuts vers les étapes du pipeline
+    const totalCandidates = candidatesData.length;
+    const sourced = totalCandidates;
+    const qualified = (statusCounts.contact || 0) + (statusCounts.prequalification || 0) + 
+                     (statusCounts.ec1 || 0) + (statusCounts.ec2 || 0) + 
+                     (statusCounts.presentation_client || 0) + (statusCounts.en_mission || 0);
+    const interviewed = (statusCounts.ec1 || 0) + (statusCounts.ec2 || 0) + 
+                       (statusCounts.presentation_client || 0) + (statusCounts.en_mission || 0);
+    const finalized = (statusCounts.presentation_client || 0) + (statusCounts.en_mission || 0);
+    const hired = statusCounts.en_mission || 0;
+
+    // Calculer les tendances basées sur l'activité récente
+    const calculateTrend = (current: number, recent: number): { trend: 'up' | 'down' | 'stable', trendValue: number } => {
+      if (current === 0) return { trend: 'stable', trendValue: 0 };
+      const recentRate = (recent / current) * 100;
+      if (recentRate > 25) return { trend: 'up', trendValue: Math.round(recentRate - 25) };
+      if (recentRate < 15) return { trend: 'down', trendValue: Math.round(15 - recentRate) };
+      return { trend: 'stable', trendValue: 0 };
+    };
+
+    const qualifiedRecent = (recentCounts.contact || 0) + (recentCounts.prequalification || 0) + 
+                           (recentCounts.ec1 || 0) + (recentCounts.ec2 || 0) + 
+                           (recentCounts.presentation_client || 0) + (recentCounts.en_mission || 0);
+
     const stages: PipelineStage[] = [
       {
         id: 'sourced',
         name: 'Sourcés',
-        count: 156,
+        count: sourced,
         percentage: 100,
         icon: <Users className="h-5 w-5" />,
         color: 'bg-blue-500',
-        trend: 'up',
-        trendValue: 12
+        ...calculateTrend(sourced, recentCounts.initial || 0)
       },
       {
         id: 'qualified',
         name: 'Qualifiés',
-        count: 89,
-        percentage: 57,
+        count: qualified,
+        percentage: sourced > 0 ? Math.round((qualified / sourced) * 100) : 0,
         icon: <UserCheck className="h-5 w-5" />,
         color: 'bg-green-500',
-        trend: 'up',
-        trendValue: 8
+        ...calculateTrend(qualified, qualifiedRecent)
       },
       {
         id: 'interviewed',
         name: 'Entretiens',
-        count: 34,
-        percentage: 22,
+        count: interviewed,
+        percentage: sourced > 0 ? Math.round((interviewed / sourced) * 100) : 0,
         icon: <Phone className="h-5 w-5" />,
         color: 'bg-yellow-500',
-        trend: 'stable',
-        trendValue: 0
+        ...calculateTrend(interviewed, (recentCounts.ec1 || 0) + (recentCounts.ec2 || 0) + (recentCounts.presentation_client || 0))
       },
       {
         id: 'final',
         name: 'Finalisés',
-        count: 12,
-        percentage: 8,
+        count: finalized,
+        percentage: sourced > 0 ? Math.round((finalized / sourced) * 100) : 0,
         icon: <Briefcase className="h-5 w-5" />,
         color: 'bg-orange-500',
-        trend: 'down',
-        trendValue: -3
+        ...calculateTrend(finalized, (recentCounts.presentation_client || 0) + (recentCounts.en_mission || 0))
       },
       {
         id: 'hired',
         name: 'Embauchés',
-        count: 7,
-        percentage: 4,
+        count: hired,
+        percentage: sourced > 0 ? Math.round((hired / sourced) * 100) : 0,
         icon: <CheckCircle className="h-5 w-5" />,
         color: 'bg-emerald-500',
-        trend: 'up',
-        trendValue: 5
+        ...calculateTrend(hired, recentCounts.en_mission || 0)
       }
     ];
 
@@ -179,7 +220,7 @@ export const RecruitmentPipeline: React.FC<RecruitmentPipelineProps> = ({
           ))}
         </div>
 
-        {/* Métriques clés */}
+        {/* Métriques calculées */}
         <div className="pt-4 border-t space-y-3">
           <div className="text-sm font-medium text-muted-foreground mb-2">
             Métriques cette semaine
@@ -188,19 +229,23 @@ export const RecruitmentPipeline: React.FC<RecruitmentPipelineProps> = ({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Nouveaux candidats:</span>
-              <span className="font-medium">+23</span>
+              <span className="font-medium">+{(() => {
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                return candidatesData.filter(c => new Date(c.created_at) > sevenDaysAgo).length;
+              })()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Entretiens planifiés:</span>
-              <span className="font-medium">8</span>
+              <span className="text-muted-foreground">Entretiens prévus:</span>
+              <span className="font-medium">{candidatesData.filter(c => ['ec1', 'ec2'].includes(c.detailed_status)).length}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Offres envoyées:</span>
-              <span className="font-medium">3</span>
+              <span className="text-muted-foreground">En présentation:</span>
+              <span className="font-medium">{candidatesData.filter(c => c.detailed_status === 'presentation_client').length}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Temps moyen:</span>
-              <span className="font-medium">12j</span>
+              <span className="text-muted-foreground">Taux conversion:</span>
+              <span className="font-medium">{conversionRate}%</span>
             </div>
           </div>
         </div>
