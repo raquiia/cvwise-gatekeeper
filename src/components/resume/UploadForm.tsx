@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { uploadResume } from '@/services/resumeService';
-import LinkedInForm from './LinkedInForm';
+import IntelligentLinkedInExtractor from './IntelligentLinkedInExtractor';
 
 interface UploadFormProps {
   userId: string | undefined;
@@ -328,7 +328,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete, onLin
               Créez un candidat à partir de son profil LinkedIn public
             </p>
           </div>
-          <LinkedInForm 
+          <IntelligentLinkedInExtractor 
             userId={userId}
             onAnalysisComplete={handleLinkedInComplete}
           />

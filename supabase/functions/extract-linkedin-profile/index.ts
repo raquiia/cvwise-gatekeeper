@@ -28,20 +28,29 @@ serve(async (req) => {
 
     console.log('Extracting LinkedIn profile from URL:', linkedinUrl);
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Basic URL validation
-    if (!linkedinUrl.includes('linkedin.com')) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Invalid LinkedIn URL' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+    // Extraction intelligente sans services tiers
+    console.log('Starting intelligent LinkedIn extraction without third-party services...');
+    
+    // Extraction depuis l'URL avec patterns intelligents
+    const urlData = extractDataFromUrl(linkedinUrl);
+    
+    if (urlData.username || urlData.fullName) {
+      let profileText = 'LinkedIn Profile (Intelligent URL extraction):\n\n';
+      
+      if (urlData.fullName) profileText += `Name: ${urlData.fullName}\n`;
+      if (urlData.username) profileText += `Username: ${urlData.username}\n`;
+      if (urlData.estimatedLocation) profileText += `Estimated Location: ${urlData.estimatedLocation}\n`;
+      profileText += `Profile URL: ${linkedinUrl}\n`;
+      profileText += '\nNote: Basic data extracted from URL. Manual completion recommended.\n';
+      
+      return new Response(JSON.stringify({
+        success: true,
+        profileText: profileText.trim(),
+        extractedData: urlData,
+        method: 'intelligent-url-extraction'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Use intelligent web scraping with AI-powered extraction
@@ -372,3 +381,51 @@ Note: Data extracted using intelligent web scraping. Some advanced details may r
     );
   }
 });
+
+/**
+ * Extrait des données intelligentes à partir de l'URL LinkedIn
+ */
+function extractDataFromUrl(url: string): any {
+  const result: any = { profileUrl: url };
+  
+  try {
+    // Extraction du nom d'utilisateur
+    const urlMatch = url.match(/linkedin\.com\/in\/([^/?]+)/);
+    if (urlMatch) {
+      result.username = urlMatch[1];
+      
+      // Tentative de deviner le nom à partir du username
+      const username = urlMatch[1];
+      const namePatterns = [
+        /^([a-z]+)[-_]([a-z]+)[-_]?\d*$/i,  // prenom-nom ou prenom-nom-123
+        /^([a-z]+)([a-z]+)$/i                // prenomnom
+      ];
+      
+      for (const pattern of namePatterns) {
+        const match = username.match(pattern);
+        if (match && match.length >= 3) {
+          result.fullName = `${capitalize(match[1])} ${capitalize(match[2])}`;
+          break;
+        }
+      }
+    }
+    
+    // Tentative de deviner la localisation
+    const urlLower = url.toLowerCase();
+    if (urlLower.includes('/fr/') || urlLower.includes('france')) {
+      result.estimatedLocation = 'France';
+    }
+    
+  } catch (error) {
+    console.error('Error extracting data from URL:', error);
+  }
+  
+  return result;
+}
+
+/**
+ * Capitalise la première lettre d'un mot
+ */
+function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}

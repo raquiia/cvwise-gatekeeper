@@ -9,6 +9,7 @@ import { analyzeLinkedInProfile } from '@/services/resumeService';
 interface ManualLinkedInFormProps {
   userId: string | undefined;
   linkedinUrl: string;
+  initialData?: any;
   onAnalysisComplete: (candidateId: string) => void;
   onBack: () => void;
 }
@@ -16,16 +17,17 @@ interface ManualLinkedInFormProps {
 const ManualLinkedInForm: React.FC<ManualLinkedInFormProps> = ({ 
   userId, 
   linkedinUrl, 
+  initialData,
   onAnalysisComplete, 
   onBack 
 }) => {
   const [formData, setFormData] = useState({
-    fullName: '',
-    headline: '',
-    location: '',
-    experience: '',
-    education: '',
-    skills: ''
+    fullName: initialData?.fullName || '',
+    headline: initialData?.headline || '',
+    location: initialData?.location || '',
+    experience: initialData?.experience || '',
+    education: initialData?.education || '',
+    skills: initialData?.skills || ''
   });
   const [analyzing, setAnalyzing] = useState(false);
   const { toast } = useToast();
@@ -116,13 +118,23 @@ Note: Data manually entered from LinkedIn profile.
         </div>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-        <h3 className="text-sm font-medium text-amber-900 mb-2">💡 Instructions</h3>
-        <p className="text-xs text-amber-800">
-          Ouvrez le profil LinkedIn dans un autre onglet et copiez les informations principales. 
-          Seul le nom est obligatoire, mais plus vous renseignez d'informations, meilleure sera l'analyse.
-        </p>
-      </div>
+      {initialData ? (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6">
+          <h3 className="text-sm font-medium text-emerald-900 mb-2">✨ Données pré-remplies</h3>
+          <p className="text-xs text-emerald-800">
+            Certains champs ont été pré-remplis grâce à l'extraction intelligente. 
+            Vous pouvez les modifier ou compléter les informations manquantes.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+          <h3 className="text-sm font-medium text-amber-900 mb-2">💡 Instructions</h3>
+          <p className="text-xs text-amber-800">
+            Ouvrez le profil LinkedIn dans un autre onglet et copiez les informations principales. 
+            Seul le nom est obligatoire, mais plus vous renseignez d'informations, meilleure sera l'analyse.
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
