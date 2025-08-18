@@ -1,7 +1,7 @@
 import React from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, TrendingUp, Edit, Trash2, Briefcase, User, Lock } from 'lucide-react';
+import { MapPin, Calendar, TrendingUp, Edit, Trash2, Briefcase, User, Lock, Crown, Dot } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
@@ -168,8 +168,8 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
                 {candidate.first_name} {candidate.last_name}
               </span>
               {isGlobalMode && !isOwnCandidate && (
-                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                  <User size={10} className="mr-1" />
+                <Badge variant="outline" className="text-xs bg-muted/30 text-muted-foreground border-border/50">
+                  <Dot size={8} className="mr-0.5" />
                   {ownerName || 'Autre recruteur'}
                 </Badge>
               )}
@@ -203,13 +203,21 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
       {isGlobalMode && (
         <TableCell className="hidden lg:table-cell">
           <div className="flex items-center gap-2">
-            <User size={14} className="text-muted-foreground" />
-            <span className={cn(
-              "text-sm",
-              isOwnCandidate ? "font-medium text-purple-700" : "text-muted-foreground"
-            )}>
-              {isOwnCandidate ? "Vous" : (ownerName || "Autre recruteur")}
-            </span>
+            {isOwnCandidate ? (
+              <>
+                <Crown size={12} className="text-primary" />
+                <span className="text-sm font-medium text-primary">
+                  Vous
+                </span>
+              </>
+            ) : (
+              <>
+                <Dot size={12} className="text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  {ownerName || "Autre recruteur"}
+                </span>
+              </>
+            )}
           </div>
         </TableCell>
       )}
