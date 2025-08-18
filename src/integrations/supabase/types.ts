@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -611,56 +611,56 @@ export type Database = {
       get_candidate_by_id_bypassing_rls: {
         Args: { candidate_id_param: string }
         Returns: {
-          id: string
-          user_id: string
-          resume_id: string
-          first_name: string
-          last_name: string
-          email: string
-          phone: string
-          position: string
-          years_experience: number
-          location: string
           address: string
-          postal_code: string
-          city: string
-          country: string
-          skills: Json
-          score: number
-          status: string
-          company: string
-          created_at: string
-          updated_at: string
-          experiences: Json
-          education: Json
-          certifications: Json
-          languages: Json
-          publications: Json
-          interests: string
-          professional_references: Json
-          availability: string
-          salary_expectations: string
-          mobility: string
-          contract_type: string
-          remote_preference: string
-          travel_willingness: string
-          professional_networks: Json
-          continuous_training: Json
-          career_objectives: string
-          professional_values: string
-          work_authorization: string
-          special_permits: Json
-          industries: Json
-          projects: Json
-          profile_completeness: number
-          last_updated_at: string
-          ai_score: number
-          ai_explanation: string
+          ai_analyzed_at: string
           ai_breakdown: Json
+          ai_explanation: string
+          ai_recommendations: Json
+          ai_score: number
           ai_strengths: Json
           ai_weaknesses: Json
-          ai_recommendations: Json
-          ai_analyzed_at: string
+          availability: string
+          career_objectives: string
+          certifications: Json
+          city: string
+          company: string
+          continuous_training: Json
+          contract_type: string
+          country: string
+          created_at: string
+          education: Json
+          email: string
+          experiences: Json
+          first_name: string
+          id: string
+          industries: Json
+          interests: string
+          languages: Json
+          last_name: string
+          last_updated_at: string
+          location: string
+          mobility: string
+          phone: string
+          position: string
+          postal_code: string
+          professional_networks: Json
+          professional_references: Json
+          professional_values: string
+          profile_completeness: number
+          projects: Json
+          publications: Json
+          remote_preference: string
+          resume_id: string
+          salary_expectations: string
+          score: number
+          skills: Json
+          special_permits: Json
+          status: string
+          travel_willingness: string
+          updated_at: string
+          user_id: string
+          work_authorization: string
+          years_experience: number
         }[]
       }
       get_candidate_status: {
@@ -780,45 +780,45 @@ export type Database = {
       get_user_candidates: {
         Args: { user_id_param: string }
         Returns: {
-          id: string
-          user_id: string
-          resume_id: string
-          first_name: string
-          last_name: string
+          availability: string
+          career_objectives: string
+          certifications: Json
+          company: string
+          continuous_training: Json
+          contract_type: string
+          created_at: string
+          education: Json
           email: string
+          experiences: Json
+          first_name: string
+          id: string
+          industries: Json
+          interests: string
+          languages: Json
+          last_name: string
+          last_updated_at: string
+          location: string
+          mobility: string
           phone: string
           position: string
-          years_experience: number
-          location: string
-          skills: Json
-          score: number
-          status: string
-          company: string
-          created_at: string
-          updated_at: string
-          experiences: Json
-          education: Json
-          certifications: Json
-          languages: Json
-          publications: Json
-          interests: string
-          professional_references: Json
-          availability: string
-          salary_expectations: string
-          mobility: string
-          contract_type: string
-          remote_preference: string
-          travel_willingness: string
           professional_networks: Json
-          continuous_training: Json
-          career_objectives: string
+          professional_references: Json
           professional_values: string
-          work_authorization: string
-          special_permits: Json
-          industries: Json
-          projects: Json
           profile_completeness: number
-          last_updated_at: string
+          projects: Json
+          publications: Json
+          remote_preference: string
+          resume_id: string
+          salary_expectations: string
+          score: number
+          skills: Json
+          special_permits: Json
+          status: string
+          travel_willingness: string
+          updated_at: string
+          user_id: string
+          work_authorization: string
+          years_experience: number
         }[]
       }
       get_user_job_offers: {
@@ -845,11 +845,11 @@ export type Database = {
       }
       insert_resume: {
         Args: {
-          p_user_id: string
           p_file_name: string
           p_file_path: string
-          p_file_type: string
           p_file_size: number
+          p_file_type: string
+          p_user_id: string
         }
         Returns: string
       }
