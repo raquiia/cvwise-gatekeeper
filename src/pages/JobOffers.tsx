@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, RefreshCw, Plus, Eye, Edit, Trash2, Briefcase, MapPin, Clock, Calendar, BarChart4, Building } from 'lucide-react';
+import { Loader2, RefreshCw, Plus, Eye, Edit, Trash2, Briefcase, MapPin, Clock, Calendar, BarChart4, Building, Crown, Dot, Users, UserCheck } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Layout from '@/components/Layout';
 import { jobOfferService } from '@/services/data/jobOfferService';
@@ -22,8 +22,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { JobOffer } from '@/services/data/jobOfferService';
 
+type ExtendedJobOffer = JobOffer & { 
+  owner_first_name?: string; 
+  owner_last_name?: string; 
+  is_own_offer?: boolean; 
+};
+
 const JobOffers = () => {
-  const [jobOffers, setJobOffers] = useState<JobOffer[]>([]);
+  const [jobOffers, setJobOffers] = useState<ExtendedJobOffer[]>([]);
+  const [viewMode, setViewMode] = useState<'own' | 'all'>('own');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -33,7 +40,10 @@ const JobOffers = () => {
       setLoading(true);
       setError(null);
       
-      const data = await jobOfferService.getUserJobOffers();
+      const data = viewMode === 'own' 
+        ? await jobOfferService.getUserJobOffers()
+        : await jobOfferService.getAllJobOffers();
+      
       setJobOffers(data);
     } catch (error: any) {
       console.error('Error fetching job offers:', error);
@@ -51,18 +61,18 @@ const JobOffers = () => {
   
   useEffect(() => {
     fetchJobOffers();
-  }, []);
+  }, [viewMode]);
   
   const handleCreateJobOffer = () => {
-    navigate('/job-offers/create');
+    navigate('/job-matching/create');
   };
   
   const handleViewJobOffer = (jobOfferId: string) => {
-    navigate(`/job-offers/${jobOfferId}`);
+    navigate(`/job-matching/${jobOfferId}`);
   };
   
   const handleEditJobOffer = (jobOfferId: string) => {
-    navigate(`/job-offers/${jobOfferId}/edit`);
+    navigate(`/job-matching/${jobOfferId}/edit`);
   };
   
   const handleDeleteJobOffer = async (jobOfferId: string) => {
@@ -104,18 +114,43 @@ const JobOffers = () => {
   return (
     <Layout className="py-8 bg-gradient-to-br from-purple-50/50 to-white dark:from-navy-dark/90 dark:to-navy-dark">
       <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-navy to-purple-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-purple-400">Offres d'emploi</h1>
-            <p className="text-navy-dark/70 dark:text-sand/70 mt-1">Gérez vos offres d'emploi et trouvez les meilleurs candidats</p>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-navy to-purple-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-purple-400">Job Matching</h1>
+            <p className="text-navy-dark/70 dark:text-sand/70 mt-1">Explorez toutes les offres d'emploi et trouvez les meilleurs candidats</p>
           </div>
-          <Button 
-            onClick={handleCreateJobOffer} 
-            className="gap-2 bg-gradient-to-r from-navy to-navy-light hover:from-navy-dark hover:to-navy transition-all shadow-md hover:shadow-lg transform hover:-translate-y-1 duration-300"
-          >
-            <Plus size={16} className="text-white" />
-            <span>Créer une offre</span>
-          </Button>
+          
+          <div className="flex items-center gap-3">
+            {/* View Toggle */}
+            <div className="flex items-center bg-background/50 backdrop-blur-sm rounded-lg p-1 border border-border/50">
+              <Button
+                variant={viewMode === 'own' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('own')}
+                className={`gap-2 px-3 ${viewMode === 'own' ? 'bg-primary text-primary-foreground' : ''}`}
+              >
+                <UserCheck size={14} />
+                Mes offres
+              </Button>
+              <Button
+                variant={viewMode === 'all' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('all')}
+                className={`gap-2 px-3 ${viewMode === 'all' ? 'bg-primary text-primary-foreground' : ''}`}
+              >
+                <Users size={14} />
+                Toutes les offres
+              </Button>
+            </div>
+            
+            <Button 
+              onClick={handleCreateJobOffer} 
+              className="gap-2 bg-gradient-to-r from-navy to-navy-light hover:from-navy-dark hover:to-navy transition-all shadow-md hover:shadow-lg transform hover:-translate-y-1 duration-300"
+            >
+              <Plus size={16} className="text-white" />
+              <span>Créer une offre</span>
+            </Button>
+          </div>
         </div>
         
         {error ? (
@@ -153,10 +188,24 @@ const JobOffers = () => {
                   <Card key={jobOffer.id} className="border-blue-200/30 dark:border-blue-800/30 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group overflow-hidden">
                     <div className="h-1.5 w-full bg-gradient-to-r from-navy to-navy-light dark:from-blue-500 dark:to-purple-500"></div>
                     <CardHeader className="pb-2 relative">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-xl font-semibold line-clamp-2 text-navy dark:text-sand group-hover:text-navy-light dark:group-hover:text-blue-300 transition-colors duration-300">
-                          {jobOffer.title}
-                        </CardTitle>
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <CardTitle className="text-xl font-semibold line-clamp-2 text-navy dark:text-sand group-hover:text-navy-light dark:group-hover:text-blue-300 transition-colors duration-300">
+                              {jobOffer.title}
+                            </CardTitle>
+                            {jobOffer.is_own_offer ? (
+                              <Crown size={16} className="text-amber-500 flex-shrink-0" />
+                            ) : (
+                              <Dot size={16} className="text-muted-foreground flex-shrink-0" />
+                            )}
+                          </div>
+                          {!jobOffer.is_own_offer && (
+                            <p className="text-xs text-muted-foreground">
+                              Par {jobOffer.owner_first_name} {jobOffer.owner_last_name}
+                            </p>
+                          )}
+                        </div>
                         <Badge variant={jobOffer.status === 'active' ? 'default' : 'secondary'} className={jobOffer.status === 'active' ? 'bg-green-500 hover:bg-green-600' : ''}>
                           {jobOffer.status === 'active' ? 'Active' : 'Inactive'}
                         </Badge>
@@ -246,44 +295,48 @@ const JobOffers = () => {
                       </Button>
                       
                       <div className="flex gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleEditJobOffer(jobOffer.id)}
-                          className="text-navy hover:text-navy-light hover:bg-blue-50/50 dark:text-blue-300 dark:hover:text-blue-200 dark:hover:bg-blue-900/20"
-                        >
-                          <Edit size={16} />
-                        </Button>
-                        
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
+                        {jobOffer.is_own_offer && (
+                          <>
                             <Button 
                               variant="ghost" 
-                              size="sm"
-                              className="text-red-500 hover:text-red-600 hover:bg-red-50/50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                              size="sm" 
+                              onClick={() => handleEditJobOffer(jobOffer.id)}
+                              className="text-navy hover:text-navy-light hover:bg-blue-50/50 dark:text-blue-300 dark:hover:text-blue-200 dark:hover:bg-blue-900/20"
                             >
-                              <Trash2 size={16} />
+                              <Edit size={16} />
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="bg-white dark:bg-navy-dark border-blue-200 dark:border-blue-800">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="text-navy dark:text-sand">Supprimer l'offre d'emploi?</AlertDialogTitle>
-                              <AlertDialogDescription className="text-navy-dark/70 dark:text-sand/70">
-                                Cette action est irréversible. Cela supprimera définitivement l'offre d'emploi
-                                et toutes les correspondances avec les candidats.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="border-blue-200 dark:border-blue-800 text-navy dark:text-sand">Annuler</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleDeleteJobOffer(jobOffer.id)}
-                                className="bg-red-500 hover:bg-red-600 text-white"
-                              >
-                                Supprimer
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                            
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-red-500 hover:text-red-600 hover:bg-red-50/50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                                >
+                                  <Trash2 size={16} />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="bg-white dark:bg-navy-dark border-blue-200 dark:border-blue-800">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="text-navy dark:text-sand">Supprimer l'offre d'emploi?</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-navy-dark/70 dark:text-sand/70">
+                                    Cette action est irréversible. Cela supprimera définitivement l'offre d'emploi
+                                    et toutes les correspondances avec les candidats.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="border-blue-200 dark:border-blue-800 text-navy dark:text-sand">Annuler</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDeleteJobOffer(jobOffer.id)}
+                                    className="bg-red-500 hover:bg-red-600 text-white"
+                                  >
+                                    Supprimer
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </>
+                        )}
                       </div>
                     </CardFooter>
                   </Card>

@@ -180,6 +180,58 @@ export const jobOfferService = {
       throw new Error(error.message || "Impossible de récupérer les offres d'emploi");
     }
   },
+
+  /**
+   * Récupérer toutes les offres d'emploi avec les informations des propriétaires
+   */
+  getAllJobOffers: async (): Promise<(JobOffer & { owner_first_name: string; owner_last_name: string; is_own_offer: boolean })[]> => {
+    try {
+      console.log("Fetching all job offers with owner details");
+      
+      // Récupérer l'ID de l'utilisateur actuel
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error("Utilisateur non authentifié");
+      }
+      
+      // Requête pour récupérer toutes les offres avec les infos des propriétaires
+      const { data, error } = await supabase
+        .from('job_offers')
+        .select(`
+          *,
+          profiles!job_offers_user_id_fkey (
+            first_name,
+            last_name
+          )
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching all job offers:", error);
+        throw new Error(`Error fetching job offers: ${error.message}`);
+      }
+      
+      // Process the data to include ownership information
+      const processedData = (data || []).map(offer => {
+        const profile = offer.profiles as any;
+        const processedOffer = processJobOfferData(offer);
+        
+        return {
+          ...processedOffer,
+          owner_first_name: profile?.first_name || '',
+          owner_last_name: profile?.last_name || '',
+          is_own_offer: offer.user_id === user.id
+        };
+      });
+      
+      console.log(`Retrieved ${processedData.length} job offers from all users`);
+      return processedData as (JobOffer & { owner_first_name: string; owner_last_name: string; is_own_offer: boolean })[];
+    } catch (error: any) {
+      console.error("Exception in getAllJobOffers:", error);
+      throw new Error(error.message || "Impossible de récupérer les offres d'emploi");
+    }
+  },
   
   /**
    * Récupérer une offre d'emploi par son ID

@@ -73,8 +73,8 @@ const Navbar = () => {
                 <NavLink href="/resumes" icon={FileText}>
                   CV
                 </NavLink>
-                <NavLink href="/job-offers" icon={Briefcase}>
-                  Offres d'emploi
+                <NavLink href="/job-matching" icon={Briefcase}>
+                  Job Matching
                 </NavLink>
                 {isAdmin && (
                   <NavLink href="/admin" icon={ShieldCheck}>
@@ -185,8 +185,8 @@ const Navbar = () => {
                 <NavLink href="/resumes" icon={FileText}>
                   CV
                 </NavLink>
-                <NavLink href="/job-offers" icon={Briefcase}>
-                  Offres d'emploi
+                <NavLink href="/job-matching" icon={Briefcase}>
+                  Job Matching
                 </NavLink>
                 {isAdmin && (
                   <NavLink href="/admin" icon={ShieldCheck}>

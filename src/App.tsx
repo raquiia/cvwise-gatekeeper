@@ -107,27 +107,33 @@ const App = () => (
             </ProtectedRoute>
           } />
           
-          {/* Job offer routes */}
-          <Route path="/job-offers" element={
+          {/* Job matching routes */}
+          <Route path="/job-matching" element={
             <ProtectedRoute>
               <JobOffers />
             </ProtectedRoute>
           } />
-          <Route path="/job-offers/create" element={
+          <Route path="/job-matching/create" element={
             <ProtectedRoute>
               <JobOfferCreate />
             </ProtectedRoute>
           } />
-          <Route path="/job-offers/:jobOfferId" element={
+          <Route path="/job-matching/:jobOfferId" element={
             <ProtectedRoute>
               <JobOfferDetail />
             </ProtectedRoute>
           } />
-          <Route path="/job-offers/:jobOfferId/edit" element={
+          <Route path="/job-matching/:jobOfferId/edit" element={
             <ProtectedRoute>
               <JobOfferEdit />
             </ProtectedRoute>
           } />
+          
+          {/* Legacy redirects for job-offers */}
+          <Route path="/job-offers" element={<Navigate to="/job-matching" replace />} />
+          <Route path="/job-offers/create" element={<Navigate to="/job-matching/create" replace />} />
+          <Route path="/job-offers/:jobOfferId" element={<Navigate to="/job-matching/:jobOfferId" replace />} />
+          <Route path="/job-offers/:jobOfferId/edit" element={<Navigate to="/job-matching/:jobOfferId/edit" replace />} />
           
           {/* Admin routes - always accessible for authenticated users */}
           <Route path="/admin" element={
