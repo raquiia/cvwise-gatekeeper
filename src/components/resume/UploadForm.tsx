@@ -1,16 +1,19 @@
 
 import React, { useState, useRef } from 'react';
-import { Upload, Loader2, File, X, Check } from 'lucide-react';
+import { Upload, Loader2, File, X, Check, Linkedin, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { uploadResume } from '@/services/resumeService';
+import LinkedInForm from './LinkedInForm';
 
 interface UploadFormProps {
   userId: string | undefined;
   onUploadComplete: (fileCount: number) => void;
+  onLinkedInComplete?: (candidateId: string) => void;
 }
 
-const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => {
+const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete, onLinkedInComplete }) => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<Record<number, 'idle' | 'uploading' | 'success' | 'error'>>({});
@@ -165,14 +168,40 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
     }
   };
   
+  const handleLinkedInComplete = (candidateId: string) => {
+    if (onLinkedInComplete) {
+      onLinkedInComplete(candidateId);
+    }
+  };
+
   return (
     <div className="glass rounded-xl p-6">
       <div className="flex items-center mb-6">
         <div className="w-10 h-10 rounded-full bg-navy flex items-center justify-center text-white mr-3">
           <Upload size={20} />
         </div>
-        <h2 className="text-xl font-semibold">Télécharger des CV</h2>
+        <h2 className="text-xl font-semibold">Créer un candidat</h2>
       </div>
+
+      <Tabs defaultValue="cv" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="cv" className="flex items-center gap-2">
+            <FileText size={16} />
+            Télécharger un CV
+          </TabsTrigger>
+          <TabsTrigger value="linkedin" className="flex items-center gap-2">
+            <Linkedin size={16} />
+            Profil LinkedIn
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="cv" className="space-y-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-medium mb-2">Analyser un CV</h3>
+            <p className="text-sm text-muted-foreground">
+              Téléchargez un ou plusieurs CV pour créer automatiquement les profils candidats
+            </p>
+          </div>
       
       {/* Zone de dépôt */}
       <div 
@@ -290,6 +319,21 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete }) => 
           )}
         </Button>
       </div>
+        </TabsContent>
+
+        <TabsContent value="linkedin" className="space-y-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-medium mb-2">Analyser un profil LinkedIn</h3>
+            <p className="text-sm text-muted-foreground">
+              Créez un candidat à partir de son profil LinkedIn public
+            </p>
+          </div>
+          <LinkedInForm 
+            userId={userId}
+            onAnalysisComplete={handleLinkedInComplete}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

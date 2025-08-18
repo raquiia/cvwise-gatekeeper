@@ -80,7 +80,7 @@ export const deleteResume = async (resumeId: string, filePath: string): Promise<
 };
 
 // Export the analyzeResume function from the resume analysis service
-export { analyzeResume } from './resume/resumeAnalysisService';
+export { analyzeResume, analyzeLinkedInProfile } from './resume/resumeAnalysisService';
 
 export const extractCandidateInfo = async (resumeId: string) => {
   try {

@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, SUPABASE_API_URL, SUPABASE_ANON_KEY } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 export interface AIAnalysisResult {
@@ -22,6 +22,8 @@ export interface CVAnalysisResult {
   success: boolean;
   candidateData?: any;
   analysis?: AIAnalysisResult;
+  analysisData?: any;
+  aiAnalysis?: AIAnalysisResult;
   error?: string;
 }
 
@@ -84,7 +86,9 @@ export const analyzeResumeWithAI = async (
     return {
       success: true,
       candidateData: extractedCandidateData,
-      analysis
+      analysis,
+      analysisData: extractedCandidateData,
+      aiAnalysis: analysis
     };
 
   } catch (error: any) {
@@ -309,9 +313,102 @@ const createOrUpdateCandidateFromExtractedData = async (
 /**
  * Analyser un CV complet (extraction + analyse IA + création/mise à jour candidat) - version unifiée
  */
+export const analyzeLinkedInProfile = async (
+  linkedinUrl: string,
+  userId: string
+): Promise<ResumeAnalysisResult> => {
+  try {
+    console.log('🔗 Starting LinkedIn profile analysis for URL:', linkedinUrl);
+
+    // Step 1: Extract LinkedIn profile data
+    const extractResponse = await fetch(`${SUPABASE_API_URL}/functions/v1/extract-linkedin-profile`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({ linkedinUrl })
+    });
+
+    if (!extractResponse.ok) {
+      throw new Error(`HTTP error! status: ${extractResponse.status}`);
+    }
+
+    const extractResult = await extractResponse.json();
+    console.log('📄 LinkedIn extraction result:', extractResult);
+
+    if (!extractResult.success) {
+      throw new Error(extractResult.error || 'Failed to extract LinkedIn profile');
+    }
+
+    // Step 2: Create a temporary "resume" record for LinkedIn profile
+    const { data: linkedinRecord, error: insertError } = await supabase
+      .from('resumes')
+      .insert({
+        file_name: `linkedin-${Date.now()}.txt`,
+        file_path: linkedinUrl,
+        file_size: 0,
+        file_type: 'text/plain',
+        user_id: userId,
+        parsed: false
+      })
+      .select('id')
+      .single();
+
+    if (insertError || !linkedinRecord) {
+      console.error('❌ Error creating LinkedIn record:', insertError);
+      throw new Error('Failed to create LinkedIn profile record');
+    }
+
+    console.log('📝 Created LinkedIn record with ID:', linkedinRecord.id);
+
+    // Step 3: Analyze with AI
+    const aiResult = await analyzeResumeWithAI(linkedinRecord.id, extractResult.profileText);
+    
+    if (!aiResult.success || !aiResult.analysisData) {
+      throw new Error(aiResult.error || 'AI analysis failed');
+    }
+
+    // Step 4: Create candidate from LinkedIn data
+    const { candidateId } = await createOrUpdateCandidateFromExtractedData(
+      linkedinRecord.id,
+      aiResult.analysisData,
+      aiResult.aiAnalysis
+    );
+
+    // Step 5: Mark LinkedIn record as analyzed
+    const { error: updateError } = await supabase
+      .from('resumes')
+      .update({ 
+        parsed: true
+      })
+      .eq('id', linkedinRecord.id);
+
+    if (updateError) {
+      console.warn('⚠️ Warning: Failed to update LinkedIn record status:', updateError);
+    }
+
+    console.log('✅ LinkedIn profile analysis completed successfully');
+    
+    return {
+      success: true,
+      candidateId,
+      message: 'LinkedIn profile analyzed successfully',
+      analysis: aiResult.analysis
+    };
+
+  } catch (error: any) {
+    console.error('❌ LinkedIn profile analysis failed:', error);
+    return {
+      success: false,
+      error: error.message || 'LinkedIn profile analysis failed'
+    };
+  }
+};
+
 export const analyzeResume = async (
-  resumeId: string,
-  resumeText?: string,
+  resumeId: string, 
+  resumeText?: string, 
   overwriteExisting: boolean = false
 ): Promise<ResumeAnalysisResult> => {
   try {
