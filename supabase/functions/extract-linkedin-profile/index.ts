@@ -28,9 +28,6 @@ serve(async (req) => {
 
     console.log('Extracting LinkedIn profile from URL:', linkedinUrl);
 
-    // Get Firecrawl API key
-    const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
-    
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
