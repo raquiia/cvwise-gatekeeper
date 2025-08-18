@@ -145,7 +145,6 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
             <TableHead className="font-semibold text-gray-700">Contact</TableHead>
             <TableHead className="font-semibold text-gray-700">Poste</TableHead>
             <TableHead className="font-semibold text-gray-700">Entreprise</TableHead>
-            {isGlobalMode && <TableHead className="font-semibold text-gray-700">Propriétaire</TableHead>}
             <TableHead className="font-semibold text-gray-700">Localisation</TableHead>
             <TableHead className="font-semibold text-gray-700">Expérience</TableHead>
             <TableHead className="font-semibold text-gray-700">Compétences</TableHead>
@@ -188,8 +187,8 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                           {candidate.first_name} <span className="font-bold">{candidate.last_name}</span>
                         </span>
                         {isGlobalMode && !isOwnCandidate && (
-                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                            <User size={10} className="mr-1" />
+                          <Badge variant="outline" className="text-xs bg-muted/30 text-muted-foreground border-border/50">
+                            <User size={8} className="mr-0.5" />
                             {ownerName || 'Autre recruteur'}
                           </Badge>
                         )}
@@ -217,21 +216,6 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                 <TableCell className="text-gray-600">
                   {lastCompany}
                 </TableCell>
-                
-                {/* Owner Column (only in global mode) */}
-                {isGlobalMode && (
-                  <TableCell className="text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <User size={14} className="text-gray-400" />
-                      <span className={cn(
-                        "text-sm",
-                        isOwnCandidate ? "font-medium text-purple-700" : "text-gray-600"
-                      )}>
-                        {isOwnCandidate ? "Vous" : (ownerName || "Autre recruteur")}
-                      </span>
-                    </div>
-                  </TableCell>
-                )}
                 
                 <TableCell className="text-gray-600">
                   {candidate.location || 'Non spécifiée'}

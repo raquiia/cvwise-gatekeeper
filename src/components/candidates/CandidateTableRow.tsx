@@ -199,28 +199,6 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
         </div>
       </TableCell>
       
-      {/* Owner Column (only in global mode) */}
-      {isGlobalMode && (
-        <TableCell className="hidden lg:table-cell">
-          <div className="flex items-center gap-2">
-            {isOwnCandidate ? (
-              <>
-                <Crown size={12} className="text-primary" />
-                <span className="text-sm font-medium text-primary">
-                  Vous
-                </span>
-              </>
-            ) : (
-              <>
-                <Dot size={12} className="text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  {ownerName || "Autre recruteur"}
-                </span>
-              </>
-            )}
-          </div>
-        </TableCell>
-      )}
       
       {/* Location Column */}
       <TableCell className="hidden lg:table-cell">
