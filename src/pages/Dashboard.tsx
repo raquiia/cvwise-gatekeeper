@@ -22,6 +22,8 @@ import TaskCenter from '@/components/dashboard/TaskCenter';
 import InterviewCalendar from '@/components/dashboard/InterviewCalendar';
 import SourcingIntelligence from '@/components/dashboard/SourcingIntelligence';
 import ChannelPerformanceWidget from '@/components/dashboard/ChannelPerformanceWidget';
+import { MyDayWidget } from '@/components/dashboard/modern/MyDayWidget';
+import { RecruitmentPipeline } from '@/components/dashboard/modern/RecruitmentPipeline';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -118,6 +120,12 @@ const Dashboard = () => {
         
         {/* Modern Header */}
         <DashboardHeader onSearch={handleSearch} />
+        
+        {/* Phase 1: Smart Personalized Dashboard */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <MyDayWidget candidatesData={candidatesData} />
+          <RecruitmentPipeline candidatesData={candidatesData} />
+        </div>
         
         {/* Recruitment KPI Cards */}
         <RecruitmentKPICards 
