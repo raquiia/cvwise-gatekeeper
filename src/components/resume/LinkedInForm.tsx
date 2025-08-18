@@ -146,12 +146,12 @@ const LinkedInForm: React.FC<LinkedInFormProps> = ({ userId, onAnalysisComplete 
         </div>
 
         <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6">
-          <h3 className="text-sm font-medium text-emerald-900 mb-2">🚀 Extraction automatique avancée</h3>
+          <h3 className="text-sm font-medium text-emerald-900 mb-2">🤖 Extraction intelligente multicouche</h3>
           <ul className="text-xs text-emerald-800 space-y-1">
-            <li>• Extraction intelligente avec IA des expériences, formations et compétences</li>
-            <li>• Contournement automatique des protections anti-bot</li>
-            <li>• Analyse sémantique du contenu pour une précision maximale</li>
-            <li>• Fallback intelligent si nécessaire</li>
+            <li>• Niveau 1: Firecrawl AI pour extraction complète des données</li>
+            <li>• Niveau 2: Scraping intelligent avec patterns avancés</li>
+            <li>• Niveau 3: Extraction JSON-LD et données structurées</li>
+            <li>• Fallback manuel uniquement si nécessaire</li>
           </ul>
         </div>
 
