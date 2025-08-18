@@ -5,7 +5,7 @@ import { candidateService } from '@/services/data/candidateService';
 import { CandidateData } from '@/services/data/candidateService';
 import { processCandidateData } from '@/utils/candidateUtils';
 import { toast } from '@/hooks/use-toast';
-import { getCompleteCandidateData } from '@/services/resume/candidateDataService';
+import { getCompleteCandidateData, getGlobalCandidateData } from '@/services/resume/candidateDataService';
 
 // Import the component tabs
 import ProfileTab from '@/components/candidates/detail/ProfileTab';
@@ -50,14 +50,40 @@ const CandidateDetail = () => {
       setLoading(true);
       console.log("🔄 CandidateDetail: Starting data fetch for ID:", candidateId);
       
-      // Utiliser directement le service mis à jour qui récupère les données AI
-      const data = await getCompleteCandidateData(candidateId);
+      let data = null;
+      let isOwnCandidate = true;
+      
+      try {
+        // Essayer d'abord d'accéder au candidat comme candidat propre
+        console.log("🔑 CandidateDetail: Trying to fetch as own candidate...");
+        data = await getCompleteCandidateData(candidateId);
+        console.log("✅ CandidateDetail: Successfully fetched as own candidate");
+      } catch (ownCandidateError: any) {
+        console.log("❌ CandidateDetail: Failed to fetch as own candidate:", ownCandidateError.message);
+        
+        // Si l'accès échoue, essayer l'accès global
+        try {
+          console.log("🌍 CandidateDetail: Trying to fetch as global candidate...");
+          data = await getGlobalCandidateData(candidateId);
+          isOwnCandidate = false;
+          console.log("✅ CandidateDetail: Successfully fetched as global candidate");
+        } catch (globalError: any) {
+          console.log("❌ CandidateDetail: Failed to fetch as global candidate:", globalError.message);
+          throw globalError;
+        }
+      }
       
       if (!data) {
         console.log("Candidate not found:", candidateId);
         setError("Candidat non trouvé");
       } else {
         console.log("🔄 CandidateDetail: Processing candidate data...");
+        console.log("🔍 CandidateDetail: Candidate ownership:", {
+          isOwnCandidate: data.isOwnCandidate || isOwnCandidate,
+          owner_name: data.owner_first_name && data.owner_last_name 
+            ? `${data.owner_first_name} ${data.owner_last_name}` 
+            : 'Unknown'
+        });
         
         // Process the data to ensure arrays and properties are correctly formatted
         const processedData = processCandidateData(data);
@@ -71,26 +97,35 @@ const CandidateDetail = () => {
           country: processedData.country,
           ai_score: processedData.ai_score,
           ai_analyzed_at: processedData.ai_analyzed_at,
-          hasAIData: !!(processedData.ai_score || processedData.ai_explanation)
+          hasAIData: !!(processedData.ai_score || processedData.ai_explanation),
+          isOwnCandidate: processedData.isOwnCandidate
         });
         
-        // Check data completeness
-        const hasEmptyExperiences = !processedData.experiences || 
-          (Array.isArray(processedData.experiences) && processedData.experiences.length === 0);
-        const hasEmptyEducation = !processedData.education || 
-          (Array.isArray(processedData.education) && processedData.education.length === 0);
-        const hasEmptyLanguages = !processedData.languages || 
-          (Array.isArray(processedData.languages) && processedData.languages.length === 0);
+        // Check data completeness only for own candidates
+        const shouldCheckCompleteness = processedData.isOwnCandidate !== false;
+        let hasIncompleteData = false;
         
-        const hasIncompleteData = hasEmptyExperiences || hasEmptyEducation || hasEmptyLanguages;
-        
-        console.log("Data completeness check:", {
-          experiences: !hasEmptyExperiences,
-          education: !hasEmptyEducation,
-          languages: !hasEmptyLanguages,
-          isComplete: !hasIncompleteData,
-          hasAIAnalysis: !!(processedData.ai_score || processedData.ai_explanation)
-        });
+        if (shouldCheckCompleteness) {
+          const hasEmptyExperiences = !processedData.experiences || 
+            (Array.isArray(processedData.experiences) && processedData.experiences.length === 0);
+          const hasEmptyEducation = !processedData.education || 
+            (Array.isArray(processedData.education) && processedData.education.length === 0);
+          const hasEmptyLanguages = !processedData.languages || 
+            (Array.isArray(processedData.languages) && processedData.languages.length === 0);
+          
+          hasIncompleteData = hasEmptyExperiences || hasEmptyEducation || hasEmptyLanguages;
+          
+          console.log("Data completeness check:", {
+            experiences: !hasEmptyExperiences,
+            education: !hasEmptyEducation,
+            languages: !hasEmptyLanguages,
+            isComplete: !hasIncompleteData,
+            hasAIAnalysis: !!(processedData.ai_score || processedData.ai_explanation),
+            isOwnCandidate: processedData.isOwnCandidate
+          });
+        } else {
+          console.log("Skipping data completeness check for external candidate");
+        }
         
         setDataIncompletenessDetected(hasIncompleteData);
         
@@ -105,7 +140,8 @@ const CandidateDetail = () => {
           city: processedData.city,
           country: processedData.country,
           ai_score: processedData.ai_score,
-          ai_analyzed_at: processedData.ai_analyzed_at
+          ai_analyzed_at: processedData.ai_analyzed_at,
+          isOwnCandidate: processedData.isOwnCandidate
         });
       }
     } catch (err: any) {

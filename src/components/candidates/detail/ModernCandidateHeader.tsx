@@ -14,7 +14,9 @@ import {
   Calendar,
   Star,
   Target,
-  Building
+  Building,
+  Crown,
+  User
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CandidateData } from '@/services/data/candidateService';
@@ -129,6 +131,27 @@ const ModernCandidateHeader: React.FC<ModernCandidateHeaderProps> = ({
 
                 {/* Badges et statuts */}
                 <div className="flex flex-wrap gap-3">
+                  {/* Indicateur de propriété */}
+                  {candidate.isOwnCandidate === false && (
+                    <Badge 
+                      variant="outline" 
+                      className="bg-muted/30 text-muted-foreground border-border/50 px-3 py-1 text-sm"
+                    >
+                      <User className="w-3 h-3 mr-1" />
+                      Candidat de {candidate.owner_first_name} {candidate.owner_last_name}
+                    </Badge>
+                  )}
+                  
+                  {candidate.isOwnCandidate !== false && (
+                    <Badge 
+                      variant="outline" 
+                      className="bg-primary/10 text-primary border-primary/30 px-3 py-1 text-sm"
+                    >
+                      <Crown className="w-3 h-3 mr-1" />
+                      Votre candidat
+                    </Badge>
+                  )}
+                  
                   {candidate.detailed_status && (
                     <Badge 
                       variant="secondary" 
@@ -180,10 +203,13 @@ const ModernCandidateHeader: React.FC<ModernCandidateHeaderProps> = ({
               />
               
               <div className="flex gap-3">
-                <StatusSelector 
-                  candidateId={candidate.id || ''} 
-                  onStatusChange={() => {}} 
-                />
+                {/* Only show status selector for own candidates */}
+                {candidate.isOwnCandidate !== false && (
+                  <StatusSelector 
+                    candidateId={candidate.id || ''} 
+                    onStatusChange={() => {}} 
+                  />
+                )}
                 
                 <Button 
                   variant="outline"
@@ -196,7 +222,10 @@ const ModernCandidateHeader: React.FC<ModernCandidateHeaderProps> = ({
               </div>
               
               <div className="flex gap-2">
-                <DebugAIScoreButton candidateId={candidate.id || ''} />
+                {/* Only show debug tools for own candidates */}
+                {candidate.isOwnCandidate !== false && (
+                  <DebugAIScoreButton candidateId={candidate.id || ''} />
+                )}
                 <ExportProfileButton candidate={candidate} />
               </div>
             </div>
