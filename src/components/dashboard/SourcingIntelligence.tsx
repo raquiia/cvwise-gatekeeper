@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { TrendingUp, AlertTriangle, Target, DollarSign, Eye, BarChart } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Target, Clock, Eye, BarChart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,7 +11,7 @@ interface SourcingIntelligenceProps {
 }
 
 const SourcingIntelligence: React.FC<SourcingIntelligenceProps> = ({ candidatesData }) => {
-  const [selectedView, setSelectedView] = useState<'overview' | 'performance' | 'roi'>('overview');
+  const [selectedView, setSelectedView] = useState<'overview' | 'performance' | 'efficiency'>('overview');
 
   // Calculer les données de sourcing
   const sourcingData = useMemo(() => {
@@ -43,8 +43,8 @@ const SourcingIntelligence: React.FC<SourcingIntelligenceProps> = ({ candidatesD
       ...source,
       conversionRate: source.total > 0 ? Math.round((source.en_mission / source.total) * 100) : 0,
       qualificationRate: source.total > 0 ? Math.round(((source.ec1 + source.ec2 + source.presentation_client + source.en_mission) / source.total) * 100) : 0,
-      // ROI simulé basé sur les conversions
-      estimatedROI: source.en_mission * 5000 - (source.total * 50), // 5k€ par placement, 50€ par candidat
+      // Efficacité du canal (candidats qualifiés vs total)
+      efficiency: source.total > 0 ? Math.round(((source.ec1 + source.ec2 + source.presentation_client + source.en_mission) / source.total) * 100) : 0,
     }));
   }, [candidatesData]);
 
@@ -68,11 +68,11 @@ const SourcingIntelligence: React.FC<SourcingIntelligenceProps> = ({ candidatesD
         });
       }
       
-      if (source.estimatedROI < 0 && source.total > 5) {
+      if (source.efficiency < 20 && source.total > 5) {
         channelAlerts.push({
-          type: 'danger',
-          message: `${source.name}: ROI négatif (${source.estimatedROI}€)`,
-          action: 'Optimiser ou arrêter ce canal'
+          type: 'warning',
+          message: `${source.name}: Efficacité faible (${source.efficiency}% de candidats qualifiés)`,
+          action: 'Améliorer la pré-qualification'
         });
       }
     });
@@ -104,8 +104,8 @@ const SourcingIntelligence: React.FC<SourcingIntelligenceProps> = ({ candidatesD
               <Target className="h-5 w-5 text-white" />
             </div>
             <div>
-              <CardTitle className="text-xl font-semibold">Intelligence de Sourcing</CardTitle>
-              <p className="text-sm text-muted-foreground">Performance et ROI par canal d'acquisition</p>
+              <CardTitle className="text-xl font-semibold">Performance des Canaux</CardTitle>
+              <p className="text-sm text-muted-foreground">Efficacité et conversion par canal d'acquisition</p>
             </div>
           </div>
           
@@ -127,12 +127,12 @@ const SourcingIntelligence: React.FC<SourcingIntelligenceProps> = ({ candidatesD
               Performance
             </Button>
             <Button
-              variant={selectedView === 'roi' ? 'default' : 'outline'}
+              variant={selectedView === 'efficiency' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setSelectedView('roi')}
+              onClick={() => setSelectedView('efficiency')}
             >
-              <DollarSign className="h-4 w-4 mr-1" />
-              ROI
+              <Clock className="h-4 w-4 mr-1" />
+              Efficacité
             </Button>
           </div>
         </div>
@@ -273,7 +273,8 @@ const SourcingIntelligence: React.FC<SourcingIntelligenceProps> = ({ candidatesD
                       <th className="text-right p-2">Total</th>
                       <th className="text-right p-2">Qualifiés</th>
                       <th className="text-right p-2">En mission</th>
-                      <th className="text-right p-2">Taux conversion</th>
+                      <th className="text-right p-2">Conversion</th>
+                      <th className="text-right p-2">Efficacité</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -288,6 +289,11 @@ const SourcingIntelligence: React.FC<SourcingIntelligenceProps> = ({ candidatesD
                             {source.conversionRate}%
                           </Badge>
                         </td>
+                        <td className="text-right p-2">
+                          <Badge variant={source.efficiency > 50 ? 'default' : source.efficiency > 30 ? 'secondary' : 'destructive'}>
+                            {source.efficiency}%
+                          </Badge>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -296,30 +302,34 @@ const SourcingIntelligence: React.FC<SourcingIntelligenceProps> = ({ candidatesD
             </div>
           </TabsContent>
 
-          {/* ROI Analysis */}
-          <TabsContent value="roi" className="space-y-6">
+          {/* Efficiency Analysis */}
+          <TabsContent value="efficiency" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {sourcingData.map((source, index) => (
                 <Card key={source.name} className="p-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="font-medium capitalize">{source.name}</h4>
-                      <Badge variant={source.estimatedROI > 0 ? 'default' : 'destructive'}>
-                        {source.estimatedROI > 0 ? '+' : ''}{source.estimatedROI.toLocaleString()}€
+                      <Badge variant={source.efficiency > 50 ? 'default' : source.efficiency > 30 ? 'secondary' : 'destructive'}>
+                        {source.efficiency}% efficace
                       </Badge>
                     </div>
                     
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Revenus estimés:</span>
-                        <span className="font-medium">{(source.en_mission * 5000).toLocaleString()}€</span>
+                        <span className="text-muted-foreground">Candidats totaux:</span>
+                        <span className="font-medium">{source.total}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Coûts estimés:</span>
-                        <span className="font-medium">{(source.total * 50).toLocaleString()}€</span>
+                        <span className="text-muted-foreground">Candidats qualifiés:</span>
+                        <span className="font-medium">{source.ec1 + source.ec2 + source.presentation_client + source.en_mission}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Placements:</span>
+                        <span className="text-muted-foreground">Taux conversion:</span>
+                        <span className="font-medium">{source.conversionRate}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Placements réussis:</span>
                         <span className="font-medium">{source.en_mission}</span>
                       </div>
                     </div>
