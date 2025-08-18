@@ -18,6 +18,8 @@ import AdvancedAnalytics from '@/components/dashboard/modern/AdvancedAnalytics';
 import RealDataMetrics from '@/components/dashboard/modern/RealDataMetrics';
 import RecentCandidatesTable from '@/components/dashboard/RecentCandidatesTable';
 import RecruitmentUserStats from '@/components/admin/RecruitmentUserStats';
+import TaskCenter from '@/components/dashboard/TaskCenter';
+import InterviewCalendar from '@/components/dashboard/InterviewCalendar';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -132,6 +134,12 @@ const Dashboard = () => {
         
         {/* New Real Data Metrics */}
         <RealDataMetrics candidatesData={candidatesData} />
+        
+        {/* Task Center & Interview Calendar */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <TaskCenter candidatesData={candidatesData} />
+          <InterviewCalendar candidatesData={candidatesData} />
+        </div>
         
         {/* Bottom Grid - Recent Data & User Stats */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
