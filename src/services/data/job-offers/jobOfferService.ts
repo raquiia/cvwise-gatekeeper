@@ -195,26 +195,43 @@ export const jobOfferService = {
         throw new Error("Utilisateur non authentifié");
       }
       
-      // Requête pour récupérer toutes les offres avec les infos des propriétaires
-      const { data, error } = await supabase
+      // Récupérer toutes les offres d'emploi
+      const { data: offersData, error: offersError } = await supabase
         .from('job_offers')
-        .select(`
-          *,
-          profiles!job_offers_user_id_fkey (
-            first_name,
-            last_name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error("Error fetching all job offers:", error);
-        throw new Error(`Error fetching job offers: ${error.message}`);
+      if (offersError) {
+        console.error("Error fetching job offers:", offersError);
+        throw new Error(`Error fetching job offers: ${offersError.message}`);
       }
+
+      if (!offersData || offersData.length === 0) {
+        console.log("No job offers found");
+        return [];
+      }
+
+      // Récupérer les profils des propriétaires
+      const userIds = [...new Set(offersData.map(offer => offer.user_id))];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', userIds);
       
-      // Process the data to include ownership information
-      const processedData = (data || []).map(offer => {
-        const profile = offer.profiles as any;
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+        throw new Error(`Error fetching profiles: ${profilesError.message}`);
+      }
+
+      // Créer un map des profils pour un accès rapide
+      const profilesMap = new Map();
+      (profilesData || []).forEach(profile => {
+        profilesMap.set(profile.id, profile);
+      });
+
+      // Combiner les données
+      const processedData = offersData.map(offer => {
+        const profile = profilesMap.get(offer.user_id);
         const processedOffer = processJobOfferData(offer);
         
         return {
@@ -245,14 +262,9 @@ export const jobOfferService = {
         .from('job_offers')
         .select('*')
         .eq('id', jobOfferId)
-        .single();
+        .maybeSingle();
       
       if (error) {
-        if (error.code === 'PGRST116') {
-          // No data found
-          console.log(`No job offer found with ID: ${jobOfferId}`);
-          return null;
-        }
         console.error("Error fetching job offer:", error);
         throw new Error(`Error fetching job offer: ${error.message}`);
       }
