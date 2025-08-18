@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, RefreshCw, Plus, Eye, Edit, Trash2, Briefcase, MapPin, Clock, Calendar, BarChart4, Building, Crown, Dot, Users, UserCheck } from 'lucide-react';
+import { Loader2, RefreshCw, Plus, Eye, Edit, Trash2, Briefcase, MapPin, Clock, Calendar, BarChart4, Building, Crown, User, Users, UserCheck } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import Layout from '@/components/Layout';
 import { jobOfferService } from '@/services/data/jobOfferService';
@@ -186,43 +187,61 @@ const JobOffers = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-slide-up">
                 {jobOffers.map((jobOffer) => (
                   <Card key={jobOffer.id} className="border-blue-200/30 dark:border-blue-800/30 bg-white/70 dark:bg-navy-dark/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group overflow-hidden">
-                    <div className="h-1.5 w-full bg-gradient-to-r from-navy to-navy-light dark:from-blue-500 dark:to-purple-500"></div>
+                    {/* Owner indicator bar */}
+                    <div className={`h-1.5 w-full ${jobOffer.is_own_offer 
+                      ? 'bg-gradient-to-r from-amber-400 to-amber-500' 
+                      : 'bg-gradient-to-r from-blue-400 to-blue-500'
+                    }`}></div>
+                    
                     <CardHeader className="pb-2 relative">
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <CardTitle className="text-xl font-semibold line-clamp-2 text-navy dark:text-sand group-hover:text-navy-light dark:group-hover:text-blue-300 transition-colors duration-300">
-                              {jobOffer.title}
-                            </CardTitle>
-                            {jobOffer.is_own_offer ? (
-                              <Crown size={16} className="text-amber-500 flex-shrink-0" />
-                            ) : (
-                              <Dot size={16} className="text-muted-foreground flex-shrink-0" />
-                            )}
-                          </div>
-                          {!jobOffer.is_own_offer && (
-                            <p className="text-xs text-muted-foreground">
-                              Par {jobOffer.owner_first_name} {jobOffer.owner_last_name}
-                            </p>
+                      {/* Owner badge - prominently positioned */}
+                      <div className="flex justify-between items-start gap-3 mb-3">
+                        <div className="flex items-center gap-2">
+                          {jobOffer.is_own_offer ? (
+                            <Badge className="bg-gradient-to-r from-amber-400 to-amber-500 text-white border-0 gap-1.5 px-2.5 py-1 font-medium">
+                              <Crown size={14} />
+                              Mes offres
+                            </Badge>
+                          ) : (
+                            <div className="flex items-center gap-2 bg-blue-50/80 dark:bg-blue-900/30 rounded-full px-3 py-1.5 border border-blue-200/50 dark:border-blue-700/50">
+                              <Avatar className="h-6 w-6">
+                                <AvatarFallback className="text-xs bg-blue-500 text-white">
+                                  {jobOffer.owner_first_name?.[0]}{jobOffer.owner_last_name?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex items-center gap-1">
+                                <User size={12} className="text-blue-600 dark:text-blue-400" />
+                                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                  {jobOffer.owner_first_name} {jobOffer.owner_last_name}
+                                </span>
+                              </div>
+                            </div>
                           )}
                         </div>
                         <Badge variant={jobOffer.status === 'active' ? 'default' : 'secondary'} className={jobOffer.status === 'active' ? 'bg-green-500 hover:bg-green-600' : ''}>
                           {jobOffer.status === 'active' ? 'Active' : 'Inactive'}
                         </Badge>
                       </div>
-                      <div className="text-sm text-navy-dark/70 dark:text-sand/70 space-y-1 mt-1">
-                        {jobOffer.company && (
-                          <div className="flex items-center">
-                            <Building size={14} className="mr-1.5 flex-shrink-0 text-navy/60 dark:text-sand/60" />
-                            <span>{jobOffer.company}</span>
-                          </div>
-                        )}
-                        {jobOffer.location && (
-                          <div className="flex items-center">
-                            <MapPin size={14} className="mr-1.5 flex-shrink-0 text-navy/60 dark:text-sand/60" />
-                            <span>{jobOffer.location}</span>
-                          </div>
-                        )}
+
+                      {/* Job title and company info */}
+                      <div className="space-y-2">
+                        <CardTitle className="text-xl font-semibold line-clamp-2 text-navy dark:text-sand group-hover:text-navy-light dark:group-hover:text-blue-300 transition-colors duration-300">
+                          {jobOffer.title}
+                        </CardTitle>
+                        <div className="text-sm text-navy-dark/70 dark:text-sand/70 space-y-1 mt-1">
+                          {jobOffer.company && (
+                            <div className="flex items-center">
+                              <Building size={14} className="mr-1.5 flex-shrink-0 text-navy/60 dark:text-sand/60" />
+                              <span>{jobOffer.company}</span>
+                            </div>
+                          )}
+                          {jobOffer.location && (
+                            <div className="flex items-center">
+                              <MapPin size={14} className="mr-1.5 flex-shrink-0 text-navy/60 dark:text-sand/60" />
+                              <span>{jobOffer.location}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </CardHeader>
                     
