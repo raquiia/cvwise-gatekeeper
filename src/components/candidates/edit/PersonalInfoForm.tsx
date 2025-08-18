@@ -3,6 +3,7 @@ import React from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormValues } from './candidateEditSchema';
 
 interface PersonalInfoFormProps {
@@ -143,6 +144,32 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ form }) => {
               <FormLabel>Adresse complète (pour compatibilité)</FormLabel>
               <FormControl>
                 <Input placeholder="Adresse complète" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="source"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Provenance du candidat</FormLabel>
+              <FormControl>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner la provenance" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="offre_emploi">Réponse à offre d'emploi</SelectItem>
+                    <SelectItem value="site_internet">Site internet</SelectItem>
+                    <SelectItem value="cooptation">Cooptation</SelectItem>
+                    <SelectItem value="jobboard">Jobboard</SelectItem>
+                    <SelectItem value="linkedin">LinkedIn</SelectItem>
+                    <SelectItem value="autre">Autre</SelectItem>
+                  </SelectContent>
+                </Select>
               </FormControl>
               <FormMessage />
             </FormItem>

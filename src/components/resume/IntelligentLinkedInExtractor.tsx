@@ -12,11 +12,13 @@ import ManualLinkedInForm from './ManualLinkedInForm';
 interface IntelligentLinkedInExtractorProps {
   userId: string | undefined;
   onAnalysisComplete: (candidateId: string) => void;
+  defaultSource?: string;
 }
 
 const IntelligentLinkedInExtractor: React.FC<IntelligentLinkedInExtractorProps> = ({ 
   userId, 
-  onAnalysisComplete 
+  onAnalysisComplete,
+  defaultSource = 'linkedin'
 }) => {
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [pastedText, setPastedText] = useState('');

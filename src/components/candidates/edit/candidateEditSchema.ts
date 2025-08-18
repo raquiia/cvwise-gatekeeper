@@ -25,6 +25,7 @@ export const candidateEditSchema = z.object({
   professional_values: z.string().optional(),
   work_authorization: z.string().optional(),
   interests: z.string().optional(),
+  source: z.string().optional(),
 });
 
 export type FormValues = z.infer<typeof candidateEditSchema>;

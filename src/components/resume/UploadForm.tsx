@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, Loader2, File, X, Check, Linkedin, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { uploadResume } from '@/services/resumeService';
 import IntelligentLinkedInExtractor from './IntelligentLinkedInExtractor';
@@ -18,6 +19,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete, onLin
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<Record<number, 'idle' | 'uploading' | 'success' | 'error'>>({});
   const [errorMessages, setErrorMessages] = useState<Record<number, string>>({});
+  const [selectedSource, setSelectedSource] = useState<string>('autre');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -202,6 +204,23 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete, onLin
               Téléchargez un ou plusieurs CV pour créer automatiquement les profils candidats
             </p>
           </div>
+
+          <div className="mb-4">
+            <label className="label text-sm text-muted-foreground mb-1.5">Provenance du candidat</label>
+            <Select value={selectedSource} onValueChange={setSelectedSource}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner la provenance" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="offre_emploi">Réponse à offre d'emploi</SelectItem>
+                <SelectItem value="site_internet">Site internet</SelectItem>
+                <SelectItem value="cooptation">Cooptation</SelectItem>
+                <SelectItem value="jobboard">Jobboard</SelectItem>
+                <SelectItem value="linkedin">LinkedIn</SelectItem>
+                <SelectItem value="autre">Autre</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
       
       {/* Zone de dépôt */}
       <div 
@@ -328,9 +347,27 @@ const UploadForm: React.FC<UploadFormProps> = ({ userId, onUploadComplete, onLin
               Créez un candidat à partir de son profil LinkedIn public
             </p>
           </div>
+          <div className="mb-4">
+            <label className="label text-sm text-muted-foreground mb-1.5">Provenance du candidat</label>
+            <Select value={selectedSource} onValueChange={setSelectedSource}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner la provenance" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="offre_emploi">Réponse à offre d'emploi</SelectItem>
+                <SelectItem value="site_internet">Site internet</SelectItem>
+                <SelectItem value="cooptation">Cooptation</SelectItem>
+                <SelectItem value="jobboard">Jobboard</SelectItem>
+                <SelectItem value="linkedin">LinkedIn</SelectItem>
+                <SelectItem value="autre">Autre</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
           <IntelligentLinkedInExtractor 
             userId={userId}
             onAnalysisComplete={handleLinkedInComplete}
+            defaultSource={selectedSource}
           />
         </TabsContent>
       </Tabs>

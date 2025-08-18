@@ -177,6 +177,7 @@ export type Database = {
           salary_expectations: string | null
           score: number | null
           skills: Json | null
+          source: string | null
           special_permits: Json | null
           status: string | null
           travel_willingness: string | null
@@ -231,6 +232,7 @@ export type Database = {
           salary_expectations?: string | null
           score?: number | null
           skills?: Json | null
+          source?: string | null
           special_permits?: Json | null
           status?: string | null
           travel_willingness?: string | null
@@ -285,6 +287,7 @@ export type Database = {
           salary_expectations?: string | null
           score?: number | null
           skills?: Json | null
+          source?: string | null
           special_permits?: Json | null
           status?: string | null
           travel_willingness?: string | null
@@ -719,6 +722,7 @@ export type Database = {
           salary_expectations: string | null
           score: number | null
           skills: Json | null
+          source: string | null
           special_permits: Json | null
           status: string | null
           travel_willingness: string | null
@@ -901,6 +905,7 @@ export type Database = {
           salary_expectations: string | null
           score: number | null
           skills: Json | null
+          source: string | null
           special_permits: Json | null
           status: string | null
           travel_willingness: string | null

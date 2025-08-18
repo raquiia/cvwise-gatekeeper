@@ -31,6 +31,7 @@ interface CandidatesFiltersProps {
   onContractTypeChange: (type: string) => void;
   onRemotePreferenceChange: (preference: string) => void;
   onMobilityChange: (mobility: string) => void;
+  onSourceChange: (source: string) => void;
   onReset: () => void;
   onSemanticSearchChange?: (query: string) => void;
   onApplyFilters?: () => void;
@@ -41,6 +42,7 @@ interface CandidatesFiltersProps {
   experience?: string;
   semanticSearch?: string;
   selectedSkills?: string[];
+  source?: string;
 }
 
 const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
@@ -58,6 +60,7 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
   onContractTypeChange,
   onRemotePreferenceChange,
   onMobilityChange,
+  onSourceChange,
   onReset,
   onSemanticSearchChange = () => {},
   onApplyFilters = () => {},
@@ -67,7 +70,8 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
   previousCompany = '',
   experience = 'all',
   semanticSearch = '',
-  selectedSkills = []
+  selectedSkills = [],
+  source = ''
 }) => {
   const [skillInput, setSkillInput] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -261,7 +265,7 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
         </div>
         
         <CollapsibleContent className="mt-4 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="label text-sm text-muted-foreground mb-1.5">Statut du candidat</label>
               <Select>
@@ -288,6 +292,24 @@ const CandidatesFilters: React.FC<CandidatesFiltersProps> = ({
                   <SelectItem value="freelance">Freelance</SelectItem>
                   <SelectItem value="stage">Stage</SelectItem>
                   <SelectItem value="alternance">Alternance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="label text-sm text-muted-foreground mb-1.5">Provenance</label>
+              <Select value={source} onValueChange={onSourceChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Toutes les provenances" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Toutes les provenances</SelectItem>
+                  <SelectItem value="offre_emploi">Réponse à offre d'emploi</SelectItem>
+                  <SelectItem value="site_internet">Site internet</SelectItem>
+                  <SelectItem value="cooptation">Cooptation</SelectItem>
+                  <SelectItem value="jobboard">Jobboard</SelectItem>
+                  <SelectItem value="linkedin">LinkedIn</SelectItem>
+                  <SelectItem value="autre">Autre</SelectItem>
                 </SelectContent>
               </Select>
             </div>

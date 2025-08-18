@@ -565,6 +565,7 @@ const CandidatesContent = () => {
                 onContractTypeChange={() => {}}
                 onRemotePreferenceChange={() => {}}
                 onMobilityChange={() => {}}
+                onSourceChange={() => {}}
                 onReset={() => setFilteredCandidates(candidates)}
                 onSemanticSearchChange={handleSemanticSearchChange}
                 onApplyFilters={() => {}}
