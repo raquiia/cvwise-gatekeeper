@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Linkedin, Loader2, Link as LinkIcon } from 'lucide-react';
+import { Linkedin, Loader2, Link as LinkIcon, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeLinkedInProfile } from '@/services/resumeService';
+import { supabase } from '@/integrations/supabase/client';
+import ManualLinkedInForm from './ManualLinkedInForm';
 
 interface LinkedInFormProps {
   userId: string | undefined;
@@ -13,6 +15,7 @@ interface LinkedInFormProps {
 const LinkedInForm: React.FC<LinkedInFormProps> = ({ userId, onAnalysisComplete }) => {
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,7 +52,30 @@ const LinkedInForm: React.FC<LinkedInFormProps> = ({ userId, onAnalysisComplete 
 
     try {
       console.log('Analyzing LinkedIn profile:', linkedinUrl);
-      const result = await analyzeLinkedInProfile(linkedinUrl, userId);
+      
+      // First try automatic extraction
+      const { data, error } = await supabase.functions.invoke('extract-linkedin-profile', {
+        body: { linkedinUrl }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // Check if extraction failed and manual input is needed
+      if (data.extractionFailed) {
+        setAnalyzing(false);
+        setShowManualForm(true);
+        toast({
+          title: "Extraction automatique impossible",
+          description: "Veuillez saisir manuellement les informations du profil LinkedIn",
+          variant: "default"
+        });
+        return;
+      }
+
+      // Continue with automatic analysis
+      const result = await analyzeLinkedInProfile(linkedinUrl, userId, data.profileText);
       
       if (result.success && result.candidateId) {
         toast({
@@ -75,6 +101,18 @@ const LinkedInForm: React.FC<LinkedInFormProps> = ({ userId, onAnalysisComplete 
       setAnalyzing(false);
     }
   };
+
+  // Show manual form if automatic extraction failed
+  if (showManualForm) {
+    return (
+      <ManualLinkedInForm
+        userId={userId}
+        linkedinUrl={linkedinUrl}
+        onAnalysisComplete={onAnalysisComplete}
+        onBack={() => setShowManualForm(false)}
+      />
+    );
+  }
 
   return (
     <div className="glass rounded-xl p-6">
@@ -110,13 +148,23 @@ const LinkedInForm: React.FC<LinkedInFormProps> = ({ userId, onAnalysisComplete 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <h3 className="text-sm font-medium text-blue-900 mb-2">ℹ️ À propos de l'analyse LinkedIn</h3>
           <ul className="text-xs text-blue-800 space-y-1">
-            <li>• Les informations extraites peuvent être limitées par rapport à un CV complet</li>
-            <li>• Le score peut être moins précis qu'avec un CV détaillé</li>
+            <li>• Tentative d'extraction automatique des informations</li>
+            <li>• Si l'extraction échoue, vous pourrez saisir manuellement les données</li>
             <li>• Vous pourrez ajouter un CV ultérieurement pour une analyse complète</li>
           </ul>
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowManualForm(true)}
+            disabled={analyzing || !linkedinUrl}
+          >
+            <AlertTriangle size={16} className="mr-2" />
+            Saisie manuelle
+          </Button>
+          
           <Button
             type="submit"
             className="bg-[#0077B5] text-white hover:bg-[#005885]"
@@ -125,12 +173,12 @@ const LinkedInForm: React.FC<LinkedInFormProps> = ({ userId, onAnalysisComplete 
             {analyzing ? (
               <>
                 <Loader2 size={16} className="mr-2 animate-spin" />
-                Analyse en cours...
+                Extraction en cours...
               </>
             ) : (
               <>
                 <Linkedin size={16} className="mr-2" />
-                Analyser le profil
+                Extraction automatique
               </>
             )}
           </Button>

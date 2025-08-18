@@ -315,30 +315,37 @@ const createOrUpdateCandidateFromExtractedData = async (
  */
 export const analyzeLinkedInProfile = async (
   linkedinUrl: string,
-  userId: string
+  userId: string,
+  manualProfileText?: string
 ): Promise<ResumeAnalysisResult> => {
   try {
     console.log('🔗 Starting LinkedIn profile analysis for URL:', linkedinUrl);
 
-    // Step 1: Extract LinkedIn profile data
-    const extractResponse = await fetch(`${SUPABASE_API_URL}/functions/v1/extract-linkedin-profile`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-      },
-      body: JSON.stringify({ linkedinUrl })
-    });
+    // Step 1: Use manual profile text if provided, otherwise extract automatically
+    let profileText = manualProfileText;
+    
+    if (!profileText) {
+      const extractResponse = await fetch(`${SUPABASE_API_URL}/functions/v1/extract-linkedin-profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ linkedinUrl })
+      });
 
-    if (!extractResponse.ok) {
-      throw new Error(`HTTP error! status: ${extractResponse.status}`);
-    }
+      if (!extractResponse.ok) {
+        throw new Error(`HTTP error! status: ${extractResponse.status}`);
+      }
 
-    const extractResult = await extractResponse.json();
-    console.log('📄 LinkedIn extraction result:', extractResult);
+      const extractResult = await extractResponse.json();
+      console.log('📄 LinkedIn extraction result:', extractResult);
 
-    if (!extractResult.success) {
-      throw new Error(extractResult.error || 'Failed to extract LinkedIn profile');
+      if (!extractResult.success) {
+        throw new Error(extractResult.error || 'Failed to extract LinkedIn profile');
+      }
+      
+      profileText = extractResult.profileText;
     }
 
     // Step 2: Create a temporary "resume" record for LinkedIn profile
@@ -363,7 +370,7 @@ export const analyzeLinkedInProfile = async (
     console.log('📝 Created LinkedIn record with ID:', linkedinRecord.id);
 
     // Step 3: Analyze with AI
-    const aiResult = await analyzeResumeWithAI(linkedinRecord.id, extractResult.profileText);
+    const aiResult = await analyzeResumeWithAI(linkedinRecord.id, profileText);
     
     if (!aiResult.success || !aiResult.analysisData) {
       throw new Error(aiResult.error || 'AI analysis failed');
