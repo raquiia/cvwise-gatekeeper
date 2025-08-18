@@ -20,6 +20,8 @@ import RecentCandidatesTable from '@/components/dashboard/RecentCandidatesTable'
 import RecruitmentUserStats from '@/components/admin/RecruitmentUserStats';
 import TaskCenter from '@/components/dashboard/TaskCenter';
 import InterviewCalendar from '@/components/dashboard/InterviewCalendar';
+import SourcingIntelligence from '@/components/dashboard/SourcingIntelligence';
+import ChannelPerformanceWidget from '@/components/dashboard/ChannelPerformanceWidget';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -124,6 +126,12 @@ const Dashboard = () => {
           resumesCount={resumesCount}
           candidatesCount={candidatesCount}
         />
+        
+        {/* Channel Performance Widget - Phase 1 */}
+        <ChannelPerformanceWidget candidatesData={candidatesData} />
+        
+        {/* Sourcing Intelligence - Phase 1 */}
+        <SourcingIntelligence candidatesData={candidatesData} />
         
         {/* Advanced Analytics - Only Real Data */}
         <AdvancedAnalytics 
