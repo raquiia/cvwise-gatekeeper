@@ -1,20 +1,28 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS } from '@/services/data/candidateStatusService';
 import ReprocessDataButton from './ReprocessDataButton';
-import { Users, Filter } from 'lucide-react';
+import { Users, Filter, Globe, Eye } from 'lucide-react';
 
 interface CandidatesHeaderProps {
   onStatusChange: (status: string | null) => void;
   selectedStatus: string | null;
   candidateCount: number;
+  isGlobalMode: boolean;
+  onModeChange: (isGlobal: boolean) => void;
+  ownCandidatesCount: number;
 }
 
 const CandidatesHeader: React.FC<CandidatesHeaderProps> = ({
   onStatusChange,
   selectedStatus,
-  candidateCount
+  candidateCount,
+  isGlobalMode,
+  onModeChange,
+  ownCandidatesCount
 }) => {
   return (
     <div className="relative mb-6">
@@ -29,10 +37,10 @@ const CandidatesHeader: React.FC<CandidatesHeaderProps> = ({
               </div>
               <div>
                 <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 bg-clip-text text-transparent">
-                  Filtres Intelligents
+                  {isGlobalMode ? 'Tous les candidats' : 'Mes candidats'}
                 </h2>
                 <p className="text-muted-foreground text-sm">
-                  {candidateCount} candidat{candidateCount !== 1 ? 's' : ''} dans votre base
+                  {candidateCount} candidat{candidateCount !== 1 ? 's' : ''} {isGlobalMode ? 'au total' : 'dans votre base'}
                 </p>
               </div>
             </div>
@@ -43,6 +51,41 @@ const CandidatesHeader: React.FC<CandidatesHeaderProps> = ({
           </div>
         </div>
         
+        {/* View Mode Toggle */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-950/20 dark:to-blue-950/20 rounded-lg border border-purple-200/30">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-purple-600" />
+              <Label htmlFor="view-mode" className="text-sm font-medium">
+                Mode de vue
+              </Label>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <span className={`text-sm ${!isGlobalMode ? 'font-medium text-purple-700' : 'text-muted-foreground'}`}>
+                Mes candidats ({ownCandidatesCount})
+              </span>
+              
+              <Switch
+                id="view-mode"
+                checked={isGlobalMode}
+                onCheckedChange={onModeChange}
+              />
+              
+              <span className={`text-sm ${isGlobalMode ? 'font-medium text-blue-700' : 'text-muted-foreground'}`}>
+                <Globe className="h-3 w-3 inline mr-1" />
+                Tous les candidats ({candidateCount})
+              </span>
+            </div>
+            
+            {isGlobalMode && (
+              <div className="text-xs text-blue-600 dark:text-blue-400 ml-auto">
+                Mode collaboration - Accès en lecture aux candidats d'autres recruteurs
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Status Filters */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">

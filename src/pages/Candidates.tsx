@@ -83,6 +83,7 @@ const CandidatesContent = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [currentView, setCurrentView] = useState<'table' | 'cards' | 'kanban' | 'analytics'>('table');
   const [isSemanticSearching, setIsSemanticSearching] = useState(false);
+  const [isGlobalMode, setIsGlobalMode] = useState(false);
   
   // Use URL filters hook instead of local state
   const { 
@@ -174,7 +175,9 @@ const CandidatesContent = () => {
       setError(null);
       
       console.log("Fetching candidates for user:", user.id);
-      const data = await candidateService.getUserCandidates();
+      const data = isGlobalMode 
+        ? await candidateService.getAllCandidates()
+        : await candidateService.getUserCandidates();
       console.log("Retrieved candidates:", data);
       
       if (Array.isArray(data)) {
@@ -214,7 +217,7 @@ const CandidatesContent = () => {
 
   useEffect(() => {
     fetchCandidates();
-  }, [user]);
+  }, [user, isGlobalMode]);
 
   // Effect to filter candidates (status + semantic search)
   useEffect(() => {
@@ -263,6 +266,8 @@ const CandidatesContent = () => {
 
   // Calculate stats
   const totalCandidates = candidates.length;
+  const ownCandidatesCount = candidates.filter(c => c.user_id === user?.id).length;
+  
   const newThisWeek = candidates.filter(c => {
     const createdDate = new Date(c.created_at || '');
     const weekAgo = new Date();
@@ -305,6 +310,10 @@ const CandidatesContent = () => {
   // Handler to reset filters
   const handleResetFilters = () => {
     clearFilters();
+  };
+
+  const handleModeChange = (isGlobal: boolean) => {
+    setIsGlobalMode(isGlobal);
   };
 
   // Fonction corrigée pour gérer la suppression
@@ -369,6 +378,8 @@ const CandidatesContent = () => {
             onStatusChange={handleStatusChange}
             onViewCandidate={handleViewCandidate}
             onCandidateDeleted={handleCandidateDeleted}
+            isGlobalMode={isGlobalMode}
+            currentUserId={user?.id}
           />
         );
       case 'cards':
@@ -401,6 +412,8 @@ const CandidatesContent = () => {
             onStatusChange={handleStatusChange}
             onViewCandidate={handleViewCandidate}
             onCandidateDeleted={handleCandidateDeleted}
+            isGlobalMode={isGlobalMode}
+            currentUserId={user?.id}
           />
         );
     }
@@ -520,6 +533,9 @@ const CandidatesContent = () => {
           onStatusChange={handleStatusChange}
           selectedStatus={filters.selectedStatus}
           candidateCount={totalCandidates}
+          isGlobalMode={isGlobalMode}
+          onModeChange={handleModeChange}
+          ownCandidatesCount={ownCandidatesCount}
         />
 
         {/* View Selector */}

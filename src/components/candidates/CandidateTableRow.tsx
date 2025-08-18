@@ -1,7 +1,7 @@
 import React from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Calendar, TrendingUp, Edit, Trash2, Briefcase } from 'lucide-react';
+import { MapPin, Calendar, TrendingUp, Edit, Trash2, Briefcase, User, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
@@ -20,6 +20,8 @@ interface CandidateTableRowProps {
   onCandidateDeleted?: () => void;
   hideScore?: boolean;
   jobOfferId?: string;
+  isGlobalMode?: boolean;
+  currentUserId?: string;
 }
 
 const CandidateTableRow: React.FC<CandidateTableRowProps> = ({ 
@@ -27,12 +29,22 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   onViewCandidate,
   onCandidateDeleted,
   hideScore = false,
-  jobOfferId
+  jobOfferId,
+  isGlobalMode = false,
+  currentUserId
 }) => {
   const skills = ensureStringArray(candidate.skills);
   const { toast } = useToast();
   const { getAIScore, isJobSpecific } = useAIScoring();
   const lastCompany = getLastCompany(candidate);
+  
+  // Check if candidate belongs to current user
+  const isOwnCandidate = candidate.user_id === currentUserId;
+  
+  // Get owner information from candidate data
+  const ownerName = candidate.owner_first_name && candidate.owner_last_name 
+    ? `${candidate.owner_first_name} ${candidate.owner_last_name}`
+    : null;
 
   // Utiliser le système AI scoring unifié
   const aiScore = getAIScore(candidate.id!, jobOfferId);
@@ -88,7 +100,7 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
   };
 
   const handleDelete = async () => {
-    if (!candidate.id) return;
+    if (!candidate.id || !isOwnCandidate) return;
     
     try {
       await candidateService.deleteCandidate(candidate.id);
@@ -144,12 +156,23 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
           to={`/candidates/${candidate.id}`}
           className="flex items-center space-x-3 text-navy-dark hover:text-navy"
         >
-          <div className="w-10 h-10 rounded-full bg-navy flex items-center justify-center text-sand text-sm font-medium">
+          <div className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center text-sand text-sm font-medium",
+            isOwnCandidate ? "bg-navy" : "bg-gray-500"
+          )}>
             {candidate.first_name?.[0]}{candidate.last_name?.[0]}
           </div>
           <div>
-            <div className="font-medium">
-              {candidate.first_name} {candidate.last_name}
+            <div className="flex items-center gap-2">
+              <span className="font-medium">
+                {candidate.first_name} {candidate.last_name}
+              </span>
+              {isGlobalMode && !isOwnCandidate && (
+                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                  <User size={10} className="mr-1" />
+                  {ownerName || 'Autre recruteur'}
+                </Badge>
+              )}
             </div>
             {candidate.email && (
               <div className="text-sm text-muted-foreground">
@@ -175,6 +198,21 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
           {lastCompany}
         </div>
       </TableCell>
+      
+      {/* Owner Column (only in global mode) */}
+      {isGlobalMode && (
+        <TableCell className="hidden lg:table-cell">
+          <div className="flex items-center gap-2">
+            <User size={14} className="text-muted-foreground" />
+            <span className={cn(
+              "text-sm",
+              isOwnCandidate ? "font-medium text-purple-700" : "text-muted-foreground"
+            )}>
+              {isOwnCandidate ? "Vous" : (ownerName || "Autre recruteur")}
+            </span>
+          </div>
+        </TableCell>
+      )}
       
       {/* Location Column */}
       <TableCell className="hidden lg:table-cell">
@@ -273,17 +311,31 @@ const CandidateTableRow: React.FC<CandidateTableRowProps> = ({
             size="sm"
             onClick={() => onViewCandidate && onViewCandidate(candidate.id!)}
             className="h-8 w-8 p-0"
+            title={isOwnCandidate ? "Modifier le candidat" : "Voir le candidat (lecture seule)"}
           >
             <Edit size={14} />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleDelete}
-            className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-          >
-            <Trash2 size={14} />
-          </Button>
+          {isOwnCandidate ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDelete}
+              className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+              title="Supprimer le candidat"
+            >
+              <Trash2 size={14} />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled
+              className="h-8 w-8 p-0 text-gray-400"
+              title="Vous ne pouvez pas supprimer ce candidat"
+            >
+              <Lock size={14} />
+            </Button>
+          )}
         </div>
       </TableCell>
     </TableRow>
