@@ -51,14 +51,9 @@ const Dashboard = () => {
           throw new Error("User not authenticated");
         }
         
-        // Récupérer les candidats
-        const { data: candidatesData, error: candidatesError } = await supabase
-          .rpc('get_user_candidates', { user_id_param: user.id });
-          
-        if (candidatesError) {
-          console.error('Error fetching candidates:', candidatesError);
-          throw candidatesError;
-        }
+        // Récupérer les candidats via le service (contourne le problème RPC)
+        const { candidateService } = await import('@/services/data/candidateService');
+        const candidatesData = await candidateService.getUserCandidates();
         
         const formattedCandidates = (candidatesData || []).map(formatCandidateData);
         setCandidatesData(formattedCandidates);
