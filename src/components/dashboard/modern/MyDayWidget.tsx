@@ -226,9 +226,25 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
     const task = bmTasks.find(t => t.id === item.taskId);
     if (!task) return;
 
+    // Enrichir la description avec le lien vers le profil candidat
+    let enrichedDescription = task.description || '';
+    
+    if (task.candidate_id) {
+      const candidateProfileUrl = `${window.location.origin}/candidates/${task.candidate_id}`;
+      enrichedDescription += `\n\n📋 Profil candidat: ${candidateProfileUrl}`;
+      
+      if (task.business_manager) {
+        enrichedDescription += `\n👤 Business Manager: ${task.business_manager}`;
+      }
+      
+      if (task.interview_type) {
+        enrichedDescription += `\n📞 Type d'entretien: ${task.interview_type.toUpperCase()}`;
+      }
+    }
+
     const event = ICSGeneratorService.createTaskEvent(
       task.title,
-      task.description || '',
+      enrichedDescription,
       task.priority === 'high' ? 'high' : 'medium',
       new Date(task.scheduled_date).getHours()
     );
