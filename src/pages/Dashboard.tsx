@@ -22,7 +22,7 @@ import TaskCenter from '@/components/dashboard/TaskCenter';
 import InterviewCalendar from '@/components/dashboard/InterviewCalendar';
 import SourcingIntelligence from '@/components/dashboard/SourcingIntelligence';
 import ChannelPerformanceWidget from '@/components/dashboard/ChannelPerformanceWidget';
-import { MyDayWidget } from '@/components/dashboard/modern/MyDayWidget';
+import MyDayWidget from '@/components/dashboard/modern/MyDayWidget';
 import { RecruitmentPipeline } from '@/components/dashboard/modern/RecruitmentPipeline';
 
 const Dashboard = () => {

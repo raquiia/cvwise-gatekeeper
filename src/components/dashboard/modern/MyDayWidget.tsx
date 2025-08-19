@@ -1,19 +1,24 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CalendarActionButton, useCalendarEvent } from "@/components/ui/calendar-action-button";
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { CalendarActionButton } from '@/components/ui/calendar-action-button';
 import { 
   Calendar, 
-  Clock, 
   Users, 
+  Phone, 
   AlertTriangle, 
-  CheckCircle, 
-  ArrowRight,
-  Phone,
+  Clock, 
+  CheckCircle,
   Video,
-  MapPin
-} from "lucide-react";
+  FileText,
+  ExternalLink,
+  Download
+} from 'lucide-react';
+import { recruiterTasksService, RecruiterTask } from '@/services/data/recruiterTasksService';
+import { ICSGeneratorService } from '@/services/calendar/icsGeneratorService';
+import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface MyDayProps {
   candidatesData?: any[];
@@ -22,185 +27,217 @@ interface MyDayProps {
 interface DayItem {
   id: string;
   type: 'interview' | 'task' | 'alert';
+  interviewType?: 'ec1' | 'ec2' | 'phone';
   title: string;
-  time?: string;
+  time: string;
   description: string;
-  priority: 'high' | 'medium' | 'low';
-  status?: 'pending' | 'completed' | 'urgent';
+  priority: 'low' | 'medium' | 'high';
+  status: string;
   candidateId?: string;
-  location?: string;
-  interviewType?: 'phone' | 'video' | 'onsite';
+  taskId?: string;
 }
 
-export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-  const { createInterviewEvent, createTaskEvent, createReminderEvent } = useCalendarEvent();
+const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [bmTasks, setBmTasks] = useState<RecruiterTask[]>([]);
 
-  // Fonction utilitaire pour normaliser les statuts
-  const normalizeStatus = (status: string | undefined): string => {
-    if (!status || status === 'undefined') return 'initial';
-    return status;
+  useEffect(() => {
+    if (user?.id) {
+      loadBMTasks();
+    }
+  }, [user?.id]);
+
+  const loadBMTasks = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const tasks = await recruiterTasksService.getTodayTasks(user.id);
+      setBmTasks(tasks);
+    } catch (error) {
+      console.error('Error loading BM tasks:', error);
+    }
   };
 
-  // Génération des éléments de la journée basés sur les vraies données
-  const generateDayItems = (): DayItem[] => {
+  const generateDayItems = (candidates: any[] = []): DayItem[] => {
     const items: DayItem[] = [];
+
+    // Ajouter les tâches BM d'abord (priorité haute)
+    bmTasks.forEach(task => {
+      items.push({
+        id: `bm-${task.id}`,
+        type: 'interview',
+        interviewType: task.interview_type === 'ec1' ? 'ec1' : task.interview_type === 'ec2' ? 'ec2' : 'phone',
+        title: task.title,
+        time: new Date(task.scheduled_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        description: task.description || '',
+        priority: 'high',
+        status: 'À programmer',
+        candidateId: task.candidate_id || undefined,
+        taskId: task.id
+      });
+    });
+
     const now = new Date();
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    // Entretiens du jour - candidats en phase d'entretien
-    const interviewCandidates = candidatesData.filter(candidate => {
-      const status = normalizeStatus(candidate.detailed_status);
-      return ['ec1', 'ec2', 'presentation_client'].includes(status);
-    }).slice(0, 3);
 
-    const interviews: DayItem[] = interviewCandidates.map((candidate, index) => {
-      const times = ['09:00', '14:30', '16:00'];
-      const types = ['video', 'onsite', 'phone'];
-      const locations = ['Google Meet', 'Salle de réunion A', 'Appel téléphonique'];
-      const status = normalizeStatus(candidate.detailed_status);
-      
-      return {
-        id: `int-${candidate.id}`,
+    // Entretiens programmés
+    const interviewCandidates = candidates.filter(candidate => {
+      const status = candidate.detailed_status || 'initial';
+      return ['ec1', 'ec2', 'presentation_client'].includes(status);
+    }).slice(0, 2);
+
+    interviewCandidates.forEach((candidate, index) => {
+      const times = ['09:00', '14:30'];
+      items.push({
+        id: `interview-${candidate.id}`,
         type: 'interview',
+        interviewType: 'ec1',
         title: `Entretien ${candidate.first_name} ${candidate.last_name}`,
         time: times[index] || '15:00',
-        description: `${candidate.position || 'Poste non spécifié'} - ${status === 'ec1' ? 'Premier entretien' : status === 'ec2' ? 'Entretien technique' : 'Présentation client'}`,
-        priority: status === 'presentation_client' ? 'high' : 'medium',
-        status: 'pending',
-        candidateId: candidate.id,
-        interviewType: types[index % 3] as 'phone' | 'video' | 'onsite',
-        location: locations[index % 3]
-      };
+        description: `${candidate.position || 'Poste non spécifié'}`,
+        priority: 'medium',
+        status: 'Programmé',
+        candidateId: candidate.id
+      });
     });
 
-    // Tâches prioritaires - candidats nécessitant un suivi
-    const candidatesNeedingFollowUp = candidatesData.filter(candidate => {
+    // Tâches de suivi
+    const candidatesNeedingFollowUp = candidates.filter(candidate => {
       const updatedAt = new Date(candidate.updated_at);
-      const status = normalizeStatus(candidate.detailed_status);
+      const status = candidate.detailed_status || 'initial';
       return status === 'contact' && updatedAt < sevenDaysAgo;
     });
 
-    const candidatesWithHighScore = candidatesData.filter(candidate => {
-      const status = normalizeStatus(candidate.detailed_status);
-      return (candidate.ai_score || 0) > 80 && status === 'initial';
-    });
-
-    const tasks: DayItem[] = [];
-    
     if (candidatesNeedingFollowUp.length > 0) {
-      tasks.push({
+      items.push({
         id: 'task-followup',
         type: 'task',
         title: `Relancer ${candidatesNeedingFollowUp.length} candidat${candidatesNeedingFollowUp.length > 1 ? 's' : ''}`,
-        description: `Candidats sans réponse depuis plus de 7 jours`,
+        time: '16:00',
+        description: 'Candidats sans réponse depuis plus de 7 jours',
         priority: 'high',
-        status: 'pending'
+        status: 'À faire'
       });
     }
 
+    // Candidats à fort potentiel
+    const candidatesWithHighScore = candidates.filter(candidate => {
+      const status = candidate.detailed_status || 'initial';
+      return (candidate.ai_score || 0) > 80 && status === 'initial';
+    });
+
     if (candidatesWithHighScore.length > 0) {
-      tasks.push({
+      items.push({
         id: 'task-highscore',
         type: 'task',
         title: `Contacter ${candidatesWithHighScore.length} candidat${candidatesWithHighScore.length > 1 ? 's' : ''} prometteur${candidatesWithHighScore.length > 1 ? 's' : ''}`,
-        description: `Score IA élevé (>80%) - action prioritaire`,
+        time: '17:00',
+        description: 'Score IA élevé (>80%) - action prioritaire',
         priority: 'medium',
-        status: 'pending'
+        status: 'À faire'
       });
     }
 
-    // Alertes urgentes basées sur les vraies données
-    const alerts: DayItem[] = [];
-    
-    const topCandidate = candidatesData
-      .filter(c => (c.ai_score || 0) > 0 && normalizeStatus(c.detailed_status) === 'initial')
+    // Alertes urgentes
+    const topCandidate = candidates
+      .filter(c => (c.ai_score || 0) > 0 && (c.detailed_status || 'initial') === 'initial')
       .sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0))[0];
 
     if (topCandidate && (topCandidate.ai_score || 0) > 85) {
-      alerts.push({
+      items.push({
         id: `alert-top-${topCandidate.id}`,
         type: 'alert',
         title: 'Candidat très prometteur',
-        description: `Score IA ${topCandidate.ai_score}% - ${topCandidate.first_name} ${topCandidate.last_name} (${topCandidate.position || 'Poste non spécifié'})`,
+        time: 'Maintenant',
+        description: `Score IA ${topCandidate.ai_score}% - ${topCandidate.first_name} ${topCandidate.last_name}`,
         priority: 'high',
-        status: 'urgent',
+        status: 'Urgent',
         candidateId: topCandidate.id
       });
     }
 
-    if (candidatesNeedingFollowUp.length > 2) {
-      alerts.push({
-        id: 'alert-delays',
-        type: 'alert',
-        title: 'Délais de réponse dépassés',
-        description: `${candidatesNeedingFollowUp.length} candidats attendent une réponse depuis >7 jours`,
-        priority: 'medium',
-        status: 'urgent'
-      });
-    }
-
-    // Ajout d'items de démonstration si aucune donnée réelle
-    if (interviews.length === 0 && tasks.length === 0 && alerts.length === 0) {
+    // Données de démonstration si pas de données réelles
+    if (items.length === 0) {
       return [
         {
           id: 'demo-interview',
           type: 'interview',
+          interviewType: 'ec1',
           title: 'Entretien Marie Dubois',
           time: '14:30',
           description: 'Développeur Frontend - Premier entretien',
           priority: 'medium',
-          status: 'pending',
-          interviewType: 'video',
-          location: 'Google Meet'
+          status: 'Programmé'
         },
         {
           id: 'demo-task',
           type: 'task',
           title: 'Préparer les entretiens de demain',
+          time: '16:00',
           description: 'Revoir les CV et préparer les questions techniques',
           priority: 'high',
-          status: 'pending'
+          status: 'À faire'
         },
         {
           id: 'demo-alert',
           type: 'alert',
           title: 'Nouveau candidat prometteur',
+          time: 'Maintenant',
           description: 'Score IA 92% - Jean Martin (Développeur Backend)',
           priority: 'high',
-          status: 'urgent'
+          status: 'Urgent'
         }
       ];
     }
 
-    return [...interviews, ...tasks, ...alerts].sort((a, b) => {
-      // Priorité par type et urgence
-      const priorityOrder = { high: 3, medium: 2, low: 1 };
-      return priorityOrder[b.priority] - priorityOrder[a.priority];
-    });
+    return items.slice(0, 8);
   };
 
-  const dayItems = generateDayItems();
-  const todayInterviews = dayItems.filter(item => item.type === 'interview');
-  const urgentTasks = dayItems.filter(item => item.type === 'task');
-  const urgentAlerts = dayItems.filter(item => item.type === 'alert');
-
-  const getItemIcon = (item: DayItem) => {
-    if (item.type === 'interview') {
-      switch (item.interviewType) {
-        case 'video': return <Video className="h-4 w-4" />;
-        case 'phone': return <Phone className="h-4 w-4" />;
-        case 'onsite': return <MapPin className="h-4 w-4" />;
-        default: return <Calendar className="h-4 w-4" />;
-      }
+  const handleTaskAction = async (item: DayItem) => {
+    if (item.candidateId) {
+      navigate(`/candidates/${item.candidateId}`);
     }
-    if (item.type === 'task') return <CheckCircle className="h-4 w-4" />;
+  };
+
+  const handleExportTask = async (item: DayItem) => {
+    if (!item.taskId) return;
+
+    const task = bmTasks.find(t => t.id === item.taskId);
+    if (!task) return;
+
+    const event = ICSGeneratorService.createTaskEvent(
+      task.title,
+      task.description || '',
+      '09:00',
+      task.priority === 'high' ? 'high' : 'normal'
+    );
+
+    ICSGeneratorService.downloadICS(event, `entretien-${task.interview_type}-${new Date().getTime()}.ics`);
+  };
+
+  const handleCompleteTask = async (taskId: string) => {
+    try {
+      await recruiterTasksService.updateTaskStatus(taskId, 'completed');
+      loadBMTasks(); // Recharger les tâches
+    } catch (error) {
+      console.error('Error completing task:', error);
+    }
+  };
+
+  const getItemIcon = (type: string, interviewType?: string) => {
+    if (type === 'interview') {
+      if (interviewType === 'phone') return <Phone className="h-4 w-4" />;
+      if (interviewType === 'ec1' || interviewType === 'ec2') return <Video className="h-4 w-4" />;
+      return <Calendar className="h-4 w-4" />;
+    }
+    if (type === 'task') return <CheckCircle className="h-4 w-4" />;
     return <AlertTriangle className="h-4 w-4" />;
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string, urgent?: boolean) => {
+    if (urgent) return 'destructive';
     switch (priority) {
       case 'high': return 'destructive';
       case 'medium': return 'secondary';
@@ -208,13 +245,20 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
     }
   };
 
-  const getStatusColor = (status?: string) => {
-    switch (status) {
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
       case 'urgent': return 'destructive';
-      case 'completed': return 'default';
+      case 'programmé': return 'default';
+      case 'à programmer': return 'secondary';
+      case 'à faire': return 'outline';
       default: return 'secondary';
     }
   };
+
+  const dayItems = generateDayItems(candidatesData || []);
+  const todayInterviews = dayItems.filter(item => item.type === 'interview');
+  const urgentTasks = dayItems.filter(item => item.type === 'task');
+  const urgentAlerts = dayItems.filter(item => item.type === 'alert');
 
   return (
     <Card className="h-full">
@@ -225,7 +269,7 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
             Ma journée
           </CardTitle>
           <Badge variant="outline" className="text-xs">
-            {today.toLocaleDateString('fr-FR', { 
+            {new Date().toLocaleDateString('fr-FR', { 
               weekday: 'long', 
               day: 'numeric', 
               month: 'long' 
@@ -253,23 +297,21 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
 
         {/* Liste des éléments prioritaires */}
         <div className="space-y-2 max-h-80 overflow-y-auto">
-          {dayItems.slice(0, 6).map((item) => (
+          {dayItems.map((item) => (
             <div 
               key={item.id}
-              className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+              className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors group"
             >
               <div className="flex-shrink-0 mt-0.5">
-                {getItemIcon(item)}
+                {getItemIcon(item.type, item.interviewType)}
               </div>
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium text-sm truncate">{item.title}</span>
-                  {item.time && (
-                    <Badge variant="outline" className="text-xs shrink-0">
-                      {item.time}
-                    </Badge>
-                  )}
+                  <Badge variant="outline" className="text-xs shrink-0">
+                    {item.time}
+                  </Badge>
                   <Badge variant={getPriorityColor(item.priority)} className="text-xs shrink-0">
                     {item.priority === 'high' ? 'Urgent' : item.priority === 'medium' ? 'Moyen' : 'Faible'}
                   </Badge>
@@ -279,40 +321,49 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
                   {item.description}
                 </p>
                 
-                {item.location && (
-                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {item.location}
-                  </p>
-                )}
+                <div className="flex items-center gap-1 mt-1">
+                  <Badge variant={getStatusColor(item.status)} className="text-xs">
+                    {item.status}
+                  </Badge>
+                </div>
               </div>
               
-              <div className="flex items-center gap-2 shrink-0">
-                <CalendarActionButton
-                  event={
-                    item.type === 'interview' 
-                      ? createInterviewEvent(
-                          item.title.replace('Entretien ', ''),
-                          item.description.split(' - ')[0],
-                          item.time || '15:00',
-                          item.interviewType || 'video',
-                          item.location
-                        )
-                      : item.type === 'task'
-                      ? createTaskEvent(item.title, item.description, item.priority)
-                      : createReminderEvent(
-                          item.title,
-                          item.description,
-                          item.priority
-                        )
-                  }
-                  size="sm"
-                  variant="ghost"
-                  showIcon={false}
-                >
-                  📅
-                </CalendarActionButton>
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              <div className="flex items-center gap-1 shrink-0">
+                {item.taskId && (
+                  <>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleExportTask(item)}
+                      title="Exporter vers le calendrier"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    {item.candidateId && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleTaskAction(item)}
+                        title="Voir le profil candidat"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleCompleteTask(item.taskId!)}
+                      title="Marquer comme programmé"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+                {!item.taskId && (
+                  <Button variant="ghost" size="sm">
+                    <CheckCircle className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           ))}
@@ -320,34 +371,18 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
 
         {/* Actions rapides */}
         <div className="flex gap-2 pt-2 border-t">
-          <CalendarActionButton
-            event={createTaskEvent(
-              'Planning de la journée',
-              'Organiser et planifier les tâches prioritaires',
-              'medium'
-            )}
-            variant="outline"
-            size="sm"
-            className="flex-1"
-          >
+          <Button variant="outline" size="sm" className="flex-1">
             <Calendar className="h-4 w-4 mr-1" />
             Planning
-          </CalendarActionButton>
-          <CalendarActionButton
-            event={createReminderEvent(
-              'Contacter nouveaux candidats',
-              'Rappel pour contacter les nouveaux candidats reçus',
-              'medium'
-            )}
-            variant="outline"
-            size="sm"
-            className="flex-1"
-          >
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1">
             <Users className="h-4 w-4 mr-1" />
             Candidats
-          </CalendarActionButton>
+          </Button>
         </div>
       </CardContent>
     </Card>
   );
 };
+
+export default MyDayWidget;

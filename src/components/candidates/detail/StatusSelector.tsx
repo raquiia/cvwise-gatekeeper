@@ -11,6 +11,7 @@ import {
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
 import { toast } from '@/hooks/use-toast';
 import BusinessManagerSelector from './BusinessManagerSelector';
+import { supabase } from '@/integrations/supabase/client';
 
 // Define colors by status
 const STATUS_COLORS: Record<string, string> = {
@@ -39,8 +40,9 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [showBusinessManagerSelector, setShowBusinessManagerSelector] = useState<boolean>(false);
   const [pendingStatus, setPendingStatus] = useState<string>('');
+  const [candidateInfo, setCandidateInfo] = useState<{name: string, position: string}>({ name: '', position: '' });
   
-  // Load current status
+  // Load current status and candidate info
   useEffect(() => {
     const loadCurrentStatus = async () => {
       if (!candidateId) {
@@ -70,7 +72,27 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
     };
     
     loadCurrentStatus();
+    loadCandidateInfo();
   }, [candidateId]);
+
+  const loadCandidateInfo = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('candidates')
+        .select('first_name, last_name, position')
+        .eq('id', candidateId)
+        .single();
+
+      if (data && !error) {
+        setCandidateInfo({
+          name: `${data.first_name} ${data.last_name}`,
+          position: data.position || 'Poste non spécifié'
+        });
+      }
+    } catch (error) {
+      console.error('Error loading candidate info:', error);
+    }
+  };
   
   // Change status
   const handleStatusChange = async (status: string) => {
@@ -183,6 +205,8 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         isOpen={showBusinessManagerSelector}
         onClose={handleBusinessManagerSelectorClose}
         candidateId={candidateId}
+        candidateName={candidateInfo.name}
+        candidatePosition={candidateInfo.position}
         statusType={pendingStatus as 'ec1' | 'ec2'}
         onBusinessManagerSelected={handleBusinessManagerSelected}
       />

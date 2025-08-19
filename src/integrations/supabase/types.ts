@@ -513,6 +513,57 @@ export type Database = {
         }
         Relationships: []
       }
+      recruiter_tasks: {
+        Row: {
+          business_manager: string | null
+          candidate_id: string | null
+          candidate_profile_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          interview_type: string | null
+          priority: string
+          scheduled_date: string
+          status: string
+          task_type: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_manager?: string | null
+          candidate_id?: string | null
+          candidate_profile_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          interview_type?: string | null
+          priority?: string
+          scheduled_date: string
+          status?: string
+          task_type: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_manager?: string | null
+          candidate_id?: string | null
+          candidate_profile_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          interview_type?: string | null
+          priority?: string
+          scheduled_date?: string
+          status?: string
+          task_type?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       resumes: {
         Row: {
           created_at: string | null
