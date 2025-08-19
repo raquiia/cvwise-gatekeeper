@@ -604,6 +604,18 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
                     </div>
 
                     <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {item.taskId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => handleExportTask(item)}
+                          title="Exporter vers calendrier"
+                        >
+                          <Download className="h-3 w-3" />
+                        </Button>
+                      )}
+                      
                       {item.candidateId && (
                         <Button
                           variant="ghost"
