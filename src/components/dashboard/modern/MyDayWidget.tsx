@@ -263,8 +263,16 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
 
   const handleExportTask = async (item: DayItem) => {
     if (!item.taskId) return;
-
-    const task = bmTasks.find(t => t.id === item.taskId);
+    
+    // Chercher la tâche dans toutes les sources possibles
+    let task = bmTasks.find(t => t.id === item.taskId);
+    if (!task) {
+      task = completedTasks.find(t => t.id === item.taskId);
+    }
+    if (!task) {
+      // Chercher aussi dans les tâches urgentes pour les tâches BM
+      task = urgentBMTasks.find(t => t.id === item.taskId);
+    }
     if (!task) return;
 
     // Enrichir la description avec le lien vers le profil candidat
