@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CalendarActionButton, useCalendarEvent } from "@/components/ui/calendar-action-button";
 import { 
   Calendar, 
   Clock, 
@@ -34,6 +35,7 @@ interface DayItem {
 export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
+  const { createInterviewEvent, createTaskEvent, createReminderEvent } = useCalendarEvent();
 
   // Génération des éléments de la journée basés sur les vraies données
   const generateDayItems = (): DayItem[] => {
@@ -242,7 +244,33 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
                 )}
               </div>
               
-              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+              <div className="flex items-center gap-2 shrink-0">
+                <CalendarActionButton
+                  event={
+                    item.type === 'interview' 
+                      ? createInterviewEvent(
+                          item.title.replace('Entretien ', ''),
+                          item.description.split(' - ')[0],
+                          item.time || '15:00',
+                          item.interviewType || 'video',
+                          item.location
+                        )
+                      : item.type === 'task'
+                      ? createTaskEvent(item.title, item.description, item.priority)
+                      : createReminderEvent(
+                          item.title,
+                          item.description,
+                          item.priority
+                        )
+                  }
+                  size="sm"
+                  variant="ghost"
+                  showIcon={false}
+                >
+                  📅
+                </CalendarActionButton>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
             </div>
           ))}
         </div>
