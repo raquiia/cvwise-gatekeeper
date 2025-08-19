@@ -50,7 +50,7 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [bmTasks, setBmTasks] = useState<RecruiterTask[]>([]);
   const [completedTasks, setCompletedTasks] = useState<RecruiterTask[]>([]);
-  const [showCompleted, setShowCompleted] = useState(true);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -203,8 +203,6 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
         candidateId: topCandidate.id
       });
     }
-
-    // Plus de données de démonstration - retourner la liste réelle
 
     return items.slice(0, 8);
   };
@@ -368,7 +366,7 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
   const urgentAlerts = pendingItems.filter(item => item.type === 'alert');
 
   return (
-    <Card className="h-full">
+    <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
@@ -413,7 +411,7 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-4">
+      <CardContent className="flex flex-col space-y-4 h-full min-h-0">
         {/* Résumé rapide */}
         <div className="grid grid-cols-3 gap-3 p-3 bg-muted/50 rounded-lg">
           <div className="text-center">
@@ -430,145 +428,153 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
           </div>
         </div>
 
-        {/* Liste des éléments à faire */}
-        <div className="space-y-2 max-h-60 overflow-y-auto">
+        {/* Liste des éléments à faire - Priorité absolue */}
+        <div className="space-y-2 flex-1 min-h-0">
           {pendingItems.length === 0 && completedItems.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
               <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">Aucune tâche programmée pour cette date</p>
             </div>
           )}
-          {pendingItems.map((item) => (
-            <div 
-              key={item.id}
-              className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors group"
-            >
-              <div className="flex-shrink-0 mt-0.5">
-                {getItemIcon(item.type, item.interviewType)}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-sm truncate">{item.title}</span>
-                  <Badge variant="outline" className="text-xs shrink-0">
-                    {item.time}
-                  </Badge>
-                  <Badge variant={getPriorityColor(item.priority)} className="text-xs shrink-0">
-                    {item.priority === 'high' ? 'Urgent' : item.priority === 'medium' ? 'Moyen' : 'Faible'}
-                  </Badge>
-                </div>
-                
-                <p className="text-xs text-muted-foreground line-clamp-2">
-                  {item.description}
-                </p>
-                
-                <div className="flex items-center gap-1 mt-1">
-                  <Badge variant={getStatusColor(item.status)} className="text-xs">
-                    {item.status}
-                  </Badge>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-1 shrink-0">
-                {item.taskId && (
-                  <>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleExportTask(item)}
-                      title="Exporter vers le calendrier"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    {item.candidateId && (
-                      <Button 
-                        variant="ghost" 
+          {pendingItems.length > 0 && (
+            <div className="space-y-2 overflow-y-auto">
+              {pendingItems.map((item) => (
+                <div 
+                  key={item.id}
+                  className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors group"
+                >
+                  <div className="flex-shrink-0 mt-0.5">
+                    {getItemIcon(item.type, item.interviewType)}
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-sm truncate">{item.title}</span>
+                      <Badge variant="outline" className="text-xs shrink-0">
+                        {item.time}
+                      </Badge>
+                      <Badge variant={getPriorityColor(item.priority)} className="text-xs shrink-0">
+                        {item.priority === 'high' ? 'Urgent' : item.priority === 'medium' ? 'Moyen' : 'Faible'}
+                      </Badge>
+                    </div>
+                    
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {item.description}
+                    </p>
+                    
+                    <div className="flex items-center gap-1 mt-1">
+                      <Badge variant={getStatusColor(item.status)} className="text-xs">
+                        {item.status}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {item.taskId && (
+                      <Button
+                        variant="ghost"
                         size="sm"
-                        onClick={() => handleTaskAction(item)}
-                        title="Voir le profil candidat"
+                        className="h-7 w-7 p-0"
+                        onClick={() => handleExportTask(item)}
+                        title="Exporter vers calendrier"
                       >
-                        <ExternalLink className="h-4 w-4" />
+                        <Download className="h-3 w-3" />
                       </Button>
                     )}
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleCompleteTask(item.taskId!)}
-                      title="Marquer comme programmé"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-                 {!item.taskId && (
-                   <Button variant="ghost" size="sm" disabled>
-                     <CheckCircle className="h-4 w-4" />
-                   </Button>
-                 )}
-              </div>
+                    
+                    {item.candidateId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => handleTaskAction(item)}
+                        title="Voir le profil"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </Button>
+                    )}
+                    
+                    {item.taskId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => handleCompleteTask(item.taskId!)}
+                        title="Marquer comme terminé"
+                      >
+                        <CheckCircle className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
 
-        {/* Section des tâches terminées */}
+        {/* Section tâches terminées - En bas et masquées par défaut */}
         {completedItems.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium text-muted-foreground">
-                Tâches terminées ({completedItems.length})
-              </h4>
+          <div className="border-t pt-3 mt-auto">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-medium text-muted-foreground">Terminé aujourd'hui</h3>
+                <Badge variant="outline" className="text-xs">
+                  {completedItems.length}
+                </Badge>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowCompleted(!showCompleted)}
-                title={showCompleted ? "Masquer les tâches terminées" : "Afficher les tâches terminées"}
+                className="h-6 px-2 text-xs"
               >
-                {showCompleted ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showCompleted ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                {showCompleted ? 'Masquer' : 'Voir'}
               </Button>
             </div>
             
             {showCompleted && (
-              <div className="space-y-2 max-h-40 overflow-y-auto">
+              <div className="space-y-1 max-h-32 overflow-y-auto">
                 {completedItems.map((item) => (
                   <div 
                     key={item.id}
-                    className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30 opacity-75"
+                    className="flex items-center gap-3 p-2 border rounded-md bg-muted/20 opacity-60 hover:opacity-80 transition-opacity group text-sm"
                   >
-                    <div className="flex-shrink-0 mt-0.5">
-                      {getItemIcon(item.type, item.interviewType)}
-                    </div>
+                    <CheckCircle className="h-3 w-3 text-green-600 flex-shrink-0" />
                     
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm truncate line-through">{item.title}</span>
-                        <Badge variant="outline" className="text-xs shrink-0">
-                          {item.time}
-                        </Badge>
-                        <Badge variant="default" className="text-xs shrink-0">
-                          Terminé
-                        </Badge>
-                      </div>
-                      
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {item.description}
-                      </p>
-                      
+                      <span className="text-sm text-muted-foreground line-through truncate">
+                        {item.title}
+                      </span>
                       {item.completedAt && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Terminé le {new Date(item.completedAt).toLocaleDateString('fr-FR')} à {new Date(item.completedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          ({new Date(item.completedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })})
+                        </span>
                       )}
                     </div>
-                    
-                    <div className="flex items-center gap-1 shrink-0">
-                      {item.taskId && (
-                        <Button 
-                          variant="ghost" 
+
+                    <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {item.candidateId && (
+                        <Button
+                          variant="ghost"
                           size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => handleTaskAction(item)}
+                          title="Voir le profil"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      )}
+                      
+                      {item.taskId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
                           onClick={() => handleReactivateTask(item.taskId!)}
                           title="Réactiver la tâche"
                         >
-                          <CheckCircle className="h-4 w-4" />
+                          <Clock className="h-3 w-3" />
                         </Button>
                       )}
                     </div>
