@@ -136,10 +136,10 @@ export const recruiterTasksService = {
         .from('recruiter_tasks')
         .select('*')
         .eq('user_id', userId)
-        .gte('scheduled_date', startOfDay)
-        .lte('scheduled_date', endOfDay)
         .eq('status', 'completed')
-        .order('updated_at', { ascending: false });
+        .gte('completed_at', startOfDay)
+        .lte('completed_at', endOfDay)
+        .order('completed_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching completed tasks for date:', error);

@@ -518,6 +518,7 @@ export type Database = {
           business_manager: string | null
           candidate_id: string | null
           candidate_profile_url: string | null
+          completed_at: string | null
           created_at: string
           description: string | null
           id: string
@@ -534,6 +535,7 @@ export type Database = {
           business_manager?: string | null
           candidate_id?: string | null
           candidate_profile_url?: string | null
+          completed_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -550,6 +552,7 @@ export type Database = {
           business_manager?: string | null
           candidate_id?: string | null
           candidate_profile_url?: string | null
+          completed_at?: string | null
           created_at?: string
           description?: string | null
           id?: string

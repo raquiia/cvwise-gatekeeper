@@ -50,7 +50,7 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [bmTasks, setBmTasks] = useState<RecruiterTask[]>([]);
   const [completedTasks, setCompletedTasks] = useState<RecruiterTask[]>([]);
-  const [showCompleted, setShowCompleted] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(true);
 
   useEffect(() => {
     if (user?.id) {
