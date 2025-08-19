@@ -55,15 +55,14 @@ export const RecruitmentPipeline: React.FC<RecruitmentPipelineProps> = ({
         return acc;
       }, {} as Record<string, number>);
 
-    // Mapping des statuts vers les étapes du pipeline
+    // Vraies étapes du processus de recrutement
     const totalCandidates = candidatesData.length;
-    const sourced = totalCandidates;
-    const qualified = (statusCounts.contact || 0) + (statusCounts.prequalification || 0) + 
-                     (statusCounts.ec1 || 0) + (statusCounts.ec2 || 0) + 
-                     (statusCounts.presentation_client || 0) + (statusCounts.en_mission || 0);
-    const interviewed = (statusCounts.ec1 || 0) + (statusCounts.ec2 || 0) + 
-                       (statusCounts.presentation_client || 0) + (statusCounts.en_mission || 0);
-    const finalized = (statusCounts.presentation_client || 0) + (statusCounts.en_mission || 0);
+    const initial = statusCounts.initial || 0;
+    const contacted = statusCounts.contact || 0;
+    const prequalified = statusCounts.prequalification || 0;
+    const ec1 = statusCounts.ec1 || 0;
+    const ec2 = statusCounts.ec2 || 0;
+    const presentation = statusCounts.presentation_client || 0;
     const hired = statusCounts.en_mission || 0;
 
     // Calculer les tendances basées sur l'activité récente
@@ -75,52 +74,66 @@ export const RecruitmentPipeline: React.FC<RecruitmentPipelineProps> = ({
       return { trend: 'stable', trendValue: 0 };
     };
 
-    const qualifiedRecent = (recentCounts.contact || 0) + (recentCounts.prequalification || 0) + 
-                           (recentCounts.ec1 || 0) + (recentCounts.ec2 || 0) + 
-                           (recentCounts.presentation_client || 0) + (recentCounts.en_mission || 0);
-
     const stages: PipelineStage[] = [
       {
         id: 'sourced',
         name: 'Sourcés',
-        count: sourced,
-        percentage: 100,
+        count: initial,
+        percentage: totalCandidates > 0 ? Math.round((initial / totalCandidates) * 100) : 0,
         icon: <Users className="h-5 w-5" />,
-        color: 'bg-blue-500',
-        ...calculateTrend(sourced, recentCounts.initial || 0)
+        color: 'bg-slate-500',
+        ...calculateTrend(initial, recentCounts.initial || 0)
       },
       {
-        id: 'qualified',
-        name: 'Qualifiés',
-        count: qualified,
-        percentage: sourced > 0 ? Math.round((qualified / sourced) * 100) : 0,
+        id: 'contacted',
+        name: 'Contactés',
+        count: contacted,
+        percentage: totalCandidates > 0 ? Math.round((contacted / totalCandidates) * 100) : 0,
+        icon: <Phone className="h-5 w-5" />,
+        color: 'bg-blue-500',
+        ...calculateTrend(contacted, recentCounts.contact || 0)
+      },
+      {
+        id: 'prequalified',
+        name: 'Préqualifiés',
+        count: prequalified,
+        percentage: totalCandidates > 0 ? Math.round((prequalified / totalCandidates) * 100) : 0,
         icon: <UserCheck className="h-5 w-5" />,
         color: 'bg-green-500',
-        ...calculateTrend(qualified, qualifiedRecent)
+        ...calculateTrend(prequalified, recentCounts.prequalification || 0)
       },
       {
-        id: 'interviewed',
-        name: 'Entretiens',
-        count: interviewed,
-        percentage: sourced > 0 ? Math.round((interviewed / sourced) * 100) : 0,
+        id: 'ec1',
+        name: 'EC1',
+        count: ec1,
+        percentage: totalCandidates > 0 ? Math.round((ec1 / totalCandidates) * 100) : 0,
         icon: <Phone className="h-5 w-5" />,
         color: 'bg-yellow-500',
-        ...calculateTrend(interviewed, (recentCounts.ec1 || 0) + (recentCounts.ec2 || 0) + (recentCounts.presentation_client || 0))
+        ...calculateTrend(ec1, recentCounts.ec1 || 0)
       },
       {
-        id: 'final',
-        name: 'Finalisés',
-        count: finalized,
-        percentage: sourced > 0 ? Math.round((finalized / sourced) * 100) : 0,
-        icon: <Briefcase className="h-5 w-5" />,
+        id: 'ec2',
+        name: 'EC2',
+        count: ec2,
+        percentage: totalCandidates > 0 ? Math.round((ec2 / totalCandidates) * 100) : 0,
+        icon: <Phone className="h-5 w-5" />,
         color: 'bg-orange-500',
-        ...calculateTrend(finalized, (recentCounts.presentation_client || 0) + (recentCounts.en_mission || 0))
+        ...calculateTrend(ec2, recentCounts.ec2 || 0)
+      },
+      {
+        id: 'presentation',
+        name: 'Présentation',
+        count: presentation,
+        percentage: totalCandidates > 0 ? Math.round((presentation / totalCandidates) * 100) : 0,
+        icon: <Briefcase className="h-5 w-5" />,
+        color: 'bg-purple-500',
+        ...calculateTrend(presentation, recentCounts.presentation_client || 0)
       },
       {
         id: 'hired',
-        name: 'Embauchés',
+        name: 'En mission',
         count: hired,
-        percentage: sourced > 0 ? Math.round((hired / sourced) * 100) : 0,
+        percentage: totalCandidates > 0 ? Math.round((hired / totalCandidates) * 100) : 0,
         icon: <CheckCircle className="h-5 w-5" />,
         color: 'bg-emerald-500',
         ...calculateTrend(hired, recentCounts.en_mission || 0)
