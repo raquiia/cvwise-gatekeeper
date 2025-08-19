@@ -102,6 +102,57 @@ export const recruiterTasksService = {
     }
   },
 
+  async getTasksForDate(userId: string, date: Date): Promise<RecruiterTask[]> {
+    try {
+      const startOfDay = new Date(date.setHours(0, 0, 0, 0)).toISOString();
+      const endOfDay = new Date(date.setHours(23, 59, 59, 999)).toISOString();
+
+      const { data, error } = await supabase
+        .from('recruiter_tasks')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('scheduled_date', startOfDay)
+        .lte('scheduled_date', endOfDay)
+        .order('scheduled_date', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching tasks for date:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getTasksForDate:', error);
+      return [];
+    }
+  },
+
+  async getCompletedTasksForDate(userId: string, date: Date): Promise<RecruiterTask[]> {
+    try {
+      const startOfDay = new Date(date.setHours(0, 0, 0, 0)).toISOString();
+      const endOfDay = new Date(date.setHours(23, 59, 59, 999)).toISOString();
+
+      const { data, error } = await supabase
+        .from('recruiter_tasks')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('scheduled_date', startOfDay)
+        .lte('scheduled_date', endOfDay)
+        .eq('status', 'completed')
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching completed tasks for date:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getCompletedTasksForDate:', error);
+      return [];
+    }
+  },
+
   async getUrgentAndTodayTasks(userId: string): Promise<RecruiterTask[]> {
     try {
       const [urgentBMTasks, todayTasks] = await Promise.all([

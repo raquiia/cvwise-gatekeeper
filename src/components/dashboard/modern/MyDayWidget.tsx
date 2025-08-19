@@ -13,7 +13,11 @@ import {
   Video,
   FileText,
   ExternalLink,
-  Download
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { recruiterTasksService, RecruiterTask } from '@/services/data/recruiterTasksService';
 import { candidateNotesService } from '@/services/data/candidateNotesService';
@@ -36,42 +40,63 @@ interface DayItem {
   status: string;
   candidateId?: string;
   taskId?: string;
+  completedAt?: string;
+  isCompleted?: boolean;
 }
 
 const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [bmTasks, setBmTasks] = useState<RecruiterTask[]>([]);
+  const [completedTasks, setCompletedTasks] = useState<RecruiterTask[]>([]);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
-      loadBMTasks();
+      loadTasksForDate(currentDate);
     }
-  }, [user?.id]);
+  }, [user?.id, currentDate]);
 
-  const loadBMTasks = async () => {
+  const loadTasksForDate = async (date: Date) => {
     if (!user?.id) return;
     
     try {
-      const tasks = await recruiterTasksService.getUrgentAndTodayTasks(user.id);
+      const [tasks, completed] = await Promise.all([
+        recruiterTasksService.getTasksForDate(user.id, new Date(date)),
+        recruiterTasksService.getCompletedTasksForDate(user.id, new Date(date))
+      ]);
       setBmTasks(tasks);
+      setCompletedTasks(completed);
     } catch (error) {
-      console.error('Error loading BM tasks:', error);
+      console.error('Error loading tasks for date:', error);
     }
+  };
+
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
+    setCurrentDate(newDate);
+  };
+
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
   };
 
   const generateDayItems = (candidates: any[] = []): DayItem[] => {
     const items: DayItem[] = [];
 
-    // Ajouter les tâches BM d'abord (priorité haute)
+    // Ajouter les tâches de la date sélectionnée
     bmTasks.forEach(task => {
       const scheduledDate = new Date(task.scheduled_date);
-      const today = new Date();
-      const isToday = scheduledDate.toDateString() === today.toDateString();
+      const selectedDate = new Date(currentDate);
+      const isSameDay = scheduledDate.toDateString() === selectedDate.toDateString();
       const isBMTask = task.task_type === 'bm_interview';
       
       // Déterminer le statut et la priorité
-      let status = task.status === 'pending' ? 'À programmer' : task.status;
+      let status = task.status === 'pending' ? 'À programmer' : 
+                  task.status === 'completed' ? 'Terminé' : task.status;
       let priority: 'low' | 'medium' | 'high' = task.priority as 'low' | 'medium' | 'high';
       
       // Si c'est une tâche BM urgente (à programmer), la marquer comme urgente
@@ -85,7 +110,7 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
         type: isBMTask ? 'task' : 'interview',
         interviewType: task.interview_type === 'ec1' ? 'ec1' : task.interview_type === 'ec2' ? 'ec2' : 'phone',
         title: task.title,
-        time: isToday ? 
+        time: isSameDay ? 
           scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : 
           scheduledDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
         description: isBMTask ? 
@@ -94,7 +119,8 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
         priority,
         status,
         candidateId: task.candidate_id || undefined,
-        taskId: task.id
+        taskId: task.id,
+        isCompleted: task.status === 'completed'
       });
     });
 
@@ -268,10 +294,41 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
   const handleCompleteTask = async (taskId: string) => {
     try {
       await recruiterTasksService.updateTaskStatus(taskId, 'completed');
-      loadBMTasks(); // Recharger les tâches
+      loadTasksForDate(currentDate); // Recharger les tâches pour la date actuelle
     } catch (error) {
       console.error('Error completing task:', error);
     }
+  };
+
+  const handleReactivateTask = async (taskId: string) => {
+    try {
+      await recruiterTasksService.updateTaskStatus(taskId, 'pending');
+      loadTasksForDate(currentDate); // Recharger les tâches pour la date actuelle
+    } catch (error) {
+      console.error('Error reactivating task:', error);
+    }
+  };
+
+  const generateCompletedItems = (): DayItem[] => {
+    return completedTasks.map(task => {
+      const scheduledDate = new Date(task.scheduled_date);
+      const isBMTask = task.task_type === 'bm_interview';
+      
+      return {
+        id: `completed-${task.id}`,
+        type: isBMTask ? 'task' : 'interview',
+        interviewType: task.interview_type === 'ec1' ? 'ec1' : task.interview_type === 'ec2' ? 'ec2' : 'phone',
+        title: task.title,
+        time: scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        description: task.description || '',
+        priority: task.priority as 'low' | 'medium' | 'high',
+        status: 'Terminé',
+        candidateId: task.candidate_id || undefined,
+        taskId: task.id,
+        completedAt: task.updated_at,
+        isCompleted: true
+      };
+    });
   };
 
   const getItemIcon = (type: string, interviewType?: string) => {
@@ -304,9 +361,11 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
   };
 
   const dayItems = generateDayItems(candidatesData || []);
-  const todayInterviews = dayItems.filter(item => item.type === 'interview');
-  const urgentTasks = dayItems.filter(item => item.type === 'task');
-  const urgentAlerts = dayItems.filter(item => item.type === 'alert');
+  const completedItems = generateCompletedItems();
+  const pendingItems = dayItems.filter(item => !item.isCompleted);
+  const todayInterviews = pendingItems.filter(item => item.type === 'interview');
+  const urgentTasks = pendingItems.filter(item => item.type === 'task');
+  const urgentAlerts = pendingItems.filter(item => item.type === 'alert');
 
   return (
     <Card className="h-full">
@@ -314,15 +373,43 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-primary" />
-            Ma journée
+            {isToday(currentDate) ? 'Ma journée' : 'Planning'}
           </CardTitle>
-          <Badge variant="outline" className="text-xs">
-            {new Date().toLocaleDateString('fr-FR', { 
-              weekday: 'long', 
-              day: 'numeric', 
-              month: 'long' 
-            })}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigateDate('prev')}
+              title="Jour précédent"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Badge variant="outline" className="text-xs whitespace-nowrap">
+              {currentDate.toLocaleDateString('fr-FR', { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long' 
+              })}
+            </Badge>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigateDate('next')}
+              title="Jour suivant"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            {!isToday(currentDate) && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setCurrentDate(new Date())}
+                title="Retour à aujourd'hui"
+              >
+                Aujourd'hui
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       
@@ -343,9 +430,15 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
           </div>
         </div>
 
-        {/* Liste des éléments prioritaires */}
-        <div className="space-y-2 max-h-80 overflow-y-auto">
-          {dayItems.map((item) => (
+        {/* Liste des éléments à faire */}
+        <div className="space-y-2 max-h-60 overflow-y-auto">
+          {pendingItems.length === 0 && completedItems.length === 0 && (
+            <div className="text-center text-muted-foreground py-8">
+              <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Aucune tâche programmée pour cette date</p>
+            </div>
+          )}
+          {pendingItems.map((item) => (
             <div 
               key={item.id}
               className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors group"
@@ -407,15 +500,84 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
                     </Button>
                   </>
                 )}
-                {!item.taskId && (
-                  <Button variant="ghost" size="sm">
-                    <CheckCircle className="h-4 w-4" />
-                  </Button>
-                )}
+                 {!item.taskId && (
+                   <Button variant="ghost" size="sm" disabled>
+                     <CheckCircle className="h-4 w-4" />
+                   </Button>
+                 )}
               </div>
             </div>
           ))}
         </div>
+
+        {/* Section des tâches terminées */}
+        {completedItems.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Tâches terminées ({completedItems.length})
+              </h4>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCompleted(!showCompleted)}
+                title={showCompleted ? "Masquer les tâches terminées" : "Afficher les tâches terminées"}
+              >
+                {showCompleted ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            
+            {showCompleted && (
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {completedItems.map((item) => (
+                  <div 
+                    key={item.id}
+                    className="flex items-start gap-3 p-3 border rounded-lg bg-muted/30 opacity-75"
+                  >
+                    <div className="flex-shrink-0 mt-0.5">
+                      {getItemIcon(item.type, item.interviewType)}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-sm truncate line-through">{item.title}</span>
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          {item.time}
+                        </Badge>
+                        <Badge variant="default" className="text-xs shrink-0">
+                          Terminé
+                        </Badge>
+                      </div>
+                      
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {item.description}
+                      </p>
+                      
+                      {item.completedAt && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Terminé le {new Date(item.completedAt).toLocaleDateString('fr-FR')} à {new Date(item.completedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-1 shrink-0">
+                      {item.taskId && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleReactivateTask(item.taskId!)}
+                          title="Réactiver la tâche"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Actions rapides */}
         <div className="flex gap-2 pt-2 border-t">
