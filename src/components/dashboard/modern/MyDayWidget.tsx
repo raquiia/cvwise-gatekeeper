@@ -52,6 +52,7 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
   const [urgentBMTasks, setUrgentBMTasks] = useState<RecruiterTask[]>([]);
   const [completedTasks, setCompletedTasks] = useState<RecruiterTask[]>([]);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [hiddenGeneratedTasks, setHiddenGeneratedTasks] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (user?.id) {
@@ -181,35 +182,38 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Entretiens programmés
+    // Entretiens programmés (seulement si pas masqués)
     const interviewCandidates = candidates.filter(candidate => {
       const status = candidate.detailed_status || 'initial';
       return ['ec1', 'ec2', 'presentation_client'].includes(status);
     }).slice(0, 2);
 
     interviewCandidates.forEach((candidate, index) => {
-      const times = ['09:00', '14:30'];
-      items.push({
-        id: `interview-${candidate.id}`,
-        type: 'interview',
-        interviewType: 'ec1',
-        title: `Entretien ${candidate.first_name} ${candidate.last_name}`,
-        time: times[index] || '15:00',
-        description: `${candidate.position || 'Poste non spécifié'}`,
-        priority: 'medium',
-        status: 'Programmé',
-        candidateId: candidate.id
-      });
+      const itemId = `interview-${candidate.id}`;
+      if (!hiddenGeneratedTasks.has(itemId)) {
+        const times = ['09:00', '14:30'];
+        items.push({
+          id: itemId,
+          type: 'interview',
+          interviewType: 'ec1',
+          title: `Entretien ${candidate.first_name} ${candidate.last_name}`,
+          time: times[index] || '15:00',
+          description: `${candidate.position || 'Poste non spécifié'}`,
+          priority: 'medium',
+          status: 'Programmé',
+          candidateId: candidate.id
+        });
+      }
     });
 
-    // Tâches de suivi
+    // Tâches de suivi (seulement si pas masquées)
     const candidatesNeedingFollowUp = candidates.filter(candidate => {
       const updatedAt = new Date(candidate.updated_at);
       const status = candidate.detailed_status || 'initial';
       return status === 'contact' && updatedAt < sevenDaysAgo;
     });
 
-    if (candidatesNeedingFollowUp.length > 0) {
+    if (candidatesNeedingFollowUp.length > 0 && !hiddenGeneratedTasks.has('task-followup')) {
       items.push({
         id: 'task-followup',
         type: 'task',
@@ -221,13 +225,13 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
       });
     }
 
-    // Candidats à fort potentiel
+    // Candidats à fort potentiel (seulement si pas masqués)
     const candidatesWithHighScore = candidates.filter(candidate => {
       const status = candidate.detailed_status || 'initial';
       return (candidate.ai_score || 0) > 80 && status === 'initial';
     });
 
-    if (candidatesWithHighScore.length > 0) {
+    if (candidatesWithHighScore.length > 0 && !hiddenGeneratedTasks.has('task-highscore')) {
       items.push({
         id: 'task-highscore',
         type: 'task',
@@ -575,7 +579,7 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
                       </Button>
                     )}
                     
-                    {item.taskId && (
+                     {item.taskId ? (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -589,7 +593,19 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
                           <CheckCircle className="h-3 w-3" />
                         )}
                       </Button>
-                    )}
+                    ) : !item.isCompleted ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => {
+                          setHiddenGeneratedTasks(prev => new Set(prev).add(item.id));
+                        }}
+                        title="Marquer comme terminé"
+                      >
+                        <CheckCircle className="h-3 w-3" />
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
               ))}
