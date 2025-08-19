@@ -210,8 +210,8 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
     const event = ICSGeneratorService.createTaskEvent(
       task.title,
       task.description || '',
-      '09:00',
-      task.priority === 'high' ? 'high' : 'normal'
+      task.priority === 'high' ? 'high' : 'medium',
+      new Date(task.scheduled_date).getHours()
     );
 
     ICSGeneratorService.downloadICS(event, `entretien-${task.interview_type}-${new Date().getTime()}.ics`);
