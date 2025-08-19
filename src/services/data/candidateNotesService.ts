@@ -11,6 +11,7 @@ export interface CandidateNote {
   content: string;
   note_type: NoteType;
   enhanced_content?: string;
+  business_manager?: string;
   created_at?: string;
   updated_at?: string;
 }

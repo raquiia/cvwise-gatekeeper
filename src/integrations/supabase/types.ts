@@ -91,6 +91,7 @@ export type Database = {
       }
       candidate_notes: {
         Row: {
+          business_manager: string | null
           candidate_id: string
           content: string
           created_at: string
@@ -101,6 +102,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          business_manager?: string | null
           candidate_id: string
           content: string
           created_at?: string
@@ -111,6 +113,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          business_manager?: string | null
           candidate_id?: string
           content?: string
           created_at?: string

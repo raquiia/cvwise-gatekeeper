@@ -359,13 +359,18 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
                     className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md p-4 shadow-sm"
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 flex-wrap">
                         <span className="text-xs text-muted-foreground">
                           {note.created_at && format(new Date(note.created_at), 'PPP à HH:mm', { locale: fr })}
                         </span>
                         <Badge className={getNoteTypeBadgeColor(note.note_type)}>
                           {getNoteTypeLabel(note.note_type)}
                         </Badge>
+                        {note.business_manager && (
+                          <Badge variant="outline" className="text-xs">
+                            BM: {note.business_manager}
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex space-x-1">
                         {editingNoteId !== note.id && (

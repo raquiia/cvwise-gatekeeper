@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { CANDIDATE_STATUSES, CANDIDATE_STATUS_LABELS, candidateStatusService } from '@/services/data/candidateStatusService';
 import { toast } from '@/hooks/use-toast';
+import BusinessManagerSelector from './BusinessManagerSelector';
 
 // Define colors by status
 const STATUS_COLORS: Record<string, string> = {
@@ -36,6 +37,8 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   const [currentStatus, setCurrentStatus] = useState<string>(CANDIDATE_STATUSES.INITIAL);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [showBusinessManagerSelector, setShowBusinessManagerSelector] = useState<boolean>(false);
+  const [pendingStatus, setPendingStatus] = useState<string>('');
   
   // Load current status
   useEffect(() => {
@@ -74,6 +77,19 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
     if (status === currentStatus) return; // Do nothing if status is already selected
     
     console.log("Changing status to:", status);
+    
+    // Si c'est EC1 ou EC2, ouvrir le sélecteur de Business Manager
+    if (status === 'ec1' || status === 'ec2') {
+      setPendingStatus(status);
+      setShowBusinessManagerSelector(true);
+      return;
+    }
+    
+    // Sinon, procéder normalement
+    await updateCandidateStatus(status);
+  };
+  
+  const updateCandidateStatus = async (status: string) => {
     setIsUpdating(true);
     
     try {
@@ -105,6 +121,18 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
     }
   };
   
+  const handleBusinessManagerSelected = async (businessManager: string) => {
+    console.log("Business Manager selected:", businessManager, "for status:", pendingStatus);
+    // Procéder avec le changement de statut
+    await updateCandidateStatus(pendingStatus);
+    setPendingStatus('');
+  };
+  
+  const handleBusinessManagerSelectorClose = () => {
+    setShowBusinessManagerSelector(false);
+    setPendingStatus('');
+  };
+  
   // Determine button color based on current status
   const buttonColorClass = STATUS_COLORS[currentStatus] || 'bg-gray-500 hover:bg-gray-600';
   
@@ -118,37 +146,47 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   }
   
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild disabled={isUpdating}>
-        <Button 
-          className={`w-full md:w-auto ${buttonColorClass} text-white`}
-        >
-          {isUpdating ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Mise à jour...
-            </>
-          ) : (
-            <>
-              Statut: {CANDIDATE_STATUS_LABELS[currentStatus] || 'Inconnu'}
-              <ChevronDown className="ml-2 h-4 w-4" />
-            </>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        {Object.entries(CANDIDATE_STATUS_LABELS).map(([value, label]) => (
-          <DropdownMenuItem
-            key={value}
-            onClick={() => handleStatusChange(value)}
-            className="flex items-center justify-between cursor-pointer"
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild disabled={isUpdating}>
+          <Button 
+            className={`w-full md:w-auto ${buttonColorClass} text-white`}
           >
-            {label}
-            {value === currentStatus && <Check className="h-4 w-4" />}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            {isUpdating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Mise à jour...
+              </>
+            ) : (
+              <>
+                Statut: {CANDIDATE_STATUS_LABELS[currentStatus] || 'Inconnu'}
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          {Object.entries(CANDIDATE_STATUS_LABELS).map(([value, label]) => (
+            <DropdownMenuItem
+              key={value}
+              onClick={() => handleStatusChange(value)}
+              className="flex items-center justify-between cursor-pointer"
+            >
+              {label}
+              {value === currentStatus && <Check className="h-4 w-4" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      
+      <BusinessManagerSelector
+        isOpen={showBusinessManagerSelector}
+        onClose={handleBusinessManagerSelectorClose}
+        candidateId={candidateId}
+        statusType={pendingStatus as 'ec1' | 'ec2'}
+        onBusinessManagerSelected={handleBusinessManagerSelected}
+      />
+    </>
   );
 };
 
