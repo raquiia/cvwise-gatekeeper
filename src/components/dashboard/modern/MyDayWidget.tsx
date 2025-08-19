@@ -49,12 +49,14 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [bmTasks, setBmTasks] = useState<RecruiterTask[]>([]);
+  const [urgentBMTasks, setUrgentBMTasks] = useState<RecruiterTask[]>([]);
   const [completedTasks, setCompletedTasks] = useState<RecruiterTask[]>([]);
   const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
       loadTasksForDate(currentDate);
+      loadUrgentBMTasks();
     }
   }, [user?.id, currentDate]);
 
@@ -73,6 +75,17 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
     }
   };
 
+  const loadUrgentBMTasks = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const urgentTasks = await recruiterTasksService.getPendingBMTasks(user.id);
+      setUrgentBMTasks(urgentTasks);
+    } catch (error) {
+      console.error('Error loading urgent BM tasks:', error);
+    }
+  };
+
   const navigateDate = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
@@ -87,42 +100,65 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
   const generateDayItems = (candidates: any[] = []): DayItem[] => {
     const items: DayItem[] = [];
 
-    // Ajouter les tâches de la date sélectionnée
-    bmTasks.forEach(task => {
+    // 1. PRIORITÉ ABSOLUE : Tâches BM urgentes (toutes les tâches bm_interview pending)
+    urgentBMTasks.forEach(task => {
       const scheduledDate = new Date(task.scheduled_date);
-      const selectedDate = new Date(currentDate);
-      const isSameDay = scheduledDate.toDateString() === selectedDate.toDateString();
-      const isBMTask = task.task_type === 'bm_interview';
+      const isToday = scheduledDate.toDateString() === new Date().toDateString();
+      const isFuture = scheduledDate > new Date();
       
-      // Déterminer le statut et la priorité
-      let status = task.status === 'pending' ? 'À programmer' : 
-                  task.status === 'completed' ? 'Terminé' : task.status;
-      let priority: 'low' | 'medium' | 'high' = task.priority as 'low' | 'medium' | 'high';
+      let status = 'URGENT - À programmer';
+      let timeDisplay = 'À programmer';
+      let description = task.description || '';
       
-      // Si c'est une tâche BM urgente (à programmer), la marquer comme urgente
-      if (isBMTask && task.status === 'pending') {
-        status = 'URGENT - À programmer';
-        priority = 'high';
+      if (isFuture) {
+        timeDisplay = `Programmé ${scheduledDate.toLocaleDateString('fr-FR')}`;
+        description = `${description}\n📅 Entretien prévu le ${scheduledDate.toLocaleDateString('fr-FR')} à ${scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+      } else if (isToday) {
+        timeDisplay = scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        status = 'Aujourd\'hui';
       }
 
       items.push({
-        id: `bm-${task.id}`,
-        type: isBMTask ? 'task' : 'interview',
+        id: `urgent-bm-${task.id}`,
+        type: 'task',
         interviewType: task.interview_type === 'ec1' ? 'ec1' : task.interview_type === 'ec2' ? 'ec2' : 'phone',
-        title: task.title,
-        time: isSameDay ? 
-          scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : 
-          scheduledDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
-        description: isBMTask ? 
-          `${task.description || ''}\nEntretien prévu le ${scheduledDate.toLocaleDateString('fr-FR')} à ${scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` :
-          task.description || '',
-        priority,
+        title: `🔴 ${task.title}`,
+        time: timeDisplay,
+        description,
+        priority: 'high',
         status,
         candidateId: task.candidate_id || undefined,
         taskId: task.id,
-        isCompleted: task.status === 'completed'
+        isCompleted: false
       });
     });
+
+    // 2. Tâches du jour sélectionné (exclure les tâches BM urgentes déjà affichées)
+    const urgentBMTaskIds = urgentBMTasks.map(t => t.id);
+    bmTasks
+      .filter(task => !urgentBMTaskIds.includes(task.id))
+      .forEach(task => {
+        const scheduledDate = new Date(task.scheduled_date);
+        const selectedDate = new Date(currentDate);
+        const isSameDay = scheduledDate.toDateString() === selectedDate.toDateString();
+        const isBMTask = task.task_type === 'bm_interview';
+        
+        items.push({
+          id: `bm-${task.id}`,
+          type: isBMTask ? 'task' : 'interview',
+          interviewType: task.interview_type === 'ec1' ? 'ec1' : task.interview_type === 'ec2' ? 'ec2' : 'phone',
+          title: task.title,
+          time: isSameDay ? 
+            scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : 
+            scheduledDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
+          description: task.description || '',
+          priority: task.priority as 'low' | 'medium' | 'high',
+          status: task.status === 'pending' ? 'À faire' : task.status,
+          candidateId: task.candidate_id || undefined,
+          taskId: task.id,
+          isCompleted: task.status === 'completed'
+        });
+      });
 
     const now = new Date();
     const sevenDaysAgo = new Date();
@@ -292,7 +328,8 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
   const handleCompleteTask = async (taskId: string) => {
     try {
       await recruiterTasksService.updateTaskStatus(taskId, 'completed');
-      loadTasksForDate(currentDate); // Recharger les tâches pour la date actuelle
+      loadTasksForDate(currentDate);
+      loadUrgentBMTasks(); // Recharger aussi les tâches urgentes
     } catch (error) {
       console.error('Error completing task:', error);
     }
@@ -301,7 +338,8 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
   const handleReactivateTask = async (taskId: string) => {
     try {
       await recruiterTasksService.updateTaskStatus(taskId, 'pending');
-      loadTasksForDate(currentDate); // Recharger les tâches pour la date actuelle
+      loadTasksForDate(currentDate);
+      loadUrgentBMTasks(); // Recharger aussi les tâches urgentes
     } catch (error) {
       console.error('Error reactivating task:', error);
     }
