@@ -178,39 +178,7 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
       });
     }
 
-    // Données de démonstration si pas de données réelles
-    if (items.length === 0) {
-      return [
-        {
-          id: 'demo-interview',
-          type: 'interview',
-          interviewType: 'ec1',
-          title: 'Entretien Marie Dubois',
-          time: '14:30',
-          description: 'Développeur Frontend - Premier entretien',
-          priority: 'medium',
-          status: 'Programmé'
-        },
-        {
-          id: 'demo-task',
-          type: 'task',
-          title: 'Préparer les entretiens de demain',
-          time: '16:00',
-          description: 'Revoir les CV et préparer les questions techniques',
-          priority: 'high',
-          status: 'À faire'
-        },
-        {
-          id: 'demo-alert',
-          type: 'alert',
-          title: 'Nouveau candidat prometteur',
-          time: 'Maintenant',
-          description: 'Score IA 92% - Jean Martin (Développeur Backend)',
-          priority: 'high',
-          status: 'Urgent'
-        }
-      ];
-    }
+    // Plus de données de démonstration - retourner la liste réelle
 
     return items.slice(0, 8);
   };
