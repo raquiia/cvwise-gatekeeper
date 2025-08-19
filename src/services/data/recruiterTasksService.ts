@@ -153,6 +153,34 @@ export const recruiterTasksService = {
     }
   },
 
+  async getCompletedBMTasksForToday(userId: string): Promise<RecruiterTask[]> {
+    try {
+      const today = new Date();
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
+      const endOfDay = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+
+      const { data, error } = await supabase
+        .from('recruiter_tasks')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('task_type', 'bm_interview')
+        .eq('status', 'completed')
+        .gte('updated_at', startOfDay)
+        .lte('updated_at', endOfDay)
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching completed BM tasks for today:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getCompletedBMTasksForToday:', error);
+      return [];
+    }
+  },
+
   async getUrgentAndTodayTasks(userId: string): Promise<RecruiterTask[]> {
     try {
       const [urgentBMTasks, todayTasks] = await Promise.all([

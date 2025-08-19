@@ -64,12 +64,24 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
     if (!user?.id) return;
     
     try {
-      const [tasks, completed] = await Promise.all([
+      const [tasks, completed, completedBMTasks] = await Promise.all([
         recruiterTasksService.getTasksForDate(user.id, new Date(date)),
-        recruiterTasksService.getCompletedTasksForDate(user.id, new Date(date))
+        recruiterTasksService.getCompletedTasksForDate(user.id, new Date(date)),
+        isToday(date) ? recruiterTasksService.getCompletedBMTasksForToday(user.id) : Promise.resolve([])
       ]);
       setBmTasks(tasks);
-      setCompletedTasks(completed);
+      
+      // Combiner les tâches complétées de la date ET les tâches BM complétées aujourd'hui
+      const allCompletedTasks = [...completed];
+      completedBMTasks.forEach(bmTask => {
+        if (!completed.find(task => task.id === bmTask.id)) {
+          allCompletedTasks.push(bmTask);
+        }
+      });
+      
+      setCompletedTasks(allCompletedTasks.sort((a, b) => 
+        new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
+      ));
     } catch (error) {
       console.error('Error loading tasks for date:', error);
     }
