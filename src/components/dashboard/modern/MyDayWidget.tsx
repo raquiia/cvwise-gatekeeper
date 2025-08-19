@@ -37,6 +37,12 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
   const todayStr = today.toISOString().split('T')[0];
   const { createInterviewEvent, createTaskEvent, createReminderEvent } = useCalendarEvent();
 
+  // Fonction utilitaire pour normaliser les statuts
+  const normalizeStatus = (status: string | undefined): string => {
+    if (!status || status === 'undefined') return 'initial';
+    return status;
+  };
+
   // Génération des éléments de la journée basés sur les vraies données
   const generateDayItems = (): DayItem[] => {
     const items: DayItem[] = [];
@@ -45,22 +51,24 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
     // Entretiens du jour - candidats en phase d'entretien
-    const interviewCandidates = candidatesData.filter(candidate => 
-      ['ec1', 'ec2', 'presentation_client'].includes(candidate.detailed_status)
-    ).slice(0, 3);
+    const interviewCandidates = candidatesData.filter(candidate => {
+      const status = normalizeStatus(candidate.detailed_status);
+      return ['ec1', 'ec2', 'presentation_client'].includes(status);
+    }).slice(0, 3);
 
     const interviews: DayItem[] = interviewCandidates.map((candidate, index) => {
       const times = ['09:00', '14:30', '16:00'];
       const types = ['video', 'onsite', 'phone'];
       const locations = ['Google Meet', 'Salle de réunion A', 'Appel téléphonique'];
+      const status = normalizeStatus(candidate.detailed_status);
       
       return {
         id: `int-${candidate.id}`,
         type: 'interview',
         title: `Entretien ${candidate.first_name} ${candidate.last_name}`,
         time: times[index] || '15:00',
-        description: `${candidate.position} - ${candidate.detailed_status === 'ec1' ? 'Premier entretien' : candidate.detailed_status === 'ec2' ? 'Entretien technique' : 'Présentation client'}`,
-        priority: candidate.detailed_status === 'presentation_client' ? 'high' : 'medium',
+        description: `${candidate.position || 'Poste non spécifié'} - ${status === 'ec1' ? 'Premier entretien' : status === 'ec2' ? 'Entretien technique' : 'Présentation client'}`,
+        priority: status === 'presentation_client' ? 'high' : 'medium',
         status: 'pending',
         candidateId: candidate.id,
         interviewType: types[index % 3] as 'phone' | 'video' | 'onsite',
@@ -71,12 +79,14 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
     // Tâches prioritaires - candidats nécessitant un suivi
     const candidatesNeedingFollowUp = candidatesData.filter(candidate => {
       const updatedAt = new Date(candidate.updated_at);
-      return candidate.detailed_status === 'contact' && updatedAt < sevenDaysAgo;
+      const status = normalizeStatus(candidate.detailed_status);
+      return status === 'contact' && updatedAt < sevenDaysAgo;
     });
 
-    const candidatesWithHighScore = candidatesData.filter(candidate => 
-      candidate.ai_score > 80 && candidate.detailed_status === 'initial'
-    );
+    const candidatesWithHighScore = candidatesData.filter(candidate => {
+      const status = normalizeStatus(candidate.detailed_status);
+      return (candidate.ai_score || 0) > 80 && status === 'initial';
+    });
 
     const tasks: DayItem[] = [];
     
@@ -106,15 +116,15 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
     const alerts: DayItem[] = [];
     
     const topCandidate = candidatesData
-      .filter(c => c.ai_score && c.detailed_status === 'initial')
+      .filter(c => (c.ai_score || 0) > 0 && normalizeStatus(c.detailed_status) === 'initial')
       .sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0))[0];
 
-    if (topCandidate && topCandidate.ai_score > 85) {
+    if (topCandidate && (topCandidate.ai_score || 0) > 85) {
       alerts.push({
         id: `alert-top-${topCandidate.id}`,
         type: 'alert',
         title: 'Candidat très prometteur',
-        description: `Score IA ${topCandidate.ai_score}% - ${topCandidate.first_name} ${topCandidate.last_name} (${topCandidate.position})`,
+        description: `Score IA ${topCandidate.ai_score}% - ${topCandidate.first_name} ${topCandidate.last_name} (${topCandidate.position || 'Poste non spécifié'})`,
         priority: 'high',
         status: 'urgent',
         candidateId: topCandidate.id
@@ -130,6 +140,39 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
         priority: 'medium',
         status: 'urgent'
       });
+    }
+
+    // Ajout d'items de démonstration si aucune donnée réelle
+    if (interviews.length === 0 && tasks.length === 0 && alerts.length === 0) {
+      return [
+        {
+          id: 'demo-interview',
+          type: 'interview',
+          title: 'Entretien Marie Dubois',
+          time: '14:30',
+          description: 'Développeur Frontend - Premier entretien',
+          priority: 'medium',
+          status: 'pending',
+          interviewType: 'video',
+          location: 'Google Meet'
+        },
+        {
+          id: 'demo-task',
+          type: 'task',
+          title: 'Préparer les entretiens de demain',
+          description: 'Revoir les CV et préparer les questions techniques',
+          priority: 'high',
+          status: 'pending'
+        },
+        {
+          id: 'demo-alert',
+          type: 'alert',
+          title: 'Nouveau candidat prometteur',
+          description: 'Score IA 92% - Jean Martin (Développeur Backend)',
+          priority: 'high',
+          status: 'urgent'
+        }
+      ];
     }
 
     return [...interviews, ...tasks, ...alerts].sort((a, b) => {
@@ -277,14 +320,32 @@ export const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData = [] }) => {
 
         {/* Actions rapides */}
         <div className="flex gap-2 pt-2 border-t">
-          <Button variant="outline" size="sm" className="flex-1">
+          <CalendarActionButton
+            event={createTaskEvent(
+              'Planning de la journée',
+              'Organiser et planifier les tâches prioritaires',
+              'medium'
+            )}
+            variant="outline"
+            size="sm"
+            className="flex-1"
+          >
             <Calendar className="h-4 w-4 mr-1" />
             Planning
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1">
+          </CalendarActionButton>
+          <CalendarActionButton
+            event={createReminderEvent(
+              'Contacter nouveaux candidats',
+              'Rappel pour contacter les nouveaux candidats reçus',
+              'medium'
+            )}
+            variant="outline"
+            size="sm"
+            className="flex-1"
+          >
             <Users className="h-4 w-4 mr-1" />
             Candidats
-          </Button>
+          </CalendarActionButton>
         </div>
       </CardContent>
     </Card>
