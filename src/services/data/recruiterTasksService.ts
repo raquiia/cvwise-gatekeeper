@@ -79,6 +79,53 @@ export const recruiterTasksService = {
     }
   },
 
+  async getPendingBMTasks(userId: string): Promise<RecruiterTask[]> {
+    try {
+      const { data, error } = await supabase
+        .from('recruiter_tasks')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('task_type', 'bm_interview')
+        .eq('status', 'pending')
+        .order('priority', { ascending: false })
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching pending BM tasks:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getPendingBMTasks:', error);
+      return [];
+    }
+  },
+
+  async getUrgentAndTodayTasks(userId: string): Promise<RecruiterTask[]> {
+    try {
+      const [urgentBMTasks, todayTasks] = await Promise.all([
+        this.getPendingBMTasks(userId),
+        this.getTodayTasks(userId)
+      ]);
+
+      // Combiner les tâches en évitant les doublons
+      const allTasks = [...urgentBMTasks];
+      
+      // Ajouter les tâches du jour qui ne sont pas déjà dans les tâches BM urgentes
+      todayTasks.forEach(task => {
+        if (!urgentBMTasks.find(urgent => urgent.id === task.id)) {
+          allTasks.push(task);
+        }
+      });
+
+      return allTasks;
+    } catch (error) {
+      console.error('Error in getUrgentAndTodayTasks:', error);
+      return [];
+    }
+  },
+
   async createTask(userId: string, taskData: CreateRecruiterTaskData): Promise<RecruiterTask | null> {
     try {
       const { data, error } = await supabase

@@ -52,7 +52,7 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
     if (!user?.id) return;
     
     try {
-      const tasks = await recruiterTasksService.getTodayTasks(user.id);
+      const tasks = await recruiterTasksService.getUrgentAndTodayTasks(user.id);
       setBmTasks(tasks);
     } catch (error) {
       console.error('Error loading BM tasks:', error);
@@ -64,15 +64,34 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
 
     // Ajouter les tâches BM d'abord (priorité haute)
     bmTasks.forEach(task => {
+      const scheduledDate = new Date(task.scheduled_date);
+      const today = new Date();
+      const isToday = scheduledDate.toDateString() === today.toDateString();
+      const isBMTask = task.task_type === 'bm_interview';
+      
+      // Déterminer le statut et la priorité
+      let status = task.status === 'pending' ? 'À programmer' : task.status;
+      let priority: 'low' | 'medium' | 'high' = task.priority as 'low' | 'medium' | 'high';
+      
+      // Si c'est une tâche BM urgente (à programmer), la marquer comme urgente
+      if (isBMTask && task.status === 'pending') {
+        status = 'URGENT - À programmer';
+        priority = 'high';
+      }
+
       items.push({
         id: `bm-${task.id}`,
-        type: 'interview',
+        type: isBMTask ? 'task' : 'interview',
         interviewType: task.interview_type === 'ec1' ? 'ec1' : task.interview_type === 'ec2' ? 'ec2' : 'phone',
         title: task.title,
-        time: new Date(task.scheduled_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-        description: task.description || '',
-        priority: 'high',
-        status: 'À programmer',
+        time: isToday ? 
+          scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : 
+          scheduledDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
+        description: isBMTask ? 
+          `${task.description || ''}\nEntretien prévu le ${scheduledDate.toLocaleDateString('fr-FR')} à ${scheduledDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` :
+          task.description || '',
+        priority,
+        status,
         candidateId: task.candidate_id || undefined,
         taskId: task.id
       });
