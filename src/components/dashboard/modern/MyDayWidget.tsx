@@ -145,18 +145,23 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
       });
     });
 
-    // 2. Tâches du jour sélectionné (exclure les tâches BM urgentes déjà affichées)
+    // 2. Tâches du jour sélectionné (inclure TOUTES les tâches, y compris terminées)
     const urgentBMTaskIds = urgentBMTasks.map(t => t.id);
-    bmTasks
+    
+    // Combiner les tâches en cours et terminées
+    const allTasks = [...bmTasks, ...completedTasks];
+    
+    allTasks
       .filter(task => !urgentBMTaskIds.includes(task.id))
       .forEach(task => {
         const scheduledDate = new Date(task.scheduled_date);
         const selectedDate = new Date(currentDate);
         const isSameDay = scheduledDate.toDateString() === selectedDate.toDateString();
         const isBMTask = task.task_type === 'bm_interview';
+        const isCompleted = task.status === 'completed';
         
         items.push({
-          id: `bm-${task.id}`,
+          id: `${isCompleted ? 'completed' : 'bm'}-${task.id}`,
           type: isBMTask ? 'task' : 'interview',
           interviewType: task.interview_type === 'ec1' ? 'ec1' : task.interview_type === 'ec2' ? 'ec2' : 'phone',
           title: task.title,
@@ -165,10 +170,10 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
             scheduledDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
           description: task.description || '',
           priority: task.priority as 'low' | 'medium' | 'high',
-          status: task.status === 'pending' ? 'À faire' : task.status,
+          status: isCompleted ? 'Terminé' : (task.status === 'pending' ? 'À faire' : task.status),
           candidateId: task.candidate_id || undefined,
           taskId: task.id,
-          isCompleted: task.status === 'completed'
+          isCompleted: isCompleted
         });
       });
 
@@ -419,6 +424,7 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
   const dayItems = generateDayItems(candidatesData || []);
   const completedItems = generateCompletedItems();
   const pendingItems = dayItems.filter(item => !item.isCompleted);
+  const completedItemsFromDay = dayItems.filter(item => item.isCompleted);
   const todayInterviews = pendingItems.filter(item => item.type === 'interview');
   const urgentTasks = pendingItems.filter(item => item.type === 'task');
   const urgentAlerts = pendingItems.filter(item => item.type === 'alert');
@@ -486,34 +492,48 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
           </div>
         </div>
 
-        {/* Liste des éléments à faire - Priorité absolue */}
+        {/* Liste des éléments à faire - Inclut les tâches terminées */}
         <div className="space-y-2 flex-1 min-h-0">
-          {pendingItems.length === 0 && completedItems.length === 0 && (
+          {dayItems.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
               <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">Aucune tâche programmée pour cette date</p>
             </div>
           )}
-          {pendingItems.length > 0 && (
+          {dayItems.length > 0 && (
             <div className="space-y-2 overflow-y-auto">
-              {pendingItems.map((item) => (
+              {dayItems.map((item) => (
                 <div 
                   key={item.id}
-                  className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors group"
+                  className={`flex items-start gap-3 p-3 border rounded-lg transition-colors group ${
+                    item.isCompleted 
+                      ? 'opacity-60 bg-muted/30 hover:opacity-80' 
+                      : 'hover:bg-muted/50'
+                  }`}
                 >
                   <div className="flex-shrink-0 mt-0.5">
-                    {getItemIcon(item.type, item.interviewType)}
+                    {item.isCompleted ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      getItemIcon(item.type, item.interviewType)
+                    )}
                   </div>
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-sm truncate">{item.title}</span>
+                      <span className={`font-medium text-sm truncate ${
+                        item.isCompleted ? 'line-through text-muted-foreground' : ''
+                      }`}>
+                        {item.title}
+                      </span>
                       <Badge variant="outline" className="text-xs shrink-0">
                         {item.time}
                       </Badge>
-                      <Badge variant={getPriorityColor(item.priority)} className="text-xs shrink-0">
-                        {item.priority === 'high' ? 'Urgent' : item.priority === 'medium' ? 'Moyen' : 'Faible'}
-                      </Badge>
+                      {!item.isCompleted && (
+                        <Badge variant={getPriorityColor(item.priority)} className="text-xs shrink-0">
+                          {item.priority === 'high' ? 'Urgent' : item.priority === 'medium' ? 'Moyen' : 'Faible'}
+                        </Badge>
+                      )}
                     </div>
                     
                     <p className="text-xs text-muted-foreground line-clamp-2">
@@ -521,7 +541,10 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
                     </p>
                     
                     <div className="flex items-center gap-1 mt-1">
-                      <Badge variant={getStatusColor(item.status)} className="text-xs">
+                      <Badge 
+                        variant={item.isCompleted ? 'default' : getStatusColor(item.status)} 
+                        className={`text-xs ${item.isCompleted ? 'bg-green-100 text-green-700' : ''}`}
+                      >
                         {item.status}
                       </Badge>
                     </div>
@@ -557,10 +580,14 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0"
-                        onClick={() => handleCompleteTask(item.taskId!)}
-                        title="Marquer comme terminé"
+                        onClick={() => item.isCompleted ? handleReactivateTask(item.taskId!) : handleCompleteTask(item.taskId!)}
+                        title={item.isCompleted ? "Réactiver la tâche" : "Marquer comme terminé"}
                       >
-                        <CheckCircle className="h-3 w-3" />
+                        {item.isCompleted ? (
+                          <Clock className="h-3 w-3" />
+                        ) : (
+                          <CheckCircle className="h-3 w-3" />
+                        )}
                       </Button>
                     )}
                   </div>
