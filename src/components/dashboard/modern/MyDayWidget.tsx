@@ -16,6 +16,7 @@ import {
   Download
 } from 'lucide-react';
 import { recruiterTasksService, RecruiterTask } from '@/services/data/recruiterTasksService';
+import { candidateNotesService } from '@/services/data/candidateNotesService';
 import { ICSGeneratorService } from '@/services/calendar/icsGeneratorService';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -240,6 +241,35 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
       if (task.interview_type) {
         enrichedDescription += `\n📞 Type d'entretien: ${task.interview_type.toUpperCase()}`;
       }
+
+      // Récupérer et ajouter les notes d'entretiens précédents
+      try {
+        const allNotes = await candidateNotesService.getNotesForCandidate(task.candidate_id);
+        const previousNotes = getPreviousNotesForInterviewType(task.interview_type, allNotes);
+        
+        if (previousNotes.length > 0) {
+          enrichedDescription += `\n\n📝 Notes d'entretiens précédents :\n`;
+          
+          previousNotes.forEach(note => {
+            const noteDate = new Date(note.created_at).toLocaleDateString('fr-FR');
+            const noteTypeLabel = {
+              'precal': 'Pré-qualification',
+              'ec1': 'Entretien 1er Tour',
+              'ec2': 'Entretien 2ème Tour'
+            }[note.note_type] || note.note_type;
+            
+            enrichedDescription += `\n--- ${noteTypeLabel} (${noteDate}) ---\n`;
+            const content = note.enhanced_content || note.content;
+            // Limiter la longueur pour éviter des descriptions trop longues
+            const truncatedContent = content.length > 500 
+              ? content.substring(0, 500) + '... (voir profil complet)'
+              : content;
+            enrichedDescription += `${truncatedContent}\n`;
+          });
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération des notes:', error);
+      }
     }
 
     const event = ICSGeneratorService.createTaskEvent(
@@ -250,6 +280,21 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
     );
 
     ICSGeneratorService.downloadICS(event, `entretien-${task.interview_type}-${new Date().getTime()}.ics`);
+  };
+
+  // Fonction helper pour récupérer les notes précédentes selon le type d'entretien
+  const getPreviousNotesForInterviewType = (interviewType: string | undefined, allNotes: any[]) => {
+    if (!interviewType) return [];
+    
+    const noteTypes: { [key: string]: string[] } = {
+      'ec1': ['precal'],
+      'ec2': ['precal', 'ec1']
+    };
+    
+    const requiredTypes = noteTypes[interviewType.toLowerCase()] || [];
+    return allNotes
+      .filter(note => requiredTypes.includes(note.note_type))
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   };
 
   const handleCompleteTask = async (taskId: string) => {
