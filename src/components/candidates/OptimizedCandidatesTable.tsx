@@ -116,7 +116,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
     switch (index) {
       case 0: return 'w-[35%] min-w-[280px]'; // Candidat - Reduced from 45% to 35%
       case 1: return 'w-[40%] min-w-[240px]'; // Position & Performance - Increased from 30% to 40%
-      case 2: return 'w-[15%] min-w-[140px]'; // Statut & Disponibilité 
+      case 2: return 'w-[15%] min-w-[120px]'; // Statut & Disponibilité 
       case 3: return 'w-[10%] min-w-[100px]'; // Actions
       default: return 'w-auto';
     }
@@ -482,7 +482,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                     availability.color
                   )}>
                     <AvailabilityIcon className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate">{availability.status}</span>
+                    <span className="line-clamp-2 leading-tight">{availability.status}</span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
