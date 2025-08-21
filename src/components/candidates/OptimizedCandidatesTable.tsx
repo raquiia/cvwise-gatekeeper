@@ -369,7 +369,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
         
         return (
           <div className="space-y-2 min-w-0">
-            <div className="font-semibold text-foreground truncate" title={candidate.position}>
+            <div className="font-semibold text-foreground line-clamp-2 leading-tight" title={candidate.position}>
               {candidate.position || 'Non spécifié'}
             </div>
             
