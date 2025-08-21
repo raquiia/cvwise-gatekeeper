@@ -12,7 +12,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUpDown, Brain, Sparkles, FileSearch, Trash2, Lock, MapPin, Briefcase } from 'lucide-react';
+import { ArrowUpDown, Brain, Sparkles, Trash2, Lock, MapPin, Briefcase, Phone } from 'lucide-react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { CandidateData, candidateService } from '@/services/data/candidateService';
 import { ensureStringArray } from '@/utils/candidateUtils';
@@ -112,7 +112,9 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
   };
 
   const columns: ColumnDef<CandidateData>[] = useMemo(() => [
+    // Column 1: Candidate (35%) - Name, email, avatar, phone in tooltip
     {
+      id: 'candidate',
       accessorKey: 'name',
       header: ({ column }) => (
         <Button
@@ -130,6 +132,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
         const ownerName = candidate.owner_first_name && candidate.owner_last_name 
           ? `${candidate.owner_first_name} ${candidate.owner_last_name}`
           : null;
+        const skills = ensureStringArray(candidate.skills);
         
         return (
           <div className="flex items-center space-x-3 min-w-0">
@@ -137,14 +140,28 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0",
-                    isOwnCandidate ? "bg-gradient-to-br from-primary to-primary/80" : "bg-muted-foreground"
+                    "w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 cursor-help",
+                    isOwnCandidate ? "bg-gradient-to-br from-primary to-primary/80 shadow-sm" : "bg-muted-foreground/80"
                   )}>
                     {candidate.first_name?.[0]}{candidate.last_name?.[0]}
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>{isOwnCandidate ? "Votre candidat" : `Candidat de ${ownerName || 'Autre'}`}</p>
+                <TooltipContent side="right" className="max-w-xs">
+                  <div className="space-y-2">
+                    <p className="font-medium">{isOwnCandidate ? "Votre candidat" : `Candidat de ${ownerName || 'Autre'}`}</p>
+                    {candidate.phone && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="w-3 h-3" />
+                        <span>{candidate.phone}</span>
+                      </div>
+                    )}
+                    {skills.length > 0 && (
+                      <div className="text-xs">
+                        <p className="font-medium mb-1">Compétences :</p>
+                        <p className="text-muted-foreground">{skills.slice(0, 5).join(', ')}{skills.length > 5 ? '...' : ''}</p>
+                      </div>
+                    )}
+                  </div>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -162,106 +179,57 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
       },
       accessorFn: (row) => `${row.first_name} ${row.last_name}`,
     },
+    
+    // Column 2: Position & Experience (30%) - Role, company, years, location
     {
+      id: 'position_experience',
       accessorKey: 'position',
-      header: 'Poste',
-      cell: ({ row }) => {
-        const candidate = row.original;
-        const lastCompany = getLastCompany(candidate);
-        
-        return (
-          <div className="flex flex-col min-w-0">
-            <span className="font-medium text-foreground truncate" title={candidate.position}>
-              {candidate.position || 'Non spécifié'}
-            </span>
-            <div className="flex items-center text-sm text-muted-foreground truncate">
-              <Briefcase className="w-3 h-3 mr-1 flex-shrink-0" />
-              <span title={lastCompany}>{lastCompany}</span>
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'experience',
       header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
         >
-          Expérience
+          Poste & Expérience
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       cell: ({ row }) => {
         const candidate = row.original;
+        const lastCompany = getLastCompany(candidate);
         const formatLocation = () => {
           const city = candidate.city || '';
           const country = candidate.country || '';
           
-          if (city && country) {
-            return `${city}, ${country}`;
-          } else if (city) {
-            return city;
-          } else if (country) {
-            return country;
-          } else if (candidate.location) {
-            return candidate.location;
-          }
+          if (city && country) return `${city}, ${country}`;
+          if (city) return city;
+          if (country) return country;
+          if (candidate.location) return candidate.location;
           return 'Non spécifiée';
         };
         
         return (
-          <div className="flex flex-col">
-            <span className="font-medium text-foreground">
-              {candidate.years_experience ? `${candidate.years_experience} ans` : '0 an'}
-            </span>
-            <div className="flex items-center text-sm text-muted-foreground truncate">
-              <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
-              <span title={formatLocation()}>{formatLocation()}</span>
+          <div className="space-y-1 min-w-0">
+            <div className="font-medium text-foreground truncate" title={candidate.position}>
+              {candidate.position || 'Non spécifié'}
+            </div>
+            <div className="flex items-center text-xs text-muted-foreground truncate">
+              <Briefcase className="w-3 h-3 mr-1 flex-shrink-0" />
+              <span title={lastCompany} className="truncate">{lastCompany}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="font-medium">
+                {candidate.years_experience ? `${candidate.years_experience} ans` : '0 an'}
+              </span>
+              <div className="flex items-center max-w-[100px] truncate">
+                <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
+                <span title={formatLocation()} className="truncate">{formatLocation()}</span>
+              </div>
             </div>
           </div>
         );
       },
-      accessorFn: (row) => row.years_experience || 0,
-    },
-    {
-      accessorKey: 'skills',
-      header: 'Compétences',
-      cell: ({ row }) => {
-        const skills = ensureStringArray(row.original.skills);
-        return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-1 max-w-[140px]">
-                  {skills.length > 0 ? (
-                    <>
-                      <Badge variant="secondary" className="text-xs bg-secondary/60 text-secondary-foreground border-secondary/40 truncate max-w-[80px]">
-                        {skills[0]}
-                      </Badge>
-                      {skills.length > 1 && (
-                        <Badge variant="outline" className="text-xs border-border/60 text-muted-foreground">
-                          +{skills.length - 1}
-                        </Badge>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground text-sm">Aucune</span>
-                  )}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="max-w-xs">
-                  <p className="font-medium mb-1">Compétences:</p>
-                  <p>{skills.length > 0 ? skills.join(', ') : 'Aucune compétence renseignée'}</p>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
-      },
+      accessorFn: (row) => row.position || '',
     },
     {
       accessorKey: 'ai_score',
@@ -406,20 +374,36 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
   return (
     <div className="w-full bg-card rounded-xl border border-border shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <Table>
+        <Table className="min-w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="border-border/50 hover:bg-transparent bg-muted/30">
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="text-foreground font-semibold">
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
+                {headerGroup.headers.map((header, index) => {
+                  // Define responsive column widths: 35%, 30%, 20%, 15%
+                  const getColumnWidth = (index: number) => {
+                    switch (index) {
+                      case 0: return 'w-[35%] min-w-[200px]'; // Candidate
+                      case 1: return 'w-[30%] min-w-[180px]'; // Position & Experience  
+                      case 2: return 'w-[20%] min-w-[100px]'; // AI Score
+                      case 3: return 'w-[15%] min-w-[80px]';  // Actions
+                      default: return 'w-auto';
+                    }
+                  };
+                  
+                  return (
+                    <TableHead 
+                      key={header.id} 
+                      className={`text-foreground font-semibold px-4 py-3 ${getColumnWidth(index)}`}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>
@@ -431,14 +415,29 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                   className="cursor-pointer border-border/30 hover:bg-accent/50 transition-colors duration-200"
                   onClick={() => onViewCandidate(row.original.id!)}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-4">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
+                  {row.getVisibleCells().map((cell, index) => {
+                    const getColumnWidth = (index: number) => {
+                      switch (index) {
+                        case 0: return 'w-[35%] min-w-[200px]';
+                        case 1: return 'w-[30%] min-w-[180px]';
+                        case 2: return 'w-[20%] min-w-[100px]';
+                        case 3: return 'w-[15%] min-w-[80px]';
+                        default: return 'w-auto';
+                      }
+                    };
+                    
+                    return (
+                      <TableCell 
+                        key={cell.id} 
+                        className={`px-4 py-4 ${getColumnWidth(index)}`}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))
             ) : (
