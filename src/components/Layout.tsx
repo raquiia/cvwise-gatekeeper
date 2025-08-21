@@ -1,6 +1,6 @@
-
 import React, { ReactNode } from 'react';
 import Navbar from './Navbar';
+import ChatBot from '@/components/ai-chat/ChatBot';
 
 type LayoutProps = {
   children: ReactNode;
@@ -38,6 +38,8 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
         </div>
       </footer>
+      
+      <ChatBot />
     </div>
   );
 };
