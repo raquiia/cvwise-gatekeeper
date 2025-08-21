@@ -375,7 +375,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
             
             <div className="flex items-center text-sm text-muted-foreground truncate">
               <Briefcase className="w-3 h-3 mr-2 flex-shrink-0" />
-              <span title={currentCompany} className="truncate">{currentCompany}</span>
+              <span title={currentCompany} className="line-clamp-2 leading-tight">{currentCompany}</span>
             </div>
             
             <div className="flex items-center justify-between">
