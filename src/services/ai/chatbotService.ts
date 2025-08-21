@@ -127,9 +127,20 @@ class ChatbotService {
 
   private async addCandidateNote(candidateId: string, content: string, noteType: string = 'global') {
     try {
+      // Récupérer l'utilisateur actuel pour le user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        return {
+          type: 'add_note',
+          success: false,
+          details: 'Utilisateur non authentifié'
+        };
+      }
+
       const result = await candidateNotesService.addNote({
         candidate_id: candidateId,
-        user_id: '', // Sera rempli par le service
+        user_id: user.id,
         content,
         note_type: noteType as any,
         business_manager: undefined
@@ -185,12 +196,23 @@ class ChatbotService {
         };
       }
 
+      // Récupérer l'utilisateur actuel pour le user_id
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        return {
+          type: 'change_status_with_note',
+          success: false,
+          details: 'Utilisateur non authentifié'
+        };
+      }
+
       // Ajouter la note
       const noteSuccess = await candidateNotesService.addNote({
         candidate_id: candidateId,
-        user_id: '',
+        user_id: user.id,
         content: noteContent,
-        note_type: 'interview' as any,
+        note_type: 'ec1' as any,
         business_manager: businessManager
       });
 
