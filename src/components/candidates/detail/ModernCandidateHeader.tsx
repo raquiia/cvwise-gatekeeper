@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { CandidateData } from '@/services/data/candidateService';
 import StatusSelector from './StatusSelector';
 import ExportProfileButton from './ExportProfileButton';
-import DebugAIScoreButton from './DebugAIScoreButton';
+
 import ScoreDisplay from './ScoreDisplay';
 
 interface ModernCandidateHeaderProps {
@@ -213,19 +213,15 @@ const ModernCandidateHeader: React.FC<ModernCandidateHeaderProps> = ({
                 
                 <Button 
                   variant="outline"
-                  onClick={() => navigate(`/candidates/${candidate.id}/job-match`)}
+                  onClick={() => navigate('/job-matching')}
                   className="btn-modern text-foreground border-border/60 hover:border-primary/30 hover:bg-accent/80 transition-all duration-300 group flex-1"
                 >
                   <Target size={16} className="mr-2 group-hover:scale-110 transition-transform duration-300" />
-                  <span>Match d'emploi</span>
+                  <span>Voir les offres</span>
                 </Button>
               </div>
               
-              <div className="flex gap-2">
-                {/* Only show debug tools for own candidates */}
-                {candidate.isOwnCandidate !== false && (
-                  <DebugAIScoreButton candidateId={candidate.id || ''} />
-                )}
+              <div className="flex gap-2 justify-center">
                 <ExportProfileButton candidate={candidate} />
               </div>
             </div>
