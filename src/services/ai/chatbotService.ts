@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { candidateNotesService } from '@/services/data/candidateNotesService';
 import { candidateService } from '@/services/data/candidateService';
 import { candidateStatusService } from '@/services/data/candidateStatusService';
+import { recruiterTasksService } from '@/services/data/recruiterTasksService';
 
 export interface ChatResponse {
   message: string;
@@ -58,7 +59,7 @@ class ChatbotService {
           return await this.changeCandidateStatus(action.candidateId, action.status);
         
         case 'change_status_with_note':
-          return await this.changeStatusWithNote(action.candidateId, action.status, action.noteContent, action.businessManager);
+          return await this.changeStatusWithNote(action.candidateId, action.status, action.noteContent, action.businessManager, action.scheduledDate, action.interviewType);
         
         case 'get_candidate_info':
           return await this.getCandidateInfo(action.candidateId);
@@ -182,7 +183,9 @@ class ChatbotService {
     candidateId: string, 
     status: string, 
     noteContent: string, 
-    businessManager?: string
+    businessManager?: string,
+    scheduledDate?: string,
+    interviewType?: 'ec1' | 'ec2'
   ): Promise<{ type: string; success: boolean; details?: string }> {
     try {
       // Changer le statut
@@ -207,23 +210,72 @@ class ChatbotService {
         };
       }
 
+      // Récupérer les informations du candidat pour la tâche
+      const candidate = await candidateService.getCandidateById(candidateId);
+      if (!candidate) {
+        return {
+          type: 'change_status_with_note',
+          success: false,
+          details: 'Candidat non trouvé'
+        };
+      }
+
+      // Formatter le contenu de la note comme le fait BusinessManagerSelector
+      let formattedNoteContent = noteContent;
+      if (businessManager && scheduledDate) {
+        const dateFormatted = new Date(scheduledDate).toLocaleDateString('fr-FR', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        formattedNoteContent = `Entretien ${status.toUpperCase()} planifié avec ${businessManager} le ${dateFormatted}.\n\n${noteContent}`;
+      }
+
       // Ajouter la note
       const noteSuccess = await candidateNotesService.addNote({
         candidate_id: candidateId,
         user_id: user.id,
-        content: noteContent,
-        note_type: 'ec1' as any,
+        content: formattedNoteContent,
+        note_type: status as any, // 'ec1' ou 'ec2'
         business_manager: businessManager
       });
+
+      let taskCreated = false;
+      let taskDetails = '';
+
+      // Créer une tâche si c'est un entretien EC1 ou EC2 avec BM
+      if ((status === 'ec1' || status === 'ec2') && businessManager && scheduledDate && interviewType) {
+        try {
+          const task = await recruiterTasksService.createBMInterviewTask(
+            user.id,
+            candidateId,
+            `${candidate.first_name} ${candidate.last_name}`,
+            candidate.position || 'Poste non spécifié',
+            businessManager,
+            interviewType,
+            scheduledDate
+          );
+          taskCreated = !!task;
+          taskDetails = taskCreated ? ' et tâche créée sur le tableau de bord' : '';
+        } catch (taskError) {
+          console.error('Erreur lors de la création de la tâche:', taskError);
+          taskDetails = ' mais erreur lors de la création de la tâche';
+        }
+      }
 
       return {
         type: 'change_status_with_note',
         success: !!noteSuccess,
         details: noteSuccess ? 
-          `Statut changé en ${status} et note ajoutée avec succès` : 
+          `Statut changé en ${status}, note ajoutée avec succès${taskDetails}` : 
           'Statut changé mais erreur lors de l\'ajout de la note'
       };
     } catch (error) {
+      console.error('Erreur dans changeStatusWithNote:', error);
       return {
         type: 'change_status_with_note',
         success: false,

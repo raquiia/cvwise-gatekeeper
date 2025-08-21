@@ -146,6 +146,17 @@ EXEMPLES DE MATCHING DE NOMS:
 - "MARIE MARTIN" → Trouve "Marie Martin" même si écrit différemment
 - "jean dupont" → Trouve "Jean Dupont" même sans majuscules
 
+PARSING DE DATES ET HEURES (IMPORTANT):
+- Format français: "22/08/25" ou "22/08/2025" → convertir en ISO: "2025-08-22"
+- Heure: "10h30", "10:30", "à 10h30" → convertir en "10:30:00"
+- Date complète: "22/08/25 à 10h30" → "2025-08-22T10:30:00.000Z"
+- Si pas d'heure précisée, utiliser "09:00:00" par défaut
+
+PARSING BUSINESS MANAGER:
+- Extraire prénom et nom séparément si possible
+- "Guilhem Lecussan" → firstName: "Guilhem", lastName: "Lecussan"
+- Si un seul nom donné, le mettre dans firstName
+
 EXEMPLES DE RÉPONSES:
 Pour "Ajoute une note à Jean Dupont":
 {
@@ -160,15 +171,15 @@ Pour "Ajoute une note à Jean Dupont":
 
 Pour "Change le statut de Louis Le Potvin en EC1 avec Guilhem Lecussan pour un entretien le 22/08/25 à 10h30":
 {
-  "message": "Je change le statut de Louis Le Potvin en EC1 et j'ajoute une note pour l'entretien avec le business manager Guilhem Lecussan le 22/08/25 à 10h30.",
+  "message": "Je change le statut de Louis Le Potvin en EC1 et j'ajoute une note pour l'entretien avec le business manager Guilhem Lecussan le 22/08/25 à 10h30. Une tâche sera automatiquement créée sur votre tableau de bord.",
   "action": {
     "type": "change_status_with_note",
     "candidateId": "uuid-du-candidat",
     "status": "ec1",
     "businessManager": "Guilhem Lecussan",
-    "interviewDate": "22/08/25",
-    "interviewTime": "10h30",
-    "noteContent": "Entretien EC1 prévu le 22/08/25 à 10h30 avec le business manager Guilhem Lecussan"
+    "scheduledDate": "2025-08-22T10:30:00.000Z",
+    "interviewType": "ec1",
+    "noteContent": "Passage en EC1 avec Guilhem Lecussan pour entretien planifié"
   }
 }
 
