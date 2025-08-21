@@ -111,9 +111,20 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
     }
   };
 
-  // Helper function to determine availability status with modern colors
+  // Optimized function for responsive column widths
+  const getColumnWidth = useMemo(() => (index: number) => {
+    switch (index) {
+      case 0: return 'w-[35%] min-w-[280px]'; // Candidat - Reduced from 45% to 35%
+      case 1: return 'w-[40%] min-w-[240px]'; // Position & Performance - Increased from 30% to 40%
+      case 2: return 'w-[15%] min-w-[140px]'; // Statut & Disponibilité 
+      case 3: return 'w-[10%] min-w-[100px]'; // Actions
+      default: return 'w-auto';
+    }
+  }, []);
+
+  // Improved availability status logic
   const getAvailabilityStatus = (candidate: CandidateData) => {
-    // Check if candidate has availability info from notes or profile
+    // Priority 1: Explicit availability info
     if (candidate.availability) {
       return {
         status: candidate.availability,
@@ -123,27 +134,42 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
       };
     }
 
-    // Check if candidate is currently employed by looking at last experience
+    // Priority 2: Check employment status from experiences (sorted by most recent)
     const experiences = ensureArray(candidate.experiences);
-    const lastExperience = experiences[0]; // Most recent experience should be first
-    
-    if (lastExperience && typeof lastExperience === 'object') {
-      const endDate = (lastExperience as any).end_date || (lastExperience as any).endDate;
-      
-      if (!endDate || endDate === 'Présent' || endDate === 'Present' || endDate === 'En cours') {
-        return {
-          status: 'Sous préavis',
-          type: 'estimated',
-          color: 'bg-gradient-to-r from-amber-400/20 to-orange-400/20 text-amber-700 border-amber-300',
-          icon: Briefcase
-        };
-      } else {
-        return {
-          status: 'Immédiate',
-          type: 'calculated', 
-          color: 'bg-gradient-to-r from-emerald-400/20 to-green-400/20 text-emerald-700 border-emerald-300',
-          icon: Star
-        };
+    if (experiences.length > 0) {
+      // Sort experiences by end date to find the most recent
+      const sortedExperiences = [...experiences].sort((a: any, b: any) => {
+        const endDateA = a.end_date || a.endDate;
+        const endDateB = b.end_date || b.endDate;
+        
+        // Current positions (no end date) come first
+        if (!endDateA && endDateB) return -1;
+        if (endDateA && !endDateB) return 1;
+        if (!endDateA && !endDateB) return 0;
+        
+        // Compare actual dates
+        return new Date(endDateB).getTime() - new Date(endDateA).getTime();
+      });
+
+      const mostRecentExperience = sortedExperiences[0];
+      if (mostRecentExperience && typeof mostRecentExperience === 'object') {
+        const endDate = (mostRecentExperience as any).end_date || (mostRecentExperience as any).endDate;
+        
+        if (!endDate || endDate === 'Présent' || endDate === 'Present' || endDate === 'En cours') {
+          return {
+            status: 'Sous préavis',
+            type: 'estimated',
+            color: 'bg-gradient-to-r from-amber-400/20 to-orange-400/20 text-amber-700 border-amber-300',
+            icon: Briefcase
+          };
+        } else {
+          return {
+            status: 'Immédiate',
+            type: 'calculated', 
+            color: 'bg-gradient-to-r from-emerald-400/20 to-green-400/20 text-emerald-700 border-emerald-300',
+            icon: Star
+          };
+        }
       }
     }
 
@@ -210,31 +236,27 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
     if (score >= 85) return {
       color: 'from-emerald-400 to-green-400',
       textColor: 'text-emerald-700',
-      bgColor: 'bg-emerald-100',
-      label: 'Excellent'
+      bgColor: 'bg-emerald-100'
     };
     if (score >= 70) return {
       color: 'from-blue-400 to-cyan-400',
       textColor: 'text-blue-700',
-      bgColor: 'bg-blue-100',
-      label: 'Très bon'
+      bgColor: 'bg-blue-100'
     };
     if (score >= 50) return {
       color: 'from-amber-400 to-orange-400',
       textColor: 'text-amber-700',
-      bgColor: 'bg-amber-100',
-      label: 'Correct'
+      bgColor: 'bg-amber-100'
     };
     return {
       color: 'from-red-400 to-pink-400',
       textColor: 'text-red-700',
-      bgColor: 'bg-red-100',
-      label: 'Faible'
+      bgColor: 'bg-red-100'
     };
   };
 
   const columns: ColumnDef<CandidateData>[] = useMemo(() => [
-    // Column 1: Candidat (40%) - Avatar + Nom + Email + Téléphone
+    // Column 1: Candidat (35%) - Avatar + Nom + Email + Téléphone
     {
       id: 'candidate',
       accessorKey: 'name',
@@ -256,12 +278,12 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
           : null;
         
         return (
-          <div className="flex items-center space-x-4 min-w-0 py-1">
+          <div className="flex items-center space-x-3 min-w-0 py-1">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center text-white text-base font-bold flex-shrink-0 cursor-help shadow-md transition-transform hover:scale-105",
+                    "w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 cursor-help shadow-md transition-transform hover:scale-105",
                     isOwnCandidate 
                       ? "bg-gradient-to-br from-blue-500 to-cyan-500 ring-2 ring-blue-300 ring-offset-2" 
                       : "bg-gradient-to-br from-gray-500 to-gray-600"
@@ -276,34 +298,52 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
             </TooltipProvider>
             
             <div className="min-w-0 flex-1 space-y-1">
-              <div className="font-bold text-lg text-foreground truncate">
+              <div className="font-semibold text-base text-foreground truncate">
                 {candidate.first_name} {candidate.last_name}
               </div>
               
               {candidate.email && (
-                <a 
-                  href={`mailto:${candidate.email}`}
-                  className="flex items-center text-sm text-blue-600 hover:text-blue-700 transition-colors group"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Mail className="w-3 h-3 mr-2 flex-shrink-0 group-hover:text-blue-700" />
-                  <span className="truncate">{candidate.email}</span>
-                </a>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a 
+                        href={`mailto:${candidate.email}`}
+                        className="flex items-center text-sm text-blue-600 hover:text-blue-700 transition-colors group"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Mail className="w-3 h-3 mr-1.5 flex-shrink-0 group-hover:text-blue-700" />
+                        <span className="truncate">{candidate.email}</span>
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Envoyer un email à {candidate.first_name}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
               
               {candidate.phone && (
-                <a 
-                  href={`tel:${candidate.phone}`}
-                  className="flex items-center text-sm text-green-600 hover:text-green-700 transition-colors group"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Phone className="w-3 h-3 mr-2 flex-shrink-0 group-hover:text-green-700" />
-                  <span className="truncate">{candidate.phone}</span>
-                </a>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a 
+                        href={`tel:${candidate.phone}`}
+                        className="flex items-center text-sm text-green-600 hover:text-green-700 transition-colors group"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Phone className="w-3 h-3 mr-1.5 flex-shrink-0 group-hover:text-green-700" />
+                        <span className="truncate">{candidate.phone}</span>
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Appeler {candidate.first_name}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
               
               <div className="flex items-center text-xs text-muted-foreground">
-                <MapPin className="w-3 h-3 mr-2 flex-shrink-0" />
+                <MapPin className="w-3 h-3 mr-1.5 flex-shrink-0" />
                 <span className="truncate" title={(() => {
                   const city = candidate.city || '';
                   const country = candidate.country || '';
@@ -331,7 +371,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
       accessorFn: (row) => `${row.first_name} ${row.last_name}`,
     },
     
-    // Column 2: Position & Performance (35%) - Titre + Entreprise + Expérience + Score IA
+    // Column 2: Position & Performance (40%) - Titre + Entreprise + Expérience + Score IA
     {
       id: 'position_performance',
       accessorKey: 'position',
@@ -353,19 +393,19 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
         const scoreConfig = getScoreConfig(displayScore);
         
         return (
-          <div className="space-y-2 min-w-0">
-            <div className="font-semibold text-foreground line-clamp-2 leading-tight" title={candidate.position}>
+          <div className="space-y-1.5 min-w-0">
+            <div className="font-semibold text-sm text-foreground line-clamp-2 leading-tight" title={candidate.position}>
               {candidate.position || 'Non spécifié'}
             </div>
             
-            <div className="flex items-center text-sm text-muted-foreground truncate">
-              <Briefcase className="w-3 h-3 mr-2 flex-shrink-0" />
-              <span title={currentCompany} className="line-clamp-2 leading-tight">{currentCompany}</span>
+            <div className="flex items-center text-xs text-muted-foreground">
+              <Briefcase className="w-3 h-3 mr-1.5 flex-shrink-0" />
+              <span title={currentCompany} className="truncate">{currentCompany}</span>
             </div>
             
-            <div className="flex items-center justify-between">
-              <Badge variant="secondary" className="text-xs font-medium">
-                {candidate.years_experience ? `${candidate.years_experience} ans` : 'N/A'}
+            <div className="flex items-center justify-between gap-2">
+              <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                {candidate.years_experience ? `${candidate.years_experience}a` : 'N/A'}
               </Badge>
               
               <TooltipProvider>
@@ -379,18 +419,10 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                         </div>
                       ) : (
                         <div className={cn(
-                          "flex items-center gap-2 px-2 py-1 rounded-full text-xs font-bold transition-all",
-                          scoreConfig.bgColor
+                          "w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-r text-white text-xs font-bold shadow-sm transition-all hover:shadow-md",
+                          scoreConfig.color
                         )}>
-                          <div className={cn(
-                            "w-6 h-6 rounded-full flex items-center justify-center bg-gradient-to-r text-white text-xs font-bold shadow-sm",
-                            scoreConfig.color
-                          )}>
-                            {aiScore.error ? '?' : displayScore}
-                          </div>
-                          <span className={scoreConfig.textColor}>
-                            {scoreConfig.label}
-                          </span>
+                          {aiScore.error ? '?' : displayScore}
                         </div>
                       )}
                     </div>
@@ -398,7 +430,6 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                   <TooltipContent>
                     <div className="text-center">
                       <p className="font-medium">Score IA: {displayScore}/100</p>
-                      <p className="text-xs text-muted-foreground">{scoreConfig.label}</p>
                       {jobSpecific && <p className="text-xs text-primary">Spécifique au poste</p>}
                       {aiScore.explanation && <p className="text-xs mt-1 max-w-xs">{aiScore.explanation}</p>}
                     </div>
@@ -433,10 +464,10 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
         const AvailabilityIcon = availability.icon;
         
         return (
-          <div className="space-y-3 min-w-0">
+          <div className="space-y-1.5 min-w-0">
             <Badge 
               className={cn(
-                "px-3 py-1 text-xs font-semibold border-0 shadow-sm transition-all hover:shadow-md",
+                "px-2 py-0.5 text-xs font-medium border-0 shadow-sm transition-all hover:shadow-md",
                 statusConfig.color
               )}
             >
@@ -447,11 +478,11 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className={cn(
-                    "flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-medium cursor-help transition-all",
+                    "flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium cursor-help transition-all",
                     availability.color
                   )}>
                     <AvailabilityIcon className="w-3 h-3 flex-shrink-0" />
-                    <span className="line-clamp-2 leading-tight">{availability.status}</span>
+                    <span className="truncate">{availability.status}</span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -553,32 +584,19 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="border-border/50 hover:bg-transparent bg-muted/30">
-                {headerGroup.headers.map((header, index) => {
-                  // Define responsive column widths: 45%, 30%, 15%, 10%
-                  const getColumnWidth = (index: number) => {
-                    switch (index) {
-                      case 0: return 'w-[45%] min-w-[250px]'; // Candidat + localisation
-                      case 1: return 'w-[30%] min-w-[200px]'; // Position & Performance 
-                      case 2: return 'w-[15%] min-w-[140px]'; // Statut & Disponibilité
-                      case 3: return 'w-[10%] min-w-[100px]'; // Actions
-                      default: return 'w-auto';
-                    }
-                  };
-                  
-                  return (
-                    <TableHead 
-                      key={header.id} 
-                      className={`text-foreground font-semibold px-4 py-3 ${getColumnWidth(index)}`}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
+                 {headerGroup.headers.map((header, index) => (
+                   <TableHead 
+                     key={header.id} 
+                     className={`text-foreground font-semibold px-4 py-3 ${getColumnWidth(index)}`}
+                   >
+                     {header.isPlaceholder
+                       ? null
+                       : flexRender(
+                           header.column.columnDef.header,
+                           header.getContext()
+                         )}
+                   </TableHead>
+                 ))}
               </TableRow>
             ))}
           </TableHeader>
@@ -590,29 +608,17 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                   className="cursor-pointer border-border/30 hover:bg-accent/50 transition-colors duration-200"
                   onClick={() => onViewCandidate(row.original.id!)}
                 >
-                  {row.getVisibleCells().map((cell, index) => {
-                     const getColumnWidth = (index: number) => {
-                       switch (index) {
-                         case 0: return 'w-[45%] min-w-[250px]'; // Candidat + localisation
-                         case 1: return 'w-[30%] min-w-[200px]'; // Position & Performance
-                         case 2: return 'w-[15%] min-w-[140px]'; // Statut & Disponibilité
-                         case 3: return 'w-[10%] min-w-[100px]'; // Actions
-                         default: return 'w-auto';
-                       }
-                     };
-                    
-                    return (
-                      <TableCell 
-                        key={cell.id} 
-                        className={`px-4 py-4 ${getColumnWidth(index)}`}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    );
-                  })}
+                  {row.getVisibleCells().map((cell, index) => (
+                    <TableCell 
+                      key={cell.id} 
+                      className={`px-4 py-3 ${getColumnWidth(index)}`}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
                 </TableRow>
               ))
             ) : (
