@@ -142,15 +142,12 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow className="bg-gray-50/50">
-            <TableHead className="font-semibold text-gray-700">Contact</TableHead>
-            <TableHead className="font-semibold text-gray-700">Poste</TableHead>
-            <TableHead className="font-semibold text-gray-700">Entreprise</TableHead>
-            <TableHead className="font-semibold text-gray-700">Localisation</TableHead>
-            <TableHead className="font-semibold text-gray-700">Expérience</TableHead>
-            <TableHead className="font-semibold text-gray-700">Compétences</TableHead>
-            <TableHead className="font-semibold text-gray-700">Statut</TableHead>
-            <TableHead className="font-semibold text-gray-700">Score IA</TableHead>
-            <TableHead className="font-semibold text-gray-700 text-center">Actions</TableHead>
+            <TableHead className="font-semibold text-gray-700 w-[25%]">Candidat</TableHead>
+            <TableHead className="font-semibold text-gray-700 w-[20%]">Poste & Entreprise</TableHead>
+            <TableHead className="font-semibold text-gray-700 w-[15%]">Expérience</TableHead>
+            <TableHead className="font-semibold text-gray-700 w-[20%]">Compétences</TableHead>
+            <TableHead className="font-semibold text-gray-700 w-[10%]">Score IA</TableHead>
+            <TableHead className="font-semibold text-gray-700 w-[10%] text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -173,64 +170,73 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                 className="hover:bg-gray-50/50 transition-colors duration-200 border-b border-gray-100 cursor-pointer"
                 onClick={() => handleRowClick(candidate)}
               >
+                {/* Candidat - Fusion Contact */}
                 <TableCell className="font-medium">
                   <div className="flex items-center space-x-3">
                     <div className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium",
+                      "w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0",
                       isOwnCandidate ? "bg-gradient-to-br from-purple-500 to-blue-600" : "bg-gray-500"
                     )}>
                       {candidate.first_name?.[0]}{candidate.last_name?.[0]}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">
+                        <span className="font-medium text-gray-900 truncate">
                           {candidate.first_name} <span className="font-bold">{candidate.last_name}</span>
                         </span>
                         {isGlobalMode && !isOwnCandidate && (
-                          <Badge variant="outline" className="text-xs bg-muted/30 text-muted-foreground border-border/50">
+                          <Badge variant="outline" className="text-xs bg-muted/30 text-muted-foreground border-border/50 flex-shrink-0">
                             <User size={8} className="mr-0.5" />
-                            {ownerName || 'Autre recruteur'}
+                            {ownerName || 'Autre'}
                           </Badge>
                         )}
                       </div>
-                      {candidate.email && (
-                        <div className="flex items-center text-sm text-gray-500 mt-1">
-                          <Mail size={12} className="mr-1 text-gray-400 flex-shrink-0" />
-                          <span className="truncate">{candidate.email}</span>
-                        </div>
-                      )}
-                      {candidate.phone && (
-                        <div className="flex items-center text-sm text-gray-500 mt-1">
-                          <Phone size={12} className="mr-1 text-gray-400 flex-shrink-0" />
-                          <span>{candidate.phone}</span>
-                        </div>
-                      )}
+                      <div className="text-sm text-gray-500 truncate">
+                        <span title={candidate.email}>{candidate.email}</span>
+                        {candidate.phone && (
+                          <span 
+                            className="ml-2 text-xs text-gray-400 cursor-help" 
+                            title={`Téléphone: ${candidate.phone}`}
+                          >
+                            📞
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </TableCell>
                 
-                <TableCell className="text-gray-800 font-medium">
-                  {candidate.position || 'Non spécifié'}
-                </TableCell>
-                
-                <TableCell className="text-gray-600">
-                  {lastCompany}
-                </TableCell>
-                
-                <TableCell className="text-gray-600">
-                  {candidate.location || 'Non spécifiée'}
-                </TableCell>
-                
-                <TableCell className="text-gray-600">
-                  {candidate.years_experience ? `${candidate.years_experience} ans` : 'Non spécifiée'}
-                </TableCell>
-                
+                {/* Poste & Entreprise - Fusion */}
                 <TableCell>
-                  <div className="flex flex-wrap gap-1">
+                  <div>
+                    <div className="font-medium text-gray-800 truncate" title={candidate.position}>
+                      {candidate.position || 'Non spécifié'}
+                    </div>
+                    <div className="text-sm text-gray-500 truncate" title={lastCompany}>
+                      {lastCompany}
+                    </div>
+                  </div>
+                </TableCell>
+                
+                {/* Expérience & Localisation - Fusion */}
+                <TableCell>
+                  <div>
+                    <div className="font-medium text-gray-800">
+                      {candidate.years_experience ? `${candidate.years_experience} ans` : '0 an'}
+                    </div>
+                    <div className="text-sm text-gray-500 truncate" title={candidate.location}>
+                      {candidate.location || 'Non spécifiée'}
+                    </div>
+                  </div>
+                </TableCell>
+                
+                {/* Compétences - Optimisé */}
+                <TableCell>
+                  <div className="flex flex-wrap gap-1" title={skills.join(', ')}>
                     {skills.length > 0 ? (
                       <>
                         {skills.slice(0, 2).map((skill, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                          <Badge key={idx} variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 truncate max-w-[80px]">
                             {skill}
                           </Badge>
                         ))}
@@ -246,53 +252,54 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                   </div>
                 </TableCell>
                 
+                {/* Score IA - Compacté */}
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Badge className={getStatusColor(candidate.detailed_status || 'initial')}>
-                      {CANDIDATE_STATUS_LABELS[candidate.detailed_status || 'initial'] || 'Initial'}
-                    </Badge>
-                    {jobSpecific && (
-                      <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300">
-                        <TrendingUp size={10} className="mr-1" />
-                        Match
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-                
-                <TableCell>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col items-center gap-1">
                     {aiScore.isLoading ? (
-                      <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-xs text-gray-500">Calcul...</span>
+                      <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                        <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     ) : aiScore.error ? (
-                      <div className="flex items-center gap-1" title={aiScore.error}>
-                        <span className={cn("font-bold", getScoreColor(candidate.score || 0))}>
-                          {candidate.score || 0}%
-                        </span>
-                        <Badge variant="secondary" className="text-xs">
-                          Ancien
-                        </Badge>
+                      <div 
+                        className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white",
+                          displayScore >= 80 ? "bg-green-500" : 
+                          displayScore >= 60 ? "bg-yellow-500" : "bg-red-500"
+                        )}
+                        title={aiScore.error}
+                      >
+                        {candidate.score || 0}
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1">
-                        <span className={cn("font-bold", getScoreColor(displayScore))}>
-                          {displayScore}%
-                        </span>
-                        <Badge 
-                          variant={isAIScore ? "default" : "secondary"} 
-                          className={cn(
-                            "text-xs",
-                            isAIScore ? "bg-purple-100 text-purple-800 border-purple-300" : ""
-                          )}
-                          title={isAIScore ? aiScore.explanation : "Score calculé avec l'ancien système"}
-                        >
-                          {isAIScore ? getScoreSource(aiScore.source) : 'Ancien'}
-                        </Badge>
+                      <div 
+                        className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white",
+                          displayScore >= 80 ? "bg-green-500" : 
+                          displayScore >= 60 ? "bg-yellow-500" : "bg-red-500"
+                        )}
+                        title={isAIScore ? aiScore.explanation : "Score calculé avec l'ancien système"}
+                      >
+                        {displayScore}
                       </div>
                     )}
+                    
+                    <div className="flex items-center gap-1">
+                      <Badge 
+                        variant={isAIScore ? "default" : "secondary"} 
+                        className={cn(
+                          "text-xs px-1 py-0",
+                          isAIScore ? "bg-purple-100 text-purple-800" : "bg-gray-100 text-gray-600"
+                        )}
+                      >
+                        {isAIScore ? getScoreSource(aiScore.source) : 'Ancien'}
+                      </Badge>
+                      
+                      {jobSpecific && (
+                        <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300 px-1 py-0">
+                          <TrendingUp size={8} />
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </TableCell>
                 
