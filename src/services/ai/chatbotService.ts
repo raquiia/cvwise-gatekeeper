@@ -13,6 +13,12 @@ export interface ChatResponse {
 }
 
 class ChatbotService {
+  private navigateFunction: ((path: string) => void) | null = null;
+
+  setNavigateFunction(navigate: (path: string) => void) {
+    this.navigateFunction = navigate;
+  }
+
   async processCommand(command: string): Promise<ChatResponse> {
     try {
       // Appel à l'Edge Function pour traiter la commande avec OpenAI
@@ -57,6 +63,9 @@ class ChatbotService {
         case 'search_candidates':
           return await this.searchCandidates(action.criteria);
         
+        case 'navigate':
+          return await this.navigateToPage(action.path, action.candidateId, action.searchParams);
+        
         default:
           return {
             type: action.type,
@@ -70,6 +79,45 @@ class ChatbotService {
         type: action.type,
         success: false,
         details: 'Erreur lors de l\'exécution'
+      };
+    }
+  }
+
+  private async navigateToPage(path: string, candidateId?: string, searchParams?: any): Promise<{ type: string; success: boolean; details?: string }> {
+    try {
+      if (!this.navigateFunction) {
+        return {
+          type: 'navigate',
+          success: false,
+          details: 'Navigation non disponible'
+        };
+      }
+
+      let targetPath = path;
+
+      // Si c'est une navigation vers un candidat spécifique
+      if (candidateId && path === '/candidates/:id') {
+        targetPath = `/candidates/${candidateId}`;
+      }
+
+      // Ajouter des paramètres de recherche si nécessaire
+      if (searchParams && Object.keys(searchParams).length > 0) {
+        const params = new URLSearchParams(searchParams);
+        targetPath += `?${params.toString()}`;
+      }
+
+      this.navigateFunction(targetPath);
+
+      return {
+        type: 'navigate',
+        success: true,
+        details: `Navigation vers ${targetPath}`
+      };
+    } catch (error) {
+      return {
+        type: 'navigate',
+        success: false,
+        details: 'Erreur lors de la navigation'
       };
     }
   }

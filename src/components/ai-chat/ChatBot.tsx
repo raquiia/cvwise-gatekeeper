@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -27,11 +28,12 @@ declare global {
 }
 
 const ChatBot: React.FC = () => {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Bonjour ! Je peux vous aider à gérer vos candidats. Essayez par exemple : 'Ajoute une note à Jean Dupont' ou 'Quel est le statut de Marie Martin ?'",
+      text: "Bonjour ! Je peux vous aider à gérer vos candidats et naviguer dans l'application. Essayez par exemple : 'Ouvre la fiche de Jean Dupont' ou 'Va au dashboard'",
       isBot: true,
       timestamp: new Date()
     }
@@ -50,6 +52,11 @@ const ChatBot: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Set navigation function in chatbot service
+  useEffect(() => {
+    chatbotService.setNavigateFunction(navigate);
+  }, [navigate]);
 
   // Initialize speech recognition
   useEffect(() => {

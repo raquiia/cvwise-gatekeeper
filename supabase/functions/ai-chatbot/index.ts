@@ -70,6 +70,15 @@ ACTIONS POSSIBLES:
 2. change_status: Changer le statut d'un candidat (initial, contact, prequalification, ec1, ec2, presentation_client, en_mission, refus, ancien_employe)
 3. get_candidate_info: Récupérer les informations d'un candidat
 4. search_candidates: Rechercher des candidats selon des critères
+5. navigate: Naviguer vers une page de l'application
+
+PAGES DISPONIBLES POUR LA NAVIGATION:
+- /dashboard : Tableau de bord principal
+- /candidates : Liste des candidats
+- /candidates/:id : Fiche détaillée d'un candidat (remplace :id par l'ID du candidat)
+- /resumes : Gestion des CVs
+- /job-offers : Liste des offres d'emploi
+- /job-offers/:id : Détails d'une offre d'emploi
 
 RÈGLES:
 - Identifie le candidat par son nom ou ID
@@ -96,6 +105,25 @@ Pour "Quel est le statut de Marie Martin ?":
   "action": {
     "type": "get_candidate_info",
     "candidateId": "uuid-du-candidat"
+  }
+}
+
+Pour "Ouvre la fiche de Jean Dupont":
+{
+  "message": "J'ouvre la fiche de Jean Dupont",
+  "action": {
+    "type": "navigate",
+    "path": "/candidates/:id",
+    "candidateId": "uuid-du-candidat"
+  }
+}
+
+Pour "Va au dashboard":
+{
+  "message": "Je vous redirige vers le tableau de bord",
+  "action": {
+    "type": "navigate",
+    "path": "/dashboard"
   }
 }
 
