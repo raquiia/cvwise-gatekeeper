@@ -237,6 +237,10 @@
     @apply icon-container bg-gradient-to-br from-orange-500 to-red-500;
   }
 
+  .icon-gold {
+    @apply icon-container bg-gradient-to-br from-yellow-500 to-amber-500;
+  }
+
   /* Navigation moderne */
   .nav-item {
     @apply relative flex items-center px-3 py-2 text-sm font-medium rounded-md 
