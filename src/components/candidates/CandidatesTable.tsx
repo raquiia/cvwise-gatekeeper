@@ -142,12 +142,12 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow className="bg-gray-50/50">
-            <TableHead className="font-semibold text-gray-700 w-[25%]">Candidat</TableHead>
-            <TableHead className="font-semibold text-gray-700 w-[20%]">Poste & Entreprise</TableHead>
-            <TableHead className="font-semibold text-gray-700 w-[15%]">Expérience</TableHead>
-            <TableHead className="font-semibold text-gray-700 w-[20%]">Compétences</TableHead>
-            <TableHead className="font-semibold text-gray-700 w-[10%]">Score IA</TableHead>
-            <TableHead className="font-semibold text-gray-700 w-[10%] text-center">Actions</TableHead>
+            <TableHead className="font-semibold text-gray-700 min-w-[200px] max-w-[300px]">Candidat</TableHead>
+            <TableHead className="font-semibold text-gray-700 min-w-[150px]">Poste & Entreprise</TableHead>
+            <TableHead className="font-semibold text-gray-700 min-w-[100px] max-w-[120px]">Expérience</TableHead>
+            <TableHead className="font-semibold text-gray-700 min-w-[120px] max-w-[180px]">Compétences</TableHead>
+            <TableHead className="font-semibold text-gray-700 min-w-[80px] max-w-[100px]">Score</TableHead>
+            <TableHead className="font-semibold text-gray-700 w-[60px] text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -170,26 +170,20 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                 className="hover:bg-gray-50/50 transition-colors duration-200 border-b border-gray-100 cursor-pointer"
                 onClick={() => handleRowClick(candidate)}
               >
-                {/* Candidat - Fusion Contact */}
+                {/* Candidat - Simplifié */}
                 <TableCell className="font-medium">
                   <div className="flex items-center space-x-3">
                     <div className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0",
                       isOwnCandidate ? "bg-gradient-to-br from-purple-500 to-blue-600" : "bg-gray-500"
-                    )}>
+                    )}
+                    title={isGlobalMode && !isOwnCandidate ? `Candidat de ${ownerName || 'Autre'}` : undefined}
+                    >
                       {candidate.first_name?.[0]}{candidate.last_name?.[0]}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900 truncate">
-                          {candidate.first_name} <span className="font-bold">{candidate.last_name}</span>
-                        </span>
-                        {isGlobalMode && !isOwnCandidate && (
-                          <Badge variant="outline" className="text-xs bg-muted/30 text-muted-foreground border-border/50 flex-shrink-0">
-                            <User size={8} className="mr-0.5" />
-                            {ownerName || 'Autre'}
-                          </Badge>
-                        )}
+                      <div className="font-medium text-gray-900 truncate">
+                        {candidate.first_name} <span className="font-bold">{candidate.last_name}</span>
                       </div>
                       <div className="text-sm text-gray-500 truncate">
                         <span title={candidate.email}>{candidate.email}</span>
@@ -230,19 +224,17 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                   </div>
                 </TableCell>
                 
-                {/* Compétences - Optimisé */}
+                {/* Compétences - Ultra simplifié */}
                 <TableCell>
-                  <div className="flex flex-wrap gap-1" title={skills.join(', ')}>
+                  <div className="flex items-center gap-1" title={skills.join(', ')}>
                     {skills.length > 0 ? (
                       <>
-                        {skills.slice(0, 2).map((skill, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 truncate max-w-[80px]">
-                            {skill}
-                          </Badge>
-                        ))}
-                        {skills.length > 2 && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 truncate max-w-[60px]">
+                          {skills[0]}
+                        </Badge>
+                        {skills.length > 1 && (
                           <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600">
-                            +{skills.length - 2}
+                            +{skills.length - 1}
                           </Badge>
                         )}
                       </>
@@ -252,54 +244,25 @@ const CandidatesTable: React.FC<CandidatesTableProps> = ({
                   </div>
                 </TableCell>
                 
-                {/* Score IA - Compacté */}
+                {/* Score - Ultra simplifié */}
                 <TableCell>
-                  <div className="flex flex-col items-center gap-1">
+                  <div className="flex justify-center">
                     {aiScore.isLoading ? (
                       <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
                         <div className="w-3 h-3 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
                       </div>
-                    ) : aiScore.error ? (
-                      <div 
-                        className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white",
-                          displayScore >= 80 ? "bg-green-500" : 
-                          displayScore >= 60 ? "bg-yellow-500" : "bg-red-500"
-                        )}
-                        title={aiScore.error}
-                      >
-                        {candidate.score || 0}
-                      </div>
                     ) : (
                       <div 
                         className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white",
+                          "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white cursor-help",
                           displayScore >= 80 ? "bg-green-500" : 
                           displayScore >= 60 ? "bg-yellow-500" : "bg-red-500"
                         )}
-                        title={isAIScore ? aiScore.explanation : "Score calculé avec l'ancien système"}
+                        title={`Score: ${displayScore}/100 ${isAIScore ? `(${getScoreSource(aiScore.source)})` : '(Ancien)'} ${jobSpecific ? '- Spécifique au poste' : ''} ${aiScore.explanation ? `- ${aiScore.explanation}` : ''}`}
                       >
                         {displayScore}
                       </div>
                     )}
-                    
-                    <div className="flex items-center gap-1">
-                      <Badge 
-                        variant={isAIScore ? "default" : "secondary"} 
-                        className={cn(
-                          "text-xs px-1 py-0",
-                          isAIScore ? "bg-purple-100 text-purple-800" : "bg-gray-100 text-gray-600"
-                        )}
-                      >
-                        {isAIScore ? getScoreSource(aiScore.source) : 'Ancien'}
-                      </Badge>
-                      
-                      {jobSpecific && (
-                        <Badge variant="outline" className="text-xs bg-purple-100 text-purple-800 border-purple-300 px-1 py-0">
-                          <TrendingUp size={8} />
-                        </Badge>
-                      )}
-                    </div>
                   </div>
                 </TableCell>
                 
