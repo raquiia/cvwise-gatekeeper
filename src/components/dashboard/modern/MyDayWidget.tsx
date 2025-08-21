@@ -52,7 +52,6 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
   const [urgentBMTasks, setUrgentBMTasks] = useState<RecruiterTask[]>([]);
   const [completedTasks, setCompletedTasks] = useState<RecruiterTask[]>([]);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [hiddenGeneratedTasks, setHiddenGeneratedTasks] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (user?.id) {
@@ -178,88 +177,7 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
         });
       });
 
-    const now = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    // Entretiens programmés (seulement si pas masqués)
-    const interviewCandidates = candidates.filter(candidate => {
-      const status = candidate.detailed_status || 'initial';
-      return ['ec1', 'ec2', 'presentation_client'].includes(status);
-    }).slice(0, 2);
-
-    interviewCandidates.forEach((candidate, index) => {
-      const itemId = `interview-${candidate.id}`;
-      if (!hiddenGeneratedTasks.has(itemId)) {
-        const times = ['09:00', '14:30'];
-        items.push({
-          id: itemId,
-          type: 'interview',
-          interviewType: 'ec1',
-          title: `Entretien ${candidate.first_name} ${candidate.last_name}`,
-          time: times[index] || '15:00',
-          description: `${candidate.position || 'Poste non spécifié'}`,
-          priority: 'medium',
-          status: 'Programmé',
-          candidateId: candidate.id
-        });
-      }
-    });
-
-    // Tâches de suivi (seulement si pas masquées)
-    const candidatesNeedingFollowUp = candidates.filter(candidate => {
-      const updatedAt = new Date(candidate.updated_at);
-      const status = candidate.detailed_status || 'initial';
-      return status === 'contact' && updatedAt < sevenDaysAgo;
-    });
-
-    if (candidatesNeedingFollowUp.length > 0 && !hiddenGeneratedTasks.has('task-followup')) {
-      items.push({
-        id: 'task-followup',
-        type: 'task',
-        title: `Relancer ${candidatesNeedingFollowUp.length} candidat${candidatesNeedingFollowUp.length > 1 ? 's' : ''}`,
-        time: '16:00',
-        description: 'Candidats sans réponse depuis plus de 7 jours',
-        priority: 'high',
-        status: 'À faire'
-      });
-    }
-
-    // Candidats à fort potentiel (seulement si pas masqués)
-    const candidatesWithHighScore = candidates.filter(candidate => {
-      const status = candidate.detailed_status || 'initial';
-      return (candidate.ai_score || 0) > 80 && status === 'initial';
-    });
-
-    if (candidatesWithHighScore.length > 0 && !hiddenGeneratedTasks.has('task-highscore')) {
-      items.push({
-        id: 'task-highscore',
-        type: 'task',
-        title: `Contacter ${candidatesWithHighScore.length} candidat${candidatesWithHighScore.length > 1 ? 's' : ''} prometteur${candidatesWithHighScore.length > 1 ? 's' : ''}`,
-        time: '17:00',
-        description: 'Score IA élevé (>80%) - action prioritaire',
-        priority: 'medium',
-        status: 'À faire'
-      });
-    }
-
-    // Alertes urgentes
-    const topCandidate = candidates
-      .filter(c => (c.ai_score || 0) > 0 && (c.detailed_status || 'initial') === 'initial')
-      .sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0))[0];
-
-    if (topCandidate && (topCandidate.ai_score || 0) > 85) {
-      items.push({
-        id: `alert-top-${topCandidate.id}`,
-        type: 'alert',
-        title: 'Candidat très prometteur',
-        time: 'Maintenant',
-        description: `Score IA ${topCandidate.ai_score}% - ${topCandidate.first_name} ${topCandidate.last_name}`,
-        priority: 'high',
-        status: 'Urgent',
-        candidateId: topCandidate.id
-      });
-    }
+    // Pas de génération de tâches fictives - seulement les vraies tâches
 
     return items.slice(0, 8);
   };
@@ -593,19 +511,7 @@ const MyDayWidget: React.FC<MyDayProps> = ({ candidatesData }) => {
                           <CheckCircle className="h-3 w-3" />
                         )}
                       </Button>
-                    ) : !item.isCompleted ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        onClick={() => {
-                          setHiddenGeneratedTasks(prev => new Set(prev).add(item.id));
-                        }}
-                        title="Marquer comme terminé"
-                      >
-                        <CheckCircle className="h-3 w-3" />
-                      </Button>
-                    ) : null}
+                     ) : null}
                   </div>
                 </div>
               ))}
