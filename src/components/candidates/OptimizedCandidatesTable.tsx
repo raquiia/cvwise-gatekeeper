@@ -12,7 +12,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUpDown, Brain, Sparkles, Trash2, Lock, MapPin, Briefcase, Phone, Mail, Star, Calendar, User } from 'lucide-react';
+import { ArrowUpDown, Brain, Sparkles, Trash2, Lock, MapPin, Briefcase, Phone, Mail, Star, Calendar, User, DollarSign } from 'lucide-react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { CandidateData, candidateService } from '@/services/data/candidateService';
 import { ensureStringArray, ensureArray } from '@/utils/candidateUtils';
@@ -114,10 +114,11 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
   // Optimized function for responsive column widths
   const getColumnWidth = useMemo(() => (index: number) => {
     switch (index) {
-      case 0: return 'w-[35%] min-w-[280px]'; // Candidat - Reduced from 45% to 35%
-      case 1: return 'w-[40%] min-w-[240px]'; // Position & Performance - Increased from 30% to 40%
+      case 0: return 'w-[30%] min-w-[280px]'; // Candidat 
+      case 1: return 'w-[35%] min-w-[240px]'; // Position & Performance 
       case 2: return 'w-[15%] min-w-[120px]'; // Statut & Disponibilité 
-      case 3: return 'w-[10%] min-w-[100px]'; // Actions
+      case 3: return 'w-[10%] min-w-[90px]'; // Prétentions
+      case 4: return 'w-[10%] min-w-[100px]'; // Actions
       default: return 'w-auto';
     }
   }, []);
@@ -504,7 +505,55 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
       accessorFn: (row) => row.status || '',
     },
 
-    // Column 4: Actions (10%) - Actions uniquement
+    // Column 4: Prétentions (10%) - Prétentions salariales
+    {
+      id: 'salary_expectations',
+      accessorKey: 'salary_expectations',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
+        >
+          <DollarSign className="w-4 h-4 mr-1" />
+          Prétentions
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const candidate = row.original;
+        const salary = candidate.salary_expectations;
+        
+        return (
+          <div className="min-w-0">
+            {salary ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium cursor-help bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200">
+                      <DollarSign className="w-3 h-3 flex-shrink-0" />
+                      <span className="line-clamp-2 leading-tight">{salary}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="font-medium">Prétentions salariales</p>
+                    <p className="text-sm">{salary}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs text-muted-foreground bg-gray-50 border border-gray-200">
+                <DollarSign className="w-3 h-3 flex-shrink-0" />
+                <span>Non renseigné</span>
+              </div>
+            )}
+          </div>
+        );
+      },
+      accessorFn: (row) => row.salary_expectations || '',
+    },
+
+    // Column 5: Actions (10%) - Actions uniquement
     {
       id: 'actions',
       accessorKey: 'actions',
