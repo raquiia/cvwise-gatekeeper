@@ -7,6 +7,34 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Fonction utilitaire pour normaliser les noms (pour un meilleur matching)
+function normalizeText(text) {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Fonction pour créer des variations de noms
+function createNameVariations(firstName, lastName) {
+  const variations = [
+    `${firstName} ${lastName}`,
+    `${firstName.toLowerCase()} ${lastName.toLowerCase()}`,
+    `${firstName.toUpperCase()} ${lastName.toUpperCase()}`,
+    `${firstName} ${lastName.toUpperCase()}`,
+    `${firstName.toLowerCase()} ${lastName}`,
+    normalizeText(`${firstName} ${lastName}`),
+  ];
+  
+  // Ajouter des variations sans espaces
+  variations.push(`${firstName}${lastName}`.toLowerCase());
+  variations.push(`${firstName}.${lastName}`.toLowerCase());
+  
+  return [...new Set(variations)]; // Supprimer les doublons
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -15,6 +43,7 @@ serve(async (req) => {
 
   try {
     const { command } = await req.json();
+    console.log('Commande reçue:', command);
 
     if (!command) {
       throw new Error('Aucune commande fournie');
@@ -45,20 +74,36 @@ serve(async (req) => {
       }
     });
 
-    // Récupérer les candidats de l'utilisateur pour le contexte
+    // Récupérer les candidats de l'utilisateur pour le contexte (triés par date de création)
     const { data: candidates, error: candidatesError } = await userSupabase
       .from('candidates')
-      .select('id, first_name, last_name, position, detailed_status, ai_score')
-      .limit(100);
+      .select('id, first_name, last_name, position, detailed_status, ai_score, email, created_at')
+      .order('created_at', { ascending: false })
+      .limit(50); // Limiter pour améliorer les performances et la qualité du contexte
 
     if (candidatesError) {
       console.error('Erreur lors de la récupération des candidats:', candidatesError);
     }
 
-    // Construire le contexte avec les candidats
-    const candidatesContext = candidates?.map(c => 
-      `${c.first_name} ${c.last_name} (ID: ${c.id}) - ${c.position || 'Poste non spécifié'} - Statut: ${c.detailed_status || 'initial'} - Score IA: ${c.ai_score || 'N/A'}`
-    ).join('\n') || '';
+    console.log(`${candidates?.length || 0} candidats récupérés pour le contexte`);
+
+    // Construire un contexte enrichi avec variations de noms
+    const candidatesContext = candidates?.map(c => {
+      const fullName = `${c.first_name} ${c.last_name}`;
+      const variations = createNameVariations(c.first_name, c.last_name);
+      const additionalInfo = [];
+      
+      if (c.email) additionalInfo.push(`Email: ${c.email}`);
+      if (c.position) additionalInfo.push(`Poste: ${c.position}`);
+      
+      return `• ${fullName} (ID: ${c.id})
+  - Statut: ${c.detailed_status || 'initial'}
+  - Score IA: ${c.ai_score || 'N/A'}
+  - ${additionalInfo.join(' | ')}
+  - Variations: ${variations.slice(0, 3).join(', ')}`;
+    }).join('\n\n') || '';
+
+    console.log('Contexte des candidats construit:', candidatesContext.substring(0, 500) + '...');
 
     const systemPrompt = `Tu es un assistant IA pour une application de recrutement. Tu peux exécuter des actions sur les candidats.
 
@@ -81,12 +126,25 @@ PAGES DISPONIBLES POUR LA NAVIGATION:
 - /job-offers : Liste des offres d'emploi
 - /job-offers/:id : Détails d'une offre d'emploi
 
-RÈGLES:
-- Identifie le candidat par son nom ou ID
+RÈGLES IMPORTANTES POUR L'IDENTIFICATION DES CANDIDATS:
+- Sois TRÈS TOLÉRANT avec les variations de noms (casse, accents, espaces)
+- "Louis Le Potvin", "louis le potvin", "Louis le potvin", "LOUIS LE POTVIN" sont tous identiques
+- Ignore les différences d'accents : "é" = "e", "à" = "a", etc.
+- Accepte les variations d'espacement : "Le Potvin" = "LePotvin" = "le potvin"
+- Utilise les variations fournies dans le contexte pour identifier les candidats
+- En cas de doute entre plusieurs candidats, utilise l'ID ou demande une clarification
+- TOUJOURS utiliser l'ID exact du candidat trouvé dans la réponse JSON
+
+RÈGLES GÉNÉRALES:
 - Pour les actions, réponds TOUJOURS avec un JSON contenant "message" et "action"
 - Pour les questions simples, réponds juste avec "message"
 - Sois concis et professionnel
-- Si le nom n'est pas exact, suggère des candidats similaires
+- Si aucun candidat ne correspond exactement, suggère le plus proche
+
+EXEMPLES DE MATCHING DE NOMS:
+- "louis le potvin" → Trouve "Louis Le Potvin (ID: e6e7f2b4-e415-4fd2-978c-a11cf1641ee9)"
+- "MARIE MARTIN" → Trouve "Marie Martin" même si écrit différemment
+- "jean dupont" → Trouve "Jean Dupont" même sans majuscules
 
 EXEMPLES DE RÉPONSES:
 Pour "Ajoute une note à Jean Dupont":
