@@ -451,7 +451,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                     availability.color
                   )}>
                     <AvailabilityIcon className="w-3 h-3 flex-shrink-0" />
-                    <span className="truncate">{availability.status}</span>
+                    <span className="line-clamp-2 leading-tight">{availability.status}</span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
