@@ -316,6 +316,29 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                   <span className="truncate">{candidate.phone}</span>
                 </a>
               )}
+              
+              <div className="flex items-center text-xs text-muted-foreground">
+                <MapPin className="w-3 h-3 mr-2 flex-shrink-0" />
+                <span className="truncate" title={(() => {
+                  const city = candidate.city || '';
+                  const country = candidate.country || '';
+                  if (city && country) return `${city}, ${country}`;
+                  if (city) return city;
+                  if (country) return country;
+                  if (candidate.location) return candidate.location;
+                  return 'Non spécifiée';
+                })()}>
+                  {(() => {
+                    const city = candidate.city || '';
+                    const country = candidate.country || '';
+                    if (city && country) return `${city}, ${country}`;
+                    if (city) return city;
+                    if (country) return country;
+                    if (candidate.location) return candidate.location;
+                    return 'Non spécifiée';
+                  })()}
+                </span>
+              </div>
             </div>
           </div>
         );
@@ -465,17 +488,17 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
       accessorFn: (row) => row.status || '',
     },
 
-    // Column 4: Localisation & Actions (10%) - Lieu + Actions
+    // Column 4: Actions (10%) - Actions uniquement
     {
-      id: 'location_actions',
-      accessorKey: 'location',
+      id: 'actions',
+      accessorKey: 'actions',
       header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
         >
-          Lieu & Actions
+          Actions
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
@@ -483,72 +506,44 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
         const candidate = row.original;
         const isOwnCandidate = candidate.user_id === currentUserId;
         
-        const formatLocation = () => {
-          const city = candidate.city || '';
-          const country = candidate.country || '';
-          
-          if (city && country) return `${city}, ${country}`;
-          if (city) return city;
-          if (country) return country;
-          if (candidate.location) return candidate.location;
-          return 'N/A';
-        };
-        
         return (
-          <div className="space-y-3">
-            <div className="flex items-center text-xs text-muted-foreground">
-              <MapPin className="w-3 h-3 mr-2 flex-shrink-0" />
-              <span className="truncate" title={formatLocation()}>
-                {formatLocation()}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-center">
-              {isOwnCandidate ? (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={(e) => handleDeleteCandidate(candidate.id!, candidate, e)}
-                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Supprimer le candidat</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ) : (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="h-8 w-8 flex items-center justify-center text-muted-foreground/50 cursor-help">
-                        <Lock className="h-4 w-4" />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Candidat d'un autre utilisateur</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
+          <div className="flex items-center justify-center">
+            {isOwnCandidate ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={(e) => handleDeleteCandidate(candidate.id!, candidate, e)}
+                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Supprimer le candidat</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="h-8 w-8 flex items-center justify-center text-muted-foreground/50 cursor-help">
+                      <Lock className="h-4 w-4" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Candidat d'un autre utilisateur</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         );
       },
-      accessorFn: (row) => {
-        const city = row.city || '';
-        const country = row.country || '';
-        if (city && country) return `${city}, ${country}`;
-        if (city) return city;
-        if (country) return country;
-        if (row.location) return row.location;
-        return '';
-      },
+      accessorFn: (row) => '',
     },
   ], [getAIScore, jobOfferId, jobSpecific, currentUserId, handleDeleteCandidate]);
 
@@ -574,14 +569,13 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="border-border/50 hover:bg-transparent bg-muted/30">
                 {headerGroup.headers.map((header, index) => {
-                  // Define responsive column widths: 30%, 25%, 20%, 15%, 10%
+                  // Define responsive column widths: 45%, 30%, 15%, 10%
                   const getColumnWidth = (index: number) => {
                     switch (index) {
-                      case 0: return 'w-[30%] min-w-[200px]'; // Candidat
-                      case 1: return 'w-[25%] min-w-[180px]'; // Contact & Expérience  
-                      case 2: return 'w-[20%] min-w-[160px]'; // Entreprise & Statut
-                      case 3: return 'w-[15%] min-w-[120px]'; // Disponibilité & Score
-                      case 4: return 'w-[10%] min-w-[100px]'; // Localisation & Actions
+                      case 0: return 'w-[45%] min-w-[250px]'; // Candidat + localisation
+                      case 1: return 'w-[30%] min-w-[200px]'; // Position & Performance 
+                      case 2: return 'w-[15%] min-w-[140px]'; // Statut & Disponibilité
+                      case 3: return 'w-[10%] min-w-[100px]'; // Actions
                       default: return 'w-auto';
                     }
                   };
@@ -614,11 +608,10 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                   {row.getVisibleCells().map((cell, index) => {
                      const getColumnWidth = (index: number) => {
                        switch (index) {
-                         case 0: return 'w-[30%] min-w-[200px]'; // Candidat
-                         case 1: return 'w-[25%] min-w-[180px]'; // Contact & Expérience
-                         case 2: return 'w-[20%] min-w-[160px]'; // Entreprise & Statut
-                         case 3: return 'w-[15%] min-w-[120px]'; // Disponibilité & Score
-                         case 4: return 'w-[10%] min-w-[100px]'; // Localisation & Actions
+                         case 0: return 'w-[45%] min-w-[250px]'; // Candidat + localisation
+                         case 1: return 'w-[30%] min-w-[200px]'; // Position & Performance
+                         case 2: return 'w-[15%] min-w-[140px]'; // Statut & Disponibilité
+                         case 3: return 'w-[10%] min-w-[100px]'; // Actions
                          default: return 'w-auto';
                        }
                      };
