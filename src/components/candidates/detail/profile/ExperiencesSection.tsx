@@ -47,13 +47,14 @@ const ExperiencesSection: React.FC<ExperiencesSectionProps> = ({ candidate }) =>
                         {exp.location}
                       </span>
                     )}
-                    {(exp?.startDate || exp?.start_date) && (
+                    {(exp?.duration || exp?.startDate || exp?.start_date) && (
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        {exp.startDate || exp.start_date} 
-                        {(exp?.endDate || exp?.end_date) ? 
-                          ` - ${exp.endDate || exp.end_date}` : 
-                          " - Présent"}
+                        {exp?.duration || 
+                          `${exp.startDate || exp.start_date}${(exp?.endDate || exp?.end_date) ? 
+                            ` - ${exp.endDate || exp.end_date}` : 
+                            " - Présent"}`
+                        }
                       </span>
                     )}
                   </div>

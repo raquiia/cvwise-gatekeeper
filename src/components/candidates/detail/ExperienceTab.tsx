@@ -36,12 +36,13 @@ const ExperienceTab: React.FC<ExperienceTabProps> = ({ candidate }) => {
                     <div className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
                       <span className="font-medium text-navy">{exp?.company || 'Entreprise non spécifiée'}</span>
                       {exp?.location && <span>• {exp.location}</span>}
-                      {(exp?.startDate || exp?.start_date) && (
+                      {(exp?.duration || exp?.startDate || exp?.start_date) && (
                         <span>
-                          • {exp.startDate || exp.start_date} 
-                          {(exp?.endDate || exp?.end_date) ? 
-                            ` - ${exp.endDate || exp.end_date}` : 
-                            " - Présent"}
+                          • {exp?.duration || 
+                              `${exp.startDate || exp.start_date}${(exp?.endDate || exp?.end_date) ? 
+                                ` - ${exp.endDate || exp.end_date}` : 
+                                " - Présent"}`
+                            }
                         </span>
                       )}
                     </div>
