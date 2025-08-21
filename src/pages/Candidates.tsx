@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import CandidatesHeader from '@/components/candidates/CandidatesHeader';
-import CandidatesTable from '@/components/candidates/CandidatesTable';
+import OptimizedCandidatesTable from '@/components/candidates/OptimizedCandidatesTable';
 import CandidatesCardView from '@/components/candidates/CandidatesCardView';
 import CandidatesKanbanView from '@/components/candidates/kanban/CandidatesKanbanView';
 import CandidatesAnalyticsView from '@/components/candidates/analytics/CandidatesAnalyticsView';
@@ -372,7 +372,7 @@ const CandidatesContent = () => {
     switch (currentView) {
       case 'table':
         return (
-          <CandidatesTable 
+          <OptimizedCandidatesTable 
             candidates={filteredCandidates}
             selectedStatus={filters.selectedStatus}
             onStatusChange={handleStatusChange}
@@ -406,7 +406,7 @@ const CandidatesContent = () => {
         );
       default:
         return (
-          <CandidatesTable 
+          <OptimizedCandidatesTable 
             candidates={filteredCandidates}
             selectedStatus={filters.selectedStatus}
             onStatusChange={handleStatusChange}
