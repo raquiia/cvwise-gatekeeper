@@ -57,6 +57,9 @@ class ChatbotService {
         case 'change_status':
           return await this.changeCandidateStatus(action.candidateId, action.status);
         
+        case 'change_status_with_note':
+          return await this.changeStatusWithNote(action.candidateId, action.status, action.noteContent, action.businessManager);
+        
         case 'get_candidate_info':
           return await this.getCandidateInfo(action.candidateId);
         
@@ -146,20 +149,63 @@ class ChatbotService {
     }
   }
 
-  private async changeCandidateStatus(candidateId: string, status: string) {
+  private async changeCandidateStatus(candidateId: string, status: string): Promise<{ type: string; success: boolean; details?: string }> {
     try {
-      const result = await candidateStatusService.updateCandidateStatus(candidateId, status);
-
+      const success = await candidateStatusService.updateCandidateStatus(candidateId, status);
+      
       return {
         type: 'change_status',
-        success: result,
-        details: result ? 'Statut mis à jour avec succès' : 'Échec de la mise à jour du statut'
+        success,
+        details: success ? `Statut changé en ${status}` : 'Erreur lors du changement de statut'
       };
     } catch (error) {
       return {
         type: 'change_status',
         success: false,
-        details: 'Erreur lors de la mise à jour du statut'
+        details: 'Erreur lors du changement de statut'
+      };
+    }
+  }
+
+  private async changeStatusWithNote(
+    candidateId: string, 
+    status: string, 
+    noteContent: string, 
+    businessManager?: string
+  ): Promise<{ type: string; success: boolean; details?: string }> {
+    try {
+      // Changer le statut
+      const statusSuccess = await candidateStatusService.updateCandidateStatus(candidateId, status);
+      
+      if (!statusSuccess) {
+        return {
+          type: 'change_status_with_note',
+          success: false,
+          details: 'Erreur lors du changement de statut'
+        };
+      }
+
+      // Ajouter la note
+      const noteSuccess = await candidateNotesService.addNote({
+        candidate_id: candidateId,
+        user_id: '',
+        content: noteContent,
+        note_type: 'interview' as any,
+        business_manager: businessManager
+      });
+
+      return {
+        type: 'change_status_with_note',
+        success: !!noteSuccess,
+        details: noteSuccess ? 
+          `Statut changé en ${status} et note ajoutée avec succès` : 
+          'Statut changé mais erreur lors de l\'ajout de la note'
+      };
+    } catch (error) {
+      return {
+        type: 'change_status_with_note',
+        success: false,
+        details: 'Erreur lors du changement de statut et ajout de note'
       };
     }
   }

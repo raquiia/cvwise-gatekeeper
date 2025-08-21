@@ -68,9 +68,10 @@ ${candidatesContext}
 ACTIONS POSSIBLES:
 1. add_note: Ajouter une note à un candidat
 2. change_status: Changer le statut d'un candidat (initial, contact, prequalification, ec1, ec2, presentation_client, en_mission, refus, ancien_employe)
-3. get_candidate_info: Récupérer les informations d'un candidat
-4. search_candidates: Rechercher des candidats selon des critères
-5. navigate: Naviguer vers une page de l'application
+3. change_status_with_note: Changer le statut d'un candidat et ajouter une note avec détails (business manager, date entretien)
+4. get_candidate_info: Récupérer les informations d'un candidat
+5. search_candidates: Rechercher des candidats selon des critères
+6. navigate: Naviguer vers une page de l'application
 
 PAGES DISPONIBLES POUR LA NAVIGATION:
 - /dashboard : Tableau de bord principal
@@ -96,6 +97,20 @@ Pour "Ajoute une note à Jean Dupont":
     "candidateId": "uuid-du-candidat",
     "content": "Note ajoutée via assistant IA",
     "noteType": "global"
+  }
+}
+
+Pour "Change le statut de Louis Le Potvin en EC1 avec Guilhem Lecussan pour un entretien le 22/08/25 à 10h30":
+{
+  "message": "Je change le statut de Louis Le Potvin en EC1 et j'ajoute une note pour l'entretien avec le business manager Guilhem Lecussan le 22/08/25 à 10h30.",
+  "action": {
+    "type": "change_status_with_note",
+    "candidateId": "uuid-du-candidat",
+    "status": "ec1",
+    "businessManager": "Guilhem Lecussan",
+    "interviewDate": "22/08/25",
+    "interviewTime": "10h30",
+    "noteContent": "Entretien EC1 prévu le 22/08/25 à 10h30 avec le business manager Guilhem Lecussan"
   }
 }
 
