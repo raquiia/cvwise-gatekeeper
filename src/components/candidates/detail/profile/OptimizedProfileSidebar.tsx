@@ -5,15 +5,10 @@ import { Button } from '@/components/ui/button';
 import { 
   Languages,
   Building,
-  Target,
-  Clock,
-  DollarSign,
-  Car,
   Download,
   Share,
   Heart,
-  Briefcase,
-  Calendar
+  Briefcase
 } from 'lucide-react';
 import { CandidateData } from '@/services/data/candidateService';
 import { ensureArray } from '@/utils/candidateUtils';
@@ -144,61 +139,6 @@ const OptimizedProfileSidebar: React.FC<OptimizedProfileSidebarProps> = ({ candi
         </Card>
       )}
 
-      {/* Préférences professionnelles */}
-      <Card className="border-navy/20 shadow-xl bg-gradient-to-br from-white via-gold/2 to-yellow-50/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-3 text-navy-dark">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-gold to-yellow-500 text-white shadow-lg">
-              <Target className="w-4 h-4" />
-            </div>
-            Préférences
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {candidate.salary_expectations && (
-            <div className="bg-white/50 rounded-lg p-3 border border-gold/20">
-              <div className="text-xs text-muted-foreground mb-1">Salaire souhaité</div>
-              <div className="flex items-center gap-2 text-sm font-medium text-navy-dark">
-                <DollarSign className="w-3 h-3 text-gold" />
-                {candidate.salary_expectations}
-              </div>
-            </div>
-          )}
-          
-          {candidate.availability && (
-            <div className="bg-white/50 rounded-lg p-3 border border-gold/20">
-              <div className="text-xs text-muted-foreground mb-1">Disponibilité</div>
-              <div className="flex items-center gap-2 text-sm font-medium text-navy-dark">
-                <Calendar className="w-3 h-3 text-green-600" />
-                {candidate.availability}
-              </div>
-            </div>
-          )}
-          
-          {candidate.mobility && (
-            <div className="bg-white/50 rounded-lg p-3 border border-gold/20">
-              <div className="text-xs text-muted-foreground mb-1">Mobilité</div>
-              <div className="flex items-center gap-2 text-sm font-medium text-navy-dark">
-                <Car className="w-3 h-3 text-blue-600" />
-                {candidate.mobility}
-              </div>
-            </div>
-          )}
-          
-          <div className="space-y-2">
-            {candidate.remote_preference && (
-              <Badge variant="outline" className="w-full justify-center bg-blue-50 text-blue-600 border-blue-200">
-                {candidate.remote_preference}
-              </Badge>
-            )}
-            {candidate.contract_type && (
-              <Badge variant="outline" className="w-full justify-center bg-purple-50 text-purple-600 border-purple-200">
-                {candidate.contract_type}
-              </Badge>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Actions fonctionnelles */}
       <Card className="border-navy/20 shadow-xl bg-gradient-to-br from-white to-navy/5">

@@ -9,6 +9,7 @@ import OptimizedProfileSidebar from './profile/OptimizedProfileSidebar';
 import ModernProjectsSection from './profile/ModernProjectsSection';
 import UnifiedNotesSection from './profile/UnifiedNotesSection';
 import PreferencesObjectivesSection from './profile/PreferencesObjectivesSection';
+import ProfessionalPreferencesBadges from './profile/ProfessionalPreferencesBadges';
 
 interface ProfileTabProps {
   candidate: CandidateData;
@@ -28,6 +29,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ candidate, isLoading, onRefresh
           Vue complète du candidat {candidate.first_name} {candidate.last_name}
         </p>
       </div>
+
+      {/* Préférences professionnelles en évidence */}
+      <ProfessionalPreferencesBadges candidate={candidate} />
 
       {/* Layout principal optimisé */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
