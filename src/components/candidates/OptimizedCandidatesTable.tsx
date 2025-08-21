@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowUpDown, Brain, Sparkles, Trash2, Lock, MapPin, Briefcase, Phone } from 'lucide-react';
 import { useAIScoring } from '@/hooks/use-ai-scoring';
 import { CandidateData, candidateService } from '@/services/data/candidateService';
-import { ensureStringArray } from '@/utils/candidateUtils';
+import { ensureStringArray, ensureArray } from '@/utils/candidateUtils';
 import { getLastCompany } from '@/utils/companyUtils';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/use-confirm';
@@ -111,6 +111,62 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
     }
   };
 
+  // Helper function to determine availability status
+  const getAvailabilityStatus = (candidate: CandidateData) => {
+    // Check if candidate has availability info from notes or profile
+    if (candidate.availability) {
+      return {
+        status: candidate.availability,
+        type: 'confirmed',
+        color: 'bg-blue-500/10 text-blue-600 border-blue-200'
+      };
+    }
+
+    // Check if candidate is currently employed by looking at last experience
+    const experiences = ensureArray(candidate.experiences);
+    const lastExperience = experiences[0]; // Most recent experience should be first
+    
+    if (lastExperience && typeof lastExperience === 'object') {
+      const endDate = (lastExperience as any).end_date || (lastExperience as any).endDate;
+      
+      if (!endDate || endDate === 'Présent' || endDate === 'Present' || endDate === 'En cours') {
+        return {
+          status: 'Sous préavis',
+          type: 'estimated',
+          color: 'bg-amber-500/10 text-amber-600 border-amber-200'
+        };
+      } else {
+        return {
+          status: 'Immédiate',
+          type: 'calculated',
+          color: 'bg-emerald-500/10 text-emerald-600 border-emerald-200'
+        };
+      }
+    }
+
+    return {
+      status: 'Non définie',
+      type: 'unknown',
+      color: 'bg-muted text-muted-foreground border-border'
+    };
+  };
+
+  const getCurrentCompany = (candidate: CandidateData) => {
+    // First check if there's a company field
+    if (candidate.company) return candidate.company;
+
+    // Then check experiences for most recent company
+    const experiences = ensureArray(candidate.experiences);
+    const lastExperience = experiences[0];
+    
+    if (lastExperience && typeof lastExperience === 'object') {
+      const company = (lastExperience as any).company || (lastExperience as any).employer;
+      if (company) return company;
+    }
+
+    return 'Non spécifiée';
+  };
+
   const getStatusBadgeColor = (status: string | undefined | null) => {
     const normalizedStatus = status?.toLowerCase().trim();
     switch (normalizedStatus) {
@@ -144,7 +200,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
   };
 
   const columns: ColumnDef<CandidateData>[] = useMemo(() => [
-    // Column 1: Candidate (25%) - Compact name, email, avatar
+    // Column 1: Candidat (20%) - Nom complet + avatar ownership
     {
       id: 'candidate',
       accessorKey: 'name',
@@ -186,6 +242,11 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                         <span>{candidate.phone}</span>
                       </div>
                     )}
+                    {candidate.email && (
+                      <div className="text-sm text-muted-foreground">
+                        {candidate.email}
+                      </div>
+                    )}
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -195,9 +256,6 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
               <div className="font-medium text-foreground truncate text-sm">
                 {candidate.first_name} <span className="font-bold">{candidate.last_name}</span>
               </div>
-              <div className="text-xs text-muted-foreground truncate">
-                {candidate.email}
-              </div>
             </div>
           </div>
         );
@@ -205,9 +263,9 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
       accessorFn: (row) => `${row.first_name} ${row.last_name}`,
     },
     
-    // Column 2: Position & Experience (25%) - Compact display
+    // Column 2: Poste & Entreprise (25%) - Poste + entreprise + années d'expérience
     {
-      id: 'position_experience',
+      id: 'position_company',
       accessorKey: 'position',
       header: ({ column }) => (
         <Button
@@ -215,13 +273,13 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
         >
-          Poste & Exp.
+          Poste & Entreprise
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       cell: ({ row }) => {
         const candidate = row.original;
-        const lastCompany = getLastCompany(candidate);
+        const currentCompany = getCurrentCompany(candidate);
         
         return (
           <div className="space-y-1 min-w-0">
@@ -230,10 +288,10 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
             </div>
             <div className="flex items-center text-xs text-muted-foreground truncate">
               <Briefcase className="w-3 h-3 mr-1 flex-shrink-0" />
-              <span title={lastCompany} className="truncate">{lastCompany}</span>
+              <span title={currentCompany} className="truncate">{currentCompany}</span>
             </div>
             <div className="text-xs text-muted-foreground font-medium">
-              {candidate.years_experience ? `${candidate.years_experience} ans` : '0 an'}
+              {candidate.years_experience ? `${candidate.years_experience} ans d'exp.` : 'Expérience N/A'}
             </div>
           </div>
         );
@@ -241,9 +299,9 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
       accessorFn: (row) => row.position || '',
     },
 
-    // Column 3: Status & Scoring (20%) - Visible status + AI score
+    // Column 3: Statut & Disponibilité (20%) - Statut visible + disponibilité calculée
     {
-      id: 'status_scoring',
+      id: 'status_availability',
       accessorKey: 'status',
       header: ({ column }) => (
         <Button
@@ -251,20 +309,13 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
         >
-          Statut & Score
+          Statut & Dispo.
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       cell: ({ row }) => {
         const candidate = row.original;
-        const aiScore = getAIScore(candidate.id!, jobOfferId);
-        const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
-        
-        const getScoreColor = (score: number) => {
-          if (score >= 80) return 'text-emerald-600';
-          if (score >= 60) return 'text-amber-600';
-          return 'text-red-600';
-        };
+        const availability = getAvailabilityStatus(candidate);
         
         return (
           <div className="space-y-2">
@@ -278,6 +329,73 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
+                  <Badge 
+                    variant="outline" 
+                    className={cn("text-xs font-medium border px-2 py-0.5 cursor-help", availability.color)}
+                  >
+                    {availability.status}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="text-sm">
+                    <p className="font-medium">Disponibilité: {availability.status}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {availability.type === 'confirmed' && 'Confirmée par le candidat'}
+                      {availability.type === 'estimated' && 'Estimée - encore en poste'}
+                      {availability.type === 'calculated' && 'Calculée - poste terminé'}
+                      {availability.type === 'unknown' && 'Information manquante'}
+                    </p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        );
+      },
+      accessorFn: (row) => row.status || 'initial',
+    },
+
+    // Column 4: Score & Localisation (20%) - Score IA + localisation
+    {
+      id: 'score_location',
+      accessorKey: 'ai_score',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
+        >
+          Score & Lieu
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const candidate = row.original;
+        const aiScore = getAIScore(candidate.id!, jobOfferId);
+        const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
+        
+        const getScoreColor = (score: number) => {
+          if (score >= 80) return 'text-emerald-600';
+          if (score >= 60) return 'text-amber-600';
+          return 'text-red-600';
+        };
+
+        const formatLocation = () => {
+          const city = candidate.city || '';
+          const country = candidate.country || '';
+          
+          if (city && country) return `${city}, ${country}`;
+          if (city) return city;
+          if (country) return country;
+          if (candidate.location) return candidate.location;
+          return 'Non spécifiée';
+        };
+        
+        return (
+          <div className="space-y-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
                   <div className="flex items-center justify-center cursor-help">
                     {aiScore.isLoading ? (
                       <div className="flex items-center gap-1">
@@ -288,7 +406,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                       <div className="flex items-center gap-1">
                         <Brain className="w-3 h-3 text-primary" />
                         <span className={cn("text-sm font-bold", getScoreColor(displayScore))}>
-                          {aiScore.error ? '?' : displayScore}
+                          {aiScore.error ? '?' : displayScore}/100
                         </span>
                       </div>
                     )}
@@ -303,115 +421,33 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
+            <div className="flex items-center justify-center text-xs text-muted-foreground">
+              <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
+              <span className="truncate max-w-[100px]" title={formatLocation()}>
+                {formatLocation()}
+              </span>
+            </div>
           </div>
         );
       },
-      accessorFn: (row) => row.status || 'initial',
-    },
-
-    // Column 4: Key Skills (20%) - Top 2-3 skills with tooltip
-    {
-      id: 'key_skills',
-      accessorKey: 'skills',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
-        >
-          Compétences
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => {
-        const candidate = row.original;
-        const skills = ensureStringArray(candidate.skills);
-        const topSkills = skills.slice(0, 3);
-        
-        return (
-          <div className="space-y-1">
-            {topSkills.length > 0 ? (
-              <>
-                <div className="flex flex-wrap gap-1">
-                  {topSkills.slice(0, 2).map((skill, index) => (
-                    <Badge 
-                      key={index} 
-                      variant="secondary" 
-                      className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary border-primary/20"
-                    >
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-                {skills.length > 2 && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge 
-                          variant="outline" 
-                          className="text-xs px-1.5 py-0.5 cursor-help bg-muted/50 text-muted-foreground border-muted-foreground/30"
-                        >
-                          +{skills.length - 2} autres
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <div>
-                          <p className="font-medium mb-1">Toutes les compétences:</p>
-                          <p className="text-sm">{skills.join(', ')}</p>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </>
-            ) : (
-              <span className="text-xs text-muted-foreground">Aucune</span>
-            )}
-          </div>
-        );
+      accessorFn: (row) => {
+        const aiScore = getAIScore(row.id!, jobOfferId);
+        return aiScore.score !== null ? aiScore.score : (row.score || 0);
       },
-      accessorFn: (row) => ensureStringArray(row.skills).join(' '),
     },
 
-    // Column 5: Quick Actions (10%) - Compact actions with location in tooltip
+    // Column 5: Actions (15%) - Actions de suppression
     {
-      id: 'quick_actions',
+      id: 'actions',
       accessorKey: 'actions',
       header: '',
       cell: ({ row }) => {
         const candidate = row.original;
         const isOwnCandidate = candidate.user_id === currentUserId;
         
-        const formatLocation = () => {
-          const city = candidate.city || '';
-          const country = candidate.country || '';
-          
-          if (city && country) return `${city}, ${country}`;
-          if (city) return city;
-          if (country) return country;
-          if (candidate.location) return candidate.location;
-          return 'Non spécifiée';
-        };
-        
         return (
-          <div className="flex items-center justify-center gap-1">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                  >
-                    <MapPin className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-sm">{formatLocation()}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
+          <div className="flex items-center justify-center">
             {isOwnCandidate ? (
               <TooltipProvider>
                 <Tooltip>
@@ -420,13 +456,13 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                       variant="ghost" 
                       size="sm"
                       onClick={(e) => handleDeleteCandidate(candidate.id!, candidate, e)}
-                      className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Supprimer</p>
+                    <p>Supprimer le candidat</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -438,13 +474,13 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                       variant="ghost" 
                       size="sm"
                       disabled
-                      className="h-6 w-6 p-0 text-muted-foreground"
+                      className="h-8 w-8 p-0 text-muted-foreground"
                     >
-                      <Lock className="h-3 w-3" />
+                      <Lock className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Protégé</p>
+                    <p>Candidat protégé</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -478,14 +514,14 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="border-border/50 hover:bg-transparent bg-muted/30">
                 {headerGroup.headers.map((header, index) => {
-                  // Define responsive column widths: 25%, 25%, 20%, 20%, 10%
+                  // Define responsive column widths: 20%, 25%, 20%, 20%, 15%
                   const getColumnWidth = (index: number) => {
                     switch (index) {
-                      case 0: return 'w-[25%] min-w-[160px]'; // Candidate
-                      case 1: return 'w-[25%] min-w-[160px]'; // Position & Experience  
-                      case 2: return 'w-[20%] min-w-[130px]'; // Status & Scoring
-                      case 3: return 'w-[20%] min-w-[130px]'; // Key Skills
-                      case 4: return 'w-[10%] min-w-[80px]';  // Quick Actions
+                      case 0: return 'w-[20%] min-w-[140px]'; // Candidat
+                      case 1: return 'w-[25%] min-w-[180px]'; // Poste & Entreprise  
+                      case 2: return 'w-[20%] min-w-[140px]'; // Statut & Disponibilité
+                      case 3: return 'w-[20%] min-w-[130px]'; // Score & Localisation
+                      case 4: return 'w-[15%] min-w-[80px]';  // Actions
                       default: return 'w-auto';
                     }
                   };
@@ -518,11 +554,11 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                   {row.getVisibleCells().map((cell, index) => {
                     const getColumnWidth = (index: number) => {
                       switch (index) {
-                        case 0: return 'w-[25%] min-w-[160px]';
-                        case 1: return 'w-[25%] min-w-[160px]';
-                        case 2: return 'w-[20%] min-w-[130px]';
+                        case 0: return 'w-[20%] min-w-[140px]';
+                        case 1: return 'w-[25%] min-w-[180px]';
+                        case 2: return 'w-[20%] min-w-[140px]';
                         case 3: return 'w-[20%] min-w-[130px]';
-                        case 4: return 'w-[10%] min-w-[80px]';
+                        case 4: return 'w-[15%] min-w-[80px]';
                         default: return 'w-auto';
                       }
                     };
