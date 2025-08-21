@@ -14,6 +14,32 @@ interface UnifiedChannelAnalyticsProps {
 const UnifiedChannelAnalytics: React.FC<UnifiedChannelAnalyticsProps> = ({ candidatesData }) => {
   const [selectedView, setSelectedView] = useState<'overview' | 'performance'>('overview');
 
+  // Fonctions helper définies avant leur utilisation
+  const getSourceDisplayName = (source: string) => {
+    const sourceNames: Record<string, string> = {
+      'linkedin': 'LinkedIn',
+      'jobboard': 'Job Boards',
+      'cooptation': 'Cooptation',
+      'candidature_spontanee': 'Candidature Spontanée',
+      'cabinet': 'Cabinet Partenaire',
+      'direct': 'Contact Direct',
+      'autre': 'Autre'
+    };
+    return sourceNames[source] || source;
+  };
+
+  const getSourceIcon = (source: string) => {
+    switch (source) {
+      case 'linkedin': return '💼';
+      case 'jobboard': return '📋';
+      case 'cooptation': return '🤝';
+      case 'candidature_spontanee': return '📧';
+      case 'cabinet': return '🏢';
+      case 'direct': return '☎️';
+      default: return '📊';
+    }
+  };
+
   // Calculer les métriques unifiées par canal
   const channelMetrics = useMemo(() => {
     const channels = candidatesData.reduce((acc, candidate) => {
@@ -85,30 +111,6 @@ const UnifiedChannelAnalytics: React.FC<UnifiedChannelAnalyticsProps> = ({ candi
     return channelAlerts.slice(0, 2); // Limiter à 2 alertes
   }, [channelMetrics]);
 
-  const getSourceDisplayName = (source: string) => {
-    const sourceNames: Record<string, string> = {
-      'linkedin': 'LinkedIn',
-      'jobboard': 'Job Boards',
-      'cooptation': 'Cooptation',
-      'candidature_spontanee': 'Candidature Spontanée',
-      'cabinet': 'Cabinet Partenaire',
-      'direct': 'Contact Direct',
-      'autre': 'Autre'
-    };
-    return sourceNames[source] || source;
-  };
-
-  const getSourceIcon = (source: string) => {
-    switch (source) {
-      case 'linkedin': return '💼';
-      case 'jobboard': return '📋';
-      case 'cooptation': return '🤝';
-      case 'candidature_spontanee': return '📧';
-      case 'cabinet': return '🏢';
-      case 'direct': return '☎️';
-      default: return '📊';
-    }
-  };
 
   // Données pour les graphiques
   const barChartData = channelMetrics.map(source => ({
