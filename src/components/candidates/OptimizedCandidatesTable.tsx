@@ -155,21 +155,6 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
     };
   };
 
-  const getCurrentCompany = (candidate: CandidateData) => {
-    // First check if there's a company field
-    if (candidate.company) return candidate.company;
-
-    // Then check experiences for most recent company
-    const experiences = ensureArray(candidate.experiences);
-    const lastExperience = experiences[0];
-    
-    if (lastExperience && typeof lastExperience === 'object') {
-      const company = (lastExperience as any).company || (lastExperience as any).employer;
-      if (company) return company;
-    }
-
-    return 'Non spécifiée';
-  };
 
   const getStatusConfig = (status: string | undefined | null) => {
     const normalizedStatus = status?.toLowerCase().trim();
@@ -362,7 +347,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
       ),
       cell: ({ row }) => {
         const candidate = row.original;
-        const currentCompany = getCurrentCompany(candidate);
+        const currentCompany = getLastCompany(candidate);
         const aiScore = getAIScore(candidate.id!, jobOfferId);
         const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
         const scoreConfig = getScoreConfig(displayScore);
