@@ -145,16 +145,8 @@ const ScoreDisplay: React.FC<ScoreDisplayProps> = ({ candidate, isLoading, onRef
 
         {displayScore !== null ? (
           <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl font-bold text-navy-dark">
-                {displayScore}/100
-              </div>
-              <Badge 
-                variant={displayScore >= 80 ? 'default' : displayScore >= 60 ? 'secondary' : 'outline'}
-                className={displayScore >= 80 ? 'bg-green-500' : displayScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'}
-              >
-                {displayScore >= 80 ? 'Excellent' : displayScore >= 60 ? 'Bon' : 'À améliorer'}
-              </Badge>
+            <div className="text-2xl font-bold text-navy-dark">
+              {displayScore}/100
             </div>
             {displayExplanation && (
               <p className="text-xs text-muted-foreground line-clamp-2">

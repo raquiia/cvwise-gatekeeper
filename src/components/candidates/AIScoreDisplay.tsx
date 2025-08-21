@@ -246,9 +246,6 @@ const AIScoreDisplay: React.FC<AIScoreDisplayProps> = ({
             </div>
           </div>
           
-          <div className={`mt-4 px-4 py-2 rounded-full text-sm font-medium ${evaluation.bgColor} ${evaluation.color}`}>
-            {evaluation.label}
-          </div>
           
           <div className="mt-2 text-xs text-navy font-medium flex items-center gap-1">
             <Brain size={12} />
