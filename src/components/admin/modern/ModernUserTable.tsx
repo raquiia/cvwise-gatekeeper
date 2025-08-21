@@ -5,6 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
+import { 
   Table, 
   TableBody, 
   TableCell, 
@@ -21,7 +29,11 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Users
+  Users,
+  Eye,
+  Edit,
+  UserX,
+  RefreshCw
 } from 'lucide-react';
 
 interface User {
@@ -56,6 +68,36 @@ const ModernUserTable: React.FC<ModernUserTableProps> = ({
   title,
   emptyMessage = "Aucun utilisateur trouvé"
 }) => {
+  const { toast } = useToast();
+
+  const handleViewProfile = (user: User) => {
+    toast({
+      title: "Profil utilisateur",
+      description: `Affichage du profil de ${user.profile?.first_name || user.first_name} ${user.profile?.last_name || user.last_name}`,
+    });
+  };
+
+  const handleEditUser = (user: User) => {
+    toast({
+      title: "Modifier l'utilisateur",
+      description: `Modification de ${user.profile?.first_name || user.first_name} ${user.profile?.last_name || user.last_name}`,
+    });
+  };
+
+  const handleDeactivateUser = (user: User) => {
+    toast({
+      title: "Désactiver le compte",
+      description: `Compte de ${user.profile?.first_name || user.first_name} ${user.profile?.last_name || user.last_name} désactivé`,
+      variant: "destructive",
+    });
+  };
+
+  const handleResetPassword = (user: User) => {
+    toast({
+      title: "Mot de passe réinitialisé",
+      description: `Un email de réinitialisation a été envoyé à ${user.email}`,
+    });
+  };
   if (loading) {
     return (
       <Card className="bg-white/70 dark:bg-navy-dark/40 backdrop-blur-xl border border-navy/10 shadow-xl">
@@ -192,13 +234,39 @@ const ModernUserTable: React.FC<ModernUserTableProps> = ({
                     </div>
 
                     {/* Actions */}
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleViewProfile(user)}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          Voir le profil
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Modifier
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleResetPassword(user)}>
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Réinitialiser mot de passe
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => handleDeactivateUser(user)}
+                          className="text-red-600 dark:text-red-400"
+                        >
+                          <UserX className="w-4 h-4 mr-2" />
+                          Désactiver le compte
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               );

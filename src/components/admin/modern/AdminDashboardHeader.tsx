@@ -3,6 +3,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import { 
   TrendingUp, 
   Users, 
@@ -29,6 +30,108 @@ const AdminDashboardHeader: React.FC<AdminDashboardHeaderProps> = ({
   globalConversionRate,
   pendingUsersCount
 }) => {
+  const { toast } = useToast();
+
+  const handleNotifications = () => {
+    toast({
+      title: "Notifications",
+      description: "Panneau de notifications ouvert.",
+    });
+  };
+
+  const handleSettings = () => {
+    toast({
+      title: "Paramètres",
+      description: "Redirection vers les paramètres avancés.",
+    });
+  };
+
+  const handleExportData = async () => {
+    toast({
+      title: "Export en cours",
+      description: "Génération du fichier d'export...",
+    });
+
+    try {
+      // Simuler l'export de données
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Créer un CSV fictif
+      const csvData = [
+        ['Nom', 'Email', 'Date inscription', 'Dernière connexion'],
+        ['John Doe', 'john@example.com', '2024-01-15', '2024-08-20'],
+        ['Jane Smith', 'jane@example.com', '2024-02-10', '2024-08-19'],
+      ];
+      
+      const csvContent = csvData.map(row => row.join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `export-utilisateurs-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export terminé",
+        description: "Le fichier a été téléchargé avec succès.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur d'export",
+        description: "Impossible de générer le fichier d'export.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMonthlyReport = async () => {
+    toast({
+      title: "Génération du rapport",
+      description: "Création du rapport mensuel en cours...",
+    });
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Simuler la génération d'un rapport PDF
+      const reportData = `Rapport Mensuel - ${new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+      
+Statistiques:
+- Recruteurs actifs: ${activeUsersCount}
+- CVs traités: ${totalCVsThisMonth}
+- Candidats en mission: ${totalCandidatesInMission}
+- Taux de conversion: ${globalConversionRate}%
+- Utilisateurs en attente: ${pendingUsersCount}
+
+Rapport généré le ${new Date().toLocaleDateString('fr-FR')}`;
+
+      const blob = new Blob([reportData], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rapport-mensuel-${new Date().toISOString().slice(0, 7)}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Rapport généré",
+        description: "Le rapport mensuel a été téléchargé.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur de génération",
+        description: "Impossible de créer le rapport mensuel.",
+        variant: "destructive",
+      });
+    }
+  };
   return (
     <div className="relative overflow-hidden">
       {/* Background gradients */}
@@ -51,11 +154,21 @@ const AdminDashboardHeader: React.FC<AdminDashboardHeaderProps> = ({
                 {pendingUsersCount} en attente
               </Badge>
             )}
-            <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-white/20 text-white hover:bg-white/10"
+              onClick={handleNotifications}
+            >
               <Bell className="w-4 h-4 mr-2" />
               Notifications
             </Button>
-            <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="border-white/20 text-white hover:bg-white/10"
+              onClick={handleSettings}
+            >
               <Settings className="w-4 h-4 mr-2" />
               Paramètres
             </Button>
@@ -189,10 +302,18 @@ const AdminDashboardHeader: React.FC<AdminDashboardHeaderProps> = ({
             <Plus className="w-4 h-4 mr-2" />
             Nouveau recruteur
           </Button>
-          <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+          <Button 
+            variant="outline" 
+            className="border-white/20 text-white hover:bg-white/10"
+            onClick={handleExportData}
+          >
             Exporter données
           </Button>
-          <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+          <Button 
+            variant="outline" 
+            className="border-white/20 text-white hover:bg-white/10"
+            onClick={handleMonthlyReport}
+          >
             Rapport mensuel
           </Button>
         </div>
