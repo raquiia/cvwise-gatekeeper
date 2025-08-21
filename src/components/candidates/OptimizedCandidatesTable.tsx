@@ -200,7 +200,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
   };
 
   const columns: ColumnDef<CandidateData>[] = useMemo(() => [
-    // Column 1: Candidat (20%) - Nom complet + avatar ownership
+    // Column 1: Candidat (30%) - Nom + Email + Avatar
     {
       id: 'candidate',
       accessorKey: 'name',
@@ -222,40 +222,36 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
           : null;
         
         return (
-          <div className="flex items-center space-x-2 min-w-0">
+          <div className="flex items-center space-x-3 min-w-0">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 cursor-help",
+                    "w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 cursor-help",
                     isOwnCandidate ? "bg-gradient-to-br from-primary to-primary/80 shadow-sm" : "bg-muted-foreground/70"
                   )}>
                     {candidate.first_name?.[0]}{candidate.last_name?.[0]}
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="max-w-xs">
-                  <div className="space-y-2">
-                    <p className="font-medium">{isOwnCandidate ? "Votre candidat" : `Candidat de ${ownerName || 'Autre'}`}</p>
-                    {candidate.phone && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="w-3 h-3" />
-                        <span>{candidate.phone}</span>
-                      </div>
-                    )}
-                    {candidate.email && (
-                      <div className="text-sm text-muted-foreground">
-                        {candidate.email}
-                      </div>
-                    )}
-                  </div>
+                  <p className="font-medium">{isOwnCandidate ? "Votre candidat" : `Candidat de ${ownerName || 'Autre'}`}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
             
-            <div className="min-w-0 flex-1">
-              <div className="font-medium text-foreground truncate text-sm">
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="font-semibold text-foreground truncate">
                 {candidate.first_name} <span className="font-bold">{candidate.last_name}</span>
               </div>
+              {candidate.email && (
+                <a 
+                  href={`mailto:${candidate.email}`}
+                  className="block text-sm text-muted-foreground hover:text-primary truncate transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {candidate.email}
+                </a>
+              )}
             </div>
           </div>
         );
@@ -263,17 +259,60 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
       accessorFn: (row) => `${row.first_name} ${row.last_name}`,
     },
     
-    // Column 2: Poste & Entreprise (25%) - Poste + entreprise + années d'expérience
+    // Column 2: Contact & Expérience (25%) - Téléphone + Expérience + Titre
     {
-      id: 'position_company',
-      accessorKey: 'position',
+      id: 'contact_experience',
+      accessorKey: 'phone',
       header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
           className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
         >
-          Poste & Entreprise
+          Contact & Expérience
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const candidate = row.original;
+        
+        return (
+          <div className="space-y-1 min-w-0">
+            {candidate.phone && (
+              <a 
+                href={`tel:${candidate.phone}`}
+                className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors group"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Phone className="w-3 h-3 mr-2 flex-shrink-0 group-hover:text-primary" />
+                <span className="truncate">{candidate.phone}</span>
+              </a>
+            )}
+            <div className="flex items-center text-xs">
+              <Badge variant="secondary" className="text-xs font-medium">
+                {candidate.years_experience ? `${candidate.years_experience} ans` : 'N/A'}
+              </Badge>
+            </div>
+            <div className="text-sm font-medium text-foreground truncate" title={candidate.position}>
+              {candidate.position || 'Non spécifié'}
+            </div>
+          </div>
+        );
+      },
+      accessorFn: (row) => row.phone || '',
+    },
+
+    // Column 3: Entreprise & Statut (20%) - Entreprise actuelle + Statut
+    {
+      id: 'company_status',
+      accessorKey: 'company',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
+        >
+          Entreprise & Statut
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
@@ -282,50 +321,51 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
         const currentCompany = getCurrentCompany(candidate);
         
         return (
-          <div className="space-y-1 min-w-0">
-            <div className="font-medium text-foreground truncate text-sm" title={candidate.position}>
-              {candidate.position || 'Non spécifié'}
-            </div>
-            <div className="flex items-center text-xs text-muted-foreground truncate">
-              <Briefcase className="w-3 h-3 mr-1 flex-shrink-0" />
+          <div className="space-y-2 min-w-0">
+            <div className="flex items-center text-sm text-muted-foreground truncate">
+              <Briefcase className="w-3 h-3 mr-2 flex-shrink-0" />
               <span title={currentCompany} className="truncate">{currentCompany}</span>
             </div>
-            <div className="text-xs text-muted-foreground font-medium">
-              {candidate.years_experience ? `${candidate.years_experience} ans d'exp.` : 'Expérience N/A'}
-            </div>
-          </div>
-        );
-      },
-      accessorFn: (row) => row.position || '',
-    },
-
-    // Column 3: Statut & Disponibilité (20%) - Statut visible + disponibilité calculée
-    {
-      id: 'status_availability',
-      accessorKey: 'status',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
-        >
-          Statut & Dispo.
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => {
-        const candidate = row.original;
-        const availability = getAvailabilityStatus(candidate);
-        
-        return (
-          <div className="space-y-2">
             <Badge 
               variant="outline" 
               className={cn("text-xs font-medium border px-2 py-0.5", getStatusBadgeColor(candidate.status))}
             >
               {getStatusLabel(candidate.status)}
             </Badge>
-            
+          </div>
+        );
+      },
+      accessorFn: (row) => getCurrentCompany(row),
+    },
+
+    // Column 4: Disponibilité & Score (15%) - Disponibilité + Score IA
+    {
+      id: 'availability_score',
+      accessorKey: 'availability',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
+        >
+          Dispo. & Score
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const candidate = row.original;
+        const availability = getAvailabilityStatus(candidate);
+        const aiScore = getAIScore(candidate.id!, jobOfferId);
+        const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
+        
+        const getScoreColor = (score: number) => {
+          if (score >= 80) return 'text-emerald-600';
+          if (score >= 60) return 'text-amber-600';
+          return 'text-red-600';
+        };
+        
+        return (
+          <div className="space-y-2">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -349,54 +389,11 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          </div>
-        );
-      },
-      accessorFn: (row) => row.status || 'initial',
-    },
 
-    // Column 4: Score & Localisation (20%) - Score IA + localisation
-    {
-      id: 'score_location',
-      accessorKey: 'ai_score',
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
-        >
-          Score & Lieu
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => {
-        const candidate = row.original;
-        const aiScore = getAIScore(candidate.id!, jobOfferId);
-        const displayScore = aiScore.score !== null ? aiScore.score : (candidate.score || 0);
-        
-        const getScoreColor = (score: number) => {
-          if (score >= 80) return 'text-emerald-600';
-          if (score >= 60) return 'text-amber-600';
-          return 'text-red-600';
-        };
-
-        const formatLocation = () => {
-          const city = candidate.city || '';
-          const country = candidate.country || '';
-          
-          if (city && country) return `${city}, ${country}`;
-          if (city) return city;
-          if (country) return country;
-          if (candidate.location) return candidate.location;
-          return 'Non spécifiée';
-        };
-        
-        return (
-          <div className="space-y-2">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center justify-center cursor-help">
+                  <div className="flex items-center justify-start cursor-help">
                     {aiScore.isLoading ? (
                       <div className="flex items-center gap-1">
                         <Sparkles className="w-3 h-3 animate-pulse text-primary" />
@@ -406,7 +403,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                       <div className="flex items-center gap-1">
                         <Brain className="w-3 h-3 text-primary" />
                         <span className={cn("text-sm font-bold", getScoreColor(displayScore))}>
-                          {aiScore.error ? '?' : displayScore}/100
+                          {aiScore.error ? '?' : displayScore}
                         </span>
                       </div>
                     )}
@@ -421,75 +418,100 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          </div>
+        );
+      },
+      accessorFn: (row) => {
+        const availability = getAvailabilityStatus(row);
+        return availability.status;
+      },
+    },
 
-            <div className="flex items-center justify-center text-xs text-muted-foreground">
+    // Column 5: Localisation & Actions (10%) - Lieu + Actions
+    {
+      id: 'location_actions',
+      accessorKey: 'location',
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="h-auto p-0 font-semibold text-foreground hover:text-foreground/80"
+        >
+          Lieu & Actions
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const candidate = row.original;
+        const isOwnCandidate = candidate.user_id === currentUserId;
+        
+        const formatLocation = () => {
+          const city = candidate.city || '';
+          const country = candidate.country || '';
+          
+          if (city && country) return `${city}, ${country}`;
+          if (city) return city;
+          if (country) return country;
+          if (candidate.location) return candidate.location;
+          return 'N/A';
+        };
+        
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center text-xs text-muted-foreground">
               <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
-              <span className="truncate max-w-[100px]" title={formatLocation()}>
+              <span className="truncate" title={formatLocation()}>
                 {formatLocation()}
               </span>
+            </div>
+
+            <div className="flex items-center justify-start">
+              {isOwnCandidate ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={(e) => handleDeleteCandidate(candidate.id!, candidate, e)}
+                        className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Supprimer le candidat</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="h-6 w-6 flex items-center justify-center text-muted-foreground/50 cursor-help">
+                        <Lock className="h-3 w-3" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Candidat d'un autre utilisateur</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
           </div>
         );
       },
       accessorFn: (row) => {
-        const aiScore = getAIScore(row.id!, jobOfferId);
-        return aiScore.score !== null ? aiScore.score : (row.score || 0);
+        const city = row.city || '';
+        const country = row.country || '';
+        if (city && country) return `${city}, ${country}`;
+        if (city) return city;
+        if (country) return country;
+        if (row.location) return row.location;
+        return '';
       },
     },
-
-    // Column 5: Actions (15%) - Actions de suppression
-    {
-      id: 'actions',
-      accessorKey: 'actions',
-      header: '',
-      cell: ({ row }) => {
-        const candidate = row.original;
-        const isOwnCandidate = candidate.user_id === currentUserId;
-        
-        return (
-          <div className="flex items-center justify-center">
-            {isOwnCandidate ? (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={(e) => handleDeleteCandidate(candidate.id!, candidate, e)}
-                      className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Supprimer le candidat</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      disabled
-                      className="h-8 w-8 p-0 text-muted-foreground"
-                    >
-                      <Lock className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Candidat protégé</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-        );
-      },
-      enableSorting: false,
-    }
   ], [getAIScore, jobOfferId, jobSpecific, currentUserId, handleDeleteCandidate]);
 
   const table = useReactTable({
@@ -514,14 +536,14 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="border-border/50 hover:bg-transparent bg-muted/30">
                 {headerGroup.headers.map((header, index) => {
-                  // Define responsive column widths: 20%, 25%, 20%, 20%, 15%
+                  // Define responsive column widths: 30%, 25%, 20%, 15%, 10%
                   const getColumnWidth = (index: number) => {
                     switch (index) {
-                      case 0: return 'w-[20%] min-w-[140px]'; // Candidat
-                      case 1: return 'w-[25%] min-w-[180px]'; // Poste & Entreprise  
-                      case 2: return 'w-[20%] min-w-[140px]'; // Statut & Disponibilité
-                      case 3: return 'w-[20%] min-w-[130px]'; // Score & Localisation
-                      case 4: return 'w-[15%] min-w-[80px]';  // Actions
+                      case 0: return 'w-[30%] min-w-[200px]'; // Candidat
+                      case 1: return 'w-[25%] min-w-[180px]'; // Contact & Expérience  
+                      case 2: return 'w-[20%] min-w-[160px]'; // Entreprise & Statut
+                      case 3: return 'w-[15%] min-w-[120px]'; // Disponibilité & Score
+                      case 4: return 'w-[10%] min-w-[100px]'; // Localisation & Actions
                       default: return 'w-auto';
                     }
                   };
@@ -552,16 +574,16 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
                   onClick={() => onViewCandidate(row.original.id!)}
                 >
                   {row.getVisibleCells().map((cell, index) => {
-                    const getColumnWidth = (index: number) => {
-                      switch (index) {
-                        case 0: return 'w-[20%] min-w-[140px]';
-                        case 1: return 'w-[25%] min-w-[180px]';
-                        case 2: return 'w-[20%] min-w-[140px]';
-                        case 3: return 'w-[20%] min-w-[130px]';
-                        case 4: return 'w-[15%] min-w-[80px]';
-                        default: return 'w-auto';
-                      }
-                    };
+                     const getColumnWidth = (index: number) => {
+                       switch (index) {
+                         case 0: return 'w-[30%] min-w-[200px]'; // Candidat
+                         case 1: return 'w-[25%] min-w-[180px]'; // Contact & Expérience
+                         case 2: return 'w-[20%] min-w-[160px]'; // Entreprise & Statut
+                         case 3: return 'w-[15%] min-w-[120px]'; // Disponibilité & Score
+                         case 4: return 'w-[10%] min-w-[100px]'; // Localisation & Actions
+                         default: return 'w-auto';
+                       }
+                     };
                     
                     return (
                       <TableCell 
