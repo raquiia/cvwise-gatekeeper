@@ -124,14 +124,21 @@ export const SalaryCalculator: React.FC<SalaryCalculatorProps> = ({
               <Label htmlFor="categoryGroup">Groupe de catégorie</Label>
               <Select
                 value={calculation.categoryGroup}
-                onValueChange={(value) => handleInputChange('categoryGroup', value as 'Groupe 4 (base ingé)' | 'Groupe 5 (non-ingé)')}
+                onValueChange={(value) => handleInputChange('categoryGroup', value as keyof typeof SALARY_CONFIG.groups)}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {salaryCalculatorService.getGroupOptions().map(group => (
-                    <SelectItem key={group} value={group}>{group}</SelectItem>
+                    <SelectItem key={group} value={group}>
+                      <div className="flex items-center justify-between w-full">
+                        <span>{group}</span>
+                        <Badge variant={salaryCalculatorService.getGroupModulation(group) >= 0 ? "default" : "destructive"} className="ml-2">
+                          {salaryCalculatorService.getGroupModulation(group) > 0 ? '+' : ''}{salaryCalculatorService.getGroupModulation(group)}€
+                        </Badge>
+                      </div>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -189,10 +196,16 @@ export const SalaryCalculator: React.FC<SalaryCalculatorProps> = ({
           </div>
 
           <div className="border-t pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
               <div className="space-y-1">
-                <div className="text-sm font-medium text-muted-foreground">Salaire de base</div>
-                <div className="text-2xl font-bold">{currentCalculation.baseSalary}€</div>
+                <div className="text-sm font-medium text-muted-foreground">Base ville</div>
+                <div className="text-xl font-bold">{currentCalculation.baseSalary}€</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-sm font-medium text-muted-foreground">Modulation groupe</div>
+                <div className={`text-xl font-bold ${currentCalculation.groupModulation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {currentCalculation.groupModulation > 0 ? '+' : ''}{currentCalculation.groupModulation}€
+                </div>
               </div>
               <div className="space-y-1">
                 <div className="text-sm font-medium text-muted-foreground">Total mensuel</div>
