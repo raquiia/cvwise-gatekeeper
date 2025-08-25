@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CandidateData } from '@/services/data/candidateService';
-import { candidateReferencesService } from '@/services/data/candidateReferencesService';
 import StatusSelector from './StatusSelector';
 import ExportProfileButton from './ExportProfileButton';
 
@@ -31,34 +30,22 @@ interface ModernCandidateHeaderProps {
   candidate: CandidateData;
   isLoading?: boolean;
   onRefresh?: () => void;
+  referencesStats: { verified: number; total: number; percentage: number };
+  onLoadReferencesStats: () => void;
 }
 
 const ModernCandidateHeader: React.FC<ModernCandidateHeaderProps> = ({
   candidate,
   isLoading,
-  onRefresh
+  onRefresh,
+  referencesStats,
+  onLoadReferencesStats
 }) => {
   const navigate = useNavigate();
-  const [referencesStats, setReferencesStats] = useState({ verified: 0, total: 0, percentage: 0 });
 
   useEffect(() => {
-    loadReferencesStats();
-  }, [candidate.id]);
-
-  const loadReferencesStats = async () => {
-    if (!candidate.id) return;
-    
-    try {
-      const references = await candidateReferencesService.getReferencesForCandidate(candidate.id);
-      const verified = references.filter(ref => ref.verified).length;
-      const total = references.length;
-      const percentage = total > 0 ? Math.round((verified / total) * 100) : 0;
-      
-      setReferencesStats({ verified, total, percentage });
-    } catch (error) {
-      console.error('Error loading references stats:', error);
-    }
-  };
+    onLoadReferencesStats();
+  }, [candidate.id, onLoadReferencesStats]);
 
   const initials = `${candidate.first_name?.charAt(0) || ''}${candidate.last_name?.charAt(0) || ''}`;
 

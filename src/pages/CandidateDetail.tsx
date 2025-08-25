@@ -6,6 +6,7 @@ import { CandidateData } from '@/services/data/candidateService';
 import { processCandidateData } from '@/utils/candidateUtils';
 import { toast } from '@/hooks/use-toast';
 import { getCompleteCandidateData, getGlobalCandidateData } from '@/services/resume/candidateDataService';
+import { candidateReferencesService } from '@/services/data/candidateReferencesService';
 
 // Import the component tabs
 import ProfileTab from '@/components/candidates/detail/ProfileTab';
@@ -32,6 +33,7 @@ const CandidateDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
+  const [referencesStats, setReferencesStats] = useState({ verified: 0, total: 0, percentage: 0 });
 
   // Check if there's an active search in the referrer URL
   const referrerSearch = new URLSearchParams(window.location.search);
@@ -187,6 +189,34 @@ const CandidateDetail = () => {
     }
   }, [fetchCandidateData, candidateId]);
 
+  // Load references stats
+  const loadReferencesStats = useCallback(async () => {
+    if (!candidateId) return;
+    
+    try {
+      const references = await candidateReferencesService.getReferencesForCandidate(candidateId);
+      const verified = references.filter(ref => ref.verified).length;
+      const total = references.length;
+      const percentage = total > 0 ? Math.round((verified / total) * 100) : 0;
+      
+      setReferencesStats({ verified, total, percentage });
+    } catch (error) {
+      console.error('Error loading references stats:', error);
+    }
+  }, [candidateId]);
+
+  // Handler for references changes
+  const handleReferencesChange = useCallback(() => {
+    loadReferencesStats();
+  }, [loadReferencesStats]);
+
+  // Load references stats when candidate data is loaded
+  useEffect(() => {
+    if (candidate?.id) {
+      loadReferencesStats();
+    }
+  }, [candidate?.id, loadReferencesStats]);
+
   if (loading) {
     return (
       <Layout>
@@ -224,6 +254,8 @@ const CandidateDetail = () => {
           candidate={candidate}
           isLoading={loading}
           onRefresh={handleRefreshWithAIScore}
+          referencesStats={referencesStats}
+          onLoadReferencesStats={loadReferencesStats}
         />
         
         {/* Alerte de données manquantes */}
@@ -271,7 +303,11 @@ const CandidateDetail = () => {
               </ModernTabContent>
               
               <ModernTabContent value="references" gradient="from-teal-500/5 to-cyan-500/5">
-                <ReferencesTab candidate={candidate} onRefresh={handleRefreshWithAIScore} />
+                <ReferencesTab 
+                  candidate={candidate} 
+                  onRefresh={handleRefreshWithAIScore}
+                  onReferencesChange={handleReferencesChange}
+                />
               </ModernTabContent>
               
               <ModernTabContent value="details" gradient="from-gray-500/5 to-slate-500/5">

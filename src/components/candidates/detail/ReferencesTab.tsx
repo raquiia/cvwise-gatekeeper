@@ -18,12 +18,14 @@ interface ReferencesTabProps {
   candidate: CandidateData;
   isLoading?: boolean;
   onRefresh?: () => void;
+  onReferencesChange?: () => void;
 }
 
 const ReferencesTab: React.FC<ReferencesTabProps> = ({
   candidate,
   isLoading,
-  onRefresh
+  onRefresh,
+  onReferencesChange
 }) => {
   const [references, setReferences] = useState<CandidateReference[]>([]);
   const [globalNotes, setGlobalNotes] = useState(candidate.references_conclusion || '');
@@ -59,6 +61,7 @@ const ReferencesTab: React.FC<ReferencesTabProps> = ({
       await candidateReferencesService.addReference(data);
       toast.success('Référence ajoutée avec succès');
       loadReferences();
+      onReferencesChange?.();
     } catch (error) {
       console.error('Error adding reference:', error);
       toast.error('Erreur lors de l\'ajout de la référence');
@@ -73,6 +76,7 @@ const ReferencesTab: React.FC<ReferencesTabProps> = ({
       toast.success('Référence modifiée avec succès');
       setEditingReference(null);
       loadReferences();
+      onReferencesChange?.();
     } catch (error) {
       console.error('Error updating reference:', error);
       toast.error('Erreur lors de la modification de la référence');
@@ -86,6 +90,7 @@ const ReferencesTab: React.FC<ReferencesTabProps> = ({
       await candidateReferencesService.deleteReference(reference.id);
       toast.success('Référence supprimée avec succès');
       loadReferences();
+      onReferencesChange?.();
     } catch (error) {
       console.error('Error deleting reference:', error);
       toast.error('Erreur lors de la suppression de la référence');
@@ -100,6 +105,7 @@ const ReferencesTab: React.FC<ReferencesTabProps> = ({
       toast.success('Référence vérifiée avec succès');
       setVerifyingReference(null);
       loadReferences();
+      onReferencesChange?.();
     } catch (error) {
       console.error('Error verifying reference:', error);
       toast.error('Erreur lors de la vérification de la référence');
@@ -111,6 +117,7 @@ const ReferencesTab: React.FC<ReferencesTabProps> = ({
       await candidateReferencesService.unverifyReference(reference.id);
       toast.success('Vérification annulée');
       loadReferences();
+      onReferencesChange?.();
     } catch (error) {
       console.error('Error unverifying reference:', error);
       toast.error('Erreur lors de l\'annulation de la vérification');
