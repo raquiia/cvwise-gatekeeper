@@ -115,8 +115,22 @@ ACTIONS POSSIBLES:
 2. change_status: Changer le statut d'un candidat (initial, contact, prequalification, presentation_client, en_mission, refus, ancien_employe)
 3. change_status_with_note: Changer le statut d'un candidat vers EC1/EC2 avec détails obligatoires (business manager, date entretien)
 4. get_candidate_info: Récupérer les informations d'un candidat
-5. search_candidates: Rechercher des candidats selon des critères
+5. search_candidates: Rechercher des candidats selon des critères avancés
 6. navigate: Naviguer vers une page de l'application
+
+🔍 CRITÈRES DE RECHERCHE DISPONIBLES:
+- **location**: ville, pays, code postal (ex: "Paris", "Lyon", "75001")
+- **experienceMin/experienceMax**: années d'expérience (ex: 3, 5)
+- **education**: diplôme, filière (ex: "ingénieur", "master", "doctorat")
+- **skills**: compétences techniques (ex: ["React", "Python"])
+- **status**: statut candidat (ex: "ec1", "ec2", "en_mission")
+- **minScore**: score AI minimum (ex: 80)
+
+EXEMPLES DE RECHERCHES COMPLEXES:
+• "Candidats ingénieurs à Lyon avec 5+ ans d'expérience"
+• "Développeurs React parisiens ayant fait un EC2"
+• "Meilleurs candidats (score >80) disponibles pour mission"
+• "Profils master informatique dans le 75 avec statut contact"
 
 ⚠️ RÈGLES CRITIQUES POUR EC1 ET EC2:
 - Les statuts EC1 et EC2 EXIGENT OBLIGATOIREMENT:
@@ -223,6 +237,45 @@ Pour "Va au dashboard":
   "action": {
     "type": "navigate",
     "path": "/dashboard"
+  }
+}
+
+Pour "Candidats ingénieurs à Lyon avec 5+ ans d'expérience":
+{
+  "message": "Je recherche les candidats ingénieurs basés à Lyon avec au moins 5 ans d'expérience...",
+  "action": {
+    "type": "search_candidates",
+    "criteria": {
+      "location": "Lyon",
+      "education": "ingénieur",
+      "experienceMin": 5
+    }
+  }
+}
+
+Pour "Meilleurs candidats parisiens ayant fait un EC2":
+{
+  "message": "Je recherche les meilleurs candidats parisiens qui ont eu un entretien client EC2...",
+  "action": {
+    "type": "search_candidates",
+    "criteria": {
+      "location": "Paris",
+      "status": "ec2",
+      "minScore": 70
+    }
+  }
+}
+
+Pour "Développeurs React avec master dans le 75":
+{
+  "message": "Je recherche les développeurs React ayant un master et basés dans Paris (75)...",
+  "action": {
+    "type": "search_candidates",
+    "criteria": {
+      "skills": ["React"],
+      "education": "master",
+      "location": "75"
+    }
   }
 }
 

@@ -322,38 +322,135 @@ class ChatbotService {
     }
   }
 
-  private async searchCandidates(criteria: any) {
+  private async searchCandidates(criteria: any): Promise<{ type: string; success: boolean; details?: string }> {
     try {
-      // Implémentation basique pour rechercher des candidats
-      // Cela peut être étendu selon les besoins
-      const candidates = await candidateService.getUserCandidates();
+      const candidates = await candidateService.getAllCandidates();
       
-      let filteredCandidates = candidates || [];
-
-      if (criteria.minScore) {
-        filteredCandidates = filteredCandidates.filter(c => (c.ai_score || 0) >= criteria.minScore);
+      let filteredCandidates = candidates;
+      
+      // Filtre par localisation (ville, pays, code postal)
+      if (criteria.location) {
+        const locationSearch = criteria.location.toLowerCase();
+        filteredCandidates = filteredCandidates.filter(candidate => {
+          const location = candidate.location?.toLowerCase() || '';
+          const city = candidate.city?.toLowerCase() || '';
+          const country = candidate.country?.toLowerCase() || '';
+          const postalCode = candidate.postal_code?.toLowerCase() || '';
+          
+          return location.includes(locationSearch) || 
+                 city.includes(locationSearch) || 
+                 country.includes(locationSearch) ||
+                 postalCode.includes(locationSearch);
+        });
       }
-
-      if (criteria.status) {
-        filteredCandidates = filteredCandidates.filter(c => c.detailed_status === criteria.status);
-      }
-
-      if (criteria.position) {
-        filteredCandidates = filteredCandidates.filter(c => 
-          c.position?.toLowerCase().includes(criteria.position.toLowerCase())
+      
+      // Filtre par années d'expérience (min/max)
+      if (criteria.experienceMin !== undefined) {
+        filteredCandidates = filteredCandidates.filter(candidate => 
+          (candidate.years_experience || 0) >= criteria.experienceMin
         );
       }
-
+      if (criteria.experienceMax !== undefined) {
+        filteredCandidates = filteredCandidates.filter(candidate => 
+          (candidate.years_experience || 0) <= criteria.experienceMax
+        );
+      }
+      
+      // Filtre par diplômes/éducation
+      if (criteria.education) {
+        const educationSearch = criteria.education.toLowerCase();
+        filteredCandidates = filteredCandidates.filter(candidate => {
+          const education = candidate.education || [];
+          return Array.isArray(education) && education.some((edu: any) => {
+            const degree = edu.degree?.toLowerCase() || '';
+            const field = edu.field?.toLowerCase() || '';
+            const institution = edu.institution?.toLowerCase() || '';
+            
+            return degree.includes(educationSearch) || 
+                   field.includes(educationSearch) ||
+                   institution.includes(educationSearch) ||
+                   (educationSearch.includes('ingénieur') && (degree.includes('ingénieur') || degree.includes('engineer'))) ||
+                   (educationSearch.includes('master') && degree.includes('master')) ||
+                   (educationSearch.includes('doctorat') && (degree.includes('doctorat') || degree.includes('phd')));
+          });
+        });
+      }
+      
+      // Filtre par compétences
+      if (criteria.skills && criteria.skills.length > 0) {
+        filteredCandidates = filteredCandidates.filter(candidate => {
+          const candidateSkills = candidate.skills || [];
+          return criteria.skills.some((skill: string) => 
+            Array.isArray(candidateSkills) && candidateSkills.some((candidateSkill: any) => 
+              candidateSkill.name?.toLowerCase().includes(skill.toLowerCase())
+            )
+          );
+        });
+      }
+      
+      // Filtre par statut
+      if (criteria.status) {
+        filteredCandidates = filteredCandidates.filter(candidate => 
+          candidate.detailed_status === criteria.status || candidate.status === criteria.status
+        );
+      }
+      
+      // Filtre par score AI minimum
+      if (criteria.minScore !== undefined) {
+        filteredCandidates = filteredCandidates.filter(candidate => 
+          (candidate.ai_score || candidate.score || 0) >= criteria.minScore
+        );
+      }
+      
+      // Filtre par position (legacy support)
+      if (criteria.position) {
+        filteredCandidates = filteredCandidates.filter(candidate => 
+          candidate.position?.toLowerCase().includes(criteria.position.toLowerCase())
+        );
+      }
+      
+      // Tri par score AI (décroissant)
+      filteredCandidates.sort((a, b) => {
+        const scoreA = a.ai_score || a.score || 0;
+        const scoreB = b.ai_score || b.score || 0;
+        return scoreB - scoreA;
+      });
+      
+      // Limiter les résultats à 10 max
+      const limitedResults = filteredCandidates.slice(0, 10);
+      
+      // Formater les résultats
+      const resultsText = limitedResults.map((candidate, index) => {
+        const score = candidate.ai_score || candidate.score || 0;
+        const experience = candidate.years_experience || 0;
+        const location = candidate.city || candidate.location || 'Non spécifié';
+        const status = candidate.detailed_status || candidate.status || 'initial';
+        
+        return `${index + 1}. **${candidate.first_name} ${candidate.last_name}** (Score: ${score})
+   📍 ${location} • 💼 ${experience} ans d'exp. • 📊 Statut: ${status}
+   🔗 [Voir le profil](/candidates/${candidate.id})`;
+      }).join('\n\n');
+      
+      let summaryText = `🔍 **${filteredCandidates.length} candidat(s) trouvé(s)**`;
+      if (limitedResults.length < filteredCandidates.length) {
+        summaryText += ` (affichage des ${limitedResults.length} meilleurs)`;
+      }
+      
+      const finalDetails = limitedResults.length > 0 
+        ? `${summaryText}\n\n${resultsText}`
+        : `${summaryText}\n\nAucun candidat ne correspond exactement aux critères spécifiés.`;
+      
       return {
         type: 'search_candidates',
         success: true,
-        details: `Trouvé ${filteredCandidates.length} candidat(s) correspondant aux critères`
+        details: finalDetails
       };
     } catch (error) {
+      console.error('Erreur lors de la recherche de candidats:', error);
       return {
         type: 'search_candidates',
         success: false,
-        details: 'Erreur lors de la recherche'
+        details: 'Erreur lors de la recherche de candidats'
       };
     }
   }
