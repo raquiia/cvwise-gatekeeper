@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,11 +17,11 @@ import {
   Building,
   Crown,
   User,
-  CheckCircle,
-  XCircle
+  Users
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CandidateData } from '@/services/data/candidateService';
+import { candidateReferencesService } from '@/services/data/candidateReferencesService';
 import StatusSelector from './StatusSelector';
 import ExportProfileButton from './ExportProfileButton';
 
@@ -39,6 +39,26 @@ const ModernCandidateHeader: React.FC<ModernCandidateHeaderProps> = ({
   onRefresh
 }) => {
   const navigate = useNavigate();
+  const [referencesStats, setReferencesStats] = useState({ verified: 0, total: 0, percentage: 0 });
+
+  useEffect(() => {
+    loadReferencesStats();
+  }, [candidate.id]);
+
+  const loadReferencesStats = async () => {
+    if (!candidate.id) return;
+    
+    try {
+      const references = await candidateReferencesService.getReferencesForCandidate(candidate.id);
+      const verified = references.filter(ref => ref.verified).length;
+      const total = references.length;
+      const percentage = total > 0 ? Math.round((verified / total) * 100) : 0;
+      
+      setReferencesStats({ verified, total, percentage });
+    } catch (error) {
+      console.error('Error loading references stats:', error);
+    }
+  };
 
   const initials = `${candidate.first_name?.charAt(0) || ''}${candidate.last_name?.charAt(0) || ''}`;
 
@@ -194,30 +214,24 @@ const ModernCandidateHeader: React.FC<ModernCandidateHeaderProps> = ({
                   )}
                   
                   {/* References Status Tag */}
-                  {candidate.references_taken !== undefined && (
-                    <Badge 
-                      variant="outline" 
-                      className={`
-                        px-3 py-1 text-sm
-                        ${candidate.references_taken 
-                          ? 'border-green-500/30 text-green-700 bg-green-50' 
-                          : 'border-red-500/30 text-red-700 bg-red-50'
-                        }
-                      `}
-                    >
-                      {candidate.references_taken ? (
-                        <>
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Références OK
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="w-3 h-3 mr-1" />
-                          Références à vérifier
-                        </>
-                      )}
-                    </Badge>
-                  )}
+                  <Badge 
+                    variant="outline" 
+                    className={`
+                      px-3 py-1 text-sm
+                      ${referencesStats.percentage === 100 
+                        ? 'border-green-500/30 text-green-700 bg-green-50' 
+                        : referencesStats.percentage > 0
+                        ? 'border-orange-500/30 text-orange-700 bg-orange-50'
+                        : 'border-red-500/30 text-red-700 bg-red-50'
+                      }
+                    `}
+                  >
+                    <Users className="w-3 h-3 mr-1" />
+                    {referencesStats.total > 0 
+                      ? `${referencesStats.verified}/${referencesStats.total} références (${referencesStats.percentage}%)`
+                      : 'Aucune référence'
+                    }
+                  </Badge>
                 </div>
               </div>
             </div>
