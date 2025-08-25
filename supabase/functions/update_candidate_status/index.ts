@@ -8,17 +8,20 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Valid status values
+// Valid status values - Updated for recruitment pipeline steps
 const VALID_STATUSES = [
-  'initial',
-  'contact',
-  'prequalification',
-  'ec1',
-  'ec2',
-  'presentation_client',
-  'en_mission',
-  'refus',
-  'ancien_employe'
+  'prise_contact',
+  'ps',
+  'ci1',
+  'ci2',
+  'ci3',
+  'pipeline',
+  'formal_offer',
+  'contingent_offer',
+  'offer_declined',
+  'offer_accepted',
+  'contract_signed',
+  'hired'
 ];
 
 serve(async (req) => {
