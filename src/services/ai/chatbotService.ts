@@ -163,6 +163,15 @@ class ChatbotService {
 
   private async changeCandidateStatus(candidateId: string, status: string): Promise<{ type: string; success: boolean; details?: string }> {
     try {
+      // Validation critique pour EC1 et EC2
+      if (status === 'ec1' || status === 'ec2') {
+        return {
+          type: 'change_status',
+          success: false,
+          details: `❌ Impossible de passer en ${status.toUpperCase()} sans les informations du Business Manager. Utilisez la commande complète avec le nom, email et date d'entretien.`
+        };
+      }
+
       const success = await candidateStatusService.updateCandidateStatus(candidateId, status);
       
       return {
@@ -185,9 +194,18 @@ class ChatbotService {
     noteContent: string, 
     businessManager?: string,
     scheduledDate?: string,
-    interviewType?: 'ec1' | 'ec2'
+    interviewType?: 'ec1' | 'ec2',
+    businessManagerEmail?: string
   ): Promise<{ type: string; success: boolean; details?: string }> {
     try {
+      // Validation critique pour EC1 et EC2
+      if ((status === 'ec1' || status === 'ec2') && (!businessManager || !scheduledDate)) {
+        return {
+          type: 'change_status_with_note',
+          success: false,
+          details: `❌ Informations manquantes pour ${status.toUpperCase()}. Requis: Business Manager (nom + email) + Date/heure d'entretien.`
+        };
+      }
       // Changer le statut
       const statusSuccess = await candidateStatusService.updateCandidateStatus(candidateId, status);
       

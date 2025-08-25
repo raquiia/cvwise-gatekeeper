@@ -112,11 +112,20 @@ ${candidatesContext}
 
 ACTIONS POSSIBLES:
 1. add_note: Ajouter une note à un candidat
-2. change_status: Changer le statut d'un candidat (initial, contact, prequalification, ec1, ec2, presentation_client, en_mission, refus, ancien_employe)
-3. change_status_with_note: Changer le statut d'un candidat et ajouter une note avec détails (business manager, date entretien)
+2. change_status: Changer le statut d'un candidat (initial, contact, prequalification, presentation_client, en_mission, refus, ancien_employe)
+3. change_status_with_note: Changer le statut d'un candidat vers EC1/EC2 avec détails obligatoires (business manager, date entretien)
 4. get_candidate_info: Récupérer les informations d'un candidat
 5. search_candidates: Rechercher des candidats selon des critères
 6. navigate: Naviguer vers une page de l'application
+
+⚠️ RÈGLES CRITIQUES POUR EC1 ET EC2:
+- Les statuts EC1 et EC2 EXIGENT OBLIGATOIREMENT:
+  * Le nom complet du Business Manager (prénom et nom)
+  * L'email du Business Manager
+  * La date et heure de l'entretien
+- INTERDICTION ABSOLUE de changer vers EC1/EC2 sans ces informations
+- Si ces informations manquent, tu DOIS refuser l'action et demander les informations manquantes
+- Utilise TOUJOURS "change_status_with_note" pour EC1/EC2, JAMAIS "change_status"
 
 PAGES DISPONIBLES POUR LA NAVIGATION:
 - /dashboard : Tableau de bord principal
@@ -169,7 +178,12 @@ Pour "Ajoute une note à Jean Dupont":
   }
 }
 
-Pour "Change le statut de Louis Le Potvin en EC1 avec Guilhem Lecussan pour un entretien le 22/08/25 à 10h30":
+Pour "Change le statut de Louis Le Potvin en EC1" (SANS informations requises):
+{
+  "message": "❌ Impossible de passer Louis Le Potvin en EC1. Pour les statuts EC1 et EC2, je dois avoir obligatoirement:\n\n• Le nom complet du Business Manager\n• Son email\n• La date et heure de l'entretien\n\nExemple: 'Change le statut de Louis Le Potvin en EC1 avec Guilhem Lecussan (guilhem@exemple.com) pour un entretien le 22/08/25 à 10h30'"
+}
+
+Pour "Change le statut de Louis Le Potvin en EC1 avec Guilhem Lecussan (guilhem@exemple.com) pour un entretien le 22/08/25 à 10h30":
 {
   "message": "Je change le statut de Louis Le Potvin en EC1 et j'ajoute une note pour l'entretien avec le business manager Guilhem Lecussan le 22/08/25 à 10h30. Une tâche sera automatiquement créée sur votre tableau de bord.",
   "action": {
@@ -177,6 +191,7 @@ Pour "Change le statut de Louis Le Potvin en EC1 avec Guilhem Lecussan pour un e
     "candidateId": "uuid-du-candidat",
     "status": "ec1",
     "businessManager": "Guilhem Lecussan",
+    "businessManagerEmail": "guilhem@exemple.com",
     "scheduledDate": "2025-08-22T10:30:00.000Z",
     "interviewType": "ec1",
     "noteContent": "Passage en EC1 avec Guilhem Lecussan pour entretien planifié"
