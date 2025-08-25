@@ -62,6 +62,11 @@ class SalaryCalculatorService {
   calculateSalary(input: SalaryCalculationInput): {
     baseSalary: number;
     groupModulation: number;
+    msBonus: number;
+    experienceBonus: number;
+    stageBonus: number;
+    adequationBonus: number;
+    totalBonuses: number;
     finalMonthly: number;
     finalAnnual: number;
   } {
@@ -76,17 +81,24 @@ class SalaryCalculatorService {
     const groupModulation = groupConfig.modulation;
     const salaryWithGroup = baseSalary + groupModulation;
 
-    const totalBonuses = (input.msBonus || 0) + 
-                        (input.experienceBonus || 0) + 
-                        (input.stageBonus || 0) + 
-                        (input.adequationBonus || 0);
-
+    // Récupère chaque bonus individuellement
+    const msBonus = input.msBonus || 0;
+    const experienceBonus = input.experienceBonus || 0;
+    const stageBonus = input.stageBonus || 0;
+    const adequationBonus = input.adequationBonus || 0;
+    
+    const totalBonuses = msBonus + experienceBonus + stageBonus + adequationBonus;
     const finalMonthly = salaryWithGroup + totalBonuses;
     const finalAnnual = Math.round(finalMonthly * 12.12); // Base 12,12 mois
 
     return {
       baseSalary,
       groupModulation,
+      msBonus,
+      experienceBonus,
+      stageBonus,
+      adequationBonus,
+      totalBonuses,
       finalMonthly,
       finalAnnual
     };

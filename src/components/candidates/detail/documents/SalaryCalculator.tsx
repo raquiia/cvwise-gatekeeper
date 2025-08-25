@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, Save, Trash2 } from 'lucide-react';
+import { Calculator, Save, Trash2, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { salaryCalculatorService, SalaryCalculation, SALARY_CONFIG, SalaryCalculationInput } from '@/services/data/salaryCalculatorService';
 import { toast } from '@/hooks/use-toast';
 
@@ -147,7 +148,19 @@ export const SalaryCalculator: React.FC<SalaryCalculatorProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="msBonus">MS (Bac+6) - Bonus (50-150€)</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="msBonus">MS (Bac+6) - Bonus (50-150€)</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Bonus pour Master Spécialisé (Bac+6)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <Input
                 id="msBonus"
                 type="number"
@@ -159,7 +172,20 @@ export const SalaryCalculator: React.FC<SalaryCalculatorProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="experienceBonus">Expériences (années) - Bonus (50-150€)</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="experienceBonus">Expériences - Valorisation flexible (50-150€)</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>Valorisation flexible selon l'expérience : 100€/an en général. 
+                      Exemple : 2 ans à 50€ + 7 ans à 100€ + 1 an à 150€ = Total personnalisé</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <Input
                 id="experienceBonus"
                 type="number"
@@ -167,11 +193,24 @@ export const SalaryCalculator: React.FC<SalaryCalculatorProps> = ({
                 max="150"
                 value={calculation.experienceBonus}
                 onChange={(e) => handleInputChange('experienceBonus', parseInt(e.target.value) || 0)}
+                placeholder="100€/an standard"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="stageBonus">Valorisation stage MI-GSO (0-50€)</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="stageBonus">Valorisation stage MI-GSO (0-50€)</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Bonus pour stage MI-GSO validé</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <Input
                 id="stageBonus"
                 type="number"
@@ -183,7 +222,19 @@ export const SalaryCalculator: React.FC<SalaryCalculatorProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="adequationBonus">Adéquation Cursus/Métier (-50 à 50€)</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="adequationBonus">Adéquation Cursus/Métier (-50 à 50€)</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Bonus/malus selon l'adéquation entre le cursus et le métier visé</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <Input
                 id="adequationBonus"
                 type="number"
@@ -195,8 +246,9 @@ export const SalaryCalculator: React.FC<SalaryCalculatorProps> = ({
             </div>
           </div>
 
-          <div className="border-t pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+          <div className="border-t pt-4 space-y-4">
+            {/* Base et modulation groupe */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
               <div className="space-y-1">
                 <div className="text-sm font-medium text-muted-foreground">Base ville</div>
                 <div className="text-xl font-bold">{currentCalculation.baseSalary}€</div>
@@ -207,13 +259,59 @@ export const SalaryCalculator: React.FC<SalaryCalculatorProps> = ({
                   {currentCalculation.groupModulation > 0 ? '+' : ''}{currentCalculation.groupModulation}€
                 </div>
               </div>
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-muted-foreground">Total mensuel</div>
-                <div className="text-2xl font-bold text-primary">{currentCalculation.finalMonthly}€</div>
+            </div>
+
+            {/* Détail des bonus */}
+            <div className="border-t pt-4">
+              <div className="text-sm font-medium text-muted-foreground mb-3 text-center">Détail des bonus</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">MS Bonus</div>
+                  <div className={`text-lg font-semibold ${currentCalculation.msBonus > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                    {currentCalculation.msBonus > 0 ? '+' : ''}{currentCalculation.msBonus}€
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Expérience</div>
+                  <div className={`text-lg font-semibold ${currentCalculation.experienceBonus > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                    {currentCalculation.experienceBonus > 0 ? '+' : ''}{currentCalculation.experienceBonus}€
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Stage</div>
+                  <div className={`text-lg font-semibold ${currentCalculation.stageBonus > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                    {currentCalculation.stageBonus > 0 ? '+' : ''}{currentCalculation.stageBonus}€
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">Adéquation</div>
+                  <div className={`text-lg font-semibold ${
+                    currentCalculation.adequationBonus > 0 ? 'text-green-600' : 
+                    currentCalculation.adequationBonus < 0 ? 'text-red-600' : 'text-muted-foreground'
+                  }`}>
+                    {currentCalculation.adequationBonus > 0 ? '+' : ''}{currentCalculation.adequationBonus}€
+                  </div>
+                </div>
               </div>
-              <div className="space-y-1">
-                <div className="text-sm font-medium text-muted-foreground">Total annuel (base 12,12)</div>
-                <div className="text-2xl font-bold text-primary">{currentCalculation.finalAnnual}€</div>
+            </div>
+
+            {/* Totaux finaux */}
+            <div className="border-t pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-muted-foreground">Total bonus</div>
+                  <div className={`text-xl font-bold ${currentCalculation.totalBonuses >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {currentCalculation.totalBonuses > 0 ? '+' : ''}{currentCalculation.totalBonuses}€
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-muted-foreground">Total mensuel</div>
+                  <div className="text-2xl font-bold text-primary">{currentCalculation.finalMonthly}€</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-muted-foreground">Total annuel (base 12,12)</div>
+                  <div className="text-2xl font-bold text-primary">{currentCalculation.finalAnnual}€</div>
+                </div>
               </div>
             </div>
           </div>
