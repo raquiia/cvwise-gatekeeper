@@ -72,6 +72,35 @@ const ChannelPerformanceWidget: React.FC<ChannelPerformanceWidgetProps> = ({ can
 
   const getSourceDisplayName = (source: string) => {
     const sourceNames: Record<string, string> = {
+      // Application sources
+      'application_linkedin': 'Application - LinkedIn',
+      'application_mp_website': 'Application - MP Website',
+      'application_apec': 'Application - Apec',
+      'application_indeed': 'Application - Indeed',
+      'application_hellowork': 'Application - Hellowork',
+      'application_infojob': 'Application - Infojob',
+      'application_handshake': 'Application - Handshake',
+      'application_alten_push': 'Application - Alten Push',
+      // Hunt sources
+      'hunt_linkedin': 'Hunt - LinkedIn',
+      'hunt_indeed': 'Hunt - Indeed',
+      'hunt_seek': 'Hunt - Seek',
+      'hunt_apec': 'Hunt - Apec',
+      'hunt_hellowork': 'Hunt - Hellowork',
+      // Referral sources
+      'referral_mp': 'Referral - MP',
+      'referral_client': 'Referral - Client',
+      'referral_alten': 'Referral - Alten',
+      'referral_alumni': 'Referral - Alumni',
+      // Mobility sources
+      'mobility_mp': 'Mobility - MP',
+      'mobility_alten': 'Mobility - Alten',
+      // Recruitment Events
+      'recruitment_fair': 'Recruitment Fair',
+      'recruitment_other_fair': 'Other Fair',
+      // AI
+      'automated_ai': 'Automated by AI',
+      // Legacy mappings
       'linkedin': 'LinkedIn',
       'jobboard': 'Job Boards',
       'cooptation': 'Cooptation',
@@ -84,6 +113,20 @@ const ChannelPerformanceWidget: React.FC<ChannelPerformanceWidgetProps> = ({ can
   };
 
   const getSourceIcon = (source: string) => {
+    // Application sources
+    if (source.startsWith('application_')) return '📝';
+    // Hunt sources  
+    if (source.startsWith('hunt_')) return '🎯';
+    // Referral sources
+    if (source.startsWith('referral_')) return '🤝';
+    // Mobility sources
+    if (source.startsWith('mobility_')) return '🔄';
+    // Recruitment events
+    if (source.startsWith('recruitment_')) return '🎪';
+    // AI
+    if (source === 'automated_ai') return '🤖';
+    
+    // Legacy mappings
     switch (source) {
       case 'linkedin': return '💼';
       case 'jobboard': return '📋';
