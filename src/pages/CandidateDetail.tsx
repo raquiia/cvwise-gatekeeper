@@ -22,6 +22,7 @@ import ModernCandidateHeader from '@/components/candidates/detail/ModernCandidat
 import ModernTabsContainer from '@/components/candidates/detail/ModernTabsContainer';
 import ModernTabContent from '@/components/candidates/detail/ModernTabContent';
 import ReferencesTab from '@/components/candidates/detail/ReferencesTab';
+import { DocumentsTab } from '@/components/candidates/detail/DocumentsTab';
 import BackToSearchButton from '@/components/candidates/detail/BackToSearchButton';
 
 const CandidateDetail = () => {
@@ -308,6 +309,10 @@ const CandidateDetail = () => {
                   onRefresh={handleRefreshWithAIScore}
                   onReferencesChange={handleReferencesChange}
                 />
+              </ModernTabContent>
+              
+              <ModernTabContent value="documents" gradient="from-indigo-500/5 to-blue-500/5">
+                <DocumentsTab candidateId={candidate.id} />
               </ModernTabContent>
               
               <ModernTabContent value="details" gradient="from-gray-500/5 to-slate-500/5">

@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      candidate_documents: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          document_type: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          status: string
+          updated_at: string
+          upload_date: string
+          user_id: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          document_type: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id?: string
+          status?: string
+          updated_at?: string
+          upload_date?: string
+          user_id: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          document_type?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          status?: string
+          updated_at?: string
+          upload_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       candidate_job_matches: {
         Row: {
           calculation_version: number | null
@@ -662,6 +704,60 @@ export type Database = {
           id?: string
           parsed?: boolean | null
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      salary_calculations: {
+        Row: {
+          adequation_bonus: number | null
+          base_city: string
+          base_salary: number
+          calculation_date: string
+          candidate_id: string
+          category_group: string
+          created_at: string
+          experience_bonus: number | null
+          final_annual: number
+          final_monthly: number
+          id: string
+          ms_bonus: number | null
+          stage_bonus: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          adequation_bonus?: number | null
+          base_city: string
+          base_salary: number
+          calculation_date?: string
+          candidate_id: string
+          category_group: string
+          created_at?: string
+          experience_bonus?: number | null
+          final_annual: number
+          final_monthly: number
+          id?: string
+          ms_bonus?: number | null
+          stage_bonus?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          adequation_bonus?: number | null
+          base_city?: string
+          base_salary?: number
+          calculation_date?: string
+          candidate_id?: string
+          category_group?: string
+          created_at?: string
+          experience_bonus?: number | null
+          final_annual?: number
+          final_monthly?: number
+          id?: string
+          ms_bonus?: number | null
+          stage_bonus?: number | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

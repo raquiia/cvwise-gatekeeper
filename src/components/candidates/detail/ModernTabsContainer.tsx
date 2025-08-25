@@ -9,7 +9,8 @@ import {
   StickyNote, 
   FileText,
   Users,
-  Sparkles
+  Sparkles,
+  FolderOpen
 } from 'lucide-react';
 
 interface ModernTabsContainerProps {
@@ -59,6 +60,12 @@ const ModernTabsContainer: React.FC<ModernTabsContainerProps> = ({
       label: 'Références',
       icon: Users,
       gradient: 'from-teal-600 to-cyan-600'
+    },
+    {
+      value: 'documents',
+      label: 'Documents RH',
+      icon: FolderOpen,
+      gradient: 'from-indigo-600 to-blue-600'
     },
     {
       value: 'details',
