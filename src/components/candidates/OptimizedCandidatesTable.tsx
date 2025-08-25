@@ -52,11 +52,15 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
 
   // Précharger les scores depuis la base de données au chargement
   useEffect(() => {
-    const candidateIds = candidates.map(c => c.id!).filter(Boolean);
-    if (candidateIds.length > 0) {
-      console.log('Preloading AI scores for optimized candidates table');
-      preloadScoresFromDatabase(candidateIds, jobOfferId);
-    }
+    const timeoutId = setTimeout(() => {
+      const candidateIds = candidates.map(c => c.id!).filter(Boolean);
+      if (candidateIds.length > 0) {
+        console.log('Preloading AI scores for optimized candidates table');
+        preloadScoresFromDatabase(candidateIds, jobOfferId);
+      }
+    }, 300); // Debounce AI scoring calls
+
+    return () => clearTimeout(timeoutId);
   }, [candidates, preloadScoresFromDatabase, jobOfferId]);
 
   const jobSpecific = isJobSpecific(jobOfferId);
@@ -213,7 +217,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
         };
       case 'ci1':
         return {
-          label: 'Candidat Intéressant 1',
+          label: 'Entretien 1',
           color: 'bg-gradient-to-r from-purple-500 to-violet-500 text-white',
           textColor: 'text-purple-700',
           bgColor: 'bg-purple-50',
@@ -221,7 +225,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
         };
       case 'ci2':
         return {
-          label: 'Candidat Intéressant 2',
+          label: 'Entretien 2',
           color: 'bg-gradient-to-r from-purple-600 to-violet-600 text-white',
           textColor: 'text-purple-800',
           bgColor: 'bg-purple-100',
@@ -229,7 +233,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
         };
       case 'ci3':
         return {
-          label: 'Candidat Intéressant 3',
+          label: 'Entretien 3',
           color: 'bg-gradient-to-r from-purple-700 to-violet-700 text-white',
           textColor: 'text-purple-900',
           bgColor: 'bg-purple-150',
@@ -237,7 +241,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
         };
       case 'ec1':
         return {
-          label: 'Entretien Client 1',
+          label: 'EC1',
           color: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white',
           textColor: 'text-orange-700',
           bgColor: 'bg-orange-50',
@@ -245,7 +249,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
         };
       case 'ec2':
         return {
-          label: 'Entretien Client 2',
+          label: 'EC2',
           color: 'bg-gradient-to-r from-orange-600 to-amber-600 text-white',
           textColor: 'text-orange-800',
           bgColor: 'bg-orange-100',
