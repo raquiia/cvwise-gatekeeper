@@ -1,5 +1,14 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export interface ExperienceBreakdownItem {
+  years: number;
+  ratePerYear: number;
+  total: number;
+  description?: string;
+}
+
+export type ExperienceBreakdown = ExperienceBreakdownItem[];
+
 export interface SalaryCalculation {
   id: string;
   candidate_id: string;
@@ -16,6 +25,7 @@ export interface SalaryCalculation {
   calculation_date: string;
   created_at: string;
   updated_at: string;
+  experience_breakdown?: ExperienceBreakdown;
 }
 
 export const SALARY_CONFIG = {
@@ -54,6 +64,7 @@ export interface SalaryCalculationInput {
   categoryGroup: keyof typeof SALARY_CONFIG.groups;
   msBonus?: number;
   experienceBonus?: number;
+  experienceBreakdown?: ExperienceBreakdown;
   stageBonus?: number;
   adequationBonus?: number;
 }
@@ -64,6 +75,7 @@ class SalaryCalculatorService {
     groupModulation: number;
     msBonus: number;
     experienceBonus: number;
+    experienceBreakdown?: ExperienceBreakdown;
     stageBonus: number;
     adequationBonus: number;
     totalBonuses: number;
@@ -83,7 +95,15 @@ class SalaryCalculatorService {
 
     // Récupère chaque bonus individuellement
     const msBonus = input.msBonus || 0;
-    const experienceBonus = input.experienceBonus || 0;
+    
+    // Calcule le bonus d'expérience à partir du breakdown si fourni, sinon utilise la valeur directe
+    let experienceBonus = input.experienceBonus || 0;
+    let experienceBreakdown = input.experienceBreakdown;
+    
+    if (experienceBreakdown && experienceBreakdown.length > 0) {
+      experienceBonus = experienceBreakdown.reduce((total, item) => total + item.total, 0);
+    }
+    
     const stageBonus = input.stageBonus || 0;
     const adequationBonus = input.adequationBonus || 0;
     
@@ -96,6 +116,7 @@ class SalaryCalculatorService {
       groupModulation,
       msBonus,
       experienceBonus,
+      experienceBreakdown,
       stageBonus,
       adequationBonus,
       totalBonuses,
@@ -119,7 +140,8 @@ class SalaryCalculatorService {
         category_group: input.categoryGroup,
         base_salary: calculation.baseSalary,
         ms_bonus: input.msBonus || 0,
-        experience_bonus: input.experienceBonus || 0,
+        experience_bonus: calculation.experienceBonus,
+        experience_breakdown: JSON.stringify(input.experienceBreakdown || []),
         stage_bonus: input.stageBonus || 0,
         adequation_bonus: input.adequationBonus || 0,
         final_monthly: calculation.finalMonthly,
@@ -132,7 +154,10 @@ class SalaryCalculatorService {
       throw new Error(`Error saving salary calculation: ${error.message}`);
     }
 
-    return data;
+    return {
+      ...data,
+      experience_breakdown: input.experienceBreakdown || []
+    } as SalaryCalculation;
   }
 
   async getCalculationsByCandidate(candidateId: string): Promise<SalaryCalculation[]> {
@@ -146,7 +171,12 @@ class SalaryCalculatorService {
       throw new Error(`Error fetching salary calculations: ${error.message}`);
     }
 
-    return data || [];
+    return (data || []).map(item => ({
+      ...item,
+      experience_breakdown: typeof item.experience_breakdown === 'string' 
+        ? JSON.parse(item.experience_breakdown) 
+        : (item.experience_breakdown || [])
+    })) as SalaryCalculation[];
   }
 
   async deleteCalculation(calculationId: string): Promise<void> {

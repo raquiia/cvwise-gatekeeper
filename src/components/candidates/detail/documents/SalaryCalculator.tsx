@@ -4,11 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { Calculator, Save, Trash2, Info } from 'lucide-react';
+import { Calculator, Save, Trash2, Info, Settings } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { salaryCalculatorService, SalaryCalculation, SALARY_CONFIG, SalaryCalculationInput } from '@/services/data/salaryCalculatorService';
+import { 
+  salaryCalculatorService, 
+  SalaryCalculation, 
+  SALARY_CONFIG, 
+  SalaryCalculationInput,
+  ExperienceBreakdown 
+} from '@/services/data/salaryCalculatorService';
 import { toast } from '@/hooks/use-toast';
+import { ExperienceCalculator } from './ExperienceCalculator';
 
 interface SalaryCalculatorProps {
   candidateId: string;
@@ -26,15 +34,31 @@ export const SalaryCalculator: React.FC<SalaryCalculatorProps> = ({
     categoryGroup: 'Groupe 4 (base ingé)',
     msBonus: 0,
     experienceBonus: 0,
+    experienceBreakdown: [],
     stageBonus: 0,
     adequationBonus: 0
   });
   const [isCalculating, setIsCalculating] = useState(false);
+  const [showExperienceCalculator, setShowExperienceCalculator] = useState(false);
 
   const handleInputChange = (field: keyof typeof calculation, value: string | number) => {
     setCalculation(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handleExperienceBreakdownChange = (breakdown: ExperienceBreakdown) => {
+    setCalculation(prev => ({
+      ...prev,
+      experienceBreakdown: breakdown
+    }));
+  };
+
+  const handleExperienceTotalChange = (total: number) => {
+    setCalculation(prev => ({
+      ...prev,
+      experienceBonus: total
     }));
   };
 
@@ -172,30 +196,59 @@ export const SalaryCalculator: React.FC<SalaryCalculatorProps> = ({
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="experienceBonus">Expériences - Valorisation flexible (50-150€)</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>Valorisation flexible selon l'expérience : 100€/an en général. 
-                      Exemple : 2 ans à 50€ + 7 ans à 100€ + 1 an à 150€ = Total personnalisé</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="experienceBonus">Expériences - Valorisation flexible (50-150€)</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>Valorisation flexible selon l'expérience : 100€/an en général. 
+                        Exemple : 2 ans à 50€ + 7 ans à 100€ + 1 an à 150€ = Total personnalisé</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowExperienceCalculator(!showExperienceCalculator)}
+                  className="text-xs"
+                >
+                  <Settings className="h-3 w-3 mr-1" />
+                  Détailler
+                </Button>
               </div>
               <Input
                 id="experienceBonus"
                 type="number"
                 min="50"
-                max="150"
+                max="300"
                 value={calculation.experienceBonus}
                 onChange={(e) => handleInputChange('experienceBonus', parseInt(e.target.value) || 0)}
                 placeholder="100€/an standard"
+                disabled={showExperienceCalculator}
               />
+              {calculation.experienceBreakdown && calculation.experienceBreakdown.length > 0 && !showExperienceCalculator && (
+                <div className="text-xs text-muted-foreground">
+                  Détail configuré: {calculation.experienceBreakdown.length} période(s)
+                </div>
+              )}
             </div>
+
+            <Collapsible open={showExperienceCalculator} onOpenChange={setShowExperienceCalculator}>
+              <CollapsibleContent className="col-span-2 mt-4">
+                <ExperienceCalculator
+                  value={calculation.experienceBreakdown || []}
+                  onChange={handleExperienceBreakdownChange}
+                  totalExperience={calculation.experienceBonus || 0}
+                  onTotalChange={handleExperienceTotalChange}
+                />
+              </CollapsibleContent>
+            </Collapsible>
 
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -276,6 +329,11 @@ export const SalaryCalculator: React.FC<SalaryCalculatorProps> = ({
                   <div className={`text-lg font-semibold ${currentCalculation.experienceBonus > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
                     {currentCalculation.experienceBonus > 0 ? '+' : ''}{currentCalculation.experienceBonus}€
                   </div>
+                  {calculation.experienceBreakdown && calculation.experienceBreakdown.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      {calculation.experienceBreakdown.length} période(s)
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <div className="text-xs text-muted-foreground">Stage</div>
@@ -338,6 +396,11 @@ export const SalaryCalculator: React.FC<SalaryCalculatorProps> = ({
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">{calc.base_city}</Badge>
                       <Badge variant="outline">{calc.category_group}</Badge>
+                      {calc.experience_breakdown && calc.experience_breakdown.length > 0 && (
+                        <Badge variant="secondary" className="text-xs">
+                          Expérience détaillée
+                        </Badge>
+                      )}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {new Date(calc.calculation_date).toLocaleDateString('fr-FR')} à {new Date(calc.calculation_date).toLocaleTimeString('fr-FR')}

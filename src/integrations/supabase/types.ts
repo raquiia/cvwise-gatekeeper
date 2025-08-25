@@ -718,6 +718,7 @@ export type Database = {
           category_group: string
           created_at: string
           experience_bonus: number | null
+          experience_breakdown: Json | null
           final_annual: number
           final_monthly: number
           id: string
@@ -735,6 +736,7 @@ export type Database = {
           category_group: string
           created_at?: string
           experience_bonus?: number | null
+          experience_breakdown?: Json | null
           final_annual: number
           final_monthly: number
           id?: string
@@ -752,6 +754,7 @@ export type Database = {
           category_group?: string
           created_at?: string
           experience_bonus?: number | null
+          experience_breakdown?: Json | null
           final_annual?: number
           final_monthly?: number
           id?: string
