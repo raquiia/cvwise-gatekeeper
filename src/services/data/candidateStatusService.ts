@@ -3,27 +3,33 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export const CANDIDATE_STATUSES = {
-  INITIAL: 'initial',
-  CONTACT: 'contact',
-  PREQUALIFICATION: 'prequalification',
-  EC1: 'ec1',
-  EC2: 'ec2',
-  PRESENTATION_CLIENT: 'presentation_client',
-  EN_MISSION: 'en_mission',
-  REFUS: 'refus',
-  ANCIEN_EMPLOYE: 'ancien_employe'
+  PRISE_CONTACT: 'prise_contact',
+  PS: 'ps',
+  CI1: 'ci1',
+  CI2: 'ci2',
+  CI3: 'ci3',
+  PIPELINE: 'pipeline',
+  FORMAL_OFFER: 'formal_offer',
+  CONTINGENT_OFFER: 'contingent_offer',
+  OFFER_DECLINED: 'offer_declined',
+  OFFER_ACCEPTED: 'offer_accepted',
+  CONTRACT_SIGNED: 'contract_signed',
+  HIRED: 'hired'
 };
 
 export const CANDIDATE_STATUS_LABELS: Record<string, string> = {
-  'initial': 'Initial',
-  'contact': 'Prise de contact',
-  'prequalification': 'Préqualification',
-  'ec1': 'EC1',
-  'ec2': 'EC2',
-  'presentation_client': 'Présentation client',
-  'en_mission': 'En mission',
-  'refus': 'Refusé',
-  'ancien_employe': 'Ancien employé'
+  'prise_contact': 'Prise de contact',
+  'ps': 'PS',
+  'ci1': 'CI1',
+  'ci2': 'CI2',
+  'ci3': 'CI3',
+  'pipeline': 'Pipeline',
+  'formal_offer': 'Formal Offer',
+  'contingent_offer': 'Contingent Offer',
+  'offer_declined': 'Offer declined',
+  'offer_accepted': 'Offer accepted',
+  'contract_signed': 'Contract Signed',
+  'hired': 'Hired'
 };
 
 // Define interfaces for better type safety
@@ -123,7 +129,7 @@ export const candidateStatusService = {
         }
         
         console.log("Retrieved status via dedicated RPC:", data);
-        return data || 'initial';
+        return data || 'prise_contact';
       } catch (rpcError) {
         console.error("Status RPC failed, falling back to get_candidate_by_id:", rpcError);
         
@@ -148,7 +154,7 @@ export const candidateStatusService = {
         const candidateWithStatus = candidate as CandidateWithStatus;
         console.log("Retrieved candidate with status:", candidateWithStatus.detailed_status);
         
-        return candidateWithStatus.detailed_status || 'initial';
+        return candidateWithStatus.detailed_status || 'prise_contact';
       }
     } catch (error: any) {
       console.error('Error fetching candidate status:', error);

@@ -25,7 +25,7 @@ export interface CreateRecruiterTaskData {
   title: string;
   description?: string;
   scheduled_date: string;
-  interview_type?: 'ec1' | 'ec2';
+  interview_type?: 'ci1' | 'ci2' | 'ci3';
   business_manager?: string;
   candidate_profile_url?: string;
   priority?: RecruiterTask['priority'];
@@ -274,7 +274,7 @@ export const recruiterTasksService = {
     candidateName: string,
     candidatePosition: string,
     businessManager: string, 
-    interviewType: 'ec1' | 'ec2',
+    interviewType: 'ci1' | 'ci2' | 'ci3',
     scheduledDate: string
   ): Promise<RecruiterTask | null> {
     const taskData: CreateRecruiterTaskData = {

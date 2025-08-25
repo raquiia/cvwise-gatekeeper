@@ -163,8 +163,8 @@ class ChatbotService {
 
   private async changeCandidateStatus(candidateId: string, status: string): Promise<{ type: string; success: boolean; details?: string }> {
     try {
-      // Validation critique pour EC1 et EC2
-      if (status === 'ec1' || status === 'ec2') {
+      // Validation critique pour CI1, CI2 et CI3
+      if (status === 'ci1' || status === 'ci2' || status === 'ci3') {
         return {
           type: 'change_status',
           success: false,
@@ -194,12 +194,12 @@ class ChatbotService {
     noteContent: string, 
     businessManager?: string,
     scheduledDate?: string,
-    interviewType?: 'ec1' | 'ec2',
+    interviewType?: 'ci1' | 'ci2' | 'ci3',
     businessManagerEmail?: string
   ): Promise<{ type: string; success: boolean; details?: string }> {
     try {
-      // Validation critique pour EC1 et EC2
-      if ((status === 'ec1' || status === 'ec2') && (!businessManager || !scheduledDate)) {
+      // Validation critique pour CI1, CI2 et CI3
+      if ((status === 'ci1' || status === 'ci2' || status === 'ci3') && (!businessManager || !scheduledDate)) {
         return {
           type: 'change_status_with_note',
           success: false,
@@ -265,8 +265,8 @@ class ChatbotService {
       let taskCreated = false;
       let taskDetails = '';
 
-      // Créer une tâche si c'est un entretien EC1 ou EC2 avec BM
-      if ((status === 'ec1' || status === 'ec2') && businessManager && scheduledDate && interviewType) {
+      // Créer une tâche si c'est un entretien CI1, CI2 ou CI3 avec BM
+      if ((status === 'ci1' || status === 'ci2' || status === 'ci3') && businessManager && scheduledDate && interviewType) {
         try {
           const task = await recruiterTasksService.createBMInterviewTask(
             user.id,
@@ -274,7 +274,7 @@ class ChatbotService {
             `${candidate.first_name} ${candidate.last_name}`,
             candidate.position || 'Poste non spécifié',
             businessManager,
-            interviewType,
+            status as 'ci1' | 'ci2' | 'ci3',
             scheduledDate
           );
           taskCreated = !!task;

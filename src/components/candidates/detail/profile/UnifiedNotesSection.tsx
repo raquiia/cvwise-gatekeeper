@@ -198,8 +198,9 @@ const UnifiedNotesSection: React.FC<UnifiedNotesSectionProps> = ({ candidateId }
   const getNoteTypeBadgeColor = (noteType: NoteType) => {
     switch (noteType) {
       case 'precal': return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
-      case 'ec1': return 'bg-amber-100 text-amber-800 hover:bg-amber-200';
-      case 'ec2': return 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200';
+      case 'ci1': return 'bg-amber-100 text-amber-800 hover:bg-amber-200';
+      case 'ci2': return 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200';
+      case 'ci3': return 'bg-orange-100 text-orange-800 hover:bg-orange-200';
       case 'global': return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
       default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
     }
@@ -255,8 +256,9 @@ const UnifiedNotesSection: React.FC<UnifiedNotesSectionProps> = ({ candidateId }
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="precal">Pré-qualification</SelectItem>
-                    <SelectItem value="ec1">Entretien 1er Tour</SelectItem>
-                    <SelectItem value="ec2">Entretien 2nd Tour</SelectItem>
+                    <SelectItem value="ci1">Client Interview 1</SelectItem>
+                    <SelectItem value="ci2">Client Interview 2</SelectItem>
+                    <SelectItem value="ci3">Client Interview 3</SelectItem>
                   </SelectContent>
                 </Select>
                 
@@ -349,8 +351,9 @@ const UnifiedNotesSection: React.FC<UnifiedNotesSectionProps> = ({ candidateId }
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="precal">Pré-qualification</SelectItem>
-                            <SelectItem value="ec1">Entretien 1er Tour</SelectItem>
-                            <SelectItem value="ec2">Entretien 2nd Tour</SelectItem>
+                            <SelectItem value="ci1">Client Interview 1</SelectItem>
+                            <SelectItem value="ci2">Client Interview 2</SelectItem>
+                            <SelectItem value="ci3">Client Interview 3</SelectItem>
                           </SelectContent>
                         </Select>
                         <Textarea

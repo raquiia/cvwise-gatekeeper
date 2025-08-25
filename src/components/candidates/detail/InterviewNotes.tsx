@@ -58,7 +58,7 @@ interface InterviewNotesProps {
 
 const noteSchema = z.object({
   content: z.string().min(1, { message: 'Le contenu est requis' }),
-  note_type: z.enum(['precal', 'ec1', 'ec2'], {
+  note_type: z.enum(['precal', 'ci1', 'ci2', 'ci3'], {
     required_error: "Veuillez sélectionner un type de note",
   }),
 });
@@ -69,8 +69,9 @@ type NoteFormValues = z.infer<typeof noteSchema>;
 const getNoteTypeBadgeColor = (noteType: NoteType) => {
   switch (noteType) {
     case 'precal': return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
-    case 'ec1': return 'bg-amber-100 text-amber-800 hover:bg-amber-200';
-    case 'ec2': return 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200';
+    case 'ci1': return 'bg-amber-100 text-amber-800 hover:bg-amber-200';
+    case 'ci2': return 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200';
+    case 'ci3': return 'bg-orange-100 text-orange-800 hover:bg-orange-200';
     case 'global': return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
     default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
   }
@@ -249,8 +250,9 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="precal">Pré-qualification</SelectItem>
-                          <SelectItem value="ec1">Entretien 1er Tour</SelectItem>
-                          <SelectItem value="ec2">Entretien 2nd Tour</SelectItem>
+                          <SelectItem value="ci1">Client Interview 1</SelectItem>
+                          <SelectItem value="ci2">Client Interview 2</SelectItem>
+                          <SelectItem value="ci3">Client Interview 3</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormItem>
@@ -300,11 +302,12 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             {/* Filtres par type de note */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
-              <TabsList className="w-full grid grid-cols-5">
+              <TabsList className="w-full grid grid-cols-6">
                 <TabsTrigger value="all">Toutes</TabsTrigger>
                 <TabsTrigger value="precal">Pré-qual</TabsTrigger>
-                <TabsTrigger value="ec1">1er Tour</TabsTrigger>
-                <TabsTrigger value="ec2">2nd Tour</TabsTrigger>
+                <TabsTrigger value="ci1">CI1</TabsTrigger>
+                <TabsTrigger value="ci2">CI2</TabsTrigger>
+                <TabsTrigger value="ci3">CI3</TabsTrigger>
                 <TabsTrigger value="global">Global</TabsTrigger>
               </TabsList>
             </Tabs>
@@ -408,8 +411,9 @@ const InterviewNotes: React.FC<InterviewNotesProps> = ({ candidateId }) => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="precal">Pré-qualification</SelectItem>
-                            <SelectItem value="ec1">Entretien 1er Tour</SelectItem>
-                            <SelectItem value="ec2">Entretien 2nd Tour</SelectItem>
+                            <SelectItem value="ci1">Client Interview 1</SelectItem>
+                            <SelectItem value="ci2">Client Interview 2</SelectItem>
+                            <SelectItem value="ci3">Client Interview 3</SelectItem>
                           </SelectContent>
                         </Select>
                         <Textarea

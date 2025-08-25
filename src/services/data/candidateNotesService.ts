@@ -2,7 +2,7 @@
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-export type NoteType = 'precal' | 'ec1' | 'ec2' | 'global';
+export type NoteType = 'precal' | 'ci1' | 'ci2' | 'ci3' | 'global';
 
 export interface CandidateNote {
   id?: string;
@@ -241,8 +241,9 @@ export const candidateNotesService = {
 export const getNoteTypeLabel = (noteType?: NoteType): string => {
   switch (noteType) {
     case 'precal': return 'Pré-qualification';
-    case 'ec1': return 'Entretien 1er Tour';
-    case 'ec2': return 'Entretien 2nd Tour';
+    case 'ci1': return 'Client Interview 1';
+    case 'ci2': return 'Client Interview 2';
+    case 'ci3': return 'Client Interview 3';
     case 'global': return 'Compte-rendu global';
     default: return 'Note';
   }

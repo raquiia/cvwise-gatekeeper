@@ -27,7 +27,7 @@ interface BusinessManagerSelectorProps {
   candidateId: string;
   candidateName: string;
   candidatePosition: string;
-  statusType: 'ec1' | 'ec2';
+  statusType: 'ci1' | 'ci2' | 'ci3';
   onBusinessManagerSelected: (businessManager: string) => void;
 }
 

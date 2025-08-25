@@ -15,15 +15,18 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Define colors by status
 const STATUS_COLORS: Record<string, string> = {
-  'initial': 'bg-gray-500 hover:bg-gray-600',
-  'contact': 'bg-blue-500 hover:bg-blue-600',
-  'prequalification': 'bg-cyan-500 hover:bg-cyan-600',
-  'ec1': 'bg-violet-500 hover:bg-violet-600',
-  'ec2': 'bg-indigo-500 hover:bg-indigo-600',
-  'presentation_client': 'bg-amber-500 hover:bg-amber-600',
-  'en_mission': 'bg-emerald-500 hover:bg-emerald-600',
-  'refus': 'bg-red-500 hover:bg-red-600',
-  'ancien_employe': 'bg-slate-500 hover:bg-slate-600'
+  'prise_contact': 'bg-blue-500 hover:bg-blue-600',
+  'ps': 'bg-cyan-500 hover:bg-cyan-600',
+  'ci1': 'bg-violet-500 hover:bg-violet-600',
+  'ci2': 'bg-indigo-500 hover:bg-indigo-600',
+  'ci3': 'bg-purple-500 hover:bg-purple-600',
+  'pipeline': 'bg-amber-500 hover:bg-amber-600',
+  'formal_offer': 'bg-orange-500 hover:bg-orange-600',
+  'contingent_offer': 'bg-yellow-500 hover:bg-yellow-600',
+  'offer_declined': 'bg-red-500 hover:bg-red-600',
+  'offer_accepted': 'bg-green-500 hover:bg-green-600',
+  'contract_signed': 'bg-emerald-500 hover:bg-emerald-600',
+  'hired': 'bg-teal-500 hover:bg-teal-600'
 };
 
 interface StatusSelectorProps {
@@ -35,7 +38,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
   candidateId,
   onStatusChange 
 }) => {
-  const [currentStatus, setCurrentStatus] = useState<string>(CANDIDATE_STATUSES.INITIAL);
+  const [currentStatus, setCurrentStatus] = useState<string>(CANDIDATE_STATUSES.PRISE_CONTACT);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [showBusinessManagerSelector, setShowBusinessManagerSelector] = useState<boolean>(false);
@@ -60,12 +63,12 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         if (status) {
           setCurrentStatus(status);
         } else {
-          console.log("No status found, using initial");
-          setCurrentStatus(CANDIDATE_STATUSES.INITIAL);
+          console.log("No status found, using prise_contact");
+          setCurrentStatus(CANDIDATE_STATUSES.PRISE_CONTACT);
         }
       } catch (error) {
         console.error("Error loading status:", error);
-        setCurrentStatus(CANDIDATE_STATUSES.INITIAL);
+        setCurrentStatus(CANDIDATE_STATUSES.PRISE_CONTACT);
       } finally {
         setIsLoading(false);
       }
@@ -100,8 +103,8 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
     
     console.log("Changing status to:", status);
     
-    // Si c'est EC1 ou EC2, ouvrir le sélecteur de Business Manager
-    if (status === 'ec1' || status === 'ec2') {
+    // Si c'est CI1, CI2 ou CI3, ouvrir le sélecteur de Business Manager
+    if (status === 'ci1' || status === 'ci2' || status === 'ci3') {
       setPendingStatus(status);
       setShowBusinessManagerSelector(true);
       return;
@@ -181,7 +184,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
               </>
             ) : (
               <>
-                Statut: {CANDIDATE_STATUS_LABELS[currentStatus] || 'Inconnu'}
+                Étape: {CANDIDATE_STATUS_LABELS[currentStatus] || 'Inconnu'}
                 <ChevronDown className="ml-2 h-4 w-4" />
               </>
             )}
@@ -207,7 +210,7 @@ const StatusSelector: React.FC<StatusSelectorProps> = ({
         candidateId={candidateId}
         candidateName={candidateInfo.name}
         candidatePosition={candidateInfo.position}
-        statusType={pendingStatus as 'ec1' | 'ec2'}
+        statusType={pendingStatus as 'ci1' | 'ci2' | 'ci3'}
         onBusinessManagerSelected={handleBusinessManagerSelected}
       />
     </>
