@@ -50,7 +50,7 @@ const generateEmail = (firstName: string, lastName: string): string => {
   const normalizedFirstName = normalizeText(firstName.trim());
   const normalizedLastName = normalizeText(lastName.trim());
   
-  return `${normalizedLastName}.${normalizedFirstName}@migso-pcubed.com`;
+  return `${normalizedFirstName}.${normalizedLastName}@migso-pcubed.com`;
 };
 
 const BusinessManagerSelector: React.FC<BusinessManagerSelectorProps> = ({
