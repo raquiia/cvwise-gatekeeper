@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Plus } from 'lucide-react';
 import { ExperienceBreakdown, ExperienceBreakdownItem } from '@/services/data/salaryCalculatorService';
 
@@ -23,6 +23,15 @@ export const ExperienceCalculator: React.FC<ExperienceCalculatorProps> = ({
   const [items, setItems] = useState<ExperienceBreakdownItem[]>(
     value.length > 0 ? value : [{ years: 0, ratePerYear: 100, total: 0, description: '' }]
   );
+
+  const getRateLabel = (rate: number) => {
+    switch (rate) {
+      case 50: return '50€ (Junior)';
+      case 100: return '100€ (Standard)';
+      case 150: return '150€ (Senior)';
+      default: return '100€ (Standard)';
+    }
+  };
 
   const calculateTotal = (newItems: ExperienceBreakdownItem[]) => {
     return newItems.reduce((sum, item) => sum + item.total, 0);
@@ -69,7 +78,7 @@ export const ExperienceCalculator: React.FC<ExperienceCalculatorProps> = ({
       <CardHeader>
         <CardTitle className="text-lg">Calculateur d'expérience détaillé</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Valorisez chaque période d'expérience individuellement (50-150€/an recommandé)
+          Valorisez selon les standards français : 50€ (Junior), 100€ (Standard), 150€ (Senior/Expert)
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -86,15 +95,20 @@ export const ExperienceCalculator: React.FC<ExperienceCalculatorProps> = ({
               />
             </div>
             <div className="col-span-2">
-              <Label className="text-xs">€/an</Label>
-              <Input
-                type="number"
-                min="0"
-                max="200"
-                value={item.ratePerYear || ''}
-                onChange={(e) => updateItem(index, 'ratePerYear', parseInt(e.target.value) || 0)}
-                className="h-8"
-              />
+              <Label className="text-xs">Niveau</Label>
+              <Select
+                value={item.ratePerYear.toString()}
+                onValueChange={(value) => updateItem(index, 'ratePerYear', parseInt(value))}
+              >
+                <SelectTrigger className="h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="50">50€ (Junior)</SelectItem>
+                  <SelectItem value="100">100€ (Standard)</SelectItem>
+                  <SelectItem value="150">150€ (Senior)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="col-span-2">
               <Label className="text-xs">Total</Label>
@@ -141,17 +155,6 @@ export const ExperienceCalculator: React.FC<ExperienceCalculatorProps> = ({
           </div>
         </div>
 
-        {calculatedTotal < 50 && calculatedTotal > 0 && (
-          <div className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
-            ⚠️ Le total est en dessous de la fourchette recommandée (50-150€)
-          </div>
-        )}
-        
-        {calculatedTotal > 150 && (
-          <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
-            ⚠️ Le total dépasse la fourchette recommandée (50-150€)
-          </div>
-        )}
       </CardContent>
     </Card>
   );
