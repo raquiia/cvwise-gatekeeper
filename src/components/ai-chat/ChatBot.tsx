@@ -122,7 +122,7 @@ const ChatBot: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await chatbotService.processCommand(inputText);
+      const response = await chatbotService.processCommand(inputText, messages);
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),

@@ -20,13 +20,16 @@ class ChatbotService {
     this.navigateFunction = navigate;
   }
 
-  async processCommand(command: string): Promise<ChatResponse> {
+  async processCommand(command: string, conversationHistory?: any[]): Promise<ChatResponse> {
     try {
       console.log('📤 [ChatbotService] Envoi de la commande:', command);
       
       // Appel à l'Edge Function pour traiter la commande avec OpenAI
       const { data, error } = await supabase.functions.invoke('ai-chatbot', {
-        body: { command }
+        body: { 
+          command,
+          conversationHistory: conversationHistory?.slice(-10) || [] // Derniers 10 messages max
+        }
       });
 
       console.log('📥 [ChatbotService] Réponse reçue - Data:', data, 'Error:', error);

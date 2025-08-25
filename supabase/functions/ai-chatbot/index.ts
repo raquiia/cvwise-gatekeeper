@@ -44,8 +44,9 @@ serve(async (req) => {
   try {
     console.log('🚀 [ai-chatbot] Début du traitement de la requête');
     
-    const { command } = await req.json();
+    const { command, conversationHistory } = await req.json();
     console.log('📥 [ai-chatbot] Commande reçue:', command);
+    console.log('🗨️ [ai-chatbot] Historique conversation:', conversationHistory?.length || 0, 'messages');
 
     if (!command) {
       console.error('❌ [ai-chatbot] Aucune commande fournie');
@@ -116,7 +117,23 @@ serve(async (req) => {
 
     console.log('📝 [ai-chatbot] Contexte des candidats construit:', candidatesContext.substring(0, 500) + '...');
 
-    const systemPrompt = `Tu es un assistant IA pour une application de recrutement. Tu peux exécuter des actions sur les candidats.
+    // Construire le contexte conversationnel
+    let conversationContext = '';
+    if (conversationHistory && conversationHistory.length > 0) {
+      const recentMessages = conversationHistory.slice(-10); // Derniers 10 messages
+      conversationContext = `
+
+CONTEXTE CONVERSATIONNEL (derniers échanges):
+${recentMessages.map(msg => 
+  `${msg.isBot ? '🤖 Assistant' : '👤 Utilisateur'}: ${msg.text}`
+).join('\n')}
+
+---
+
+Tu DOIS tenir compte de ce contexte pour répondre de manière cohérente et faire référence aux échanges précédents si nécessaire. Si l'utilisateur fait référence à une réponse précédente ("plus de détails", "peux-tu préciser", "comme tu l'as dit"), utilise ce contexte pour comprendre de quoi il parle.`;
+    }
+
+    const systemPrompt = `Tu es un assistant IA pour une application de recrutement. Tu peux exécuter des actions sur les candidats.${conversationContext}
 
 CANDIDATS DISPONIBLES:
 ${candidatesContext}
@@ -295,8 +312,25 @@ Pour une question générale:
   "message": "Voici la réponse à votre question..."
 }`;
 
+    // Construire l'historique des messages pour OpenAI
+    const messages = [{ role: 'system', content: systemPrompt }];
+    
+    // Ajouter l'historique de conversation récent (max 8 messages pour rester dans les limites)
+    if (conversationHistory && conversationHistory.length > 0) {
+      const recentHistory = conversationHistory.slice(-8);
+      recentHistory.forEach(msg => {
+        messages.push({
+          role: msg.isBot ? 'assistant' : 'user',
+          content: msg.text
+        });
+      });
+    }
+    
+    // Ajouter la commande actuelle
+    messages.push({ role: 'user', content: command });
+
     // Appel à OpenAI
-    console.log('🤖 [ai-chatbot] Envoi de la requête à OpenAI...');
+    console.log('🤖 [ai-chatbot] Envoi de la requête à OpenAI avec', messages.length, 'messages...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -305,10 +339,7 @@ Pour une question générale:
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: command }
-        ],
+        messages,
         temperature: 0.3,
         max_tokens: 1000,
       }),
