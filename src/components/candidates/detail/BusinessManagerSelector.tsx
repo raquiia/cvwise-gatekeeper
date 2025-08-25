@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,7 +6,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Users, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { Users, Calendar as CalendarIcon, Clock, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -31,6 +31,28 @@ interface BusinessManagerSelectorProps {
   onBusinessManagerSelected: (businessManager: string) => void;
 }
 
+// Fonction pour normaliser les noms (suppression accents, minuscules, espaces -> points)
+const normalizeText = (text: string): string => {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
+    .replace(/[^a-z0-9\s-]/g, '') // Garde seulement lettres, chiffres, espaces et tirets
+    .replace(/\s+/g, '.') // Remplace espaces par points
+    .replace(/\.+/g, '.') // Évite les points multiples
+    .replace(/^\.+|\.+$/g, ''); // Supprime points en début/fin
+};
+
+// Fonction pour générer l'email automatiquement
+const generateEmail = (firstName: string, lastName: string): string => {
+  if (!firstName.trim() || !lastName.trim()) return '';
+  
+  const normalizedFirstName = normalizeText(firstName.trim());
+  const normalizedLastName = normalizeText(lastName.trim());
+  
+  return `${normalizedLastName}.${normalizedFirstName}@migso-pcubed.com`;
+};
+
 const BusinessManagerSelector: React.FC<BusinessManagerSelectorProps> = ({
   isOpen,
   onClose,
@@ -49,6 +71,15 @@ const BusinessManagerSelector: React.FC<BusinessManagerSelectorProps> = ({
   const [scheduledDate, setScheduledDate] = useState<Date>();
   const [scheduledTime, setScheduledTime] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEmailCustomized, setIsEmailCustomized] = useState(false);
+
+  // Auto-génération de l'email quand firstName et lastName sont renseignés
+  useEffect(() => {
+    if (!isEmailCustomized && businessManager.firstName && businessManager.lastName) {
+      const generatedEmail = generateEmail(businessManager.firstName, businessManager.lastName);
+      setBusinessManager(prev => ({ ...prev, email: generatedEmail }));
+    }
+  }, [businessManager.firstName, businessManager.lastName, isEmailCustomized]);
 
   const handleSubmit = async () => {
     if (!businessManager.firstName.trim() || !businessManager.lastName.trim()) {
@@ -149,7 +180,12 @@ const BusinessManagerSelector: React.FC<BusinessManagerSelectorProps> = ({
     });
     setScheduledDate(undefined);
     setScheduledTime('');
+    setIsEmailCustomized(false);
     onClose();
+  };
+
+  const handleCustomizeEmail = () => {
+    setIsEmailCustomized(true);
   };
 
   return (
@@ -196,15 +232,40 @@ const BusinessManagerSelector: React.FC<BusinessManagerSelectorProps> = ({
             <Label htmlFor="email" className="text-right">
               Email
             </Label>
-            <Input
-              id="email"
-              type="email"
-              value={businessManager.email}
-              onChange={(e) => setBusinessManager(prev => ({ ...prev, email: e.target.value }))}
-              className="col-span-3"
-              placeholder="email@entreprise.com (optionnel)"
-            />
+            <div className="col-span-3 flex gap-2">
+              <Input
+                id="email"
+                type="email"
+                value={businessManager.email}
+                onChange={(e) => setBusinessManager(prev => ({ ...prev, email: e.target.value }))}
+                className="flex-1"
+                placeholder="email@migso-pcubed.com"
+                readOnly={!isEmailCustomized}
+              />
+              {!isEmailCustomized && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCustomizeEmail}
+                  className="px-3"
+                  title="Personnaliser l'email"
+                >
+                  <Edit3 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
+          
+          {businessManager.email && !isEmailCustomized && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="col-start-2 col-span-3">
+                <p className="text-sm text-muted-foreground">
+                  📧 Email généré automatiquement selon le format Migso-PCubed
+                </p>
+              </div>
+            </div>
+          )}
           
           <div className="grid grid-cols-4 items-center gap-4">
             <Label className="text-right">
