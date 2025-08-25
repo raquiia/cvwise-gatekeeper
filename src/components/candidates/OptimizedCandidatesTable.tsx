@@ -184,47 +184,116 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
 
 
   const getStatusConfig = (status: string | undefined | null) => {
-    const normalizedStatus = status?.toLowerCase().trim();
-    switch (normalizedStatus) {
-      case 'en mission':
-      case 'en_mission':
+    if (!status) {
+      return {
+        label: 'Non défini',
+        color: 'bg-gradient-to-r from-gray-400 to-gray-500 text-white',
+        textColor: 'text-gray-600',
+        bgColor: 'bg-gray-50',
+        borderColor: 'border-gray-200'
+      };
+    }
+    
+    switch (status) {
+      case 'prise_contact':
         return {
-          label: 'En Mission',
-          color: 'bg-gradient-to-r from-emerald-500 to-green-500 text-white',
-          textColor: 'text-emerald-700',
-          bgColor: 'bg-emerald-50',
-          borderColor: 'border-emerald-200'
-        };
-      case 'en cours':
-      case 'en_cours':
-        return {
-          label: 'En Cours',
+          label: 'Prise de contact',
           color: 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white',
           textColor: 'text-blue-700',
           bgColor: 'bg-blue-50',
           borderColor: 'border-blue-200'
         };
-      case 'refusé':
-      case 'refuse':
+      case 'ps':
         return {
-          label: 'Refusé',
-          color: 'bg-gradient-to-r from-red-500 to-pink-500 text-white',
-          textColor: 'text-red-700',
-          bgColor: 'bg-red-50',
-          borderColor: 'border-red-200'
+          label: 'Pré-sélection',
+          color: 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white',
+          textColor: 'text-indigo-700',
+          bgColor: 'bg-indigo-50',
+          borderColor: 'border-indigo-200'
         };
-      case 'nouveau':
-      case 'initial':
+      case 'ci1':
         return {
-          label: 'Nouveau',
+          label: 'Candidat Intéressant 1',
           color: 'bg-gradient-to-r from-purple-500 to-violet-500 text-white',
           textColor: 'text-purple-700',
           bgColor: 'bg-purple-50',
           borderColor: 'border-purple-200'
         };
+      case 'ci2':
+        return {
+          label: 'Candidat Intéressant 2',
+          color: 'bg-gradient-to-r from-purple-600 to-violet-600 text-white',
+          textColor: 'text-purple-800',
+          bgColor: 'bg-purple-100',
+          borderColor: 'border-purple-300'
+        };
+      case 'ci3':
+        return {
+          label: 'Candidat Intéressant 3',
+          color: 'bg-gradient-to-r from-purple-700 to-violet-700 text-white',
+          textColor: 'text-purple-900',
+          bgColor: 'bg-purple-150',
+          borderColor: 'border-purple-400'
+        };
+      case 'ec1':
+        return {
+          label: 'Entretien Client 1',
+          color: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white',
+          textColor: 'text-orange-700',
+          bgColor: 'bg-orange-50',
+          borderColor: 'border-orange-200'
+        };
+      case 'ec2':
+        return {
+          label: 'Entretien Client 2',
+          color: 'bg-gradient-to-r from-orange-600 to-amber-600 text-white',
+          textColor: 'text-orange-800',
+          bgColor: 'bg-orange-100',
+          borderColor: 'border-orange-300'
+        };
+      case 'pipeline':
+        return {
+          label: 'Pipeline',
+          color: 'bg-gradient-to-r from-emerald-500 to-green-500 text-white',
+          textColor: 'text-emerald-700',
+          bgColor: 'bg-emerald-50',
+          borderColor: 'border-emerald-200'
+        };
+      case 'hired':
+        return {
+          label: 'Recruté',
+          color: 'bg-gradient-to-r from-green-600 to-emerald-600 text-white',
+          textColor: 'text-green-700',
+          bgColor: 'bg-green-50',
+          borderColor: 'border-green-200'
+        };
+      case 'not_selected':
+        return {
+          label: 'Non retenu',
+          color: 'bg-gradient-to-r from-red-500 to-pink-500 text-white',
+          textColor: 'text-red-700',
+          bgColor: 'bg-red-50',
+          borderColor: 'border-red-200'
+        };
+      case 'withdraw':
+        return {
+          label: 'Désistement',
+          color: 'bg-gradient-to-r from-gray-500 to-slate-500 text-white',
+          textColor: 'text-gray-700',
+          bgColor: 'bg-gray-50',
+          borderColor: 'border-gray-200'
+        };
+      case 'on_hold':
+        return {
+          label: 'En pause',
+          color: 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white',
+          textColor: 'text-yellow-700',
+          bgColor: 'bg-yellow-50',
+          borderColor: 'border-yellow-200'
+        };
       default:
         return {
-          label: 'Initial',
+          label: status,
           color: 'bg-gradient-to-r from-gray-400 to-gray-500 text-white',
           textColor: 'text-gray-600',
           bgColor: 'bg-gray-50',
@@ -447,7 +516,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
     // Column 3: Statut & Disponibilité (15%) - Statut coloré + Disponibilité
     {
       id: 'status_availability',
-      accessorKey: 'status',
+      accessorKey: 'detailed_status',
       header: ({ column }) => (
         <Button
           variant="ghost"
@@ -460,7 +529,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
       ),
       cell: ({ row }) => {
         const candidate = row.original;
-        const statusConfig = getStatusConfig(candidate.status);
+        const statusConfig = getStatusConfig(candidate.detailed_status);
         const availability = getAvailabilityStatus(candidate);
         const AvailabilityIcon = availability.icon;
         
