@@ -42,17 +42,23 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🚀 [ai-chatbot] Début du traitement de la requête');
+    
     const { command } = await req.json();
-    console.log('Commande reçue:', command);
+    console.log('📥 [ai-chatbot] Commande reçue:', command);
 
     if (!command) {
+      console.error('❌ [ai-chatbot] Aucune commande fournie');
       throw new Error('Aucune commande fournie');
     }
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
+      console.error('❌ [ai-chatbot] Clé API OpenAI manquante');
       throw new Error('Clé API OpenAI non configurée');
     }
+    
+    console.log('✅ [ai-chatbot] Clé API OpenAI disponible');
 
     // Initialiser Supabase pour récupérer les candidats
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -62,8 +68,11 @@ serve(async (req) => {
     // Récupérer l'utilisateur authentifié depuis l'authorization header
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
+      console.error('❌ [ai-chatbot] Token d\'authentification manquant');
       throw new Error('Token d\'authentification manquant');
     }
+    
+    console.log('🔐 [ai-chatbot] Token d\'authentification présent');
 
     // Créer un client Supabase avec le token utilisateur
     const userSupabase = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
@@ -73,6 +82,8 @@ serve(async (req) => {
         }
       }
     });
+    
+    console.log('✅ [ai-chatbot] Client Supabase utilisateur créé');
 
     // Récupérer les candidats de l'utilisateur pour le contexte (triés par date de création)
     const { data: candidates, error: candidatesError } = await userSupabase
@@ -85,7 +96,7 @@ serve(async (req) => {
       console.error('Erreur lors de la récupération des candidats:', candidatesError);
     }
 
-    console.log(`${candidates?.length || 0} candidats récupérés pour le contexte`);
+    console.log(`📊 [ai-chatbot] ${candidates?.length || 0} candidats récupérés pour le contexte`);
 
     // Construire un contexte enrichi avec variations de noms
     const candidatesContext = candidates?.map(c => {
@@ -103,7 +114,7 @@ serve(async (req) => {
   - Variations: ${variations.slice(0, 3).join(', ')}`;
     }).join('\n\n') || '';
 
-    console.log('Contexte des candidats construit:', candidatesContext.substring(0, 500) + '...');
+    console.log('📝 [ai-chatbot] Contexte des candidats construit:', candidatesContext.substring(0, 500) + '...');
 
     const systemPrompt = `Tu es un assistant IA pour une application de recrutement. Tu peux exécuter des actions sur les candidats.
 
@@ -285,6 +296,7 @@ Pour une question générale:
 }`;
 
     // Appel à OpenAI
+    console.log('🤖 [ai-chatbot] Envoi de la requête à OpenAI...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -303,33 +315,43 @@ Pour une question générale:
     });
 
     if (!response.ok) {
+      console.error('❌ [ai-chatbot] Erreur OpenAI:', response.status, response.statusText);
       throw new Error(`Erreur OpenAI: ${response.statusText}`);
     }
 
+    console.log('✅ [ai-chatbot] Réponse OpenAI reçue avec succès');
     const data = await response.json();
     const aiResponse = data.choices[0].message.content;
 
-    console.log('Réponse IA brute:', aiResponse);
+    console.log('🤖 [ai-chatbot] Réponse IA brute:', aiResponse);
 
     // Essayer de parser la réponse comme JSON
     let parsedResponse;
     try {
+      console.log('🔄 [ai-chatbot] Parsing de la réponse JSON...');
       parsedResponse = JSON.parse(aiResponse);
+      console.log('✅ [ai-chatbot] JSON parsé avec succès:', parsedResponse);
     } catch (parseError) {
-      // Si ce n'est pas du JSON, traiter comme message simple
+      console.log('⚠️ [ai-chatbot] Réponse non-JSON, traitement comme message simple');
       parsedResponse = { message: aiResponse };
     }
 
+    console.log('📤 [ai-chatbot] Envoi de la réponse finale');
     return new Response(JSON.stringify(parsedResponse), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Erreur dans ai-chatbot:', error);
+    console.error('💥 [ai-chatbot] Exception attrapée:', error);
+    console.error('💥 [ai-chatbot] Stack trace:', error.stack);
     return new Response(
       JSON.stringify({ 
         message: "Désolé, je n'ai pas pu traiter votre demande. Pouvez-vous réessayer ?",
-        error: error.message 
+        error: error.message,
+        debug: {
+          type: error.constructor.name,
+          stack: error.stack?.substring(0, 500) + '...'
+        }
       }),
       {
         status: 500,

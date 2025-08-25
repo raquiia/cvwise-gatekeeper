@@ -22,18 +22,46 @@ class ChatbotService {
 
   async processCommand(command: string): Promise<ChatResponse> {
     try {
+      console.log('📤 [ChatbotService] Envoi de la commande:', command);
+      
       // Appel à l'Edge Function pour traiter la commande avec OpenAI
       const { data, error } = await supabase.functions.invoke('ai-chatbot', {
         body: { command }
       });
 
+      console.log('📥 [ChatbotService] Réponse reçue - Data:', data, 'Error:', error);
+
       if (error) {
-        throw error;
+        console.error('❌ [ChatbotService] Erreur de l\'Edge Function:', error);
+        return {
+          message: `Erreur du serveur: ${error.message || 'Erreur inconnue'}`,
+          action: {
+            type: 'error',
+            success: false,
+            details: error.message || 'Erreur lors de l\'appel au serveur'
+          }
+        };
       }
+
+      if (!data || !data.message) {
+        console.error('❌ [ChatbotService] Réponse invalide du serveur:', data);
+        return {
+          message: "Réponse invalide du serveur. Veuillez réessayer.",
+          action: {
+            type: 'error',
+            success: false,
+            details: 'Réponse serveur invalide'
+          }
+        };
+      }
+
+      console.log('✅ [ChatbotService] Traitement de la réponse avec action:', !!data.action);
 
       // Exécuter l'action identifiée par l'IA
       if (data.action) {
+        console.log('🔄 [ChatbotService] Exécution de l\'action:', data.action.type);
         const actionResult = await this.executeAction(data.action);
+        console.log('✅ [ChatbotService] Résultat de l\'action:', actionResult);
         return {
           message: data.message,
           action: actionResult
@@ -44,8 +72,15 @@ class ChatbotService {
         message: data.message
       };
     } catch (error) {
-      console.error('Erreur lors du traitement de la commande:', error);
-      throw error;
+      console.error('💥 [ChatbotService] Exception lors du traitement de la commande:', error);
+      return {
+        message: "Une erreur inattendue s'est produite. Veuillez réessayer.",
+        action: {
+          type: 'error',
+          success: false,
+          details: error instanceof Error ? error.message : 'Erreur inconnue'
+        }
+      };
     }
   }
 
