@@ -175,6 +175,10 @@ export type Database = {
           profile_completeness: number | null
           projects: Json | null
           publications: Json | null
+          references_conclusion: string | null
+          references_contact_info: string | null
+          references_taken: boolean | null
+          references_verified_at: string | null
           remote_preference: string | null
           resume_id: string | null
           salary_expectations: string | null
@@ -230,6 +234,10 @@ export type Database = {
           profile_completeness?: number | null
           projects?: Json | null
           publications?: Json | null
+          references_conclusion?: string | null
+          references_contact_info?: string | null
+          references_taken?: boolean | null
+          references_verified_at?: string | null
           remote_preference?: string | null
           resume_id?: string | null
           salary_expectations?: string | null
@@ -285,6 +293,10 @@ export type Database = {
           profile_completeness?: number | null
           projects?: Json | null
           publications?: Json | null
+          references_conclusion?: string | null
+          references_contact_info?: string | null
+          references_taken?: boolean | null
+          references_verified_at?: string | null
           remote_preference?: string | null
           resume_id?: string | null
           salary_expectations?: string | null
@@ -774,6 +786,10 @@ export type Database = {
           profile_completeness: number | null
           projects: Json | null
           publications: Json | null
+          references_conclusion: string | null
+          references_contact_info: string | null
+          references_taken: boolean | null
+          references_verified_at: string | null
           remote_preference: string | null
           resume_id: string | null
           salary_expectations: string | null
@@ -957,6 +973,10 @@ export type Database = {
           profile_completeness: number | null
           projects: Json | null
           publications: Json | null
+          references_conclusion: string | null
+          references_contact_info: string | null
+          references_taken: boolean | null
+          references_verified_at: string | null
           remote_preference: string | null
           resume_id: string | null
           salary_expectations: string | null

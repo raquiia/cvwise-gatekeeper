@@ -20,6 +20,7 @@ import DataMissingAlert from '@/components/candidates/detail/DataMissingAlert';
 import ModernCandidateHeader from '@/components/candidates/detail/ModernCandidateHeader';
 import ModernTabsContainer from '@/components/candidates/detail/ModernTabsContainer';
 import ModernTabContent from '@/components/candidates/detail/ModernTabContent';
+import ReferencesTab from '@/components/candidates/detail/ReferencesTab';
 import BackToSearchButton from '@/components/candidates/detail/BackToSearchButton';
 
 const CandidateDetail = () => {
@@ -267,6 +268,10 @@ const CandidateDetail = () => {
               
               <ModernTabContent value="notes" gradient="from-yellow-500/5 to-orange-500/5">
                 <NotesTab candidate={candidate} onDataUpdate={handleRefreshWithAIScore} />
+              </ModernTabContent>
+              
+              <ModernTabContent value="references" gradient="from-teal-500/5 to-cyan-500/5">
+                <ReferencesTab candidate={candidate} onRefresh={handleRefreshWithAIScore} />
               </ModernTabContent>
               
               <ModernTabContent value="details" gradient="from-gray-500/5 to-slate-500/5">

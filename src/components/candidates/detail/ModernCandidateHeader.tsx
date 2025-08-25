@@ -16,7 +16,9 @@ import {
   Target,
   Building,
   Crown,
-  User
+  User,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CandidateData } from '@/services/data/candidateService';
@@ -188,6 +190,32 @@ const ModernCandidateHeader: React.FC<ModernCandidateHeaderProps> = ({
                     >
                       <Building className="w-3 h-3 mr-1" />
                       {candidate.company}
+                    </Badge>
+                  )}
+                  
+                  {/* References Status Tag */}
+                  {candidate.references_taken !== undefined && (
+                    <Badge 
+                      variant="outline" 
+                      className={`
+                        px-3 py-1 text-sm
+                        ${candidate.references_taken 
+                          ? 'border-green-500/30 text-green-700 bg-green-50' 
+                          : 'border-red-500/30 text-red-700 bg-red-50'
+                        }
+                      `}
+                    >
+                      {candidate.references_taken ? (
+                        <>
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Références OK
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-3 h-3 mr-1" />
+                          Références à vérifier
+                        </>
+                      )}
                     </Badge>
                   )}
                 </div>

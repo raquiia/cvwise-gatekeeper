@@ -8,6 +8,7 @@ import {
   GraduationCap, 
   StickyNote, 
   FileText,
+  Users,
   Sparkles
 } from 'lucide-react';
 
@@ -52,6 +53,12 @@ const ModernTabsContainer: React.FC<ModernTabsContainerProps> = ({
       label: 'Notes',
       icon: StickyNote,
       gradient: 'from-yellow-600 to-orange-600'
+    },
+    {
+      value: 'references',
+      label: 'Références',
+      icon: Users,
+      gradient: 'from-teal-600 to-cyan-600'
     },
     {
       value: 'details',

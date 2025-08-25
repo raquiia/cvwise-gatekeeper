@@ -59,6 +59,11 @@ export interface CandidateData {
   isOwnCandidate?: boolean;
   owner_first_name?: string;
   owner_last_name?: string;
+  // Nouvelles colonnes références
+  references_contact_info?: string;
+  references_conclusion?: string;
+  references_taken?: boolean;
+  references_verified_at?: string;
 }
 
 export interface UpdateCandidateOptions {
@@ -281,6 +286,10 @@ export const candidateService = {
           ai_weaknesses: candidateData.ai_weaknesses,
           ai_recommendations: candidateData.ai_recommendations,
           ai_analyzed_at: candidateData.ai_analyzed_at,
+          references_contact_info: candidateData.references_contact_info,
+          references_conclusion: candidateData.references_conclusion,
+          references_taken: candidateData.references_taken,
+          references_verified_at: candidateData.references_verified_at,
           updated_at: new Date().toISOString()
         })
         .eq('id', candidateData.id)
