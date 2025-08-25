@@ -288,11 +288,11 @@ export class IntelligentCacheService {
 // Instance globale du cache avec TTL réduit pour les scores
 export const intelligentCache = new IntelligentCacheService({
   maxSize: 2000,
-  defaultTTL: 1000 * 60 * 15, // 15 minutes au lieu de 45 pour plus de réactivité
+  defaultTTL: 1000 * 60 * 30, // 30 minutes au lieu de 15 pour moins de recharges
   compressionEnabled: true
 });
 
-// Cache spécialisé pour les scores AI avec TTL encore plus court
+// Cache spécialisé pour les scores AI avec TTL encore plus long
 export const aiScoreCache = new IntelligentCacheService({
   maxSize: 500,
   defaultTTL: 1000 * 60 * 30, // 30 minutes pour les scores

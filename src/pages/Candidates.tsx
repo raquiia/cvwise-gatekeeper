@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import CandidatesHeader from '@/components/candidates/CandidatesHeader';
@@ -23,6 +23,8 @@ import { Button } from '@/components/ui/button';
 import { Filter, Upload, FileText, UserPlus, Briefcase, Hash } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ReprocessDataButton from '@/components/candidates/ReprocessDataButton';
+import { usePerformanceMonitor, measureAPICall } from '@/hooks/use-performance-monitor';
+import { LoadingSkeleton, TableSkeleton } from '@/components/ui/loading-skeleton';
 
 // Helper function to extract status from candidate
 const extractCandidateStatus = async (candidate: CandidateData): Promise<string> => {
@@ -84,6 +86,9 @@ const CandidatesContent = () => {
   const [currentView, setCurrentView] = useState<'table' | 'cards' | 'kanban' | 'analytics'>('table');
   const [isSemanticSearching, setIsSemanticSearching] = useState(false);
   const [isGlobalMode, setIsGlobalMode] = useState(false);
+  
+  // Performance monitoring
+  const { logMetrics } = usePerformanceMonitor('CandidatesPage');
   
   // Use URL filters hook instead of local state
   const { 
@@ -163,57 +168,60 @@ const CandidatesContent = () => {
     }
   };
 
-  const fetchCandidates = async () => {
+  const fetchCandidates = useCallback(async () => {
     if (!user?.id) {
       setError("Vous devez être connecté pour voir vos candidats");
       setLoading(false);
       return;
     }
     
-    try {
-      setLoading(true);
-      setError(null);
-      
-      console.log("Fetching candidates for user:", user.id);
-      const data = isGlobalMode 
-        ? await candidateService.getAllCandidates()
-        : await candidateService.getUserCandidates();
-      console.log("Retrieved candidates:", data);
-      
-      if (Array.isArray(data)) {
-        const sortedCandidates = [...data].sort((a, b) => 
-          new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
-        );
+    return measureAPICall('fetchCandidates', async () => {
+      try {
+        setLoading(true);
+        setError(null);
         
-        const candidatesWithCorrectStatus = await Promise.all(
-          sortedCandidates.map(async (candidate) => {
-            const correctStatus = await extractCandidateStatus(candidate);
-            return {
-              ...candidate,
-              detailed_status: correctStatus
-            };
-          })
-        );
+        console.log("Fetching candidates for user:", user.id);
+        const data = isGlobalMode 
+          ? await candidateService.getAllCandidates()
+          : await candidateService.getUserCandidates();
+        console.log("Retrieved candidates:", data);
         
-        setCandidates(candidatesWithCorrectStatus);
-      } else {
-        console.error("Candidates data is not an array:", data);
-        setCandidates([]);
-        setError("Format de données incorrect");
+        if (Array.isArray(data)) {
+          const sortedCandidates = [...data].sort((a, b) => 
+            new Date(b.updated_at || '').getTime() - new Date(a.updated_at || '').getTime()
+          );
+          
+          const candidatesWithCorrectStatus = await Promise.all(
+            sortedCandidates.map(async (candidate) => {
+              const correctStatus = await extractCandidateStatus(candidate);
+              return {
+                ...candidate,
+                detailed_status: correctStatus
+              };
+            })
+          );
+          
+          setCandidates(candidatesWithCorrectStatus);
+          logMetrics(); // Log performance after data load
+        } else {
+          console.error("Candidates data is not an array:", data);
+          setCandidates([]);
+          setError("Format de données incorrect");
+        }
+      } catch (error: any) {
+        console.error('Error fetching candidates:', error);
+        setError(error?.message || "Impossible de récupérer les candidats");
+        
+        toast({
+          title: "Erreur",
+          description: error?.message || "Impossible de récupérer les candidats",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
       }
-    } catch (error: any) {
-      console.error('Error fetching candidates:', error);
-      setError(error?.message || "Impossible de récupérer les candidats");
-      
-      toast({
-        title: "Erreur",
-        description: error?.message || "Impossible de récupérer les candidats",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
+  }, [user, isGlobalMode, toast, logMetrics]);
 
   useEffect(() => {
     fetchCandidates();
@@ -331,9 +339,12 @@ const CandidatesContent = () => {
   const renderCurrentView = () => {
     if (loading) {
       return (
-        <div className="flex justify-center items-center py-12">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <p className="ml-4 text-muted-foreground">Chargement des candidats...</p>
+        <div className="space-y-4">
+          <div className="flex justify-center items-center py-8">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <p className="ml-4 text-muted-foreground">Chargement des candidats...</p>
+          </div>
+          <TableSkeleton rows={5} columns={5} className="bg-card rounded-xl border" />
         </div>
       );
     }

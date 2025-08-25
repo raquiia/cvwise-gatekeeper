@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   ColumnDef, 
   flexRender, 
@@ -21,6 +21,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/use-confirm';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { usePagination } from '@/hooks/use-pagination';
+import { useDebounce } from '@/hooks/use-debounce';
+import { PaginationControlsComponent } from '@/components/ui/pagination-controls';
+import { usePerformanceMonitor } from '@/hooks/use-performance-monitor';
 
 interface OptimizedCandidatesTableProps {
   candidates: CandidateData[];
@@ -46,26 +50,47 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   
+  // Performance monitoring
+  const { logMetrics } = usePerformanceMonitor('OptimizedCandidatesTable');
+  
   const { toast } = useToast();
   const { confirm } = useConfirm();
   const { getAIScore, preloadScoresFromDatabase, isJobSpecific } = useAIScoring();
 
-  // Précharger les scores depuis la base de données au chargement
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      const candidateIds = candidates.map(c => c.id!).filter(Boolean);
-      if (candidateIds.length > 0) {
-        console.log('Preloading AI scores for optimized candidates table');
-        preloadScoresFromDatabase(candidateIds, jobOfferId);
-      }
-    }, 300); // Debounce AI scoring calls
+  // Pagination hook
+  const pagination = usePagination(candidates.length, 20);
+  
+  // Get paginated candidates
+  const paginatedCandidates = useMemo(() => {
+    return candidates.slice(pagination.startIndex, pagination.endIndex);
+  }, [candidates, pagination.startIndex, pagination.endIndex]);
 
-    return () => clearTimeout(timeoutId);
-  }, [candidates, preloadScoresFromDatabase, jobOfferId]);
+  // Debounce candidate IDs to prevent excessive AI scoring calls
+  const candidateIds = useMemo(() => 
+    paginatedCandidates.map(c => c.id!).filter(Boolean), 
+    [paginatedCandidates]
+  );
+  
+  const debouncedCandidateIds = useDebounce(candidateIds, 500);
+
+  // Précharger les scores uniquement pour les candidats visibles avec debounce
+  useEffect(() => {
+    if (debouncedCandidateIds.length > 0) {
+      console.log('Preloading AI scores for visible candidates:', debouncedCandidateIds.length);
+      preloadScoresFromDatabase(debouncedCandidateIds, jobOfferId);
+    }
+  }, [debouncedCandidateIds, preloadScoresFromDatabase, jobOfferId]);
+
+  // Log performance metrics when candidates change
+  useEffect(() => {
+    if (candidates.length > 0) {
+      logMetrics();
+    }
+  }, [candidates.length, logMetrics]);
 
   const jobSpecific = isJobSpecific(jobOfferId);
 
-  const handleDeleteCandidate = async (candidateId: string, candidate: CandidateData, event: React.MouseEvent) => {
+  const handleDeleteCandidate = useCallback(async (candidateId: string, candidate: CandidateData, event: React.MouseEvent) => {
     event.stopPropagation();
     
     // Vérifier si l'utilisateur peut supprimer ce candidat
@@ -113,7 +138,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
         variant: "destructive",
       });
     }
-  };
+  }, [confirm, toast, onCandidateDeleted, currentUserId]);
 
   // Optimized function for responsive column widths
   const getColumnWidth = useMemo(() => (index: number) => {
@@ -686,7 +711,7 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
   ], [getAIScore, jobOfferId, jobSpecific, currentUserId, handleDeleteCandidate]);
 
   const table = useReactTable({
-    data: candidates,
+    data: paginatedCandidates,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -756,6 +781,13 @@ const OptimizedCandidatesTable: React.FC<OptimizedCandidatesTableProps> = ({
           </TableBody>
         </Table>
       </div>
+      
+      {/* Pagination Controls */}
+      {candidates.length > 0 && (
+        <div className="border-t border-border bg-muted/20 px-6 py-4">
+          <PaginationControlsComponent pagination={pagination} />
+        </div>
+      )}
     </div>
   );
 };

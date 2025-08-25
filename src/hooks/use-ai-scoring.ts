@@ -31,7 +31,7 @@ interface AIScoreCache {
   };
 }
 
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 const cacheRef: { current: AIScoreCache } = { current: {} };
 const loadingStatesRef: { current: Set<string> } = { current: new Set() };
 
