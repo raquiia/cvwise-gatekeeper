@@ -20,10 +20,10 @@ export interface PaginationControls {
   hasPreviousPage: boolean;
 }
 
-export const usePagination = (
+export function usePagination(
   totalItems: number,
   initialItemsPerPage: number = 20
-): PaginationControls => {
+): PaginationControls {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(initialItemsPerPage);
 
