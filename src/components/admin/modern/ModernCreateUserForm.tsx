@@ -22,6 +22,8 @@ import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useGeoData } from '@/hooks/useGeoData';
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
@@ -29,12 +31,14 @@ const formSchema = z.object({
   firstName: z.string().min(1, { message: "Le prénom est requis" }),
   lastName: z.string().min(1, { message: "Le nom est requis" }),
   company: z.string().optional(),
+  hubId: z.string().optional(),
   isAdmin: z.boolean().default(false)
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 const ModernCreateUserForm = () => {
+  const { hubs } = useGeoData();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -48,6 +52,7 @@ const ModernCreateUserForm = () => {
       firstName: "",
       lastName: "",
       company: "",
+      hubId: "",
       isAdmin: false
     }
   });
@@ -67,6 +72,7 @@ const ModernCreateUserForm = () => {
             firstName: data.firstName,
             lastName: data.lastName,
             company: data.company || "",
+            hubId: data.hubId || null,
             isAdmin: data.isAdmin
           }
         })
@@ -187,6 +193,34 @@ const ModernCreateUserForm = () => {
                         />
                       </div>
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="hubId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Hub d'affectation</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="bg-white/70 border-navy/20 focus:border-navy/40">
+                          <SelectValue placeholder="Sélectionner un hub (optionnel)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {hubs.filter(hub => hub.is_active).map((hub) => (
+                          <SelectItem key={hub.id} value={hub.id}>
+                            {hub.name} - {hub.city} ({hub.country?.name})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Associer le recruteur à un hub géographique
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

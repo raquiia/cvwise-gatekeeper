@@ -36,6 +36,7 @@ import AppSettings from '@/components/admin/AppSettings';
 import RecruitmentUserStats from '@/components/admin/RecruitmentUserStats';
 import RecruiterOverviewCard from '@/components/admin/RecruiterOverviewCard';
 import RecruiterDetailedKPI from '@/components/admin/RecruiterDetailedKPI';
+import AdminGeoManagement from '@/components/admin/geo/AdminGeoManagement';
 
 // Mock data pour les utilisateurs en attente
 const pendingUsersData = [
@@ -325,6 +326,12 @@ const Admin = () => {
                     emptyMessage="Aucun recruteur trouvé"
                   />
                 </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="geography" className="mt-6">
+              <div className="max-w-6xl mx-auto">
+                <AdminGeoManagement />
               </div>
             </TabsContent>
             

@@ -7,6 +7,7 @@ import {
   Users, 
   TrendingUp, 
   Settings, 
+  Globe,
   Bell 
 } from 'lucide-react';
 
@@ -36,6 +37,12 @@ const PremiumTabs: React.FC<PremiumTabsProps> = ({
       badge: pendingUsersCount > 0 ? pendingUsersCount : undefined
     },
     {
+      value: "geography",
+      label: "Géographie",
+      icon: Globe,
+      description: "Pays & Hubs"
+    },
+    {
       value: "analytics",
       label: "KPI Recruteurs",
       icon: TrendingUp,
@@ -52,7 +59,7 @@ const PremiumTabs: React.FC<PremiumTabsProps> = ({
   return (
     <Tabs defaultValue={defaultValue} className="w-full">
       <div className="mb-8">
-        <TabsList className="grid w-full grid-cols-4 h-auto p-2 bg-white/80 dark:bg-navy-dark/80 backdrop-blur-xl border border-navy/10 rounded-2xl shadow-lg">
+        <TabsList className="grid w-full grid-cols-5 h-auto p-2 bg-white/80 dark:bg-navy-dark/80 backdrop-blur-xl border border-navy/10 rounded-2xl shadow-lg">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (

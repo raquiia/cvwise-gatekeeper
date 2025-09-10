@@ -58,6 +58,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ candidate, isLoading, onRefre
                   <span>{candidate.phone}</span>
                 </div>
               )}
+              {/* Hub display will be added once types are updated */}
               {(candidate.city || candidate.location) && (
                 <div className="flex items-center gap-2 text-navy-dark">
                   <MapPin className="w-4 h-4" />
