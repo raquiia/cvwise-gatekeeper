@@ -25,6 +25,8 @@ import ReferencesTab from '@/components/candidates/detail/ReferencesTab';
 import { DocumentsTab } from '@/components/candidates/detail/DocumentsTab';
 import { RecruitmentProcessHistory } from '@/components/candidates/detail/RecruitmentProcessHistory';
 import BackToSearchButton from '@/components/candidates/detail/BackToSearchButton';
+import RecruiterCandidateEditor from '@/components/candidates/edit/RecruiterCandidateEditor';
+import { useRecruiterPermissions } from '@/hooks/use-recruiter-permissions';
 
 const CandidateDetail = () => {
   const { candidateId } = useParams<{ candidateId: string }>();
@@ -36,6 +38,10 @@ const CandidateDetail = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [dataIncompletenessDetected, setDataIncompletenessDetected] = useState(false);
   const [referencesStats, setReferencesStats] = useState({ verified: 0, total: 0, percentage: 0 });
+  const [recruiterEditorOpen, setRecruiterEditorOpen] = useState(false);
+  
+  // Check recruiter permissions
+  const { permissions: recruiterPermissions } = useRecruiterPermissions(candidateId || '');
 
   // Check if there's an active search in the referrer URL
   const referrerSearch = new URLSearchParams(window.location.search);
@@ -258,6 +264,9 @@ const CandidateDetail = () => {
           onRefresh={handleRefreshWithAIScore}
           referencesStats={referencesStats}
           onLoadReferencesStats={loadReferencesStats}
+          onEditClick={recruiterPermissions.canEdit ? () => setRecruiterEditorOpen(true) : undefined}
+          canEdit={recruiterPermissions.canEdit}
+          isActiveRecruiter={recruiterPermissions.isActiveRecruiter}
         />
         
         {/* Alerte de données manquantes */}
@@ -330,6 +339,17 @@ const CandidateDetail = () => {
             </>
           )}
         </ModernTabsContainer>
+        
+        {/* Recruiter Editor Modal */}
+        {candidate && recruiterPermissions.canEdit && (
+          <RecruiterCandidateEditor
+            open={recruiterEditorOpen}
+            onOpenChange={setRecruiterEditorOpen}
+            candidate={candidate}
+            onSuccess={handleRefreshWithAIScore}
+            isActiveRecruiter={recruiterPermissions.isActiveRecruiter}
+          />
+        )}
       </div>
     </Layout>
   );

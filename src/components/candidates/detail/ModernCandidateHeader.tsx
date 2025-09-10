@@ -32,6 +32,9 @@ interface ModernCandidateHeaderProps {
   onRefresh?: () => void;
   referencesStats: { verified: number; total: number; percentage: number };
   onLoadReferencesStats: () => void;
+  onEditClick?: () => void;
+  canEdit?: boolean;
+  isActiveRecruiter?: boolean;
 }
 
 const ModernCandidateHeader: React.FC<ModernCandidateHeaderProps> = ({
@@ -39,7 +42,10 @@ const ModernCandidateHeader: React.FC<ModernCandidateHeaderProps> = ({
   isLoading,
   onRefresh,
   referencesStats,
-  onLoadReferencesStats
+  onLoadReferencesStats,
+  onEditClick,
+  canEdit = false,
+  isActiveRecruiter = false
 }) => {
   const navigate = useNavigate();
 
@@ -232,6 +238,18 @@ const ModernCandidateHeader: React.FC<ModernCandidateHeaderProps> = ({
               />
               
               <div className="flex gap-3">
+                {/* Edit button for recruiters with active process */}
+                {canEdit && onEditClick && (
+                  <Button 
+                    variant="outline"
+                    onClick={onEditClick}
+                    className="btn-modern text-foreground border-border/60 hover:border-primary/30 hover:bg-accent/80 transition-all duration-300 group"
+                  >
+                    <Edit size={16} className="mr-2 group-hover:scale-110 transition-transform duration-300" />
+                    <span>{isActiveRecruiter ? 'Modifier (Recruteur)' : 'Modifier'}</span>
+                  </Button>
+                )}
+                
                 {/* Only show status selector for own candidates */}
                 {candidate.isOwnCandidate !== false && (
                   <StatusSelector 

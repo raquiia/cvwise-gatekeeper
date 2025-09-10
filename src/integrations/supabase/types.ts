@@ -1267,6 +1267,10 @@ export type Database = {
         Args: { p_candidate_id: string; p_hub_id: string; p_notes?: string }
         Returns: string
       }
+      update_candidate_by_recruiter: {
+        Args: { p_candidate_id: string; p_updates: Json }
+        Returns: Json
+      }
       update_candidate_secure: {
         Args: { p_candidate_id: string; p_data: Json }
         Returns: {
