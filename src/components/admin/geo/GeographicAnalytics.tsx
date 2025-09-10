@@ -12,7 +12,7 @@ import CustomPeriodSelector from '@/components/admin/CustomPeriodSelector';
 const GeographicAnalytics: React.FC = () => {
   const [countryKPIs, setCountryKPIs] = useState<CountryKPI[]>([]);
   const [hubKPIs, setHubKPIs] = useState<HubKPI[]>([]);
-  const [selectedCountryId, setSelectedCountryId] = useState<string>('');
+  const [selectedCountryId, setSelectedCountryId] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<'current_month' | 'last_month' | 'quarter' | 'custom'>('current_month');
   const [customStartDate, setCustomStartDate] = useState<Date>();
@@ -25,7 +25,7 @@ const GeographicAnalytics: React.FC = () => {
   }, [period, customStartDate, customEndDate]);
 
   useEffect(() => {
-    if (selectedCountryId) {
+    if (selectedCountryId && selectedCountryId !== 'all') {
       loadHubKPIs(selectedCountryId);
     } else {
       loadHubKPIs();
@@ -236,7 +236,7 @@ const GeographicAnalytics: React.FC = () => {
                 <SelectValue placeholder="Filtrer par pays" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tous les pays</SelectItem>
+                <SelectItem value="all">Tous les pays</SelectItem>
                 {countries.map((country) => (
                   <SelectItem key={country.id} value={country.id}>
                     {country.name}
@@ -245,8 +245,8 @@ const GeographicAnalytics: React.FC = () => {
               </SelectContent>
             </Select>
             
-            {selectedCountryId && (
-              <Button variant="outline" onClick={() => setSelectedCountryId('')}>
+            {selectedCountryId && selectedCountryId !== 'all' && (
+              <Button variant="outline" onClick={() => setSelectedCountryId('all')}>
                 Voir tous les hubs
               </Button>
             )}
