@@ -38,11 +38,23 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const ModernCreateUserForm = () => {
-  const { hubs } = useGeoData();
+  const { countries, hubs } = useGeoData();
+  const [selectedCountry, setSelectedCountry] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const { toast } = useToast();
+
+  // Filter hubs by selected country
+  const hubsForSelectedCountry = selectedCountry 
+    ? hubs.filter(hub => hub.country_id === selectedCountry && hub.is_active)
+    : [];
+
+  // Reset hub selection when country changes
+  const handleCountryChange = (countryId: string) => {
+    setSelectedCountry(countryId);
+    form.setValue('hubId', ''); // Reset hub selection in form
+  };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -198,33 +210,55 @@ const ModernCreateUserForm = () => {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="hubId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Hub d'affectation</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="bg-white/70 border-navy/20 focus:border-navy/40">
-                          <SelectValue placeholder="Sélectionner un hub (optionnel)" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {hubs.filter(hub => hub.is_active).map((hub) => (
-                          <SelectItem key={hub.id} value={hub.id}>
-                            {hub.name} - {hub.city} ({hub.country?.name})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Associer le recruteur à un hub géographique
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Pays</label>
+                  <Select onValueChange={handleCountryChange} value={selectedCountry}>
+                    <SelectTrigger className="bg-white/70 border-navy/20 focus:border-navy/40">
+                      <SelectValue placeholder="Sélectionner un pays (optionnel)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countries.filter(country => country.is_active).map((country) => (
+                        <SelectItem key={country.id} value={country.id}>
+                          {country.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="hubId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hub d'affectation</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                        disabled={!selectedCountry}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="bg-white/70 border-navy/20 focus:border-navy/40">
+                            <SelectValue placeholder={selectedCountry ? "Sélectionner un hub" : "Sélectionner d'abord un pays"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {hubsForSelectedCountry.map((hub) => (
+                            <SelectItem key={hub.id} value={hub.id}>
+                              {hub.name} - {hub.city}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Associer le recruteur à un hub géographique
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </CardContent>
           </Card>
 
