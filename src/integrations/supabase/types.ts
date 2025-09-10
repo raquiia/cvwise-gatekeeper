@@ -138,8 +138,12 @@ export type Database = {
           content: string
           created_at: string
           enhanced_content: string | null
+          feedback_type: string | null
           id: string
+          next_action: string | null
           note_type: string
+          previous_status: string | null
+          proposed_status: string | null
           updated_at: string
           user_id: string
         }
@@ -149,8 +153,12 @@ export type Database = {
           content: string
           created_at?: string
           enhanced_content?: string | null
+          feedback_type?: string | null
           id?: string
+          next_action?: string | null
           note_type?: string
+          previous_status?: string | null
+          proposed_status?: string | null
           updated_at?: string
           user_id: string
         }
@@ -160,8 +168,12 @@ export type Database = {
           content?: string
           created_at?: string
           enhanced_content?: string | null
+          feedback_type?: string | null
           id?: string
+          next_action?: string | null
           note_type?: string
+          previous_status?: string | null
+          proposed_status?: string | null
           updated_at?: string
           user_id?: string
         }

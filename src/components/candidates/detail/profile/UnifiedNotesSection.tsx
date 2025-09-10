@@ -15,7 +15,7 @@ import {
   Check, 
   Loader2 
 } from 'lucide-react';
-import { CandidateNote, NoteType, candidateNotesService, getNoteTypeLabel } from '@/services/data/candidateNotesService';
+import { CandidateNote, NoteType, candidateNotesService, getNoteTypeLabel, FeedbackType, NextAction } from '@/services/data/candidateNotesService';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -37,6 +37,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import FeedbackWorkflowModal from './FeedbackWorkflowModal';
+import { candidateStatusService } from '@/services/data/candidateStatusService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UnifiedNotesSectionProps {
   candidateId: string;
@@ -60,11 +63,35 @@ const UnifiedNotesSection: React.FC<UnifiedNotesSectionProps> = ({ candidateId }
   const [editNoteType, setEditNoteType] = useState<NoteType>('precal');
   const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
   
+  // États pour workflow de feedback
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [currentNote, setCurrentNote] = useState<CandidateNote | null>(null);
+  const [currentStatus, setCurrentStatus] = useState<string>('prise_contact');
+  const [candidateName, setCandidateName] = useState<string>('');
+  
   const [isLoadingNotes, setIsLoadingNotes] = useState(true);
 
   useEffect(() => {
     loadAllNotes();
+    loadCandidateInfo();
   }, [candidateId, user]);
+
+  const loadCandidateInfo = async () => {
+    try {
+      const { data: candidate } = await supabase
+        .from('candidates')
+        .select('first_name, last_name, detailed_status')
+        .eq('id', candidateId)
+        .single();
+        
+      if (candidate) {
+        setCandidateName(`${candidate.first_name} ${candidate.last_name}`);
+        setCurrentStatus(candidate.detailed_status || 'prise_contact');
+      }
+    } catch (error) {
+      console.error('Error loading candidate info:', error);
+    }
+  };
 
   const loadAllNotes = async () => {
     setIsLoadingNotes(true);
@@ -158,10 +185,39 @@ const UnifiedNotesSection: React.FC<UnifiedNotesSectionProps> = ({ candidateId }
     if (result) {
       setNewNoteContent('');
       setNewNoteType('precal');
+      
+      // Show feedback workflow modal if this is an interview note
+      if (['precal', 'ci1', 'ci2', 'ci3', 'ec1', 'ec2'].includes(newNoteType)) {
+        setCurrentNote(result);
+        setShowFeedbackModal(true);
+      }
+      
       await loadAllNotes();
     }
     
     setIsSubmitting(false);
+  };
+
+  const handleFeedbackConfirm = async (feedbackType: FeedbackType, nextAction: NextAction) => {
+    if (!currentNote) return;
+    
+    // Update the note with feedback information
+    await candidateNotesService.updateNote(currentNote.id!, {
+      feedback_type: feedbackType,
+      next_action: nextAction,
+      previous_status: currentStatus
+    });
+    
+    // Refresh notes and candidate status
+    await loadAllNotes();
+    await loadCandidateInfo();
+    
+    setCurrentNote(null);
+    
+    toast({
+      title: "Feedback enregistré",
+      description: "Le feedback a été enregistré et le statut du candidat mis à jour",
+    });
   };
 
   const handleStartEdit = (note: CandidateNote) => {
@@ -195,12 +251,22 @@ const UnifiedNotesSection: React.FC<UnifiedNotesSectionProps> = ({ candidateId }
     }
   };
 
-  const getNoteTypeBadgeColor = (noteType: NoteType) => {
+  const getNoteTypeBadgeColor = (noteType: NoteType, feedbackType?: FeedbackType) => {
+    if (feedbackType) {
+      switch (feedbackType) {
+        case 'positif': return 'bg-green-100 text-green-800 hover:bg-green-200 border-green-300';
+        case 'negatif': return 'bg-red-100 text-red-800 hover:bg-red-200 border-red-300';
+        case 'neutre': return 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300';
+      }
+    }
+    
     switch (noteType) {
       case 'precal': return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
       case 'ci1': return 'bg-amber-100 text-amber-800 hover:bg-amber-200';
       case 'ci2': return 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200';
       case 'ci3': return 'bg-orange-100 text-orange-800 hover:bg-orange-200';
+      case 'ec1': return 'bg-pink-100 text-pink-800 hover:bg-pink-200';
+      case 'ec2': return 'bg-rose-100 text-rose-800 hover:bg-rose-200';
       case 'global': return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
       default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
     }
@@ -259,6 +325,8 @@ const UnifiedNotesSection: React.FC<UnifiedNotesSectionProps> = ({ candidateId }
                     <SelectItem value="ci1">Client Interview 1</SelectItem>
                     <SelectItem value="ci2">Client Interview 2</SelectItem>
                     <SelectItem value="ci3">Client Interview 3</SelectItem>
+                    <SelectItem value="ec1">Entretien Client 1</SelectItem>
+                    <SelectItem value="ec2">Entretien Client 2</SelectItem>
                   </SelectContent>
                 </Select>
                 
@@ -313,9 +381,23 @@ const UnifiedNotesSection: React.FC<UnifiedNotesSectionProps> = ({ candidateId }
                         <span className="text-xs text-muted-foreground">
                           {note.created_at && format(new Date(note.created_at), 'PPP à HH:mm', { locale: fr })}
                         </span>
-                        <Badge className={getNoteTypeBadgeColor(note.note_type)}>
+                        <Badge className={getNoteTypeBadgeColor(note.note_type, note.feedback_type)}>
                           {getNoteTypeLabel(note.note_type)}
                         </Badge>
+                        {note.feedback_type && (
+                          <Badge 
+                            variant="outline" 
+                            className={`ml-1 ${
+                              note.feedback_type === 'positif' ? 'border-green-300 text-green-700' : 
+                              note.feedback_type === 'negatif' ? 'border-red-300 text-red-700' : 
+                              'border-amber-300 text-amber-700'
+                            }`}
+                          >
+                            {note.feedback_type === 'positif' ? '✓ Positif' : 
+                             note.feedback_type === 'negatif' ? '✗ Négatif' : 
+                             '⏱ Neutre'}
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex space-x-1">
                         {editingNoteId !== note.id && (
@@ -354,6 +436,8 @@ const UnifiedNotesSection: React.FC<UnifiedNotesSectionProps> = ({ candidateId }
                             <SelectItem value="ci1">Client Interview 1</SelectItem>
                             <SelectItem value="ci2">Client Interview 2</SelectItem>
                             <SelectItem value="ci3">Client Interview 3</SelectItem>
+                            <SelectItem value="ec1">Entretien Client 1</SelectItem>
+                            <SelectItem value="ec2">Entretien Client 2</SelectItem>
                           </SelectContent>
                         </Select>
                         <Textarea
@@ -390,6 +474,18 @@ const UnifiedNotesSection: React.FC<UnifiedNotesSectionProps> = ({ candidateId }
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Feedback Workflow Modal */}
+        {showFeedbackModal && currentNote && (
+          <FeedbackWorkflowModal
+            isOpen={showFeedbackModal}
+            onClose={() => setShowFeedbackModal(false)}
+            note={currentNote}
+            currentStatus={currentStatus}
+            onConfirm={handleFeedbackConfirm}
+            candidateName={candidateName}
+          />
+        )}
 
         {/* Dialog de confirmation de suppression */}
         <AlertDialog open={!!deleteNoteId} onOpenChange={() => setDeleteNoteId(null)}>

@@ -20,13 +20,23 @@ const STATUS_COLORS: Record<string, string> = {
   'ci1': 'bg-violet-500 hover:bg-violet-600',
   'ci2': 'bg-indigo-500 hover:bg-indigo-600',
   'ci3': 'bg-purple-500 hover:bg-purple-600',
+  'ec1': 'bg-pink-500 hover:bg-pink-600',
+  'ec2': 'bg-rose-500 hover:bg-rose-600',
   'pipeline': 'bg-amber-500 hover:bg-amber-600',
   'formal_offer': 'bg-orange-500 hover:bg-orange-600',
   'contingent_offer': 'bg-yellow-500 hover:bg-yellow-600',
   'offer_declined': 'bg-red-500 hover:bg-red-600',
   'offer_accepted': 'bg-green-500 hover:bg-green-600',
   'contract_signed': 'bg-emerald-500 hover:bg-emerald-600',
-  'hired': 'bg-teal-500 hover:bg-teal-600'
+  'hired': 'bg-teal-500 hover:bg-teal-600',
+  // Refusal statuses - distinctive red/orange colors
+  'ps_refuse': 'bg-red-600 hover:bg-red-700',
+  'ci1_refuse': 'bg-red-600 hover:bg-red-700',
+  'ci2_refuse': 'bg-red-600 hover:bg-red-700',
+  'ci3_refuse': 'bg-red-600 hover:bg-red-700',
+  'ec1_refuse': 'bg-red-600 hover:bg-red-700',
+  'ec2_refuse': 'bg-red-600 hover:bg-red-700',
+  'refus': 'bg-red-700 hover:bg-red-800'
 };
 
 interface StatusSelectorProps {

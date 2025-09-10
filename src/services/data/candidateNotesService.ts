@@ -2,7 +2,9 @@
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-export type NoteType = 'precal' | 'ci1' | 'ci2' | 'ci3' | 'global';
+export type NoteType = 'precal' | 'ci1' | 'ci2' | 'ci3' | 'ec1' | 'ec2' | 'global' | 'feedback';
+export type FeedbackType = 'positif' | 'negatif' | 'neutre';
+export type NextAction = 'continue' | 'refuse' | 'en_attente';
 
 export interface CandidateNote {
   id?: string;
@@ -14,6 +16,11 @@ export interface CandidateNote {
   business_manager?: string;
   created_at?: string;
   updated_at?: string;
+  // New feedback fields
+  feedback_type?: FeedbackType;
+  next_action?: NextAction;
+  previous_status?: string;
+  proposed_status?: string;
 }
 
 export const candidateNotesService = {
@@ -47,7 +54,7 @@ export const candidateNotesService = {
     }
   },
 
-  // Ajouter une nouvelle note
+  // Ajouter une nouvelle note avec support du feedback
   addNote: async (note: Omit<CandidateNote, 'id' | 'created_at' | 'updated_at'>): Promise<CandidateNote | null> => {
     try {
       const { data, error } = await supabase
@@ -244,7 +251,29 @@ export const getNoteTypeLabel = (noteType?: NoteType): string => {
     case 'ci1': return 'Client Interview 1';
     case 'ci2': return 'Client Interview 2';
     case 'ci3': return 'Client Interview 3';
+    case 'ec1': return 'Entretien Client 1';
+    case 'ec2': return 'Entretien Client 2';
     case 'global': return 'Compte-rendu global';
+    case 'feedback': return 'Feedback';
     default: return 'Note';
+  }
+};
+
+// Helper functions for feedback workflow
+export const getFeedbackTypeLabel = (feedbackType?: FeedbackType): string => {
+  switch (feedbackType) {
+    case 'positif': return 'Positif';
+    case 'negatif': return 'Négatif';
+    case 'neutre': return 'Neutre';
+    default: return 'Non défini';
+  }
+};
+
+export const getNextActionLabel = (nextAction?: NextAction): string => {
+  switch (nextAction) {
+    case 'continue': return 'Continuer';
+    case 'refuse': return 'Refuser';
+    case 'en_attente': return 'En attente';
+    default: return 'Non défini';
   }
 };

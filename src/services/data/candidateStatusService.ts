@@ -16,7 +16,15 @@ export const CANDIDATE_STATUSES = {
   OFFER_DECLINED: 'offer_declined',
   OFFER_ACCEPTED: 'offer_accepted',
   CONTRACT_SIGNED: 'contract_signed',
-  HIRED: 'hired'
+  HIRED: 'hired',
+  // Refusal statuses
+  PS_REFUSE: 'ps_refuse',
+  CI1_REFUSE: 'ci1_refuse',
+  CI2_REFUSE: 'ci2_refuse',
+  CI3_REFUSE: 'ci3_refuse',
+  EC1_REFUSE: 'ec1_refuse',
+  EC2_REFUSE: 'ec2_refuse',
+  REFUS: 'refus'
 };
 
 export const CANDIDATE_STATUS_LABELS: Record<string, string> = {
@@ -33,7 +41,15 @@ export const CANDIDATE_STATUS_LABELS: Record<string, string> = {
   'offer_declined': 'Offer declined',
   'offer_accepted': 'Offer accepted',
   'contract_signed': 'Contract Signed',
-  'hired': 'Hired'
+  'hired': 'Hired',
+  // Refusal statuses
+  'ps_refuse': 'PS - Refusé',
+  'ci1_refuse': 'Entretien 1 - Refusé',
+  'ci2_refuse': 'Entretien 2 - Refusé',
+  'ci3_refuse': 'Entretien 3 - Refusé',
+  'ec1_refuse': 'EC1 - Refusé',
+  'ec2_refuse': 'EC2 - Refusé',
+  'refus': 'Refusé'
 };
 
 // Define interfaces for better type safety
