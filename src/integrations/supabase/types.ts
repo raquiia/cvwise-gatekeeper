@@ -262,6 +262,7 @@ export type Database = {
           email: string | null
           experiences: Json | null
           first_name: string
+          hub_id: string | null
           id: string
           industries: Json | null
           interests: string | null
@@ -321,6 +322,7 @@ export type Database = {
           email?: string | null
           experiences?: Json | null
           first_name: string
+          hub_id?: string | null
           id?: string
           industries?: Json | null
           interests?: string | null
@@ -380,6 +382,7 @@ export type Database = {
           email?: string | null
           experiences?: Json | null
           first_name?: string
+          hub_id?: string | null
           id?: string
           industries?: Json | null
           interests?: string | null
@@ -418,10 +421,85 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "candidates_hub_id_fkey"
+            columns: ["hub_id"]
+            isOneToOne: false
+            referencedRelation: "hubs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "candidates_resume_id_fkey"
             columns: ["resume_id"]
             isOneToOne: false
             referencedRelation: "resumes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      countries: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      hubs: {
+        Row: {
+          address: string | null
+          city: string
+          country_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city: string
+          country_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string
+          country_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hubs_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
             referencedColumns: ["id"]
           },
         ]
@@ -600,6 +678,7 @@ export type Database = {
           company: string | null
           created_at: string | null
           first_name: string | null
+          hub_id: string | null
           id: string
           is_admin: boolean | null
           last_name: string | null
@@ -611,6 +690,7 @@ export type Database = {
           company?: string | null
           created_at?: string | null
           first_name?: string | null
+          hub_id?: string | null
           id: string
           is_admin?: boolean | null
           last_name?: string | null
@@ -622,13 +702,22 @@ export type Database = {
           company?: string | null
           created_at?: string | null
           first_name?: string | null
+          hub_id?: string | null
           id?: string
           is_admin?: boolean | null
           last_name?: string | null
           title?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_hub_id_fkey"
+            columns: ["hub_id"]
+            isOneToOne: false
+            referencedRelation: "hubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recruiter_tasks: {
         Row: {
@@ -813,6 +902,7 @@ export type Database = {
           company: string | null
           created_at: string | null
           first_name: string | null
+          hub_id: string | null
           id: string
           is_admin: boolean | null
           last_name: string | null
@@ -831,6 +921,7 @@ export type Database = {
           company: string | null
           created_at: string | null
           first_name: string | null
+          hub_id: string | null
           id: string
           is_admin: boolean | null
           last_name: string | null
@@ -930,6 +1021,7 @@ export type Database = {
           email: string | null
           experiences: Json | null
           first_name: string
+          hub_id: string | null
           id: string
           industries: Json | null
           interests: string | null
@@ -995,6 +1087,7 @@ export type Database = {
           company: string | null
           created_at: string | null
           first_name: string | null
+          hub_id: string | null
           id: string
           is_admin: boolean | null
           last_name: string | null
@@ -1117,6 +1210,7 @@ export type Database = {
           email: string | null
           experiences: Json | null
           first_name: string
+          hub_id: string | null
           id: string
           industries: Json | null
           interests: string | null
