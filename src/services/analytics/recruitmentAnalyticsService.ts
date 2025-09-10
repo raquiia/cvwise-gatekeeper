@@ -30,6 +30,35 @@ export interface RecruiterKPI {
   };
 }
 
+export interface CountryKPI {
+  countryId: string;
+  countryName: string;
+  totalCVs: number;
+  candidatesInPrequalification: number;
+  candidatesInEC1: number;
+  candidatesInEC2: number;
+  candidatesInPresentation: number;
+  candidatesInMission: number;
+  conversionRate: number;
+  recruiterCount: number;
+}
+
+export interface HubKPI {
+  hubId: string;
+  hubName: string;
+  hubCity: string;
+  countryId: string;
+  countryName: string;
+  totalCVs: number;
+  candidatesInPrequalification: number;
+  candidatesInEC1: number;
+  candidatesInEC2: number;
+  candidatesInPresentation: number;
+  candidatesInMission: number;
+  conversionRate: number;
+  recruiterCount: number;
+}
+
 export interface GlobalRecruitmentStats {
   totalCVsThisMonth: number;
   totalCandidatesInMission: number;
@@ -436,6 +465,176 @@ export class RecruitmentAnalyticsService {
       return result;
     } catch (error) {
       console.error('Error fetching recruiter KPIs:', error);
+      throw error;
+    }
+  }
+
+  async getKPIsByCountry(period: 'current_month' | 'last_month' | 'quarter' | 'custom' = 'current_month', customStartDate?: Date, customEndDate?: Date): Promise<CountryKPI[]> {
+    try {
+      // Récupérer tous les pays avec leurs hubs
+      const { data: countries, error: countriesError } = await supabase
+        .from('countries')
+        .select(`
+          id,
+          name,
+          hubs!inner(
+            id,
+            name,
+            city,
+            profiles!inner(
+              id,
+              first_name,
+              last_name
+            )
+          )
+        `)
+        .eq('is_active', true);
+
+      if (countriesError) {
+        console.error('Error fetching countries:', countriesError);
+        throw countriesError;
+      }
+
+      const countryKPIs: CountryKPI[] = [];
+
+      for (const country of countries || []) {
+        // Récupérer tous les recruteurs de ce pays
+        const recruiterIds = country.hubs?.flatMap(hub => 
+          hub.profiles?.map(profile => profile.id) || []
+        ) || [];
+
+        let totalCVs = 0;
+        let candidatesInPrequalification = 0;
+        let candidatesInEC1 = 0;
+        let candidatesInEC2 = 0;
+        let candidatesInPresentation = 0;
+        let candidatesInMission = 0;
+
+        // Pour chaque recruteur du pays, récupérer ses candidats
+        for (const recruiterId of recruiterIds) {
+          const { data: candidates } = await supabase
+            .from('candidates')
+            .select('*')
+            .eq('user_id', recruiterId);
+
+          const periodCandidates = this.filterCandidatesByPeriod(candidates || [], period, customStartDate, customEndDate);
+          const candidatesToAnalyze = periodCandidates.length > 0 ? periodCandidates : candidates || [];
+
+          totalCVs += candidatesToAnalyze.length;
+          candidatesInPrequalification += candidatesToAnalyze.filter(c => c.detailed_status === 'prequalification').length;
+          candidatesInEC1 += candidatesToAnalyze.filter(c => c.detailed_status === 'ec1').length;
+          candidatesInEC2 += candidatesToAnalyze.filter(c => c.detailed_status === 'ec2').length;
+          candidatesInPresentation += candidatesToAnalyze.filter(c => c.detailed_status === 'presentation_client').length;
+          candidatesInMission += candidatesToAnalyze.filter(c => c.detailed_status === 'en_mission').length;
+        }
+
+        const conversionRate = totalCVs > 0 ? Math.round((candidatesInMission / totalCVs) * 100) : 0;
+
+        countryKPIs.push({
+          countryId: country.id,
+          countryName: country.name,
+          totalCVs,
+          candidatesInPrequalification,
+          candidatesInEC1,
+          candidatesInEC2,
+          candidatesInPresentation,
+          candidatesInMission,
+          conversionRate,
+          recruiterCount: recruiterIds.length
+        });
+      }
+
+      return countryKPIs.sort((a, b) => b.totalCVs - a.totalCVs);
+    } catch (error) {
+      console.error('Error fetching KPIs by country:', error);
+      throw error;
+    }
+  }
+
+  async getKPIsByHub(countryId?: string, period: 'current_month' | 'last_month' | 'quarter' | 'custom' = 'current_month', customStartDate?: Date, customEndDate?: Date): Promise<HubKPI[]> {
+    try {
+      let query = supabase
+        .from('hubs')
+        .select(`
+          id,
+          name,
+          city,
+          country_id,
+          countries!inner(
+            id,
+            name
+          ),
+          profiles!inner(
+            id,
+            first_name,
+            last_name
+          )
+        `)
+        .eq('is_active', true);
+
+      if (countryId) {
+        query = query.eq('country_id', countryId);
+      }
+
+      const { data: hubs, error: hubsError } = await query;
+
+      if (hubsError) {
+        console.error('Error fetching hubs:', hubsError);
+        throw hubsError;
+      }
+
+      const hubKPIs: HubKPI[] = [];
+
+      for (const hub of hubs || []) {
+        const recruiterIds = hub.profiles?.map(profile => profile.id) || [];
+
+        let totalCVs = 0;
+        let candidatesInPrequalification = 0;
+        let candidatesInEC1 = 0;
+        let candidatesInEC2 = 0;
+        let candidatesInPresentation = 0;
+        let candidatesInMission = 0;
+
+        // Pour chaque recruteur du hub, récupérer ses candidats
+        for (const recruiterId of recruiterIds) {
+          const { data: candidates } = await supabase
+            .from('candidates')
+            .select('*')
+            .eq('user_id', recruiterId);
+
+          const periodCandidates = this.filterCandidatesByPeriod(candidates || [], period, customStartDate, customEndDate);
+          const candidatesToAnalyze = periodCandidates.length > 0 ? periodCandidates : candidates || [];
+
+          totalCVs += candidatesToAnalyze.length;
+          candidatesInPrequalification += candidatesToAnalyze.filter(c => c.detailed_status === 'prequalification').length;
+          candidatesInEC1 += candidatesToAnalyze.filter(c => c.detailed_status === 'ec1').length;
+          candidatesInEC2 += candidatesToAnalyze.filter(c => c.detailed_status === 'ec2').length;
+          candidatesInPresentation += candidatesToAnalyze.filter(c => c.detailed_status === 'presentation_client').length;
+          candidatesInMission += candidatesToAnalyze.filter(c => c.detailed_status === 'en_mission').length;
+        }
+
+        const conversionRate = totalCVs > 0 ? Math.round((candidatesInMission / totalCVs) * 100) : 0;
+
+        hubKPIs.push({
+          hubId: hub.id,
+          hubName: hub.name,
+          hubCity: hub.city,
+          countryId: hub.country_id,
+          countryName: hub.countries?.name || 'N/A',
+          totalCVs,
+          candidatesInPrequalification,
+          candidatesInEC1,
+          candidatesInEC2,
+          candidatesInPresentation,
+          candidatesInMission,
+          conversionRate,
+          recruiterCount: recruiterIds.length
+        });
+      }
+
+      return hubKPIs.sort((a, b) => b.totalCVs - a.totalCVs);
+    } catch (error) {
+      console.error('Error fetching KPIs by hub:', error);
       throw error;
     }
   }

@@ -4,7 +4,7 @@ import {
   UserCheck, AlertTriangle, Info as InfoIcon, UserPlus, TrendingUp
 } from 'lucide-react';
 import Layout from '@/components/Layout';
-import { TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Card,
   CardContent,
@@ -37,6 +37,7 @@ import RecruitmentUserStats from '@/components/admin/RecruitmentUserStats';
 import RecruiterOverviewCard from '@/components/admin/RecruiterOverviewCard';
 import RecruiterDetailedKPI from '@/components/admin/RecruiterDetailedKPI';
 import AdminGeoManagement from '@/components/admin/geo/AdminGeoManagement';
+import GeographicAnalytics from '@/components/admin/geo/GeographicAnalytics';
 
 // Mock data pour les utilisateurs en attente
 const pendingUsersData = [
@@ -344,40 +345,59 @@ const Admin = () => {
                     onBack={handleBackToOverview}
                   />
                 ) : (
-                  <Card className="bg-white/70 dark:bg-navy-dark/40 backdrop-blur-xl border border-navy/10 shadow-xl">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
-                          <TrendingUp className="w-5 h-5" />
-                        </div>
-                        Vue globale des recruteurs
-                      </CardTitle>
-                      <CardDescription>
-                        Cliquez sur un recruteur pour voir ses KPI détaillés
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {realUsers.map(user => {
-                          const recruiterKPI = recruiterKPIs.find(kpi => kpi.recruiterId === user.id);
-                          const recruiterInfo = {
-                            id: user.id,
-                            name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Recruteur',
-                            email: user.email || '',
-                          };
+                  <Tabs defaultValue="recruiters" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 mb-6">
+                      <TabsTrigger value="recruiters" className="flex items-center gap-2">
+                        <Users className="w-4 h-4" />
+                        KPI Recruteurs
+                      </TabsTrigger>
+                      <TabsTrigger value="geography" className="flex items-center gap-2">
+                        <Building className="w-4 h-4" />
+                        Analytics Géo
+                      </TabsTrigger>
+                    </TabsList>
 
-                          return (
-                            <RecruiterOverviewCard
-                              key={user.id}
-                              recruiter={recruiterInfo}
-                              kpi={recruiterKPI || null}
-                              onClick={() => handleRecruiterClick(recruiterInfo)}
-                            />
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
+                    <TabsContent value="recruiters">
+                      <Card className="bg-white/70 dark:bg-navy-dark/40 backdrop-blur-xl border border-navy/10 shadow-xl">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
+                              <TrendingUp className="w-5 h-5" />
+                            </div>
+                            Vue globale des recruteurs
+                          </CardTitle>
+                          <CardDescription>
+                            Cliquez sur un recruteur pour voir ses KPI détaillés
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {realUsers.map(user => {
+                              const recruiterKPI = recruiterKPIs.find(kpi => kpi.recruiterId === user.id);
+                              const recruiterInfo = {
+                                id: user.id,
+                                name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Recruteur',
+                                email: user.email || '',
+                              };
+
+                              return (
+                                <RecruiterOverviewCard
+                                  key={user.id}
+                                  recruiter={recruiterInfo}
+                                  kpi={recruiterKPI || null}
+                                  onClick={() => handleRecruiterClick(recruiterInfo)}
+                                />
+                              );
+                            })}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    <TabsContent value="geography">
+                      <GeographicAnalytics />
+                    </TabsContent>
+                  </Tabs>
                 )}
               </div>
             </TabsContent>

@@ -44,9 +44,9 @@ const PremiumTabs: React.FC<PremiumTabsProps> = ({
     },
     {
       value: "analytics",
-      label: "KPI Recruteurs",
+      label: "Analytics",
       icon: TrendingUp,
-      description: "Performance"
+      description: "Performance & Géo"
     },
     {
       value: "settings",
