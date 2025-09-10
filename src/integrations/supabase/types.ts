@@ -143,6 +143,7 @@ export type Database = {
           next_action: string | null
           note_type: string
           previous_status: string | null
+          process_id: string | null
           proposed_status: string | null
           updated_at: string
           user_id: string
@@ -158,6 +159,7 @@ export type Database = {
           next_action?: string | null
           note_type?: string
           previous_status?: string | null
+          process_id?: string | null
           proposed_status?: string | null
           updated_at?: string
           user_id: string
@@ -173,6 +175,7 @@ export type Database = {
           next_action?: string | null
           note_type?: string
           previous_status?: string | null
+          process_id?: string | null
           proposed_status?: string | null
           updated_at?: string
           user_id?: string
@@ -183,6 +186,66 @@ export type Database = {
             columns: ["candidate_id"]
             isOneToOne: false
             referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_notes_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_recruitment_processes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_recruitment_processes: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          ended_at: string | null
+          hub_id: string | null
+          id: string
+          notes: string | null
+          outcome: string | null
+          process_number: number
+          recruiter_id: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          ended_at?: string | null
+          hub_id?: string | null
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          process_number?: number
+          recruiter_id: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          ended_at?: string | null
+          hub_id?: string | null
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          process_number?: number
+          recruiter_id?: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_recruitment_processes_hub_id_fkey"
+            columns: ["hub_id"]
+            isOneToOne: false
+            referencedRelation: "hubs"
             referencedColumns: ["id"]
           },
         ]
@@ -257,6 +320,7 @@ export type Database = {
           contract_type: string | null
           country: string | null
           created_at: string | null
+          current_process_id: string | null
           detailed_status: string | null
           education: Json | null
           email: string | null
@@ -317,6 +381,7 @@ export type Database = {
           contract_type?: string | null
           country?: string | null
           created_at?: string | null
+          current_process_id?: string | null
           detailed_status?: string | null
           education?: Json | null
           email?: string | null
@@ -377,6 +442,7 @@ export type Database = {
           contract_type?: string | null
           country?: string | null
           created_at?: string | null
+          current_process_id?: string | null
           detailed_status?: string | null
           education?: Json | null
           email?: string | null
@@ -420,6 +486,13 @@ export type Database = {
           years_experience?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "candidates_current_process_id_fkey"
+            columns: ["current_process_id"]
+            isOneToOne: false
+            referencedRelation: "candidate_recruitment_processes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "candidates_hub_id_fkey"
             columns: ["hub_id"]
@@ -988,6 +1061,10 @@ export type Database = {
           years_experience: number
         }[]
       }
+      get_candidate_recruitment_history: {
+        Args: { p_candidate_id: string }
+        Returns: Json[]
+      }
       get_candidate_status: {
         Args: { p_candidate_id: string }
         Returns: string
@@ -1016,6 +1093,7 @@ export type Database = {
           contract_type: string | null
           country: string | null
           created_at: string | null
+          current_process_id: string | null
           detailed_status: string | null
           education: Json | null
           email: string | null
@@ -1185,6 +1263,10 @@ export type Database = {
         }
         Returns: string
       }
+      start_new_recruitment_process: {
+        Args: { p_candidate_id: string; p_hub_id: string; p_notes?: string }
+        Returns: string
+      }
       update_candidate_secure: {
         Args: { p_candidate_id: string; p_data: Json }
         Returns: {
@@ -1205,6 +1287,7 @@ export type Database = {
           contract_type: string | null
           country: string | null
           created_at: string | null
+          current_process_id: string | null
           detailed_status: string | null
           education: Json | null
           email: string | null

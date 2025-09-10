@@ -23,6 +23,7 @@ import ModernTabsContainer from '@/components/candidates/detail/ModernTabsContai
 import ModernTabContent from '@/components/candidates/detail/ModernTabContent';
 import ReferencesTab from '@/components/candidates/detail/ReferencesTab';
 import { DocumentsTab } from '@/components/candidates/detail/DocumentsTab';
+import { RecruitmentProcessHistory } from '@/components/candidates/detail/RecruitmentProcessHistory';
 import BackToSearchButton from '@/components/candidates/detail/BackToSearchButton';
 
 const CandidateDetail = () => {
@@ -313,6 +314,14 @@ const CandidateDetail = () => {
               
               <ModernTabContent value="documents" gradient="from-indigo-500/5 to-blue-500/5">
                 <DocumentsTab candidateId={candidate.id} />
+              </ModernTabContent>
+              
+              <ModernTabContent value="processes" gradient="from-violet-500/5 to-purple-500/5">
+                <RecruitmentProcessHistory 
+                  candidateId={candidate.id}
+                  currentStatus={candidate.detailed_status || ''}
+                  onProcessStarted={handleRefreshWithAIScore}
+                />
               </ModernTabContent>
               
               <ModernTabContent value="details" gradient="from-gray-500/5 to-slate-500/5">

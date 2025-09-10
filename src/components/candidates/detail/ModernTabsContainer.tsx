@@ -10,7 +10,8 @@ import {
   FileText,
   Users,
   Sparkles,
-  FolderOpen
+  FolderOpen,
+  Clock
 } from 'lucide-react';
 
 interface ModernTabsContainerProps {
@@ -66,6 +67,12 @@ const ModernTabsContainer: React.FC<ModernTabsContainerProps> = ({
       label: 'Documents RH',
       icon: FolderOpen,
       gradient: 'from-indigo-600 to-blue-600'
+    },
+    {
+      value: 'processes',
+      label: 'Processus',
+      icon: Clock,
+      gradient: 'from-violet-600 to-purple-600'
     },
     {
       value: 'details',
